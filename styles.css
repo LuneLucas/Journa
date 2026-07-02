@@ -134,6 +134,12 @@
   color: var(--ink);
 }
 
+/* 抽屉滚到边缘不把惯性传给底下的页面 */
+.settings-drawer,
+.ledger-management-drawer {
+  overscroll-behavior: contain;
+}
+
 /* 抽屉等内部滚动容器的细滚动条（仅 WebKit） */
 .settings-drawer::-webkit-scrollbar,
 .ledger-management-drawer::-webkit-scrollbar {
@@ -180,6 +186,24 @@ select {
 
 button {
   cursor: pointer;
+}
+
+/* 触摸端交互基础：清系统灰色点按高亮（由 :active 反馈替代）、
+   去 double-tap 缩放判定延迟、防按钮长按选中文字 */
+button,
+a,
+summary,
+input,
+select,
+.ledger-item {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button,
+.ledger-item {
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 button:disabled {
@@ -1619,8 +1643,8 @@ input[type="date"]:focus {
 .settings-backdrop,
 .ledger-management-backdrop,
 .confirm-backdrop {
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .settings-backdrop {
@@ -3297,8 +3321,8 @@ body.ledger-management-open .mobile-submit-bar {
   color: #fff;
   padding: 10px 12px 10px 16px;
   box-shadow: 0 18px 48px rgba(22, 26, 30, 0.20);
-  backdrop-filter: blur(18px) saturate(112%);
-  -webkit-backdrop-filter: blur(18px) saturate(112%);
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
   pointer-events: auto;
   animation: toast-enter var(--motion) var(--spring) both;
 }
@@ -3822,7 +3846,7 @@ body.ledger-management-open .mobile-submit-bar {
       linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
       rgba(255, 255, 255, 0.68);
     color: var(--ink);
-    font-size: 0.88rem;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
     font-weight: 700;
     line-height: 1.2;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
@@ -3861,6 +3885,7 @@ body.ledger-management-open .mobile-submit-bar {
     padding: 8px 14px 18px;
     scroll-padding-inline: 14px;
     scrollbar-width: none;
+    overscroll-behavior-x: contain; /* 横滚到头不带动页面 */
     -webkit-overflow-scrolling: touch;
   }
 
@@ -3970,8 +3995,8 @@ body.ledger-management-open .mobile-submit-bar {
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 42px -24px color-mix(in srgb, var(--submit-color, var(--green)) 60%, transparent),
       0 24px 72px rgba(22, 26, 30, 0.16);
-    backdrop-filter: blur(14px) saturate(185%) brightness(1.08);
-    -webkit-backdrop-filter: blur(14px) saturate(185%) brightness(1.08);
+    backdrop-filter: blur(8px) saturate(185%) brightness(1.08);
+    -webkit-backdrop-filter: blur(8px) saturate(185%) brightness(1.08);
   }
 
   .mobile-submit-bar::before,
@@ -4197,6 +4222,21 @@ body.ledger-management-open .mobile-submit-bar {
   .app-shell {
     width: min(100% - 28px, 520px);
     padding-top: 16px;
+    /* 底部预留固定提交栏的高度，滚到底时内容不被盖住 */
+    padding-bottom: 96px;
+  }
+
+  /* 浏览器滚焦点入视区时，避开提交栏/键盘边缘 */
+  input,
+  select {
+    scroll-margin-block: 12px 96px;
+  }
+
+  /* 屏幕键盘弹出（JS 标记）：提交栏让位，与抽屉打开时同款隐藏 */
+  body.keyboard-open .mobile-submit-bar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px);
   }
 
   .app-header {
@@ -4323,7 +4363,7 @@ body.ledger-management-open .mobile-submit-bar {
   .date-label input,
   .note-label input {
     min-height: 46px;
-    font-size: 0.88rem;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
   }
 
   .split-scope-toggle {
@@ -4436,12 +4476,12 @@ body.ledger-management-open .mobile-submit-bar {
 
   .date-label input {
     padding-inline: 9px 7px;
-    font-size: 0.82rem;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
   }
 
   .note-label input {
     padding-inline: 9px;
-    font-size: 0.82rem;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
   }
 
   .split-mode-button {
@@ -4483,6 +4523,7 @@ body.ledger-management-open .mobile-submit-bar {
 
   .family-tag:active,
   .selectable-category-chip:active {
+    background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
     transform: translateY(1px);
     transition-duration: 120ms;
   }
@@ -4493,6 +4534,33 @@ body.ledger-management-open .mobile-submit-bar {
 
   .selectable-category-chip.is-selected:active {
     transform: translateY(-1px);
+  }
+
+  /* 按压＝快速填色下沉（~90ms），松开走各自原有过渡慢速回弹。
+     inset 大铺满 box-shadow 作为“颜色填充”层：能盖住渐变底、可过渡、亮暗双模式都表现为加深 */
+  .primary-button:active,
+  .mobile-submit-button:active,
+  .ghost-button:active,
+  .secondary-button:active,
+  .split-mode-button:active,
+  .split-scope-toggle:active,
+  .member-stepper button:active,
+  .ledger-edit-button:active {
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.12);
+    transform: translateY(1px);
+    transition-duration: 90ms;
+  }
+
+  .primary-button:active,
+  .mobile-submit-button:active {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  /* 账单列表项：按压填充家庭色 wash */
+  .ledger-item:active {
+    background-color: rgba(127, 160, 143, 0.16); /* color-mix 静态回退 */
+    background-color: color-mix(in srgb, var(--family-color) 14%, transparent);
+    transition-duration: 120ms;
   }
 }
 
@@ -4559,11 +4627,14 @@ body.ledger-management-open .mobile-submit-bar {
   .currency-mark,
   .amount-label input,
   .amount-label.amount-active .currency-mark {
-    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 50%, white);
+    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white); /* 混白 62%，暗底 ≥6:1 */
   }
 
   .amount-label input {
-    -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 50%, white);
+    -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white);
+    /* 亮灰输入底转暗，家庭色亮文字才能成立 */
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 0 0 1px rgba(232, 236, 233, 0.14);
   }
 
   .settlement-to strong {
@@ -4604,7 +4675,37 @@ body.ledger-management-open .mobile-submit-bar {
 
   input,
   select {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.10);
+  }
+
+  /* 日期/备注输入的白渐变底转暗（移动断点字面量） */
+  .date-label input,
+  .note-label input {
+    border-color: rgba(232, 236, 233, 0.16);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06)),
+      rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* 暗底占位符与日期控件可读性 */
+  input::placeholder {
+    color: rgba(232, 236, 233, 0.56);
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+  }
+
+  /* 暗底 focus 光环用提亮绿，否则几乎不可见 */
+  input:focus,
+  select:focus,
+  button:focus-visible,
+  summary:focus-visible,
+  a:focus-visible,
+  .family-tag:focus-visible,
+  .selectable-category-chip:focus-visible {
+    box-shadow: 0 0 0 4px rgba(88, 176, 155, 0.45);
   }
 
   .ghost-button {

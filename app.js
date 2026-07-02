@@ -3023,3 +3023,16 @@ document.addEventListener("keydown", (event) => {
 
 render();
 pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
+
+// 屏幕键盘弹出标记：文本类控件聚焦时给 body 加 keyboard-open，
+// CSS 据此隐藏移动端固定提交栏，避免悬在键盘上方挡住表单。
+// focusout 延迟一拍再判断，防止焦点在输入间切换时提交栏闪烁。
+(() => {
+  const isTextEntry = (el) =>
+    el && (el.tagName === "SELECT" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
+  const syncKeyboardFlag = () => {
+    document.body.classList.toggle("keyboard-open", isTextEntry(document.activeElement));
+  };
+  document.addEventListener("focusin", syncKeyboardFlag);
+  document.addEventListener("focusout", () => setTimeout(syncKeyboardFlag, 0));
+})();
