@@ -4797,6 +4797,102 @@ body.ledger-management-open .mobile-submit-bar {
   .empty-state-art circle {
     mix-blend-mode: screen;
   }
+
+  /* 分摊范围二级面板：整片白底转暗 */
+  .split-scope-panel {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(232, 236, 233, 0.10));
+    background:
+      radial-gradient(ellipse at 18% 8%, color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent), transparent 48%),
+      linear-gradient(135deg, rgba(40, 47, 44, 0.60), rgba(30, 36, 33, 0.40)),
+      rgba(20, 24, 22, 0.50);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .split-mode-button {
+    border-color: rgba(232, 236, 233, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .split-mode-button.is-selected {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 26%, transparent), rgba(255, 255, 255, 0.05));
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 20%, transparent);
+  }
+
+  .split-amount-row input {
+    border-color: rgba(232, 236, 233, 0.14);
+    background: rgba(255, 255, 255, 0.08);
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
+  }
+
+  /* 设置/账本管理抽屉的粘性顶栏白渐变转暗 */
+  .settings-hero,
+  .ledger-management-hero {
+    background:
+      linear-gradient(145deg, rgba(40, 47, 44, 0.96), rgba(30, 36, 33, 0.92)),
+      rgba(20, 24, 22, 0.96);
+  }
+
+  /* 当前账本卡：白渐变底转暗，绿标题/灰副文才成立 */
+  .current-ledger-card {
+    border-color: rgba(232, 236, 233, 0.10);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+      rgba(169, 206, 181, 0.10);
+  }
+
+  /* 家庭人数步进按钮：白圆底转暗 */
+  .member-stepper button {
+    border-color: color-mix(in srgb, var(--family-color) 30%, rgba(232, 236, 233, 0.12));
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
+      color-mix(in srgb, var(--family-color) 14%, transparent);
+  }
+
+  /* 设置里的行卡（家庭/规则/数据）白底转暗 */
+  .settings-family,
+  .settings-rule,
+  .settings-data-item {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* 次级米色按钮（账本管理/保存名称）转暖调暗底 */
+  .secondary-button {
+    background: rgba(234, 223, 191, 0.14);
+    color: #ecd9a8;
+  }
+
+  /* 主按钮静息态（账本"打开"等）白渐变底 + 亮边转暗，绿字保留 */
+  .primary-button {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 32%, rgba(232, 236, 233, 0.12));
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
+      rgba(255, 255, 255, 0.05);
+  }
+
+  /* 玻璃高光层去掉白色成分，避免暗底上发亮 */
+  .primary-button::before {
+    background:
+      linear-gradient(135deg,
+        color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 58%);
+  }
+
+  /* 账本管理卡片：当前账本高亮 + 三格统计白底转暗 */
+  .ledger-manager-card.is-active {
+    border-color: rgba(88, 176, 155, 0.28);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+      rgba(169, 206, 181, 0.10);
+  }
+
+  .ledger-card-stats div {
+    border-color: rgba(232, 236, 233, 0.10);
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 
 /* 老 WebView 不支持 backdrop-filter：玻璃层回退为实底 + 普通投影 */
