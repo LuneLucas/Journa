@@ -156,6 +156,8 @@ let splitScopeOpen = false;
 let splitScopeCloseTimer = 0;
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
+let activatingSplitMode = "";
+const activatingSplitFamilyIds = new Set();
 let lastAddedExpenseId = "";
 let expandedExpenseId = "";
 let lastAddedCategory = "";
@@ -1071,8 +1073,9 @@ function renderSplitScope() {
   elements.splitModeButtons.innerHTML = splitModeOptions
     .map((option) => {
       const selected = activeSplitMode === option.id;
+      const activating = selected && option.id === activatingSplitMode ? " is-activating" : "";
       return `
-        <button class="split-mode-button${selected ? " is-selected" : ""}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
+        <button class="split-mode-button${selected ? " is-selected" : ""}${activating}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
           <span>${escapeHtml(option.label)}</span>
           <small>${escapeHtml(option.description)}</small>
         </button>
@@ -1084,8 +1087,9 @@ function renderSplitScope() {
   elements.splitFamilyChoices.innerHTML = state.families
     .map((family) => {
       const selected = activeSplitFamilyIds.includes(family.id);
+      const activating = activatingSplitFamilyIds.has(family.id) ? " is-activating" : "";
       return `
-        <button class="family-tag split-family-chip${selected ? " is-selected" : ""}" type="button" data-split-family="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
+        <button class="family-tag split-family-chip${selected ? " is-selected" : ""}${activating}" type="button" data-split-family="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
           <span>${escapeHtml(family.name)}</span>
         </button>
       `;
@@ -1149,15 +1153,16 @@ function ensureActiveSplitState() {
 function formatActiveSplitSummary() {
   if (activeSplitMode === "custom") {
     const totalCents = getActiveCustomSplitTotalCents();
-    return totalCents ? `分别填写 · ${formatMoney(totalCents)}` : "分别填写金额";
+    return totalCents ? `自定义金额 · ${formatMoney(totalCents)}` : "自定义金额";
   }
 
   if (activeSplitMode === "families") {
-    const names = activeSplitFamilyIds.map(getFamilyName).join("、");
-    return `${names || "未选家庭"} · 按人数`;
+    if (!activeSplitFamilyIds.length) return "指定家庭分摊";
+    const names = activeSplitFamilyIds.map(getFamilyName);
+    return names.length > 2 ? `指定家庭分摊 · ${names.length}家` : `指定家庭分摊 · ${names.join("、")}`;
   }
 
-  return "全部家庭 · 按人数";
+  return "按人数分摊";
 }
 
 function formatExpenseSplitSummary(expense) {
@@ -1603,16 +1608,27 @@ function isExpenseReady() {
   return Number.isFinite(amount) && amount > 0 && hasPayer && hasCategory;
 }
 
+function getExpenseMissingPrompt() {
+  const amount = parseAmountInput(elements.amountInput.value);
+  const hasPayer = state.families.some((family) => family.id === state.selectedPayerId);
+  const hasCategory = Boolean(state.activeCategory || elements.categoryInput.value);
+
+  if (!hasPayer) return "先选择付款家庭";
+  if (!hasCategory) return "再选择类别";
+  if (!Number.isFinite(amount) || amount <= 0) return activeSplitMode === "custom" ? "填写分摊金额后添加" : "输入金额后添加";
+  return "";
+}
+
 function renderMobileSubmitBar() {
   const family = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "未选家庭";
   const category = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "未选类别";
   const date = state.activeDate === todayIso() ? "今天" : state.activeDate.slice(5);
   const action = editingExpenseId ? "保存修改" : "添加账单";
   const split = activeSplitMode === "all" ? "" : ` · ${formatActiveSplitSummary()}`;
-  elements.mobileSubmitSummary.textContent = `${family} · ${category} · ${date}${split}`;
-  elements.mobileSubmitButton.querySelector(".button-label").textContent = action;
   // 信息未填齐时按钮呈“不可点击”态（中性灰，非主题色）；仍保留点击以提示缺项
   const blocked = !isExpenseReady();
+  elements.mobileSubmitSummary.textContent = blocked ? getExpenseMissingPrompt() : `${family} · ${category} · ${date}${split}`;
+  elements.mobileSubmitButton.querySelector(".button-label").textContent = action;
   elements.mobileSubmitButton.classList.toggle("is-blocked", blocked);
   elements.mobileSubmitButton.setAttribute("aria-disabled", blocked ? "true" : "false");
 }
@@ -1790,7 +1806,7 @@ function handleCategorySelection(event) {
 
 function handleSplitScopeToggle() {
   splitScopeOpen = !splitScopeOpen;
-  renderSplitScope();
+  smoothSplitScopeResize(renderSplitScope);
 }
 
 function handleSplitScopeClick(event) {
@@ -1799,12 +1815,13 @@ function handleSplitScopeClick(event) {
     const nextMode = normalizeSplitMode(modeButton.dataset.splitMode);
     if (nextMode !== activeSplitMode) {
       markSplitScopeSwitching();
+      markSplitModeActivating(nextMode);
       activeSplitMode = nextMode;
       if (activeSplitMode === "families" && !activeSplitFamilyIds.length) {
         activeSplitFamilyIds = state.families.map((family) => family.id);
       }
     }
-    renderSplitScope();
+    smoothSplitScopeResize(renderSplitScope);
     renderMobileSubmitBar();
     return;
   }
@@ -1814,13 +1831,29 @@ function handleSplitScopeClick(event) {
 
   const familyId = normalizePayerId(familyButton.dataset.splitFamily);
   if (!familyId) return;
+  markSplitFamilyActivating(familyId);
   if (activeSplitFamilyIds.includes(familyId)) {
     activeSplitFamilyIds = activeSplitFamilyIds.filter((id) => id !== familyId);
   } else {
     activeSplitFamilyIds = [...activeSplitFamilyIds, familyId];
   }
-  renderSplitScope();
+  smoothSplitScopeResize(renderSplitScope);
   renderMobileSubmitBar();
+}
+
+function smoothSplitScopeResize(update) {
+  if (!elements.entryPanel || prefersReducedMotion()) {
+    update();
+    return;
+  }
+
+  smoothContainerResize(elements.entryPanel, () => {
+    elements.entryPanel.classList.add("is-measuring-split");
+    update();
+    window.requestAnimationFrame(() => {
+      elements.entryPanel.classList.remove("is-measuring-split");
+    });
+  });
 }
 
 function markSplitScopeSwitching() {
@@ -1831,6 +1864,22 @@ function markSplitScopeSwitching() {
     splitScopeSwitching = false;
     elements.splitScopePanel.classList.remove("is-switching");
   }, MOTION_DELAYS.splitSwitch);
+}
+
+function markSplitModeActivating(mode) {
+  if (prefersReducedMotion()) return;
+  activatingSplitMode = mode;
+  window.setTimeout(() => {
+    if (activatingSplitMode === mode) activatingSplitMode = "";
+  }, MOTION_DELAYS.categoryActivate);
+}
+
+function markSplitFamilyActivating(familyId) {
+  if (prefersReducedMotion()) return;
+  activatingSplitFamilyIds.add(familyId);
+  window.setTimeout(() => {
+    activatingSplitFamilyIds.delete(familyId);
+  }, MOTION_DELAYS.payerActivate);
 }
 
 function handleSplitAmountInput(event) {

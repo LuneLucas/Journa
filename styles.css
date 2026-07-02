@@ -113,6 +113,7 @@
   --motion-fast: 401ms;
   --motion: 534ms;
   --motion-slow: 713ms;
+  --selection-motion: 520ms;
   --amount-motion: 580ms;
   --family-focus-motion: 713ms;
   --number-swap-motion: 980ms;
@@ -604,10 +605,10 @@ h3 {
   transition:
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring),
-    color var(--motion-fast) var(--spring);
+    background-color var(--selection-motion) var(--settle),
+    border-color var(--selection-motion) var(--settle),
+    box-shadow var(--selection-motion) var(--settle),
+    color calc(var(--selection-motion) * 0.74) var(--settle);
 }
 
 .family-tag::before {
@@ -623,12 +624,15 @@ h3 {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity calc(var(--motion) * 1.18) var(--settle);
+  transition: opacity var(--selection-motion) var(--settle);
 }
 
 .family-tag > span {
   position: relative;
   z-index: 1;
+  transition:
+    color calc(var(--selection-motion) * 0.74) var(--settle),
+    transform var(--selection-motion) var(--settle);
 }
 
 .family-tag:hover {
@@ -656,7 +660,7 @@ h3 {
 
 .family-tag.is-activating,
 .selectable-category-chip.is-activating {
-  animation: choice-select-pop 720ms var(--settle) both;
+  animation: choice-select-pop var(--selection-motion) var(--settle) both;
 }
 
 .selectable-category-chip.is-activating {
@@ -665,12 +669,12 @@ h3 {
 
 .family-tag.is-activating::before,
 .selectable-category-chip.is-activating::before {
-  animation: choice-selected-fill 720ms var(--settle) both;
+  animation: choice-selected-fill var(--selection-motion) var(--settle) both;
 }
 
 .family-tag.is-activating > span,
 .selectable-category-chip.is-activating > span {
-  animation: choice-label-settle 720ms var(--settle) both;
+  animation: choice-label-settle var(--selection-motion) var(--settle) both;
 }
 
 .family-tag:focus-visible {
@@ -898,9 +902,12 @@ input[type="date"]:focus {
 .amount-label > span:first-child {
   position: relative;
   z-index: 1;
+  display: block;
+  margin-top: 3px;
   color: var(--selected-family-text);
   font-size: 0.84rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .amount-field {
@@ -909,11 +916,13 @@ input[type="date"]:focus {
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-height: 82px;
   transform-origin: center;
   z-index: 1;
 }
 
 .currency-mark {
+  flex: 0 0 auto;
   color: var(--selected-family-text);
   font-size: 2.1rem;
   font-weight: 700;
@@ -965,7 +974,7 @@ input[type="date"]:focus {
   box-shadow:
     inset 0 0 0 1px rgba(22, 26, 30, 0.08),
     0 34px 92px rgba(22, 26, 30, 0.14);
-  transform: scale(1.048);
+  transform: none;
 }
 
 .amount-label.amount-active.amount-themed {
@@ -978,12 +987,12 @@ input[type="date"]:focus {
 .amount-label.amount-active input {
   min-height: 82px;
   background: rgba(255, 255, 255, 0.78);
-  transform: translateY(-2px) scale(1.058);
+  transform: none;
 }
 
 .amount-label.amount-active .currency-mark {
   color: var(--selected-family-text);
-  transform: translateY(-2px) scale(1.074);
+  transform: none;
 }
 
 .amount-label.amount-pulse .amount-field {
@@ -1006,11 +1015,17 @@ input[type="date"]:focus {
 
 @keyframes amount-shell-input-pop {
   0% {
-    transform: scale(1.048);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 18%, transparent),
+      0 0 48px -22px var(--selected-family-glow),
+      0 24px 70px rgba(22, 26, 30, 0.12);
   }
 
   100% {
-    transform: scale(1.06);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 26%, transparent),
+      0 0 66px -20px var(--selected-family-glow),
+      0 30px 82px rgba(22, 26, 30, 0.14);
   }
 }
 
@@ -1092,6 +1107,30 @@ input[type="date"]:focus {
   will-change: max-height, opacity;
 }
 
+.entry-panel.is-resizing {
+  align-items: start;
+}
+
+.entry-panel.is-measuring-split .split-scope-panel {
+  animation: none !important;
+}
+
+.entry-panel.is-measuring-split .split-scope-panel.is-open {
+  max-height: 640px;
+  margin-top: var(--split-panel-offset);
+  opacity: 1;
+  padding-top: var(--split-panel-padding);
+  padding-bottom: var(--split-panel-padding);
+}
+
+.entry-panel.is-measuring-split .split-scope-panel.is-closing {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .split-scope-panel.is-open {
   animation: split-scope-panel-in 240ms var(--settle) both;
 }
@@ -1146,6 +1185,9 @@ input[type="date"]:focus {
 .split-mode-button {
   display: grid;
   align-content: center;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   gap: 3px;
   min-height: 64px;
   border: 1px solid rgba(22, 26, 30, 0.10);
@@ -1155,29 +1197,69 @@ input[type="date"]:focus {
   padding: 9px 10px;
   text-align: left;
   transition:
-    background-color var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring),
+    background-color var(--selection-motion) var(--settle),
+    border-color var(--selection-motion) var(--settle),
+    box-shadow var(--selection-motion) var(--settle),
     transform var(--motion-fast) var(--spring);
 }
 
+.split-mode-button::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.18), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.50));
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--selection-motion) var(--settle);
+}
+
 .split-mode-button span {
+  position: relative;
+  z-index: 1;
   color: var(--ink);
   font-size: 0.84rem;
   font-weight: 800;
+  transition:
+    color calc(var(--selection-motion) * 0.74) var(--settle),
+    transform var(--selection-motion) var(--settle);
 }
 
 .split-mode-button small {
+  position: relative;
+  z-index: 1;
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1.2;
+  transition:
+    color calc(var(--selection-motion) * 0.74) var(--settle),
+    transform var(--selection-motion) var(--settle);
 }
 
 .split-mode-button.is-selected {
   border-color: color-mix(in srgb, var(--submit-color, var(--green)) 34%, rgba(22, 26, 30, 0.10));
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 14%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.50));
+  background: rgba(255, 255, 255, 0.50);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent);
+}
+
+.split-mode-button.is-selected::before {
+  opacity: 1;
+}
+
+.split-mode-button.is-activating {
+  animation: choice-select-pop var(--selection-motion) var(--settle) both;
+}
+
+.split-mode-button.is-activating::before {
+  animation: choice-selected-fill var(--selection-motion) var(--settle) both;
+}
+
+.split-mode-button.is-activating span,
+.split-mode-button.is-activating small {
+  animation: choice-label-settle var(--selection-motion) var(--settle) both;
 }
 
 .split-family-choices {
@@ -1188,16 +1270,28 @@ input[type="date"]:focus {
 
 .split-scope-panel.is-switching .split-family-choices:not([hidden]),
 .split-scope-panel.is-switching .split-custom-amounts:not([hidden]) {
-  animation: split-scope-content-in 220ms var(--settle) both;
+  animation: split-scope-content-in 300ms var(--settle) both;
+}
+
+.split-scope-panel.is-open .split-mode-buttons,
+.split-scope-panel.is-open .split-family-choices:not([hidden]),
+.split-scope-panel.is-open .split-custom-amounts:not([hidden]) {
+  will-change: opacity, transform;
 }
 
 @keyframes split-scope-content-in {
   0% {
     opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  48% {
+    opacity: 0.72;
   }
 
   100% {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -2300,7 +2394,7 @@ body.ledger-management-open .mobile-submit-bar {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity calc(var(--motion) * 1.18) var(--settle);
+  transition: opacity var(--selection-motion) var(--settle);
 }
 
 .selectable-category-chip::after {
@@ -2313,7 +2407,7 @@ body.ledger-management-open .mobile-submit-bar {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity calc(var(--motion) * 1.18) var(--settle);
+  transition: opacity var(--selection-motion) var(--settle);
 }
 
 .selectable-category-chip > span {
@@ -2324,6 +2418,9 @@ body.ledger-management-open .mobile-submit-bar {
   max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition:
+    color calc(var(--selection-motion) * 0.74) var(--settle),
+    transform var(--selection-motion) var(--settle);
 }
 
 .selectable-category-chip:hover {
@@ -3798,9 +3895,9 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active {
-    padding: 18px;
+    padding: 23px 18px 18px;
     border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
-    transform: scale(1.018);
+    transform: none;
   }
 
   .currency-mark {
@@ -3818,11 +3915,11 @@ body.ledger-management-open .mobile-submit-bar {
   .amount-label.amount-active input {
     min-height: 80px;
     font-size: clamp(2.88rem, 14.6vw, 4.58rem);
-    transform: translateY(-1px) scale(1.018);
+    transform: none;
   }
 
   .amount-label.amount-active .currency-mark {
-    transform: translateY(-2px) scale(1.046);
+    transform: none;
   }
 
   .expense-form {
@@ -4473,8 +4570,8 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active {
-    padding: 15px;
-    transform: scale(1.014);
+    padding: 22px 15px 15px;
+    transform: none;
   }
 
   .currency-mark {
@@ -4590,8 +4687,19 @@ body.ledger-management-open .mobile-submit-bar {
     --line-dark: rgba(232, 236, 233, 0.16);
     --green: #58b09b;        /* 文字/边框语义提亮；按钮填充由 JS 内联 --submit-color 提供，不受影响 */
     --green-dark: #6cc2ad;   /* 数字/强调文字 7.1:1 */
-    --total-text-color: #e6ebe8;                       /* 总支出带转暗后文字翻亮（实测 ≥8:1） */
-    --total-label-color: rgba(230, 235, 232, 0.74);
+    --dark-panel: linear-gradient(145deg, rgba(40, 47, 44, 0.96), rgba(30, 36, 33, 0.92)), rgba(20, 24, 22, 0.96);
+    --dark-card: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.05);
+    --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(169, 206, 181, 0.10);
+    --dark-field: rgba(255, 255, 255, 0.08);
+    --dark-field-strong: rgba(255, 255, 255, 0.10);
+    --dark-hairline: rgba(232, 236, 233, 0.10);
+    --dark-hairline-strong: rgba(232, 236, 233, 0.16);
+    --dark-highlight: rgba(255, 255, 255, 0.05);
+    --theme-aura-soft: color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent);
+    --theme-aura-medium: color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent);
+    --theme-aura-strong: color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent);
+    --total-text-color: #f3f7f4;
+    --total-label-color: rgba(230, 235, 232, 0.64);
   }
 
   /* body 底色渐变的白色层改暗色等价物 */
@@ -4607,17 +4715,14 @@ body.ledger-management-open .mobile-submit-bar {
   /* 抽屉与确认框的白色渐变改暗面 */
   .settings-drawer,
   .ledger-management-drawer {
-    background:
-      linear-gradient(145deg, rgba(40, 47, 44, 0.96), rgba(30, 36, 33, 0.92)),
-      rgba(20, 24, 22, 0.96);
+    background: var(--dark-panel);
   }
 
   .confirm-dialog {
-    border-color: rgba(232, 236, 233, 0.12);
+    border-color: var(--dark-hairline);
     background:
       radial-gradient(ellipse at 20% 0%, rgba(169, 206, 181, 0.08), transparent 48%),
-      linear-gradient(145deg, rgba(40, 47, 44, 0.96), rgba(30, 36, 33, 0.90)),
-      rgba(20, 24, 22, 0.95);
+      var(--dark-panel);
   }
 
   /* 家庭文字色消费端提亮：内联注入的 --family-text 系深色，混白 50% 约 7:1 */
@@ -4646,8 +4751,22 @@ body.ledger-management-open .mobile-submit-bar {
   .amount-label input {
     -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white);
     /* 亮灰输入底转暗，家庭色亮文字才能成立 */
-    background: rgba(255, 255, 255, 0.10);
-    box-shadow: inset 0 0 0 1px rgba(232, 236, 233, 0.14);
+    background: var(--dark-field-strong);
+    box-shadow: inset 0 0 0 1px var(--dark-hairline-strong);
+  }
+
+  .amount-label.amount-active input {
+    -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.07)),
+      color-mix(in srgb, var(--selected-family-color, var(--green)) 10%, rgba(20, 24, 22, 0.72));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--green)) 24%, var(--dark-hairline-strong)),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .amount-label.amount-active input:disabled {
+    -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
   }
 
   .settlement-to strong {
@@ -4657,13 +4776,13 @@ body.ledger-management-open .mobile-submit-bar {
   /* 提交栏玻璃与摘要浅底转暗 */
   .mobile-submit-bar {
     background:
-      radial-gradient(ellipse at 78% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent), transparent 62%),
+      radial-gradient(ellipse at 78% 50%, var(--theme-aura-soft), transparent 62%),
       linear-gradient(135deg, rgba(40, 47, 44, 0.30), rgba(30, 36, 33, 0.18)),
       rgba(20, 24, 22, 0.30);
   }
 
   .mobile-submit-button.is-blocked {
-    border-color: rgba(232, 236, 233, 0.14);
+    border-color: var(--dark-hairline-strong);
     background: rgba(232, 236, 233, 0.10);
     color: rgba(232, 236, 233, 0.42);
   }
@@ -4690,17 +4809,17 @@ body.ledger-management-open .mobile-submit-bar {
 
   input,
   select {
-    background: rgba(255, 255, 255, 0.10);
+    background: var(--dark-field-strong);
   }
 
   /* 日期/备注输入的白渐变底转暗（移动断点字面量） */
   .date-label input,
   .note-label input {
-    border-color: rgba(232, 236, 233, 0.16);
+    border-color: var(--dark-hairline-strong);
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06)),
-      rgba(255, 255, 255, 0.05);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      var(--dark-highlight);
+    box-shadow: inset 0 1px 0 var(--dark-highlight);
   }
 
   /* 暗底占位符与日期控件可读性 */
@@ -4732,10 +4851,9 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .sync-status {
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
-      rgba(255, 255, 255, 0.05);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: var(--dark-hairline);
+    background: var(--dark-card);
+    box-shadow: inset 0 1px 0 var(--dark-highlight);
   }
 
   .family-tag {
@@ -4759,15 +4877,166 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .empty-state {
-    border-color: rgba(232, 236, 233, 0.14);
-    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--dark-hairline-strong);
+    background: var(--dark-highlight);
   }
 
   .settlement-done {
     border-color: rgba(88, 176, 155, 0.24);
+    background: var(--dark-card-tinted);
+  }
+
+  .settlement-block,
+  .ledger-section {
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
-      rgba(169, 206, 181, 0.10);
+      linear-gradient(145deg, rgba(36, 43, 40, 0.82), rgba(28, 34, 31, 0.62)),
+      rgba(24, 29, 27, 0.72);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      var(--shadow-md);
+  }
+
+  .ledger-filter-summary {
+    border-color: color-mix(in srgb, var(--green) 26%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--green) 12%, rgba(255, 255, 255, 0.04));
+    color: #6cc2ad;
+  }
+
+  .row-item {
+    border-bottom-color: var(--dark-hairline);
+  }
+
+  .family-row small,
+  .settlement-party span,
+  .settlement-amount span,
+  .ledger-note,
+  .ledger-scope,
+  .ledger-sync-state,
+  .ledger-day-heading {
+    color: rgba(232, 236, 233, 0.62);
+  }
+
+  .row-item strong {
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
+  }
+
+  .category-row strong {
+    color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
+  }
+
+  .settlement-overview {
+    border-color: rgba(217, 164, 65, 0.20);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+      rgba(217, 164, 65, 0.10);
+    color: rgba(232, 236, 233, 0.64);
+  }
+
+  .settlement-overview strong {
+    color: #ecd9a8;
+  }
+
+  .settlement-item {
+    border-color: color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline));
+    background:
+      radial-gradient(ellipse at 0% 20%, color-mix(in srgb, var(--family-color) 14%, transparent), transparent 48%),
+      radial-gradient(ellipse at 100% 80%, color-mix(in srgb, var(--settlement-target-color) 14%, transparent), transparent 48%),
+      linear-gradient(135deg, rgba(40, 47, 44, 0.70), rgba(24, 29, 27, 0.54)),
+      rgba(20, 24, 22, 0.50);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 14px 38px rgba(0, 0, 0, 0.22);
+  }
+
+  .settlement-item::before {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 64%);
+  }
+
+  .settlement-flow {
+    border-color: rgba(217, 164, 65, 0.24);
+    background: rgba(217, 164, 65, 0.12);
+    color: #ecd9a8;
+  }
+
+  .settlement-amount {
+    border-top-color: var(--dark-hairline);
+  }
+
+  .settlement-amount strong {
+    color: #f0aaa0;
+  }
+
+  .ledger-day-group::before {
+    background: linear-gradient(180deg, rgba(232, 236, 233, 0.18), rgba(232, 236, 233, 0.04));
+  }
+
+  .ledger-day-heading::before {
+    background: rgba(232, 236, 233, 0.26);
+    box-shadow: 0 0 0 3px #141816;
+  }
+
+  .ledger-day-heading strong {
+    color: rgba(232, 236, 233, 0.74);
+  }
+
+  .ledger-item {
+    border-color: color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline));
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+      color-mix(in srgb, var(--family-color) 8%, rgba(20, 24, 22, 0.68));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 10px 28px rgba(0, 0, 0, 0.20);
+  }
+
+  .ledger-item:hover {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
+      color-mix(in srgb, var(--family-color) 10%, rgba(20, 24, 22, 0.70));
+  }
+
+  .ledger-item.is-expanded {
+    border-color: color-mix(in srgb, var(--family-color) 34%, var(--dark-hairline));
+    background:
+      linear-gradient(135deg, rgba(40, 47, 44, 0.82), rgba(28, 34, 31, 0.66)),
+      color-mix(in srgb, var(--family-color) 8%, rgba(20, 24, 22, 0.72));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 16px 42px rgba(0, 0, 0, 0.26);
+  }
+
+  .ledger-item::before {
+    background: #141816;
+    opacity: 0.92;
+  }
+
+  .ledger-family,
+  .ledger-amount,
+  .ledger-edit-button {
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 48%, white);
+  }
+
+  .ledger-date {
+    color: rgba(232, 236, 233, 0.54);
+  }
+
+  .category-pill {
+    border-color: color-mix(in srgb, var(--category-text) 20%, var(--dark-hairline));
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+      color-mix(in srgb, var(--category-gradient) 12%, rgba(20, 24, 22, 0.66));
+    color: color-mix(in srgb, var(--category-text, var(--ink)) 46%, white);
+  }
+
+  .ledger-edit-button {
+    border-color: color-mix(in srgb, var(--family-color) 28%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.04));
+  }
+
+  .delete-button {
+    border-color: rgba(240, 170, 160, 0.26);
+    background: rgba(183, 79, 56, 0.12);
+    color: #f0aaa0;
   }
 
   .category-summary-block {
@@ -4778,10 +5047,8 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .split-scope-toggle {
-    border-color: rgba(232, 236, 233, 0.14);
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
-      rgba(255, 255, 255, 0.05);
+    border-color: var(--dark-hairline-strong);
+    background: var(--dark-card);
   }
 
   /* 未选中类别芯片：底转暗、文字混白提亮 */
@@ -4801,46 +5068,47 @@ body.ledger-management-open .mobile-submit-bar {
 
   /* 分摊范围二级面板：整片白底转暗 */
   .split-scope-panel {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(232, 236, 233, 0.10));
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, var(--dark-hairline));
     background:
-      radial-gradient(ellipse at 18% 8%, color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent), transparent 48%),
+      radial-gradient(ellipse at 18% 8%, var(--theme-aura-soft), transparent 48%),
       linear-gradient(135deg, rgba(40, 47, 44, 0.60), rgba(30, 36, 33, 0.40)),
       rgba(20, 24, 22, 0.50);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 0 var(--dark-highlight);
   }
 
   .split-mode-button {
-    border-color: rgba(232, 236, 233, 0.12);
-    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--dark-hairline);
+    background: var(--dark-highlight);
+  }
+
+  .split-mode-button::before {
+    background:
+      radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.08), transparent 58%),
+      linear-gradient(135deg, var(--theme-aura-medium), var(--dark-highlight));
   }
 
   .split-mode-button.is-selected {
     border-color: color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent);
-    background:
-      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 26%, transparent), rgba(255, 255, 255, 0.05));
-    box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 20%, transparent);
+    background: var(--dark-highlight);
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent);
   }
 
   .split-amount-row input {
-    border-color: rgba(232, 236, 233, 0.14);
-    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--dark-hairline-strong);
+    background: var(--dark-field);
     color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
   }
 
   /* 设置/账本管理抽屉的粘性顶栏白渐变转暗 */
   .settings-hero,
   .ledger-management-hero {
-    background:
-      linear-gradient(145deg, rgba(40, 47, 44, 0.96), rgba(30, 36, 33, 0.92)),
-      rgba(20, 24, 22, 0.96);
+    background: var(--dark-panel);
   }
 
   /* 当前账本卡：白渐变底转暗，绿标题/灰副文才成立 */
   .current-ledger-card {
-    border-color: rgba(232, 236, 233, 0.10);
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
-      rgba(169, 206, 181, 0.10);
+    border-color: var(--dark-hairline);
+    background: var(--dark-card-tinted);
   }
 
   /* 家庭人数步进按钮：白圆底转暗 */
@@ -4855,7 +5123,7 @@ body.ledger-management-open .mobile-submit-bar {
   .settings-family,
   .settings-rule,
   .settings-data-item {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--dark-highlight);
   }
 
   /* 次级米色按钮（账本管理/保存名称）转暖调暗底 */
@@ -4866,10 +5134,10 @@ body.ledger-management-open .mobile-submit-bar {
 
   /* 主按钮静息态（账本"打开"等）白渐变底 + 亮边转暗，绿字保留 */
   .primary-button {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 32%, rgba(232, 236, 233, 0.12));
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 32%, var(--dark-hairline));
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
-      rgba(255, 255, 255, 0.05);
+      var(--dark-highlight);
   }
 
   /* 玻璃高光层去掉白色成分，避免暗底上发亮 */
@@ -4879,44 +5147,49 @@ body.ledger-management-open .mobile-submit-bar {
         color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent),
         color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent) 52%,
         color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent)),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 58%);
+      linear-gradient(180deg, var(--dark-highlight), transparent 58%);
   }
 
   /* 账本管理卡片：当前账本高亮 + 三格统计白底转暗 */
   .ledger-manager-card.is-active {
     border-color: rgba(88, 176, 155, 0.28);
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
-      rgba(169, 206, 181, 0.10);
+    background: var(--dark-card-tinted);
   }
 
   .ledger-card-stats div {
-    border-color: rgba(232, 236, 233, 0.10);
-    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--dark-hairline);
+    background: rgba(255, 255, 255, 0.035);
   }
 
   /* ===== 白色发光治理：白光在暗底读作漏光，换主题色氛围光或压暗 ===== */
 
   /* 总支出板块：暗罩压在 JS 内联的 aura/gradient 上，三家庭色透出为深调莫兰迪 */
   .metric.primary {
-    border-color: rgba(232, 236, 233, 0.10);
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, var(--dark-hairline));
     background:
-      linear-gradient(135deg, rgba(30, 36, 33, 0.80), rgba(24, 29, 27, 0.68)),
+      radial-gradient(ellipse at 50% 8%, rgba(255, 255, 255, 0.08), transparent 42%),
+      linear-gradient(135deg, rgba(34, 41, 38, 0.82), rgba(24, 29, 27, 0.62)),
       var(--total-aura),
       var(--total-gradient);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
       0 0 0 1px rgba(232, 236, 233, 0.06),
+      0 22px 62px rgba(0, 0, 0, 0.26),
       var(--shadow-md);
   }
 
   .metric.primary::before,
   .metric.primary::after {
-    opacity: 0.14; /* 两侧彩色光斑降到隐约 */
+    opacity: 0.10; /* 两侧彩色光斑降到隐约 */
   }
 
-  .metric.primary span,
+  .metric.primary span {
+    color: var(--total-label-color);
+    text-shadow: none;
+  }
+
   .metric.primary strong {
+    color: var(--total-text-color);
     text-shadow: none;
   }
 
@@ -4940,7 +5213,7 @@ body.ledger-management-open .mobile-submit-bar {
   .mobile-submit-bar.submit-themed {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 52px -18px var(--submit-glow),
+      0 0 48px -20px var(--submit-glow),
       0 24px 70px rgba(0, 0, 0, 0.40);
   }
 
@@ -4985,9 +5258,9 @@ body.ledger-management-open .mobile-submit-bar {
       radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.50) 0 18%, transparent 28%),
       radial-gradient(circle, color-mix(in srgb, var(--status-dot) 94%, white) 0 42%, var(--status-dot) 64%, color-mix(in srgb, var(--status-dot) 82%, transparent) 100%);
     box-shadow:
-      0 0 0 3px color-mix(in srgb, var(--status-dot-glow) 18%, transparent),
-      0 0 10px color-mix(in srgb, var(--status-dot-glow) 56%, transparent),
-      0 0 22px color-mix(in srgb, var(--status-dot-glow) 34%, transparent),
+      0 0 0 3px color-mix(in srgb, var(--status-dot-glow) 12%, transparent),
+      0 0 8px color-mix(in srgb, var(--status-dot-glow) 36%, transparent),
+      0 0 16px color-mix(in srgb, var(--status-dot-glow) 20%, transparent),
       inset 0 1px 1px rgba(255, 255, 255, 0.35);
   }
 }
@@ -5025,6 +5298,7 @@ body.ledger-management-open .mobile-submit-bar {
   .amount-label .currency-mark,
   .family-tag,
   .selectable-category-chip,
+  .split-mode-button,
   .ledger-item,
   .primary-button {
     transform: none !important;
@@ -5035,6 +5309,8 @@ body.ledger-management-open .mobile-submit-bar {
   .app-view.is-switching-ledger .summary-band,
   .app-view.is-switching-ledger .workspace,
   .app-view.is-switching-ledger .ledger-section,
+  .split-scope-panel,
+  .split-mode-button,
   .toast {
     animation: none !important;
   }
