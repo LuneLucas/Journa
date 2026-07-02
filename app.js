@@ -1595,6 +1595,14 @@ function renderEditState() {
   elements.expenseForm.classList.toggle("is-editing", isEditing);
 }
 
+// 是否已填齐提交所需信息：有效金额 + 已选家庭 + 已选类别
+function isExpenseReady() {
+  const amount = parseAmountInput(elements.amountInput.value);
+  const hasPayer = state.families.some((family) => family.id === state.selectedPayerId);
+  const hasCategory = Boolean(state.activeCategory || elements.categoryInput.value);
+  return Number.isFinite(amount) && amount > 0 && hasPayer && hasCategory;
+}
+
 function renderMobileSubmitBar() {
   const family = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "未选家庭";
   const category = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "未选类别";
@@ -1603,6 +1611,10 @@ function renderMobileSubmitBar() {
   const split = activeSplitMode === "all" ? "" : ` · ${formatActiveSplitSummary()}`;
   elements.mobileSubmitSummary.textContent = `${family} · ${category} · ${date}${split}`;
   elements.mobileSubmitButton.querySelector(".button-label").textContent = action;
+  // 信息未填齐时按钮呈“不可点击”态（中性灰，非主题色）；仍保留点击以提示缺项
+  const blocked = !isExpenseReady();
+  elements.mobileSubmitButton.classList.toggle("is-blocked", blocked);
+  elements.mobileSubmitButton.setAttribute("aria-disabled", blocked ? "true" : "false");
 }
 
 function getSplitDetailsForSubmit() {
@@ -2977,6 +2989,7 @@ elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
   updateAmountMotionState();
   pulseAmountField();
+  renderMobileSubmitBar();
 });
 elements.categoryInput.addEventListener("change", () => {
   state.activeCategory = elements.categoryInput.value || state.activeCategory;

@@ -4052,11 +4052,9 @@ body.ledger-management-open .mobile-submit-bar {
 
   .mobile-submit-summary {
     overflow: hidden;
-    /* 局部浅底：深色列表内容滚过玻璃时保住文字对比度 */
-    border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.55);
-    color: var(--muted);
-    padding: 6px 10px;
+    /* 文字直接坐在玻璃 bar 上，不再套浅底方框 */
+    color: var(--ink);
+    padding-left: 4px;
     font-size: 0.82rem;
     font-weight: 700;
     line-height: 1.25;
@@ -4096,6 +4094,20 @@ body.ledger-management-open .mobile-submit-bar {
       ),
       linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 58%),
       radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 2%, rgba(255, 255, 255, 0.10)), transparent 58%);
+  }
+
+  /* 信息未填齐：中性灰“不可点击”态，不使用主题色 */
+  .mobile-submit-button.is-blocked {
+    border-color: rgba(22, 26, 30, 0.12);
+    background: rgba(22, 26, 30, 0.09);
+    color: rgba(22, 26, 30, 0.40);
+    box-shadow: none;
+    text-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .mobile-submit-button.is-blocked::before {
+    opacity: 0;
   }
 
   .ledger-item {
@@ -4649,8 +4661,10 @@ body.ledger-management-open .mobile-submit-bar {
       rgba(20, 24, 22, 0.30);
   }
 
-  .mobile-submit-summary {
-    background: rgba(20, 24, 22, 0.55);
+  .mobile-submit-button.is-blocked {
+    border-color: rgba(232, 236, 233, 0.14);
+    background: rgba(232, 236, 233, 0.10);
+    color: rgba(232, 236, 233, 0.42);
   }
 
   /* 亮色字面量组件底转暗 */
