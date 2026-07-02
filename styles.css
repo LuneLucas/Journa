@@ -4590,7 +4590,8 @@ body.ledger-management-open .mobile-submit-bar {
     --line-dark: rgba(232, 236, 233, 0.16);
     --green: #58b09b;        /* 文字/边框语义提亮；按钮填充由 JS 内联 --submit-color 提供，不受影响 */
     --green-dark: #6cc2ad;   /* 数字/强调文字 7.1:1 */
-    /* --total-text-color / --total-label-color 不映射：总支出带的浅渐变由 JS 内联，墨色文字继续成立 */
+    --total-text-color: #e6ebe8;                       /* 总支出带转暗后文字翻亮（实测 ≥8:1） */
+    --total-label-color: rgba(230, 235, 232, 0.74);
   }
 
   /* body 底色渐变的白色层改暗色等价物 */
@@ -4892,6 +4893,102 @@ body.ledger-management-open .mobile-submit-bar {
   .ledger-card-stats div {
     border-color: rgba(232, 236, 233, 0.10);
     background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* ===== 白色发光治理：白光在暗底读作漏光，换主题色氛围光或压暗 ===== */
+
+  /* 总支出板块：暗罩压在 JS 内联的 aura/gradient 上，三家庭色透出为深调莫兰迪 */
+  .metric.primary {
+    border-color: rgba(232, 236, 233, 0.10);
+    background:
+      linear-gradient(135deg, rgba(30, 36, 33, 0.80), rgba(24, 29, 27, 0.68)),
+      var(--total-aura),
+      var(--total-gradient);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 0 1px rgba(232, 236, 233, 0.06),
+      var(--shadow-md);
+  }
+
+  .metric.primary::before,
+  .metric.primary::after {
+    opacity: 0.14; /* 两侧彩色光斑降到隐约 */
+  }
+
+  .metric.primary span,
+  .metric.primary strong {
+    text-shadow: none;
+  }
+
+  /* 提交栏外圈光晕：白光 → 主题色氛围光 */
+  .mobile-submit-bar::before {
+    background:
+      radial-gradient(ellipse at 78% 62%, color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent), transparent 54%),
+      radial-gradient(ellipse at 18% 20%, rgba(88, 176, 155, 0.10), transparent 48%);
+    opacity: 0.55;
+  }
+
+  /* 液态玻璃环：迎光边压暗，背光边加深 */
+  .mobile-submit-bar::after {
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.25),
+      rgba(255, 255, 255, 0.07) 38%,
+      rgba(255, 255, 255, 0.02) 60%,
+      rgba(0, 0, 0, 0.30));
+  }
+
+  .mobile-submit-bar.submit-themed {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 52px -18px var(--submit-glow),
+      0 24px 70px rgba(0, 0, 0, 0.40);
+  }
+
+  /* 选中态 inset 白高光降档，主题色辉光保留 */
+  .family-tag.is-selected {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .selectable-category-chip.is-selected {
+    box-shadow:
+      0 9px 24px -10px color-mix(in srgb, var(--category-gradient) 42%, transparent),
+      0 0 34px -18px var(--category-gradient),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* 按钮：去白色文字托底，扫光峰值降为微光 */
+  .primary-button {
+    text-shadow: none;
+  }
+
+  .primary-button::after {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.06) 18%,
+      rgba(255, 255, 255, 0.16) 48%,
+      rgba(255, 255, 255, 0.05) 78%,
+      transparent
+    );
+  }
+
+  .toast {
+    border-color: rgba(232, 236, 233, 0.16);
+  }
+
+  /* 同步状态点：球面白高光压暗，彩色辉光环保留 */
+  .sync-status::before {
+    background:
+      radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.50) 0 18%, transparent 28%),
+      radial-gradient(circle, color-mix(in srgb, var(--status-dot) 94%, white) 0 42%, var(--status-dot) 64%, color-mix(in srgb, var(--status-dot) 82%, transparent) 100%);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--status-dot-glow) 18%, transparent),
+      0 0 10px color-mix(in srgb, var(--status-dot-glow) 56%, transparent),
+      0 0 22px color-mix(in srgb, var(--status-dot-glow) 34%, transparent),
+      inset 0 1px 1px rgba(255, 255, 255, 0.35);
   }
 }
 
