@@ -43,8 +43,8 @@
   --coral: #b74f38;
   --amber: #d9a441;
   --violet: #6554a8;
-  --family-color: #7fa08f;
-  --family-text: #496f5f;
+  --family-color: #90ad9d;
+  --family-text: #557965;
   --family-soft: rgba(127, 160, 143, 0.64);
   --family-wash: rgba(127, 160, 143, 0.18);
   --selected-family-color: rgba(0, 0, 0, 0);
@@ -114,6 +114,7 @@
   --motion: 534ms;
   --motion-slow: 713ms;
   --selection-motion: 520ms;
+  --selection-release-motion: 360ms;
   --amount-motion: 580ms;
   --family-focus-motion: 713ms;
   --number-swap-motion: 980ms;
@@ -236,6 +237,8 @@ button:disabled {
 .sync-status {
   --status-dot: #f0c96f;
   --status-dot-glow: rgba(218, 164, 65, 0.64);
+  position: relative;
+  overflow: hidden;
   min-height: 38px;
   display: inline-flex;
   align-items: center;
@@ -266,23 +269,14 @@ button:disabled {
     radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.92) 0 18%, transparent 28%),
     radial-gradient(circle, color-mix(in srgb, var(--status-dot) 94%, white) 0 42%, var(--status-dot) 64%, color-mix(in srgb, var(--status-dot) 76%, rgba(255, 255, 255, 0.28)) 100%);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--status-dot-glow) 18%, transparent),
-    0 0 10px color-mix(in srgb, var(--status-dot-glow) 56%, transparent),
-    0 0 22px color-mix(in srgb, var(--status-dot-glow) 34%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--status-dot-glow) 12%, transparent),
+    0 0 9px color-mix(in srgb, var(--status-dot-glow) 34%, transparent),
     inset 0 1px 1px rgba(255, 255, 255, 0.86);
   content: "";
 }
 
 .sync-status::after {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
-  margin-left: -23px;
-  border-radius: var(--radius-pill);
-  background:
-    radial-gradient(circle, color-mix(in srgb, var(--status-dot-glow) 30%, transparent) 0 18%, color-mix(in srgb, var(--status-dot-glow) 14%, transparent) 42%, transparent 72%);
-  content: "";
-  pointer-events: none;
+  content: none;
 }
 
 .sync-status.is-cloud {
@@ -645,7 +639,9 @@ h3 {
 
 .family-tag.is-selected {
   border-color: color-mix(in srgb, var(--family-color) 66%, rgba(255, 255, 255, 0.80));
-  background: color-mix(in srgb, var(--family-color) 18%, rgba(255, 255, 255, 0.34));
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
+    color-mix(in srgb, var(--family-color) 9%, transparent);
   color: #fff;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.40),
@@ -658,8 +654,16 @@ h3 {
   opacity: 1;
 }
 
+.family-tag.is-selected.is-activating::before,
+.selectable-category-chip.is-selected.is-activating::before,
+.selectable-category-chip.is-selected.is-activating::after,
+.split-mode-button.is-selected.is-activating::before {
+  opacity: 0;
+}
+
 .family-tag.is-activating,
-.selectable-category-chip.is-activating {
+.selectable-category-chip.is-activating,
+.split-mode-button.is-activating {
   animation: choice-select-pop var(--selection-motion) var(--settle) both;
 }
 
@@ -667,14 +671,70 @@ h3 {
   animation-name: category-choice-select-pop;
 }
 
+.family-tag.is-deactivating,
+.selectable-category-chip.is-deactivating,
+.split-mode-button.is-deactivating {
+  animation: choice-release-soft var(--selection-release-motion) var(--settle) both;
+}
+
+.split-mode-button.is-deactivating {
+  color: #fff;
+}
+
+.selectable-category-chip.is-deactivating {
+  color: color-mix(in srgb, var(--category-text) 82%, var(--ink));
+}
+
 .family-tag.is-activating::before,
-.selectable-category-chip.is-activating::before {
+.selectable-category-chip.is-activating::before,
+.split-mode-button.is-activating::before {
   animation: choice-selected-fill var(--selection-motion) var(--settle) both;
 }
 
+.family-tag.is-deactivating::before,
+.selectable-category-chip.is-deactivating::before,
+.selectable-category-chip.is-deactivating::after,
+.split-mode-button.is-deactivating::before {
+  animation: choice-selected-release var(--selection-release-motion) var(--settle) both;
+}
+
 .family-tag.is-activating > span,
-.selectable-category-chip.is-activating > span {
+.selectable-category-chip.is-activating > span,
+.split-mode-button.is-activating span,
+.split-mode-button.is-activating small {
   animation: choice-label-settle var(--selection-motion) var(--settle) both;
+}
+
+.family-tag.is-deactivating > span,
+.selectable-category-chip.is-deactivating > span,
+.split-mode-button.is-deactivating span,
+.split-mode-button.is-deactivating small {
+  animation: choice-label-release var(--selection-release-motion) var(--settle) both;
+}
+
+.split-mode-button.is-deactivating span,
+.split-mode-button.is-deactivating small {
+  animation: split-mode-label-release var(--selection-release-motion) var(--settle) both;
+}
+
+.selectable-category-chip.is-deactivating > span {
+  animation: category-label-release var(--selection-release-motion) var(--settle) both;
+}
+
+.family-tag.is-activating > span {
+  animation: family-label-select var(--selection-motion) var(--settle) both;
+}
+
+.family-tag.is-deactivating > span {
+  animation: family-label-release var(--selection-release-motion) var(--settle) both;
+}
+
+.split-mode-button.is-activating span {
+  animation: split-mode-label-select var(--selection-motion) var(--settle) both;
+}
+
+.split-mode-button.is-activating small {
+  animation: split-mode-small-label-select var(--selection-motion) var(--settle) both;
 }
 
 .family-tag:focus-visible {
@@ -825,7 +885,7 @@ input[type="date"]:focus {
 .amount-label {
   position: relative;
   overflow: hidden;
-  gap: 10px;
+  gap: 7px;
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
   border-radius: var(--radius-xl);
@@ -899,15 +959,46 @@ input[type="date"]:focus {
   opacity: 0.78;
 }
 
-.amount-label > span:first-child {
+.amount-heading {
   position: relative;
   z-index: 1;
-  display: block;
-  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 0;
   color: var(--selected-family-text);
   font-size: 0.84rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.amount-heading > span {
+  display: block;
+}
+
+.amount-auto-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, transparent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--selected-family-color, var(--green)) 8%, rgba(255, 255, 255, 0.44));
+  color: color-mix(in srgb, var(--selected-family-text) 58%, var(--muted));
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity var(--selection-motion) var(--settle),
+    transform var(--selection-motion) var(--settle),
+    border-color var(--selection-motion) var(--settle),
+    background-color var(--selection-motion) var(--settle),
+    color var(--selection-motion) var(--settle);
 }
 
 .amount-field {
@@ -963,9 +1054,9 @@ input[type="date"]:focus {
   opacity: 1;
 }
 
-.amount-label.amount-auto-total > span:first-child::after {
-  content: " · 自动求和";
-  color: color-mix(in srgb, var(--selected-family-text) 54%, transparent);
+.amount-label.amount-auto-total .amount-auto-badge {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .amount-label.amount-active {
@@ -1040,6 +1131,7 @@ input[type="date"]:focus {
 .split-scope {
   display: grid;
   gap: 0;
+  overflow-anchor: none;
 }
 
 .split-scope-toggle {
@@ -1093,6 +1185,7 @@ input[type="date"]:focus {
   display: grid;
   gap: 12px;
   overflow: hidden;
+  overflow-anchor: none;
   max-height: 640px;
   margin-top: var(--split-panel-offset);
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(22, 26, 30, 0.10));
@@ -1249,17 +1342,12 @@ input[type="date"]:focus {
   opacity: 1;
 }
 
-.split-mode-button.is-activating {
-  animation: choice-select-pop var(--selection-motion) var(--settle) both;
+.split-mode-button.is-selected span {
+  color: color-mix(in srgb, var(--submit-text, var(--green)) 78%, var(--ink));
 }
 
-.split-mode-button.is-activating::before {
-  animation: choice-selected-fill var(--selection-motion) var(--settle) both;
-}
-
-.split-mode-button.is-activating span,
-.split-mode-button.is-activating small {
-  animation: choice-label-settle var(--selection-motion) var(--settle) both;
+.split-mode-button.is-selected small {
+  color: color-mix(in srgb, var(--submit-text, var(--green)) 62%, var(--muted));
 }
 
 .split-family-choices {
@@ -2389,8 +2477,8 @@ body.ledger-management-open .mobile-submit-bar {
   border-radius: inherit;
   background: var(--category-gradient); /* 老 WebView 不支持 color-mix 时的静态回退 */
   background:
-    radial-gradient(ellipse at 30% 0%, rgba(255, 255, 255, 0.10), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--category-gradient) 94%, white), var(--category-gradient));
+    radial-gradient(ellipse at 30% 0%, rgba(255, 255, 255, 0.24), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--category-gradient) 56%, white), color-mix(in srgb, var(--category-gradient) 78%, white));
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -2399,11 +2487,11 @@ body.ledger-management-open .mobile-submit-bar {
 
 .selectable-category-chip::after {
   position: absolute;
-  inset: -8px -10px -10px;
+  inset: -5px -6px -7px;
   z-index: -1;
   border-radius: inherit;
   background:
-    radial-gradient(ellipse at 50% 58%, color-mix(in srgb, var(--category-gradient) 34%, transparent) 0 22%, color-mix(in srgb, var(--category-gradient) 16%, transparent) 48%, transparent 74%);
+    radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--category-gradient) 24%, transparent) 0 24%, color-mix(in srgb, var(--category-gradient) 12%, transparent) 48%, transparent 76%);
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -2434,18 +2522,24 @@ body.ledger-management-open .mobile-submit-bar {
 
 .selectable-category-chip.is-selected {
   border-color: color-mix(in srgb, var(--category-gradient) 70%, white);
-  background: color-mix(in srgb, var(--category-gradient) 10%, rgba(255, 255, 255, 0.34));
-  color: #fff;
+  background: color-mix(in srgb, var(--category-gradient) 8%, rgba(255, 255, 255, 0.50));
+  color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
   box-shadow:
-    0 9px 24px -10px color-mix(in srgb, var(--category-gradient) 42%, transparent),
-    0 0 34px -18px var(--category-gradient),
+    0 0 0 1px color-mix(in srgb, var(--category-gradient) 34%, transparent),
+    0 8px 18px -14px color-mix(in srgb, var(--category-gradient) 54%, transparent),
+    0 0 24px -18px var(--category-gradient),
     inset 0 1px 0 rgba(255, 255, 255, 0.20);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .selectable-category-chip.is-selected::before,
 .selectable-category-chip.is-selected::after {
   opacity: 1;
+}
+
+.selectable-category-chip.is-selected > span {
+  color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
 }
 
 .selectable-category-chip:focus-visible {
@@ -2472,18 +2566,18 @@ body.ledger-management-open .mobile-submit-bar {
 
 @keyframes category-choice-select-pop {
   0% {
-    transform: translateY(0);
+    transform: none;
     box-shadow:
       0 0 0 color-mix(in srgb, currentColor 0%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   46% {
-    transform: translateY(-2px);
+    transform: none;
   }
 
   100% {
-    transform: translateY(-1px);
+    transform: none;
   }
 }
 
@@ -2501,6 +2595,24 @@ body.ledger-management-open .mobile-submit-bar {
   }
 }
 
+@keyframes choice-selected-release {
+  0% {
+    opacity: 1;
+  }
+
+  16% {
+    opacity: 0.62;
+  }
+
+  48% {
+    opacity: 0.18;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
 @keyframes choice-label-settle {
   0% {
     transform: translateY(1px);
@@ -2512,6 +2624,146 @@ body.ledger-management-open .mobile-submit-bar {
 
   100% {
     transform: translateY(0);
+  }
+}
+
+@keyframes choice-label-release {
+  0% {
+    transform: translateY(-1px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes family-label-select {
+  0% {
+    color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+    text-shadow: none;
+    transform: translateY(1px);
+  }
+
+  36% {
+    color: color-mix(in srgb, var(--family-text) 34%, white);
+    text-shadow: none;
+  }
+
+  62% {
+    color: #fff;
+    text-shadow: 0 1px 10px color-mix(in srgb, var(--family-text) 34%, transparent);
+    transform: translateY(-1px);
+  }
+
+  100% {
+    color: #fff;
+    text-shadow: none;
+    transform: translateY(0);
+  }
+}
+
+@keyframes family-label-release {
+  0% {
+    color: #fff;
+    text-shadow: 0 1px 10px color-mix(in srgb, var(--family-text) 34%, transparent);
+    transform: translateY(-1px);
+  }
+
+  18% {
+    color: color-mix(in srgb, var(--family-text) 36%, white);
+    text-shadow: 0 1px 6px rgba(255, 255, 255, 0.16);
+  }
+
+  48% {
+    color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+    text-shadow: none;
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+    text-shadow: none;
+    transform: translateY(0);
+  }
+}
+
+@keyframes category-label-release {
+  0% {
+    color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.30);
+    transform: translateY(-1px);
+  }
+
+  34% {
+    color: color-mix(in srgb, var(--category-text) 74%, var(--ink));
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--category-text) 82%, var(--ink));
+    text-shadow: none;
+    transform: translateY(0);
+  }
+}
+
+@keyframes split-mode-label-select {
+  0% {
+    color: var(--ink);
+    transform: translateY(1px);
+  }
+
+  46% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 54%, var(--ink));
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 78%, var(--ink));
+    transform: translateY(0);
+  }
+}
+
+@keyframes split-mode-small-label-select {
+  0% {
+    color: var(--muted);
+    transform: translateY(1px);
+  }
+
+  46% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 40%, var(--muted));
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 62%, var(--muted));
+    transform: translateY(0);
+  }
+}
+
+@keyframes split-mode-label-release {
+  0% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 78%, var(--ink));
+    transform: translateY(-1px);
+  }
+
+  26% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 38%, var(--ink));
+  }
+
+  100% {
+    color: var(--ink);
+    transform: translateY(0);
+  }
+}
+
+@keyframes choice-release-soft {
+  0% {
+    filter: saturate(1.08);
+  }
+
+  28% {
+    filter: saturate(1.02);
+  }
+
+  100% {
+    filter: saturate(1);
   }
 }
 
@@ -2926,19 +3178,14 @@ body.ledger-management-open .mobile-submit-bar {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.46),
     0 10px 28px rgba(22, 26, 30, 0.06);
+  contain: layout paint;
   transition:
     min-height var(--motion) var(--settle),
     max-height var(--motion) var(--settle),
-    grid-template-columns var(--motion) var(--settle),
-    grid-template-rows var(--motion) var(--settle),
-    gap var(--motion) var(--settle),
-    padding var(--motion) var(--settle),
-    border-radius var(--motion) var(--settle),
-    margin var(--motion) var(--settle),
-    border-width var(--motion) var(--settle),
+    padding calc(var(--motion) * 0.72) var(--settle),
+    border-color var(--motion-fast) var(--settle),
     transform var(--motion-fast) var(--settle),
     background-color var(--motion-fast) var(--settle),
-    box-shadow var(--motion-fast) var(--settle),
     opacity var(--motion-fast) var(--settle);
 }
 
@@ -3133,9 +3380,7 @@ body.ledger-management-open .mobile-submit-bar {
   transform: translateX(8px);
   transition:
     opacity var(--motion-fast) var(--spring),
-    transform var(--motion-fast) var(--spring),
-    max-width var(--motion) var(--spring),
-    width var(--motion) var(--spring);
+    transform var(--motion-fast) var(--spring);
   white-space: nowrap;
 }
 
@@ -3172,9 +3417,7 @@ body.ledger-management-open .mobile-submit-bar {
   font-weight: 700;
   line-height: 1.14;
   min-width: 0;
-  transition:
-    margin var(--motion-fast) var(--spring),
-    font-size var(--motion-fast) var(--spring);
+  transition: margin var(--motion-fast) var(--spring);
 }
 
 .ledger-item.is-expanded .ledger-title {
@@ -3204,9 +3447,7 @@ body.ledger-management-open .mobile-submit-bar {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition:
-    color var(--motion-fast) var(--spring),
-    font-size var(--motion-fast) var(--spring);
+  transition: color var(--motion-fast) var(--spring);
 }
 
 .ledger-item.is-expanded .ledger-note {
@@ -3228,7 +3469,6 @@ body.ledger-management-open .mobile-submit-bar {
   overflow-wrap: anywhere;
   transform: translateY(-4px);
   transition:
-    max-height var(--motion) var(--spring),
     margin var(--motion-fast) var(--spring),
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring);
@@ -3255,7 +3495,6 @@ body.ledger-management-open .mobile-submit-bar {
   opacity: 0;
   transform: translateY(-4px);
   transition:
-    max-height var(--motion) var(--spring),
     margin var(--motion-fast) var(--spring),
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring);
@@ -3310,7 +3549,6 @@ body.ledger-management-open .mobile-submit-bar {
   justify-self: end;
   transition:
     color var(--motion-fast) var(--spring),
-    font-size var(--motion) var(--spring),
     transform var(--motion) var(--spring);
 }
 
@@ -3332,8 +3570,6 @@ body.ledger-management-open .mobile-submit-bar {
   pointer-events: none;
   transform: translateX(8px);
   transition:
-    width var(--motion) var(--spring),
-    min-width var(--motion) var(--spring),
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring);
 }
@@ -3359,8 +3595,6 @@ body.ledger-management-open .mobile-submit-bar {
   padding: 0;
   pointer-events: none;
   transition:
-    width var(--motion) var(--spring),
-    min-height var(--motion) var(--spring),
     opacity var(--motion-fast) var(--spring),
     background-color var(--motion-fast) var(--spring);
 }
@@ -3883,10 +4117,16 @@ body.ledger-management-open .mobile-submit-bar {
   .split-scope-toggle > span,
   .date-label > span,
   .note-label > span,
-  .amount-label > span:first-child {
+  .amount-heading {
     color: color-mix(in srgb, var(--muted) 86%, transparent);
     font-size: 0.74rem;
     line-height: 1.15;
+  }
+
+  .amount-auto-badge {
+    min-height: 18px;
+    padding: 0 7px;
+    font-size: 0.62rem;
   }
 
   .amount-label {
@@ -3895,7 +4135,7 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active {
-    padding: 23px 18px 18px;
+    padding: 22px 18px 14px;
     border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
     transform: none;
   }
@@ -3913,7 +4153,7 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active input {
-    min-height: 80px;
+    min-height: 76px;
     font-size: clamp(2.88rem, 14.6vw, 4.58rem);
     transform: none;
   }
@@ -3931,12 +4171,16 @@ body.ledger-management-open .mobile-submit-bar {
   .note-label {
     grid-column: auto;
     align-content: start;
+    grid-template-rows: 16px 46px;
     min-width: 0;
   }
 
   .date-label input,
   .note-label input {
+    box-sizing: border-box;
+    height: 46px;
     min-height: 46px;
+    max-height: 46px;
     border: 1px solid rgba(22, 26, 30, 0.14);
     border-radius: var(--radius-md);
     background:
@@ -4471,7 +4715,10 @@ body.ledger-management-open .mobile-submit-bar {
 
   .date-label input,
   .note-label input {
+    box-sizing: border-box;
+    height: 46px;
     min-height: 46px;
+    max-height: 46px;
     font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
   }
 
@@ -4570,7 +4817,7 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active {
-    padding: 22px 15px 15px;
+    padding: 20px 15px 13px;
     transform: none;
   }
 
@@ -4591,6 +4838,11 @@ body.ledger-management-open .mobile-submit-bar {
   .note-label input {
     padding-inline: 9px;
     font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
+  }
+
+  .date-label,
+  .note-label {
+    grid-column: 1 / -1;
   }
 
   .split-mode-button {
@@ -4642,7 +4894,7 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .selectable-category-chip.is-selected:active {
-    transform: translateY(-1px);
+    transform: translateY(1px);
   }
 
   /* 按压＝快速填色下沉（~90ms），松开走各自原有过渡慢速回弹。
@@ -4741,11 +4993,17 @@ body.ledger-management-open .mobile-submit-bar {
     color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
   }
 
-  .amount-label > span:first-child,
+  .amount-heading,
   .currency-mark,
   .amount-label input,
   .amount-label.amount-active .currency-mark {
     color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white); /* 混白 62%，暗底 ≥6:1 */
+  }
+
+  .amount-auto-badge {
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 24%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--selected-family-color, var(--green)) 12%, rgba(255, 255, 255, 0.06));
+    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
   }
 
   .amount-label input {
@@ -4867,6 +5125,12 @@ body.ledger-management-open .mobile-submit-bar {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06)),
       color-mix(in srgb, var(--family-color) 14%, transparent);
+  }
+
+  .family-tag.is-selected {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
+      color-mix(in srgb, var(--family-color) 12%, transparent);
   }
 
   .amount-label {
@@ -5057,6 +5321,16 @@ body.ledger-management-open .mobile-submit-bar {
     color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
   }
 
+  .selectable-category-chip.is-selected {
+    background: color-mix(in srgb, var(--category-gradient) 12%, rgba(255, 255, 255, 0.08));
+    color: color-mix(in srgb, var(--category-text) 88%, #101412);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .selectable-category-chip.is-selected > span {
+    color: color-mix(in srgb, var(--category-text) 88%, #101412);
+  }
+
   .empty-state small {
     color: rgba(232, 236, 233, 0.62);
   }
@@ -5081,6 +5355,14 @@ body.ledger-management-open .mobile-submit-bar {
     background: var(--dark-highlight);
   }
 
+  .split-mode-button span {
+    color: rgba(232, 236, 233, 0.82);
+  }
+
+  .split-mode-button small {
+    color: rgba(232, 236, 233, 0.58);
+  }
+
   .split-mode-button::before {
     background:
       radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.08), transparent 58%),
@@ -5091,6 +5373,14 @@ body.ledger-management-open .mobile-submit-bar {
     border-color: color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent);
     background: var(--dark-highlight);
     box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent);
+  }
+
+  .split-mode-button.is-selected span {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 42%, white);
+  }
+
+  .split-mode-button.is-selected small {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 30%, rgba(232, 236, 233, 0.70));
   }
 
   .split-amount-row input {

@@ -13,6 +13,7 @@ const MOTION_DELAYS = {
   categoryEnter: 1560,
   payerActivate: 760,
   categoryActivate: 760,
+  choiceRelease: 460,
   splitSwitch: 260,
   addCelebrate: 1560,
   totalAbsorb: 1320,
@@ -25,13 +26,13 @@ const defaultFamilies = [
   { id: "family-c", name: "旦家" },
 ];
 const familyVisuals = {
-  "family-a": { color: "#7fa08f", gradient: "#a9ceb5", text: "#496f5f", soft: "rgba(127, 160, 143, 0.64)", wash: "rgba(127, 160, 143, 0.18)" },
-  "family-b": { color: "#8fa0bd", gradient: "#b9c9e6", text: "#566a8a", soft: "rgba(143, 160, 189, 0.64)", wash: "rgba(143, 160, 189, 0.18)" },
-  "family-c": { color: "#c89a9a", gradient: "#efc2bf", text: "#8a5d5d", soft: "rgba(200, 154, 154, 0.62)", wash: "rgba(200, 154, 154, 0.17)" },
+  "family-a": { color: "#90ad9d", gradient: "#bddbc8", text: "#557965", soft: "rgba(144, 173, 157, 0.60)", wash: "rgba(144, 173, 157, 0.16)" },
+  "family-b": { color: "#9dafc9", gradient: "#cbd9ef", text: "#61769a", soft: "rgba(157, 175, 201, 0.60)", wash: "rgba(157, 175, 201, 0.16)" },
+  "family-c": { color: "#d4abab", gradient: "#f2cfce", text: "#956868", soft: "rgba(212, 171, 171, 0.58)", wash: "rgba(212, 171, 171, 0.15)" },
 };
 const defaultCategories = ["交通", "住宿", "餐饮", "门票", "购物", "其他"];
 // 空状态插画：复用 favicon 的三个交叠圆母题（三家庭色，低饱和）
-const emptyStateArt = `<svg class="empty-state-art" viewBox="0 0 96 64" aria-hidden="true" focusable="false"><circle cx="38" cy="26" r="17" fill="#a9ceb5" opacity="0.6"/><circle cx="58" cy="25" r="17" fill="#b9c9e6" opacity="0.6"/><circle cx="48" cy="39" r="17" fill="#efc2bf" opacity="0.55"/></svg>`;
+const emptyStateArt = `<svg class="empty-state-art" viewBox="0 0 96 64" aria-hidden="true" focusable="false"><circle cx="38" cy="26" r="17" fill="#bddbc8" opacity="0.6"/><circle cx="58" cy="25" r="17" fill="#cbd9ef" opacity="0.6"/><circle cx="48" cy="39" r="17" fill="#f2cfce" opacity="0.55"/></svg>`;
 const splitModeOptions = [
   { id: "all", label: "全部家庭", description: "按人数自动分摊" },
   { id: "families", label: "指定家庭", description: "只让选中的家庭参与" },
@@ -157,12 +158,16 @@ let splitScopeCloseTimer = 0;
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
 let activatingSplitMode = "";
+let deactivatingSplitMode = "";
 const activatingSplitFamilyIds = new Set();
+const deactivatingSplitFamilyIds = new Set();
 let lastAddedExpenseId = "";
 let expandedExpenseId = "";
 let lastAddedCategory = "";
 let activatingPayerId = "";
+let deactivatingPayerId = "";
 let activatingCategory = "";
+let deactivatingCategory = "";
 let editingExpenseId = "";
 let toastTimer = 0;
 let settingsCloseTimer = 0;
@@ -1039,8 +1044,9 @@ function renderFamilyRoster() {
     .map((family) => {
       const selected = family.id === state.selectedPayerId;
       const activating = selected && family.id === activatingPayerId ? " is-activating" : "";
+      const deactivating = !selected && family.id === deactivatingPayerId ? " is-deactivating" : "";
       return `
-        <button class="family-tag${selected ? " is-selected" : ""}${activating}" type="button" data-payer-id="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
+        <button class="family-tag${selected ? " is-selected" : ""}${activating}${deactivating}" type="button" data-payer-id="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
           <span>${escapeHtml(family.name)}</span>
         </button>
       `;
@@ -1054,8 +1060,9 @@ function renderCategories() {
       const isNew = category === lastAddedCategory ? " is-entering" : "";
       const selected = category === state.activeCategory;
       const activating = selected && category === activatingCategory ? " is-activating" : "";
+      const deactivating = !selected && category === deactivatingCategory ? " is-deactivating" : "";
       return `
-        <button class="chip category-chip selectable-category-chip${selected ? " is-selected" : ""}${isNew}${activating}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" aria-pressed="${selected}">
+        <button class="chip category-chip selectable-category-chip${selected ? " is-selected" : ""}${isNew}${activating}${deactivating}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" aria-pressed="${selected}">
           <span>${escapeHtml(formatCategoryLabel(category))}</span>
         </button>
       `;
@@ -1074,8 +1081,9 @@ function renderSplitScope() {
     .map((option) => {
       const selected = activeSplitMode === option.id;
       const activating = selected && option.id === activatingSplitMode ? " is-activating" : "";
+      const deactivating = !selected && option.id === deactivatingSplitMode ? " is-deactivating" : "";
       return `
-        <button class="split-mode-button${selected ? " is-selected" : ""}${activating}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
+        <button class="split-mode-button${selected ? " is-selected" : ""}${activating}${deactivating}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
           <span>${escapeHtml(option.label)}</span>
           <small>${escapeHtml(option.description)}</small>
         </button>
@@ -1088,8 +1096,9 @@ function renderSplitScope() {
     .map((family) => {
       const selected = activeSplitFamilyIds.includes(family.id);
       const activating = activatingSplitFamilyIds.has(family.id) ? " is-activating" : "";
+      const deactivating = !selected && deactivatingSplitFamilyIds.has(family.id) ? " is-deactivating" : "";
       return `
-        <button class="family-tag split-family-chip${selected ? " is-selected" : ""}${activating}" type="button" data-split-family="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
+        <button class="family-tag split-family-chip${selected ? " is-selected" : ""}${activating}${deactivating}" type="button" data-split-family="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
           <span>${escapeHtml(family.name)}</span>
         </button>
       `;
@@ -1196,7 +1205,7 @@ function updateAmountFieldForSplitMode() {
   const isCustom = activeSplitMode === "custom";
   elements.amountInput.disabled = isCustom;
   elements.amountLabel.classList.toggle("amount-auto-total", isCustom);
-  elements.amountInput.placeholder = isCustom ? "自动求和" : "0.00";
+  elements.amountInput.placeholder = "0.00";
   if (!isCustom) return;
 
   const totalCents = getActiveCustomSplitTotalCents();
@@ -1796,10 +1805,17 @@ function handleCategorySelection(event) {
   if (!button) return;
 
   const nextCategory = normalizeCategory(button.dataset.category, state.activeCategory);
-  if (nextCategory !== state.activeCategory) markCategoryActivating(nextCategory);
+  const previousCategory = elements.categoryList?.querySelector(".selectable-category-chip.is-selected")?.dataset.category || state.activeCategory;
+  const categorySwitched = nextCategory !== previousCategory;
+  if (categorySwitched) {
+    markCategoryDeactivating(previousCategory);
+    markCategoryActivating(nextCategory);
+  }
   state.activeCategory = nextCategory;
   elements.categoryInput.value = state.activeCategory;
   renderCategories();
+  applyChoiceStateClass("[data-category]", "data-category", categorySwitched ? nextCategory : "", "is-activating");
+  applyChoiceStateClass("[data-category]", "data-category", categorySwitched ? previousCategory : "", "is-deactivating");
   renderMobileSubmitBar();
   saveState();
 }
@@ -1813,8 +1829,11 @@ function handleSplitScopeClick(event) {
   const modeButton = event.target.closest("[data-split-mode]");
   if (modeButton) {
     const nextMode = normalizeSplitMode(modeButton.dataset.splitMode);
-    if (nextMode !== activeSplitMode) {
+    const previousMode = activeSplitMode;
+    const modeSwitched = nextMode !== previousMode;
+    if (modeSwitched) {
       markSplitScopeSwitching();
+      markSplitModeDeactivating(previousMode);
       markSplitModeActivating(nextMode);
       activeSplitMode = nextMode;
       if (activeSplitMode === "families" && !activeSplitFamilyIds.length) {
@@ -1822,6 +1841,8 @@ function handleSplitScopeClick(event) {
       }
     }
     smoothSplitScopeResize(renderSplitScope);
+    applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? nextMode : "", "is-activating");
+    applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? previousMode : "", "is-deactivating");
     renderMobileSubmitBar();
     return;
   }
@@ -1831,29 +1852,53 @@ function handleSplitScopeClick(event) {
 
   const familyId = normalizePayerId(familyButton.dataset.splitFamily);
   if (!familyId) return;
-  markSplitFamilyActivating(familyId);
   if (activeSplitFamilyIds.includes(familyId)) {
+    markSplitFamilyDeactivating(familyId);
     activeSplitFamilyIds = activeSplitFamilyIds.filter((id) => id !== familyId);
   } else {
+    markSplitFamilyActivating(familyId);
     activeSplitFamilyIds = [...activeSplitFamilyIds, familyId];
   }
   smoothSplitScopeResize(renderSplitScope);
+  applyChoiceStateClass("[data-split-family]", "data-split-family", familyId, activeSplitFamilyIds.includes(familyId) ? "is-activating" : "is-deactivating");
   renderMobileSubmitBar();
 }
 
 function smoothSplitScopeResize(update) {
+  const restoreSplitAnchor = createSplitScopeAnchorRestorer();
+
   if (!elements.entryPanel || prefersReducedMotion()) {
     update();
+    restoreSplitAnchor();
     return;
   }
 
   smoothContainerResize(elements.entryPanel, () => {
     elements.entryPanel.classList.add("is-measuring-split");
     update();
+    restoreSplitAnchor();
     window.requestAnimationFrame(() => {
       elements.entryPanel.classList.remove("is-measuring-split");
+      restoreSplitAnchor();
     });
   });
+
+  window.requestAnimationFrame(() => {
+    restoreSplitAnchor();
+    window.requestAnimationFrame(restoreSplitAnchor);
+  });
+}
+
+function createSplitScopeAnchorRestorer() {
+  const anchor = elements.splitScopeToggle;
+  if (!anchor) return () => {};
+
+  const startTop = anchor.getBoundingClientRect().top;
+  return () => {
+    const nextTop = anchor.getBoundingClientRect().top;
+    const delta = nextTop - startTop;
+    if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+  };
 }
 
 function markSplitScopeSwitching() {
@@ -1871,15 +1916,37 @@ function markSplitModeActivating(mode) {
   activatingSplitMode = mode;
   window.setTimeout(() => {
     if (activatingSplitMode === mode) activatingSplitMode = "";
+    removeChoiceStateClass("[data-split-mode]", "data-split-mode", mode, "is-activating");
   }, MOTION_DELAYS.categoryActivate);
+}
+
+function markSplitModeDeactivating(mode) {
+  if (prefersReducedMotion() || !mode) return;
+  deactivatingSplitMode = mode;
+  window.setTimeout(() => {
+    if (deactivatingSplitMode === mode) deactivatingSplitMode = "";
+    removeChoiceStateClass("[data-split-mode]", "data-split-mode", mode, "is-deactivating");
+  }, MOTION_DELAYS.choiceRelease);
 }
 
 function markSplitFamilyActivating(familyId) {
   if (prefersReducedMotion()) return;
+  deactivatingSplitFamilyIds.delete(familyId);
   activatingSplitFamilyIds.add(familyId);
   window.setTimeout(() => {
     activatingSplitFamilyIds.delete(familyId);
+    removeChoiceStateClass("[data-split-family]", "data-split-family", familyId, "is-activating");
   }, MOTION_DELAYS.payerActivate);
+}
+
+function markSplitFamilyDeactivating(familyId) {
+  if (prefersReducedMotion() || !familyId) return;
+  activatingSplitFamilyIds.delete(familyId);
+  deactivatingSplitFamilyIds.add(familyId);
+  window.setTimeout(() => {
+    deactivatingSplitFamilyIds.delete(familyId);
+    removeChoiceStateClass("[data-split-family]", "data-split-family", familyId, "is-deactivating");
+  }, MOTION_DELAYS.choiceRelease);
 }
 
 function handleSplitAmountInput(event) {
@@ -1995,7 +2062,8 @@ function toggleLedgerItem(expenseId) {
 function expandLedgerItem(expenseId) {
   if (!expenseId || expandedExpenseId === expenseId) return;
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
-  const flipRects = captureLedgerTransitionRects(items);
+  const transitionItems = getLedgerTransitionItems(items, expenseId);
+  const flipRects = captureLedgerTransitionRects(transitionItems);
   expandedExpenseId = expenseId;
   items.forEach((item) => {
     const isExpanded = item.dataset.expenseId === expenseId;
@@ -2009,7 +2077,8 @@ function expandLedgerItem(expenseId) {
 function collapseLedgerItem(expenseId) {
   if (!expenseId || expandedExpenseId !== expenseId) return;
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
-  const flipRects = captureLedgerTransitionRects(items);
+  const transitionItems = getLedgerTransitionItems(items, expenseId);
+  const flipRects = captureLedgerTransitionRects(transitionItems);
   expandedExpenseId = "";
   items.forEach((item) => {
     item.classList.remove("is-expanded");
@@ -2017,6 +2086,11 @@ function collapseLedgerItem(expenseId) {
     item.setAttribute("aria-label", "展开这笔账单");
   });
   playLedgerTransitionRects(flipRects);
+}
+
+function getLedgerTransitionItems(items, nextExpenseId) {
+  const ids = new Set([expandedExpenseId, nextExpenseId].filter(Boolean));
+  return items.filter((item) => ids.has(item.dataset.expenseId));
 }
 
 function captureLedgerTransitionRects(items) {
@@ -2047,13 +2121,14 @@ function playLedgerTransitionRects(rects) {
     const moved = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
     if (!moved) return;
 
-    element.animate(
+    const animation = element.animate(
       [
         { transform: `translate(${dx}px, ${dy}px)` },
         { transform: "translate(0, 0)" },
       ],
       { duration, easing, fill: "both" },
     );
+    animation.addEventListener("finish", () => animation.cancel(), { once: true });
   });
 }
 
@@ -2466,11 +2541,18 @@ function handleFamilySelection(event) {
   if (!button) return;
 
   const nextPayerId = normalizePayerId(button.dataset.payerId);
-  if (nextPayerId && nextPayerId !== state.selectedPayerId) markPayerActivating(nextPayerId);
+  const previousPayerId = normalizePayerId(elements.familyRoster?.querySelector(".family-tag.is-selected")?.dataset.payerId) || state.selectedPayerId;
+  const payerSwitched = Boolean(nextPayerId && nextPayerId !== previousPayerId);
+  if (payerSwitched) {
+    markPayerDeactivating(previousPayerId);
+    markPayerActivating(nextPayerId);
+  }
   state.selectedPayerId = nextPayerId;
   elements.payerError.textContent = "";
   applySelectedFamilyTheme();
   renderFamilyRoster();
+  applyChoiceStateClass("[data-payer-id]", "data-payer-id", payerSwitched ? nextPayerId : "", "is-activating");
+  applyChoiceStateClass("[data-payer-id]", "data-payer-id", payerSwitched ? previousPayerId : "", "is-deactivating");
   applySubmitButtonTheme();
   renderMobileSubmitBar();
   updateAmountMotionState();
@@ -2478,17 +2560,52 @@ function handleFamilySelection(event) {
 }
 
 function markPayerActivating(payerId) {
+  if (prefersReducedMotion()) return;
   activatingPayerId = payerId;
   window.setTimeout(() => {
     if (activatingPayerId === payerId) activatingPayerId = "";
+    removeChoiceStateClass("[data-payer-id]", "data-payer-id", payerId, "is-activating");
   }, MOTION_DELAYS.payerActivate);
 }
 
+function markPayerDeactivating(payerId) {
+  if (prefersReducedMotion() || !payerId) return;
+  deactivatingPayerId = payerId;
+  window.setTimeout(() => {
+    if (deactivatingPayerId === payerId) deactivatingPayerId = "";
+    removeChoiceStateClass("[data-payer-id]", "data-payer-id", payerId, "is-deactivating");
+  }, MOTION_DELAYS.choiceRelease);
+}
+
 function markCategoryActivating(category) {
+  if (prefersReducedMotion()) return;
   activatingCategory = category;
   window.setTimeout(() => {
     if (activatingCategory === category) activatingCategory = "";
+    removeChoiceStateClass("[data-category]", "data-category", category, "is-activating");
   }, MOTION_DELAYS.categoryActivate);
+}
+
+function markCategoryDeactivating(category) {
+  if (prefersReducedMotion() || !category) return;
+  deactivatingCategory = category;
+  window.setTimeout(() => {
+    if (deactivatingCategory === category) deactivatingCategory = "";
+    removeChoiceStateClass("[data-category]", "data-category", category, "is-deactivating");
+  }, MOTION_DELAYS.choiceRelease);
+}
+
+function removeChoiceStateClass(selector, attribute, value, className) {
+  document.querySelectorAll(selector).forEach((element) => {
+    if (element.getAttribute(attribute) === value) element.classList.remove(className);
+  });
+}
+
+function applyChoiceStateClass(selector, attribute, value, className) {
+  if (prefersReducedMotion() || !value) return;
+  document.querySelectorAll(selector).forEach((element) => {
+    if (element.getAttribute(attribute) === value) element.classList.add(className);
+  });
 }
 
 function renderTotalMetricGradient(summary) {
@@ -2728,6 +2845,7 @@ function smoothContainerResize(element, update) {
 
   const cleanup = () => {
     if (element._resizeAnimation !== animation) return;
+    animation.cancel();
     element.style.removeProperty("height");
     element.style.removeProperty("overflow");
     element.classList.remove("is-resizing");
