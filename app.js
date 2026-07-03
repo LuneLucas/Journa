@@ -36,7 +36,7 @@ const emptyStateArt = `<svg class="empty-state-art" viewBox="0 0 96 64" aria-hid
 const splitModeOptions = [
   { id: "all", label: "全部家庭", description: "按人数自动分摊" },
   { id: "families", label: "指定家庭", description: "只让选中的家庭参与" },
-  { id: "custom", label: "分别填写金额", description: "适合票价、房费、租车差异" },
+  { id: "custom", label: "自定金额", description: "逐家填写承担金额" },
 ];
 const categoryVisuals = {
   "交通": { emoji: "🚄", bg: "#d9e8e2", text: "#486d62", border: "rgba(88, 126, 113, 0.28)", gradient: "#b9d8cc" },
@@ -109,10 +109,12 @@ const elements = {
   settingsCategoryForm: document.querySelector("#settingsCategoryForm"),
   settingsNewCategoryInput: document.querySelector("#settingsNewCategoryInput"),
   categoryChips: document.querySelector("#categoryChips"),
+  splitScope: document.querySelector("#splitScope"),
   splitScopeToggle: document.querySelector("#splitScopeToggle"),
   splitScopeSummary: document.querySelector("#splitScopeSummary"),
   splitScopePanel: document.querySelector("#splitScopePanel"),
   splitModeButtons: document.querySelector("#splitModeButtons"),
+  splitDetailArea: document.querySelector("#splitDetailArea"),
   splitFamilyChoices: document.querySelector("#splitFamilyChoices"),
   splitCustomAmounts: document.querySelector("#splitCustomAmounts"),
   settingsCategoryChips: document.querySelector("#settingsCategoryChips"),
@@ -182,6 +184,9 @@ let cloudBusy = false;
 let cloudReady = false;
 let pendingSettingsSync = 0;
 let confirmResolve = null;
+let settingsReturnFocus = null;
+let ledgerManagementReturnFocus = null;
+let confirmReturnFocus = null;
 
 function loadState() {
   const storageKeys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
@@ -1039,30 +1044,44 @@ function renderLedgerFilterSummary() {
   elements.ledgerFilterSummary.textContent = `筛选合计 ${formatMoney(summary.totalCents)}（${summary.count} 笔）`;
 }
 
+function classNames(...tokens) {
+  return tokens.filter(Boolean).join(" ");
+}
+
+function renderFamilyChoiceButton(family, { dataName, extraClass = "", selected = false, activating = false, deactivating = false }) {
+  return `
+    <button class="${classNames("family-tag", extraClass, selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" ${dataName}="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
+      <span>${escapeHtml(family.name)}</span>
+    </button>
+  `;
+}
+
 function renderFamilyRoster() {
   elements.familyRoster.innerHTML = state.families
     .map((family) => {
       const selected = family.id === state.selectedPayerId;
-      const activating = selected && family.id === activatingPayerId ? " is-activating" : "";
-      const deactivating = !selected && family.id === deactivatingPayerId ? " is-deactivating" : "";
-      return `
-        <button class="family-tag${selected ? " is-selected" : ""}${activating}${deactivating}" type="button" data-payer-id="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
-          <span>${escapeHtml(family.name)}</span>
-        </button>
-      `;
+      return renderFamilyChoiceButton(family, {
+        dataName: "data-payer-id",
+        selected,
+        activating: selected && family.id === activatingPayerId,
+        deactivating: !selected && family.id === deactivatingPayerId,
+      });
     })
     .join("");
 }
 
 function renderCategories() {
-  elements.categoryChips.innerHTML = state.categories
+  const sortedCategories = getEntryCategoryOrder();
+  const recentCategories = new Set(getRecentCategories(3));
+  elements.categoryChips.innerHTML = sortedCategories
     .map((category) => {
-      const isNew = category === lastAddedCategory ? " is-entering" : "";
+      const isNew = category === lastAddedCategory;
       const selected = category === state.activeCategory;
-      const activating = selected && category === activatingCategory ? " is-activating" : "";
-      const deactivating = !selected && category === deactivatingCategory ? " is-deactivating" : "";
+      const recent = !selected && recentCategories.has(category);
+      const activating = selected && category === activatingCategory;
+      const deactivating = !selected && category === deactivatingCategory;
       return `
-        <button class="chip category-chip selectable-category-chip${selected ? " is-selected" : ""}${isNew}${activating}${deactivating}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" aria-pressed="${selected}">
+        <button class="${classNames("chip", "category-chip", "selectable-category-chip", selected && "is-selected", recent && "is-recent", isNew && "is-entering", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" aria-pressed="${selected}">
           <span>${escapeHtml(formatCategoryLabel(category))}</span>
         </button>
       `;
@@ -1070,20 +1089,39 @@ function renderCategories() {
     .join("");
 }
 
+function getEntryCategoryOrder() {
+  const active = state.activeCategory && state.categories.includes(state.activeCategory) ? [state.activeCategory] : [];
+  const recent = getRecentCategories(3).filter((category) => category !== state.activeCategory);
+  const rest = state.categories.filter((category) => !active.includes(category) && !recent.includes(category));
+  return [...active, ...recent, ...rest];
+}
+
+function getRecentCategories(limit = 3) {
+  const categories = [];
+  const sortedExpenses = [...state.expenses].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  for (const expense of sortedExpenses) {
+    if (!state.categories.includes(expense.category) || categories.includes(expense.category)) continue;
+    categories.push(expense.category);
+    if (categories.length >= limit) break;
+  }
+  return categories;
+}
+
 function renderSplitScope() {
   ensureActiveSplitState();
   elements.splitScopeToggle.setAttribute("aria-expanded", String(splitScopeOpen));
   elements.splitScopeSummary.textContent = formatActiveSplitSummary();
   elements.splitScopePanel.classList.toggle("is-switching", splitScopeSwitching);
+  elements.splitScopePanel.dataset.activeSplitMode = activeSplitMode;
   updateSplitScopePanelState();
 
   elements.splitModeButtons.innerHTML = splitModeOptions
     .map((option) => {
       const selected = activeSplitMode === option.id;
-      const activating = selected && option.id === activatingSplitMode ? " is-activating" : "";
-      const deactivating = !selected && option.id === deactivatingSplitMode ? " is-deactivating" : "";
+      const activating = selected && option.id === activatingSplitMode;
+      const deactivating = !selected && option.id === deactivatingSplitMode;
       return `
-        <button class="split-mode-button${selected ? " is-selected" : ""}${activating}${deactivating}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
+        <button class="${classNames("split-mode-button", selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
           <span>${escapeHtml(option.label)}</span>
           <small>${escapeHtml(option.description)}</small>
         </button>
@@ -1091,17 +1129,19 @@ function renderSplitScope() {
     })
     .join("");
 
+  elements.splitDetailArea.hidden = activeSplitMode === "all";
+
   elements.splitFamilyChoices.hidden = activeSplitMode !== "families";
   elements.splitFamilyChoices.innerHTML = state.families
     .map((family) => {
       const selected = activeSplitFamilyIds.includes(family.id);
-      const activating = activatingSplitFamilyIds.has(family.id) ? " is-activating" : "";
-      const deactivating = !selected && deactivatingSplitFamilyIds.has(family.id) ? " is-deactivating" : "";
-      return `
-        <button class="family-tag split-family-chip${selected ? " is-selected" : ""}${activating}${deactivating}" type="button" data-split-family="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
-          <span>${escapeHtml(family.name)}</span>
-        </button>
-      `;
+      return renderFamilyChoiceButton(family, {
+        dataName: "data-split-family",
+        extraClass: "split-family-chip",
+        selected,
+        activating: activatingSplitFamilyIds.has(family.id),
+        deactivating: !selected && deactivatingSplitFamilyIds.has(family.id),
+      });
     })
     .join("");
 
@@ -1162,16 +1202,16 @@ function ensureActiveSplitState() {
 function formatActiveSplitSummary() {
   if (activeSplitMode === "custom") {
     const totalCents = getActiveCustomSplitTotalCents();
-    return totalCents ? `自定义金额 · ${formatMoney(totalCents)}` : "自定义金额";
+    return totalCents ? `规则：自定承担 · ${formatMoney(totalCents)}` : "规则：自定承担";
   }
 
   if (activeSplitMode === "families") {
-    if (!activeSplitFamilyIds.length) return "指定家庭分摊";
+    if (!activeSplitFamilyIds.length) return "规则：指定家庭";
     const names = activeSplitFamilyIds.map(getFamilyName);
-    return names.length > 2 ? `指定家庭分摊 · ${names.length}家` : `指定家庭分摊 · ${names.join("、")}`;
+    return names.length > 2 ? `规则：${names.length}家按人数` : `规则：${names.join("、")}按人数`;
   }
 
-  return "按人数分摊";
+  return "规则：全部家庭按人数";
 }
 
 function formatExpenseSplitSummary(expense) {
@@ -1482,57 +1522,77 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   const enterClass = animateFinancialChanges ? " is-entering" : "";
 
   if (!state.expenses.length) {
-    elements.ledgerList.innerHTML = `<div class="empty-state${enterClass}">${emptyStateArt}还没有账单<br><small>记下第一笔，开始这次旅行。</small></div>`;
+    elements.ledgerList.innerHTML = renderLedgerEmptyState("还没有账单", "记下第一笔，开始这次旅行。", enterClass);
     return;
   }
 
   if (!visibleExpenses.length) {
-    elements.ledgerList.innerHTML = `<div class="empty-state${enterClass}">没有符合筛选的账单</div>`;
+    elements.ledgerList.innerHTML = renderLedgerEmptyState(
+      "没有符合筛选的账单",
+      `<button class="secondary-button compact-button empty-state-action" type="button" data-clear-filter-empty>清除筛选</button>`,
+      enterClass,
+      { includeArt: false, suffixIsHtml: true },
+    );
     return;
   }
 
-  const groups = groupExpensesByDate(visibleExpenses);
-  elements.ledgerList.innerHTML = groups
-    .map(
-      (group) => `
-        <section class="ledger-day-group${enterClass}">
-          <div class="ledger-day-heading">
-            <time datetime="${escapeHtml(group.date)}">${escapeHtml(formatLedgerDate(group.date))}</time>
-            <strong>${formatLedgerMoney(group.totalCents)}</strong>
-          </div>
-          <div class="ledger-day-items">
-            ${group.expenses
-              .map(
-                (expense) => {
-                  const isExpanded = expense.id === expandedExpenseId;
-                  const syncState = getExpenseSyncState(expense);
-                  return `
-                  <article class="ledger-item${expense.id === lastAddedExpenseId ? " is-entering" : ""}${expense.id === editingExpenseId ? " is-editing" : ""}${isExpanded ? " is-expanded" : ""}${syncState ? ` is-sync-${syncState}` : ""}" style="${familyStyle(expense.payerId)}" data-expense-id="${escapeHtml(expense.id)}" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
-                    <div class="ledger-main">
-                      <div class="ledger-title">
-                        <span class="ledger-family">${escapeHtml(getFamilyName(expense.payerId))}</span>
-                        <span class="category-pill" style="${categoryStyle(expense.category)}">${escapeHtml(formatCategoryLabel(expense.category))}</span>
-                      </div>
-                      <p class="ledger-note">${escapeHtml(expense.note || "无备注")}</p>
-                      <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
-                      ${syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : ""}
-                    </div>
-                    <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
-                    <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
-                    <div class="ledger-item-actions">
-                      <button class="ledger-edit-button" type="button" data-edit-id="${escapeHtml(expense.id)}">编辑</button>
-                      <button class="delete-button" type="button" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">×</button>
-                    </div>
-                  </article>
-                `;
-                },
-              )
-              .join("")}
-          </div>
-        </section>
-      `,
-    )
-    .join("");
+  elements.ledgerList.innerHTML = groupExpensesByDate(visibleExpenses).map((group) => renderLedgerDayGroup(group, enterClass)).join("");
+}
+
+function renderLedgerEmptyState(message, suffix = "", enterClass = "", { includeArt = true, suffixIsHtml = false } = {}) {
+  const suffixContent = suffixIsHtml ? suffix : suffix ? `<br><small>${escapeHtml(suffix)}</small>` : "";
+  return `<div class="empty-state${enterClass}">${includeArt ? emptyStateArt : ""}${escapeHtml(message)}${suffixContent}</div>`;
+}
+
+function renderLedgerDayGroup(group, enterClass = "") {
+  return `
+    <section class="ledger-day-group${enterClass}">
+      <div class="ledger-day-heading">
+        <time datetime="${escapeHtml(group.date)}">${escapeHtml(formatLedgerDate(group.date))}</time>
+        <strong>${formatLedgerMoney(group.totalCents)}</strong>
+      </div>
+      <div class="ledger-day-items">
+        ${group.expenses.map(renderLedgerItem).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderLedgerItem(expense) {
+  const isExpanded = expense.id === expandedExpenseId;
+  const syncState = getExpenseSyncState(expense);
+  const itemClass = classNames(
+    "ledger-item",
+    expense.id === lastAddedExpenseId && "is-entering",
+    expense.id === editingExpenseId && "is-editing",
+    isExpanded && "is-expanded",
+    syncState && `is-sync-${syncState}`,
+  );
+  const syncBadge = syncState ? `<span class="ledger-sync-badge">${escapeHtml(formatExpenseSyncBadge(syncState))}</span>` : "";
+  const syncLine = syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : "";
+  const expandCue = isExpanded ? `<span class="ledger-expand-cue" aria-hidden="true">收起</span>` : "";
+
+  return `
+    <article class="${itemClass}" style="${familyStyle(expense.payerId)}" data-expense-id="${escapeHtml(expense.id)}" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
+      <div class="ledger-main">
+        <div class="ledger-title">
+          <span class="ledger-family">${escapeHtml(getFamilyName(expense.payerId))}</span>
+          <span class="category-pill" style="${categoryStyle(expense.category)}">${escapeHtml(formatCategoryLabel(expense.category))}</span>
+          ${syncBadge}
+        </div>
+        <p class="ledger-note">${escapeHtml(expense.note || "无备注")}</p>
+        <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
+        ${syncLine}
+      </div>
+      <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
+      <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
+      ${expandCue}
+      <div class="ledger-item-actions">
+        <button class="ledger-edit-button" type="button" data-edit-id="${escapeHtml(expense.id)}">编辑</button>
+        <button class="delete-button" type="button" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">×</button>
+      </div>
+    </article>
+  `;
 }
 
 function getExpenseSyncState(expense) {
@@ -1543,6 +1603,10 @@ function getExpenseSyncState(expense) {
 
 function formatExpenseSyncState(syncState) {
   return syncState === "failed" ? "未同步，回到前台会重试" : "同步中";
+}
+
+function formatExpenseSyncBadge(syncState) {
+  return syncState === "failed" ? "未同步" : "同步中";
 }
 
 function getVisibleExpenses() {
@@ -1574,6 +1638,48 @@ function clearLedgerFilters() {
   smoothContainerResize(elements.ledgerSection, () => {
     render({ animateFinancialChanges: true });
   });
+}
+
+function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
+  const scrollOptions = { block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" };
+
+  if (target === "payer") {
+    elements.payerField.scrollIntoView(scrollOptions);
+    elements.familyRoster.querySelector(".family-tag")?.focus();
+    elements.payerError.textContent = "请选择付款家庭。";
+    return;
+  }
+
+  if (target === "amount") {
+    elements.amountLabel.scrollIntoView(scrollOptions);
+    elements.amountInput.focus();
+    elements.formError.textContent = "请输入金额。";
+    return;
+  }
+
+  if (target === "split") {
+    if (!splitScopeOpen) {
+      splitScopeOpen = true;
+      smoothSplitScopeResize(renderSplitScope);
+    }
+    elements.splitScope.scrollIntoView(scrollOptions);
+    window.setTimeout(() => {
+      const splitInput = elements.splitCustomAmounts.querySelector("[data-split-amount]");
+      if (splitInput) {
+        splitInput.focus();
+      } else {
+        elements.splitScopeToggle.focus();
+      }
+    }, prefersReducedMotion() ? 0 : 120);
+    elements.formError.textContent = "请填写分摊金额。";
+    return;
+  }
+
+  if (target === "category") {
+    elements.categoryChips.scrollIntoView(scrollOptions);
+    elements.categoryChips.querySelector(".selectable-category-chip")?.focus();
+    elements.formError.textContent = "请选择类别。";
+  }
 }
 
 function groupExpensesByDate(expenses) {
@@ -1611,21 +1717,44 @@ function renderEditState() {
 
 // 是否已填齐提交所需信息：有效金额 + 已选家庭 + 已选类别
 function isExpenseReady() {
-  const amount = parseAmountInput(elements.amountInput.value);
-  const hasPayer = state.families.some((family) => family.id === state.selectedPayerId);
-  const hasCategory = Boolean(state.activeCategory || elements.categoryInput.value);
-  return Number.isFinite(amount) && amount > 0 && hasPayer && hasCategory;
+  return getExpenseMissingState().target === "";
 }
 
 function getExpenseMissingPrompt() {
+  return getExpenseMissingState().summary;
+}
+
+function getExpenseMissingState() {
   const amount = parseAmountInput(elements.amountInput.value);
   const hasPayer = state.families.some((family) => family.id === state.selectedPayerId);
   const hasCategory = Boolean(state.activeCategory || elements.categoryInput.value);
 
-  if (!hasPayer) return "先选择付款家庭";
-  if (!hasCategory) return "再选择类别";
-  if (!Number.isFinite(amount) || amount <= 0) return activeSplitMode === "custom" ? "填写分摊金额后添加" : "输入金额后添加";
-  return "";
+  if (!hasPayer) {
+    return {
+      target: "payer",
+      summary: "还差：付款家庭",
+      action: "去选择",
+    };
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return {
+      target: activeSplitMode === "custom" ? "split" : "amount",
+      summary: activeSplitMode === "custom" ? "还差：分摊金额" : "还差：金额",
+      action: "去填写",
+    };
+  }
+  if (!hasCategory) {
+    return {
+      target: "category",
+      summary: "还差：类别",
+      action: "去选择",
+    };
+  }
+  return {
+    target: "",
+    summary: "",
+    action: "",
+  };
 }
 
 function renderMobileSubmitBar() {
@@ -1634,12 +1763,16 @@ function renderMobileSubmitBar() {
   const date = state.activeDate === todayIso() ? "今天" : state.activeDate.slice(5);
   const action = editingExpenseId ? "保存修改" : "添加账单";
   const split = activeSplitMode === "all" ? "" : ` · ${formatActiveSplitSummary()}`;
-  // 信息未填齐时按钮呈“不可点击”态（中性灰，非主题色）；仍保留点击以提示缺项
-  const blocked = !isExpenseReady();
-  elements.mobileSubmitSummary.textContent = blocked ? getExpenseMissingPrompt() : `${family} · ${category} · ${date}${split}`;
-  elements.mobileSubmitButton.querySelector(".button-label").textContent = action;
+  // 信息未填齐时按钮呈中性引导态，点击会跳到对应缺项。
+  const missing = getExpenseMissingState();
+  const blocked = Boolean(missing.target);
+  elements.mobileSubmitBar.dataset.state = blocked ? "needs-input" : "ready";
+  elements.mobileSubmitBar.dataset.missingTarget = missing.target;
+  elements.mobileSubmitSummary.textContent = blocked ? missing.summary : `${family} · ${category} · ${date}${split}`;
+  elements.mobileSubmitButton.querySelector(".button-label").textContent = blocked ? missing.action : action;
   elements.mobileSubmitButton.classList.toggle("is-blocked", blocked);
-  elements.mobileSubmitButton.setAttribute("aria-disabled", blocked ? "true" : "false");
+  elements.mobileSubmitButton.setAttribute("aria-disabled", "false");
+  elements.mobileSubmitButton.setAttribute("aria-label", blocked ? missing.summary : action);
 }
 
 function getSplitDetailsForSubmit() {
@@ -1687,6 +1820,12 @@ function handleExpenseSubmit(event) {
   const category = elements.categoryInput.value;
   const date = normalizeDate(elements.dateInput.value, state.activeDate);
   const note = elements.noteInput.value.trim();
+  const missing = getExpenseMissingState();
+
+  if (missing.target) {
+    focusExpenseMissingTarget(missing.target);
+    return;
+  }
 
   if (splitDetails.error) {
     elements.formError.textContent = splitDetails.error;
@@ -1804,6 +1943,7 @@ function handleCategorySelection(event) {
   const button = event.target.closest("[data-category]");
   if (!button) return;
 
+  elements.formError.textContent = "";
   const nextCategory = normalizeCategory(button.dataset.category, state.activeCategory);
   const previousCategory = elements.categoryList?.querySelector(".selectable-category-chip.is-selected")?.dataset.category || state.activeCategory;
   const categorySwitched = nextCategory !== previousCategory;
@@ -1873,15 +2013,20 @@ function smoothSplitScopeResize(update) {
     return;
   }
 
-  smoothContainerResize(elements.entryPanel, () => {
-    elements.entryPanel.classList.add("is-measuring-split");
-    update();
-    restoreSplitAnchor();
-    window.requestAnimationFrame(() => {
-      elements.entryPanel.classList.remove("is-measuring-split");
+  smoothContainerResize(
+    elements.entryPanel,
+    () => {
+      elements.entryPanel.classList.add("is-measuring-split");
+      update();
       restoreSplitAnchor();
-    });
-  });
+      window.requestAnimationFrame(() => {
+        elements.entryPanel.classList.remove("is-measuring-split");
+        restoreSplitAnchor();
+      });
+    },
+    () => {},
+    { clipDuringResize: false }
+  );
 
   window.requestAnimationFrame(() => {
     restoreSplitAnchor();
@@ -1953,6 +2098,7 @@ function handleSplitAmountInput(event) {
   const input = event.target.closest("[data-split-amount]");
   if (!input) return;
 
+  elements.formError.textContent = "";
   const familyId = normalizePayerId(input.dataset.splitAmount);
   if (!familyId) return;
   const amount = parseAmountInput(input.value);
@@ -2025,6 +2171,11 @@ function handleFamilyMemberStep(event) {
 }
 
 function handleLedgerClick(event) {
+  if (event.target.closest("[data-clear-filter-empty]")) {
+    clearLedgerFilters();
+    return;
+  }
+
   const editButton = event.target.closest("[data-edit-id]");
   if (editButton) {
     requestStartEditExpense(editButton.dataset.editId);
@@ -2462,56 +2613,101 @@ async function deleteLedger(ledgerId) {
   showToast({ message: `已删除“${ledger.name}”` });
 }
 
+function openDismissiblePanel({ view, bodyClass, closeButton, fallbackFocus, renderPanel, getCloseTimer, setCloseTimer, setReturnFocus }) {
+  setReturnFocus(document.activeElement instanceof HTMLElement ? document.activeElement : fallbackFocus);
+  window.clearTimeout(getCloseTimer());
+  view.hidden = false;
+  view.classList.remove("is-closing");
+  document.body.classList.add(bodyClass);
+  renderPanel?.();
+  closeButton.focus();
+}
+
+function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, setCloseTimer, getReturnFocus, setReturnFocus }) {
+  if (view.hidden || view.classList.contains("is-closing")) return;
+
+  view.classList.add("is-closing");
+  const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 60;
+
+  window.clearTimeout(getCloseTimer());
+  setCloseTimer(window.setTimeout(() => {
+    view.hidden = true;
+    view.classList.remove("is-closing");
+    document.body.classList.remove(bodyClass);
+    restoreFocus(getReturnFocus() || fallbackFocus);
+    setReturnFocus(null);
+  }, delay));
+}
+
 function openSettings() {
-  window.clearTimeout(settingsCloseTimer);
-  elements.settingsView.hidden = false;
-  elements.settingsView.classList.remove("is-closing");
-  document.body.classList.add("settings-open");
-  renderSettings();
-  elements.closeSettingsButton.focus();
+  openDismissiblePanel({
+    view: elements.settingsView,
+    bodyClass: "settings-open",
+    closeButton: elements.closeSettingsButton,
+    fallbackFocus: elements.openSettingsButton,
+    renderPanel: renderSettings,
+    getCloseTimer: () => settingsCloseTimer,
+    setCloseTimer: (timer) => {
+      settingsCloseTimer = timer;
+    },
+    setReturnFocus: (element) => {
+      settingsReturnFocus = element;
+    },
+  });
 }
 
 function closeSettings() {
-  if (elements.settingsView.hidden || elements.settingsView.classList.contains("is-closing")) return;
-
-  elements.settingsView.classList.add("is-closing");
-  const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 60;
-
-  window.clearTimeout(settingsCloseTimer);
-  settingsCloseTimer = window.setTimeout(() => {
-    elements.settingsView.hidden = true;
-    elements.settingsView.classList.remove("is-closing");
-    document.body.classList.remove("settings-open");
-    elements.openSettingsButton.focus();
-  }, delay);
+  closeDismissiblePanel({
+    view: elements.settingsView,
+    bodyClass: "settings-open",
+    fallbackFocus: elements.openSettingsButton,
+    getCloseTimer: () => settingsCloseTimer,
+    setCloseTimer: (timer) => {
+      settingsCloseTimer = timer;
+    },
+    getReturnFocus: () => settingsReturnFocus,
+    setReturnFocus: (element) => {
+      settingsReturnFocus = element;
+    },
+  });
 }
 
 function openLedgerManager() {
-  window.clearTimeout(ledgerManagementCloseTimer);
-  elements.ledgerManagementView.hidden = false;
-  elements.ledgerManagementView.classList.remove("is-closing");
-  document.body.classList.add("ledger-management-open");
-  renderLedgerManager();
-  elements.closeLedgerManagerButton.focus();
+  openDismissiblePanel({
+    view: elements.ledgerManagementView,
+    bodyClass: "ledger-management-open",
+    closeButton: elements.closeLedgerManagerButton,
+    fallbackFocus: elements.openLedgerManagerButton,
+    renderPanel: renderLedgerManager,
+    getCloseTimer: () => ledgerManagementCloseTimer,
+    setCloseTimer: (timer) => {
+      ledgerManagementCloseTimer = timer;
+    },
+    setReturnFocus: (element) => {
+      ledgerManagementReturnFocus = element;
+    },
+  });
 }
 
 function closeLedgerManager() {
-  if (elements.ledgerManagementView.hidden || elements.ledgerManagementView.classList.contains("is-closing")) return;
-
-  elements.ledgerManagementView.classList.add("is-closing");
-  const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 60;
-
-  window.clearTimeout(ledgerManagementCloseTimer);
-  ledgerManagementCloseTimer = window.setTimeout(() => {
-    elements.ledgerManagementView.hidden = true;
-    elements.ledgerManagementView.classList.remove("is-closing");
-    document.body.classList.remove("ledger-management-open");
-    elements.openLedgerManagerButton.focus();
-  }, delay);
+  closeDismissiblePanel({
+    view: elements.ledgerManagementView,
+    bodyClass: "ledger-management-open",
+    fallbackFocus: elements.openLedgerManagerButton,
+    getCloseTimer: () => ledgerManagementCloseTimer,
+    setCloseTimer: (timer) => {
+      ledgerManagementCloseTimer = timer;
+    },
+    getReturnFocus: () => ledgerManagementReturnFocus,
+    setReturnFocus: (element) => {
+      ledgerManagementReturnFocus = element;
+    },
+  });
 }
 
 function showConfirmDialog({ eyebrow = "请确认", title, message, confirmLabel = "确认", danger = false }) {
   if (confirmResolve) closeConfirmDialog(false);
+  confirmReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   elements.confirmEyebrow.textContent = eyebrow;
   elements.confirmTitle.textContent = title;
@@ -2531,15 +2727,54 @@ function closeConfirmDialog(result = false) {
   if (elements.confirmView.hidden) return;
   elements.confirmView.hidden = true;
   document.body.classList.remove("confirm-open");
+  restoreFocus(confirmReturnFocus);
+  confirmReturnFocus = null;
   const resolve = confirmResolve;
   confirmResolve = null;
   resolve?.(result);
+}
+
+function restoreFocus(element) {
+  if (element && typeof element.focus === "function" && document.contains(element)) {
+    element.focus();
+  }
+}
+
+function getFocusableElements(container) {
+  if (!container || container.hidden) return [];
+  const selector = [
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "a[href]",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+  return [...container.querySelectorAll(selector)].filter((element) => element.offsetParent !== null || element === document.activeElement);
+}
+
+function trapFocus(event, container) {
+  const focusable = getFocusableElements(container);
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+  if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function handleFamilySelection(event) {
   const button = event.target.closest("[data-payer-id]");
   if (!button) return;
 
+  elements.payerError.textContent = "";
   const nextPayerId = normalizePayerId(button.dataset.payerId);
   const previousPayerId = normalizePayerId(elements.familyRoster?.querySelector(".family-tag.is-selected")?.dataset.payerId) || state.selectedPayerId;
   const payerSwitched = Boolean(nextPayerId && nextPayerId !== previousPayerId);
@@ -2770,23 +3005,29 @@ function familyStyle(familyId) {
 }
 
 function applySelectedFamilyTheme() {
+  const themedElements = [elements.amountLabel, elements.expenseForm].filter(Boolean);
+
   if (!state.selectedPayerId) {
     elements.amountLabel.classList.remove("amount-themed");
-    elements.amountLabel.style.removeProperty("--selected-family-color");
-    elements.amountLabel.style.removeProperty("--selected-family-text");
-    elements.amountLabel.style.removeProperty("--selected-family-soft");
-    elements.amountLabel.style.removeProperty("--selected-family-wash");
-    elements.amountLabel.style.removeProperty("--selected-family-glow");
+    themedElements.forEach((element) => {
+      element.style.removeProperty("--selected-family-color");
+      element.style.removeProperty("--selected-family-text");
+      element.style.removeProperty("--selected-family-soft");
+      element.style.removeProperty("--selected-family-wash");
+      element.style.removeProperty("--selected-family-glow");
+    });
     return;
   }
 
   const style = getFamilyVisual(state.selectedPayerId);
   elements.amountLabel.classList.add("amount-themed");
-  elements.amountLabel.style.setProperty("--selected-family-color", style.color);
-  elements.amountLabel.style.setProperty("--selected-family-text", style.text);
-  elements.amountLabel.style.setProperty("--selected-family-soft", style.soft);
-  elements.amountLabel.style.setProperty("--selected-family-wash", colorWithAlpha(style.color, 0.24));
-  elements.amountLabel.style.setProperty("--selected-family-glow", colorWithAlpha(style.color, 0.42));
+  themedElements.forEach((element) => {
+    element.style.setProperty("--selected-family-color", style.color);
+    element.style.setProperty("--selected-family-text", style.text);
+    element.style.setProperty("--selected-family-soft", style.soft);
+    element.style.setProperty("--selected-family-wash", colorWithAlpha(style.color, 0.24));
+    element.style.setProperty("--selected-family-glow", colorWithAlpha(style.color, 0.42));
+  });
 }
 
 function applySubmitButtonTheme() {
@@ -2794,7 +3035,7 @@ function applySubmitButtonTheme() {
   const color = style?.color || "#176c5f";
   const text = style?.text || "#176c5f";
   const wash = style?.wash || "rgba(23, 108, 95, 0.14)";
-  const glow = colorWithAlpha(color, state.selectedPayerId ? 0.30 : 0.22);
+  const glow = colorWithAlpha(color, state.selectedPayerId ? 0.42 : 0.30);
   [elements.expenseForm, elements.mobileSubmitBar].forEach((element) => {
     element.style.setProperty("--submit-color", color);
     element.style.setProperty("--submit-text", text);
@@ -2812,23 +3053,30 @@ function getCssDurationMs(variableName, fallback) {
   return fallback;
 }
 
-function smoothContainerResize(element, update) {
+function smoothContainerResize(element, update, afterMeasure = () => {}, options = {}) {
   if (!element || prefersReducedMotion()) {
     update();
+    afterMeasure();
     return;
   }
 
+  const clipDuringResize = options.clipDuringResize !== false;
   element._resizeAnimation?.cancel();
   window.clearTimeout(element._resizeTimer);
   const startHeight = element.getBoundingClientRect().height;
   element.classList.add("is-resizing");
   element.style.height = `${startHeight}px`;
-  element.style.overflow = "hidden";
+  if (clipDuringResize) {
+    element.style.overflow = "hidden";
+  } else {
+    element.style.removeProperty("overflow");
+  }
 
   update();
 
   element.style.height = "auto";
   const endHeight = element.getBoundingClientRect().height;
+  afterMeasure();
 
   if (Math.abs(startHeight - endHeight) < 1) {
     element.style.removeProperty("height");
@@ -3053,7 +3301,7 @@ function markLedgerSwitching() {
 
 function triggerAddEffect(payerId, amount) {
   const visual = getFamilyVisual(payerId);
-  const themedGlow = colorWithAlpha(visual.color, 0.36);
+  const themedGlow = colorWithAlpha(visual.color, 0.52);
   elements.expenseForm.classList.remove("form-celebrate");
   elements.expenseForm.style.setProperty("--submit-color", visual.color);
   elements.expenseForm.style.setProperty("--submit-glow", themedGlow);
@@ -3149,11 +3397,20 @@ elements.confirmCancelButton.addEventListener("click", () => closeConfirmDialog(
 elements.confirmOkButton.addEventListener("click", () => closeConfirmDialog(true));
 elements.cancelEditButton.addEventListener("click", cancelEdit);
 elements.mobileSubmitButton.addEventListener("click", () => {
+  const missing = getExpenseMissingState();
+  if (missing.target) {
+    elements.formError.textContent = "";
+    elements.payerError.textContent = "";
+    focusExpenseMissingTarget(missing.target);
+    renderMobileSubmitBar();
+    return;
+  }
   elements.expenseForm.requestSubmit();
 });
 elements.amountInput.addEventListener("focus", updateAmountMotionState);
 elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
+  elements.formError.textContent = "";
   updateAmountMotionState();
   pulseAmountField();
   renderMobileSubmitBar();
@@ -3187,6 +3444,21 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("online", refreshCloudLedgerFromLifecycle);
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Tab") {
+    if (!elements.confirmView.hidden) {
+      trapFocus(event, elements.confirmView);
+      return;
+    }
+    if (!elements.ledgerManagementView.hidden) {
+      trapFocus(event, elements.ledgerManagementView);
+      return;
+    }
+    if (!elements.settingsView.hidden) {
+      trapFocus(event, elements.settingsView);
+    }
+    return;
+  }
+
   if (event.key !== "Escape") return;
   if (!elements.confirmView.hidden) {
     closeConfirmDialog(false);

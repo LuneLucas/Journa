@@ -20,9 +20,9 @@ const MUTED = "#5b625f";                      // --muted
 
 // familyVisuals（app.js）
 const FAMILIES = {
-  "乐家": { color: "#7fa08f", text: "#496f5f", washA: 0.18 },
-  "祺家": { color: "#8fa0bd", text: "#566a8a", washA: 0.18 },
-  "旦家": { color: "#c89a9a", text: "#8a5d5d", washA: 0.17 },
+  "乐家": { color: "#90ad9d", text: "#557965", washA: 0.16 },
+  "祺家": { color: "#9dafc9", text: "#61769a", washA: 0.16 },
+  "旦家": { color: "#d4abab", text: "#956868", washA: 0.15 },
 };
 
 // categoryVisuals（app.js）
@@ -70,16 +70,19 @@ const checks = [];
 
 // 1) 三家选中态：白字 on 深文字色填充（渐变浅端 = color-mix(text 92%, white)）
 for (const [name, f] of Object.entries(FAMILIES)) {
-  const dark = hex(f.text);
-  const lightEnd = mix(dark, 0.92, hex("#ffffff"));
-  checks.push([`家庭选中态白字 · ${name}（渐变深端）`, hex("#ffffff"), dark]);
-  checks.push([`家庭选中态白字 · ${name}（渐变浅端）`, hex("#ffffff"), lightEnd]);
+  // 选中态 = 家庭色提白的浅色填充 + 深色家庭标签（深文字向黑 70%）
+  const fillTop = mix(hex(f.color), 0.38, hex("#ffffff"));
+  const fillBottom = mix(hex(f.color), 0.50, hex("#ffffff"));
+  const label = mix(hex(f.text), 0.70, hex("#000000"));
+  checks.push([`家庭选中深标签 · ${name}（浅填充顶）`, label, fillTop]);
+  checks.push([`家庭选中深标签 · ${name}（浅填充底）`, label, fillBottom]);
 }
 
-// 2) 三家 wash 底上的深文字
+// 2) 家庭深文字作为正文：渲染在账单项近白底上（family-color 约 7% 淡染，再压白渐变层）
 for (const [name, f] of Object.entries(FAMILIES)) {
-  const washBg = over(hex(f.color), f.washA, CARD_BG);
-  checks.push([`家庭深文字 on wash · ${name}`, hex(f.text), washBg]);
+  const tintBase = over(mix(hex(f.color), 0.07, hex("#ffffff")), 0.68, CARD_BG);
+  const itemBg = over(hex("#ffffff"), 0.75, tintBase);
+  checks.push([`家庭深文字·正文 · ${name}`, hex(f.text), itemBg]);
 }
 
 // 3) 类别六色 文字/底色

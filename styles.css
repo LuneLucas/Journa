@@ -610,11 +610,12 @@ h3 {
   inset: 0;
   z-index: 0;
   border-radius: inherit;
-  /* 选中态填充：用各家深文字色保证白字对比度 ≥ 4.5:1（WCAG AA） */
-  background: var(--family-text); /* 老 WebView 不支持 color-mix 时的静态回退 */
+  /* 选中态填充：家庭色提白的浅色调（贴合浅莫兰迪基调），配深色家庭标签，对比 ≥ 5.3:1；亮/深色共用 */
+  background: color-mix(in srgb, var(--family-color) 44%, white); /* 老 WebView 回退 */
   background:
-    radial-gradient(ellipse at 28% 0%, rgba(255, 255, 255, 0.10), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--family-text) 92%, white), var(--family-text));
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--family-color) 38%, white),
+      color-mix(in srgb, var(--family-color) 50%, white));
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -638,15 +639,16 @@ h3 {
 }
 
 .family-tag.is-selected {
-  border-color: color-mix(in srgb, var(--family-color) 66%, rgba(255, 255, 255, 0.80));
+  border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
     color-mix(in srgb, var(--family-color) 9%, transparent);
-  color: #fff;
+  /* 深色家庭标签坐在浅色填充上，对比 ≥ 5.3:1 */
+  color: color-mix(in srgb, var(--family-text) 70%, black);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.40),
-    0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
+    0 8px 20px -12px var(--family-soft),
+    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
   transform: none;
 }
 
@@ -837,8 +839,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 select,
 input[type="date"] {
-  appearance: auto;
-  -webkit-appearance: auto;
+  appearance: none;
+  -webkit-appearance: none;
   max-width: 100%;
   min-width: 0;
   min-height: var(--control-height);
@@ -848,10 +850,12 @@ input[type="date"] {
     linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.52)),
     rgba(255, 255, 255, 0.64);
   color: var(--ink);
+  line-height: normal;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
 }
 
 select {
+  appearance: auto;
   -webkit-appearance: menulist;
 }
 
@@ -864,6 +868,27 @@ select {
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
+  line-height: 1;
+}
+
+.date-label input::-webkit-date-and-time-value {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-height: 1.2em;
+  text-align: left;
+}
+
+.date-label input::-webkit-datetime-edit {
+  display: block;
+  line-height: 1.2;
+  padding: 0;
+}
+
+.date-label input::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+  align-items: center;
+  min-height: 1.2em;
 }
 
 .date-label input::-webkit-calendar-picker-indicator {
@@ -1129,6 +1154,9 @@ input[type="date"]:focus {
 }
 
 .split-scope {
+  --split-outer-radius: var(--control-radius-large);
+  --split-inner-radius: var(--control-radius);
+  --split-control-radius: var(--control-radius-compact);
   display: grid;
   gap: 0;
   overflow-anchor: none;
@@ -1183,13 +1211,13 @@ input[type="date"]:focus {
   --split-panel-padding: 12px;
   --split-panel-offset: 10px;
   display: grid;
-  gap: 12px;
-  overflow: hidden;
+  gap: 10px;
+  overflow: visible;
   overflow-anchor: none;
-  max-height: 640px;
+  max-height: none;
   margin-top: var(--split-panel-offset);
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(22, 26, 30, 0.10));
-  border-radius: var(--control-radius-large);
+  border-radius: var(--split-outer-radius);
   background:
     radial-gradient(ellipse at 18% 8%, color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent), transparent 48%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.50)),
@@ -1197,7 +1225,7 @@ input[type="date"]:focus {
   padding: var(--split-panel-padding);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
   transform-origin: top center;
-  will-change: max-height, opacity;
+  will-change: height, opacity;
 }
 
 .entry-panel.is-resizing {
@@ -1209,7 +1237,7 @@ input[type="date"]:focus {
 }
 
 .entry-panel.is-measuring-split .split-scope-panel.is-open {
-  max-height: 640px;
+  max-height: none;
   margin-top: var(--split-panel-offset);
   opacity: 1;
   padding-top: var(--split-panel-padding);
@@ -1230,61 +1258,57 @@ input[type="date"]:focus {
 
 .split-scope-panel.is-closing {
   animation: split-scope-panel-out 220ms var(--settle) both;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
   pointer-events: none;
 }
 
 @keyframes split-scope-panel-in {
   0% {
-    max-height: 0;
-    margin-top: 0;
     opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
+    transform: translateY(-4px) scale(0.992);
   }
 
   100% {
-    max-height: 640px;
-    margin-top: var(--split-panel-offset);
     opacity: 1;
-    padding-top: var(--split-panel-padding);
-    padding-bottom: var(--split-panel-padding);
+    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes split-scope-panel-out {
   0% {
-    max-height: 640px;
-    margin-top: var(--split-panel-offset);
     opacity: 1;
-    padding-top: var(--split-panel-padding);
-    padding-bottom: var(--split-panel-padding);
+    transform: translateY(0) scale(1);
   }
 
   100% {
-    max-height: 0;
-    margin-top: 0;
     opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
+    transform: translateY(-4px) scale(0.992);
   }
 }
 
 .split-mode-buttons {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
+  align-items: stretch;
 }
 
 .split-mode-button {
   display: grid;
   align-content: center;
+  justify-items: start;
   position: relative;
   overflow: hidden;
   isolation: isolate;
   gap: 3px;
-  min-height: 64px;
+  height: 58px;
+  min-height: 58px;
   border: 1px solid rgba(22, 26, 30, 0.10);
-  border-radius: var(--control-radius);
+  border-radius: var(--split-control-radius);
   background: rgba(255, 255, 255, 0.50);
   color: var(--muted);
   padding: 9px 10px;
@@ -1303,7 +1327,7 @@ input[type="date"]:focus {
   border-radius: inherit;
   background:
     radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.18), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.50));
+    linear-gradient(135deg, color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 18%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.50));
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -1333,9 +1357,12 @@ input[type="date"]:focus {
 }
 
 .split-mode-button.is-selected {
-  border-color: color-mix(in srgb, var(--submit-color, var(--green)) 34%, rgba(22, 26, 30, 0.10));
+  border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 34%, rgba(22, 26, 30, 0.10));
   background: rgba(255, 255, 255, 0.50);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 12%, rgba(255, 255, 255, 0.58)),
+    0 0 26px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
+    0 10px 26px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 48%, transparent);
 }
 
 .split-mode-button.is-selected::before {
@@ -1343,22 +1370,49 @@ input[type="date"]:focus {
 }
 
 .split-mode-button.is-selected span {
-  color: color-mix(in srgb, var(--submit-text, var(--green)) 78%, var(--ink));
+  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 78%, var(--ink));
 }
 
 .split-mode-button.is-selected small {
-  color: color-mix(in srgb, var(--submit-text, var(--green)) 62%, var(--muted));
+  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 62%, var(--muted));
+}
+
+.split-detail-area {
+  display: grid;
+  align-items: start;
+  gap: 8px;
+  min-height: 0;
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 10%, rgba(22, 26, 30, 0.08));
+  border-radius: var(--split-inner-radius);
+  background: color-mix(in srgb, var(--submit-color, var(--green)) 5%, rgba(255, 255, 255, 0.42));
+  padding: 10px 10px 12px;
+}
+
+.split-detail-area[hidden] {
+  display: none !important;
+}
+
+.split-detail-area > [hidden] {
+  display: none !important;
 }
 
 .split-family-choices {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
+  align-self: center;
+  align-items: center;
+}
+
+.split-scope-panel[data-active-split-mode="families"] .split-detail-area {
+  align-items: center;
+  min-height: 0;
 }
 
 .split-scope-panel.is-switching .split-family-choices:not([hidden]),
 .split-scope-panel.is-switching .split-custom-amounts:not([hidden]) {
-  animation: split-scope-content-in 300ms var(--settle) both;
+  animation: split-scope-content-in 240ms var(--settle) both;
 }
 
 .split-scope-panel.is-open .split-mode-buttons,
@@ -1370,11 +1424,11 @@ input[type="date"]:focus {
 @keyframes split-scope-content-in {
   0% {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-3px);
   }
 
-  48% {
-    opacity: 0.72;
+  42% {
+    opacity: 0.78;
   }
 
   100% {
@@ -1387,18 +1441,48 @@ input[type="date"]:focus {
   display: inline-grid;
   place-items: center;
   width: 100%;
-  min-height: 44px;
+  min-height: 38px;
+  border-radius: var(--radius-pill);
   font-size: 0.88rem;
+  padding: 0 10px;
+}
+
+.split-family-chip::before {
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--family-color) 38%, white),
+      color-mix(in srgb, var(--family-color) 50%, white));
+}
+
+.split-family-chip.is-selected {
+  border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
+    color-mix(in srgb, var(--family-color) 9%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
+    0 8px 20px -12px var(--family-soft),
+    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
+}
+
+.split-family-chip.is-selected::before {
+  opacity: 1;
 }
 
 .split-custom-amounts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
+  align-items: start;
+  padding-bottom: 2px;
 }
 
 .split-amount-row {
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(56px, 0.32fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
   min-width: 0;
   color: var(--family-text);
 }
@@ -1409,13 +1493,32 @@ input[type="date"]:focus {
 }
 
 .split-amount-row input {
-  min-height: var(--control-height);
+  width: 100%;
+  min-height: 46px;
   border-color: color-mix(in srgb, var(--family-color) 18%, rgba(22, 26, 30, 0.12));
-  border-radius: var(--control-radius);
-  background: rgba(255, 255, 255, 0.62);
+  border-radius: var(--split-control-radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.56)),
+    color-mix(in srgb, var(--family-color) 5%, transparent);
   color: var(--family-text);
   font-size: 0.92rem;
   font-weight: 800;
+  line-height: 1.15;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.68)),
+    0 0 18px -14px var(--family-soft);
+  transition:
+    border-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring),
+    background-color var(--motion-fast) var(--spring);
+}
+
+.split-amount-row input:focus {
+  border-color: color-mix(in srgb, var(--family-color) 42%, rgba(22, 26, 30, 0.12));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 18%, rgba(255, 255, 255, 0.80)),
+    0 0 0 3px color-mix(in srgb, var(--family-color) 13%, transparent),
+    0 0 30px -16px var(--family-soft);
 }
 
 .split-total-line {
@@ -1467,14 +1570,15 @@ input[type="date"]:focus {
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
   border-radius: var(--control-radius-large);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.42)),
-    rgba(255, 255, 255, 0.58);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
+    color-mix(in srgb, var(--submit-color, var(--green)) 22%, rgba(255, 255, 255, 0.54));
   color: var(--submit-text, var(--green-dark));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
   transform-origin: center;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 16%, transparent),
-    0 0 34px -20px var(--submit-glow, rgba(23, 108, 95, 0.22)),
+    0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
+    0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
     0 18px 50px rgba(22, 26, 30, 0.10);
   transition:
     transform var(--motion-fast) var(--spring),
@@ -1494,7 +1598,8 @@ input[type="date"]:focus {
   transform: translateY(-1px);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent),
-    0 0 44px -20px var(--submit-glow, rgba(23, 108, 95, 0.22)),
+    0 0 56px -18px var(--submit-glow, rgba(23, 108, 95, 0.34)),
+    0 0 24px -10px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
     0 22px 58px rgba(22, 26, 30, 0.12);
 }
 
@@ -1513,9 +1618,9 @@ input[type="date"]:focus {
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
-      color-mix(in srgb, var(--submit-color, var(--green)) 14%, transparent) 52%,
-      color-mix(in srgb, var(--submit-color, var(--green)) 20%, transparent)
+      color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent) 52%,
+      color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent)
     ),
     linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 58%),
     radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 22%, white), transparent 58%);
@@ -1556,28 +1661,32 @@ input[type="date"]:focus {
   0% {
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent),
-      0 0 34px -20px var(--submit-glow, rgba(23, 108, 95, 0.22)),
+      0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
+      0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
       0 18px 50px rgba(22, 26, 30, 0.10);
   }
 
   34% {
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent),
-      0 0 46px -18px var(--submit-glow, rgba(23, 108, 95, 0.22)),
+      0 0 68px -16px var(--submit-glow, rgba(23, 108, 95, 0.38)),
+      0 0 34px -12px color-mix(in srgb, var(--submit-color, var(--green)) 36%, transparent),
       0 20px 54px rgba(22, 26, 30, 0.11);
   }
 
   72% {
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 16%, transparent),
-      0 0 42px -19px var(--submit-glow, rgba(23, 108, 95, 0.22)),
+      0 0 58px -17px var(--submit-glow, rgba(23, 108, 95, 0.34)),
+      0 0 26px -12px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
       0 22px 58px rgba(22, 26, 30, 0.12);
   }
 
   100% {
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent),
-      0 0 34px -20px var(--submit-glow, rgba(23, 108, 95, 0.22)),
+      0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
+      0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
       0 18px 50px rgba(22, 26, 30, 0.10);
   }
 }
@@ -2520,6 +2629,20 @@ body.ledger-management-open .mobile-submit-bar {
     0 10px 24px color-mix(in srgb, var(--category-gradient) 14%, transparent);
 }
 
+.selectable-category-chip.is-recent:not(.is-selected) {
+  border-color: color-mix(in srgb, var(--category-gradient) 36%, rgba(22, 26, 30, 0.10));
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.46)),
+    color-mix(in srgb, var(--category-gradient) 14%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 20px -16px color-mix(in srgb, var(--category-gradient) 48%, transparent);
+}
+
+.selectable-category-chip.is-recent:not(.is-selected)::after {
+  opacity: 0.34;
+}
+
 .selectable-category-chip.is-selected {
   border-color: color-mix(in srgb, var(--category-gradient) 70%, white);
   background: color-mix(in srgb, var(--category-gradient) 8%, rgba(255, 255, 255, 0.50));
@@ -2640,48 +2763,33 @@ body.ledger-management-open .mobile-submit-bar {
 @keyframes family-label-select {
   0% {
     color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
-    text-shadow: none;
     transform: translateY(1px);
   }
 
-  36% {
-    color: color-mix(in srgb, var(--family-text) 34%, white);
-    text-shadow: none;
-  }
-
   62% {
-    color: #fff;
-    text-shadow: 0 1px 10px color-mix(in srgb, var(--family-text) 34%, transparent);
+    /* 过渡到深色选中标签，不再经过白色 */
+    color: color-mix(in srgb, var(--family-text) 78%, black);
     transform: translateY(-1px);
   }
 
   100% {
-    color: #fff;
-    text-shadow: none;
+    color: color-mix(in srgb, var(--family-text) 70%, black);
     transform: translateY(0);
   }
 }
 
 @keyframes family-label-release {
   0% {
-    color: #fff;
-    text-shadow: 0 1px 10px color-mix(in srgb, var(--family-text) 34%, transparent);
+    color: color-mix(in srgb, var(--family-text) 70%, black);
     transform: translateY(-1px);
-  }
-
-  18% {
-    color: color-mix(in srgb, var(--family-text) 36%, white);
-    text-shadow: 0 1px 6px rgba(255, 255, 255, 0.16);
   }
 
   48% {
     color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
-    text-shadow: none;
   }
 
   100% {
     color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
-    text-shadow: none;
     transform: translateY(0);
   }
 }
@@ -3065,6 +3173,12 @@ body.ledger-management-open .mobile-submit-bar {
   color: #676158;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.empty-state-action {
+  display: inline-flex;
+  width: auto;
+  margin-top: 12px;
 }
 
 /* 空状态插画：三个交叠圆母题（同 favicon），低饱和三家庭色 */
@@ -3520,6 +3634,27 @@ body.ledger-management-open .mobile-submit-bar {
   color: var(--coral);
 }
 
+.ledger-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 22px;
+  border: 1px solid color-mix(in srgb, var(--family-color) 22%, rgba(22, 26, 30, 0.10));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.64));
+  color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
+  padding: 0 7px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ledger-item.is-sync-failed .ledger-sync-badge {
+  border-color: rgba(183, 79, 56, 0.24);
+  background: rgba(183, 79, 56, 0.08);
+  color: var(--coral);
+}
+
 .category-pill {
   max-width: 104px;
   min-width: 0;
@@ -3556,6 +3691,29 @@ body.ledger-management-open .mobile-submit-bar {
   align-self: end;
   justify-self: start;
   font-size: 1.28rem;
+}
+
+.ledger-expand-cue {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  opacity: 0.68;
+  pointer-events: none;
+  transition:
+    color var(--motion-fast) var(--spring),
+    opacity var(--motion-fast) var(--spring),
+    transform var(--motion-fast) var(--spring);
+}
+
+.ledger-item:hover .ledger-expand-cue,
+.ledger-item:focus-visible .ledger-expand-cue,
+.ledger-item.is-expanded .ledger-expand-cue {
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .ledger-item-actions {
@@ -4199,7 +4357,8 @@ body.ledger-management-open .mobile-submit-bar {
       linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.46)),
       rgba(255, 255, 255, 0.52);
     color: color-mix(in srgb, var(--ink) 78%, var(--muted));
-    padding-inline: 12px 10px;
+    padding: 0 10px 0 12px;
+    line-height: 1;
   }
 
   .date-label > span {
@@ -4264,34 +4423,47 @@ body.ledger-management-open .mobile-submit-bar {
   .split-scope-panel {
     --split-panel-padding: 10px;
     --split-panel-offset: 10px;
-    border-radius: var(--radius-md);
+    border-radius: var(--split-outer-radius);
   }
 
   .split-mode-buttons {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .split-mode-button {
-    grid-template-columns: minmax(0, 110px) minmax(0, 1fr);
-    align-items: center;
-    min-height: 48px;
-    gap: 8px;
+    height: 44px;
+    min-height: 44px;
+    justify-items: center;
+    gap: 0;
+    padding: 0 6px;
+    text-align: center;
+  }
+
+  .split-mode-button span {
+    font-size: 0.76rem;
+    line-height: 1.12;
   }
 
   .split-mode-button small {
-    text-align: right;
+    display: none;
+  }
+
+  .split-detail-area {
+    min-height: 0;
+    padding: 8px 8px 10px;
   }
 
   .split-family-choices {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 7px;
   }
 
   .split-family-chip {
-    min-height: 42px;
+    min-height: 36px;
     justify-content: center;
     padding: 0 8px;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     line-height: 1.1;
     white-space: nowrap;
   }
@@ -4301,8 +4473,13 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .split-amount-row {
-    grid-template-columns: minmax(0, 58px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 56px) minmax(0, 1fr);
     align-items: center;
+    min-height: 44px;
+  }
+
+  .split-amount-row input {
+    min-height: 44px;
   }
 
   .split-total-line {
@@ -4325,7 +4502,7 @@ body.ledger-management-open .mobile-submit-bar {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
       radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 42%),
-      radial-gradient(ellipse at 78% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 8%, transparent), transparent 62%),
+      radial-gradient(ellipse at 78% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
       rgba(247, 249, 248, 0.06);
     padding: 9px;
@@ -4334,7 +4511,7 @@ body.ledger-management-open .mobile-submit-bar {
       inset 0 0 0 0.5px rgba(255, 255, 255, 0.30),
       inset 0 -8px 18px rgba(255, 255, 255, 0.14),
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
-      0 0 42px -24px color-mix(in srgb, var(--submit-color, var(--green)) 60%, transparent),
+      0 0 54px -22px color-mix(in srgb, var(--submit-color, var(--green)) 76%, transparent),
       0 24px 72px rgba(22, 26, 30, 0.16);
     backdrop-filter: blur(8px) saturate(185%) brightness(1.08);
     -webkit-backdrop-filter: blur(8px) saturate(185%) brightness(1.08);
@@ -4381,8 +4558,19 @@ body.ledger-management-open .mobile-submit-bar {
   .mobile-submit-bar.submit-themed {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.42),
-      0 0 52px -18px var(--submit-glow),
+      0 0 70px -18px var(--submit-glow),
+      0 0 28px -12px color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent),
       0 24px 70px rgba(22, 26, 30, 0.18);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"] {
+    border-color: rgba(255, 255, 255, 0.58);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.30)),
+      rgba(247, 249, 248, 0.24);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.68),
+      0 18px 52px rgba(22, 26, 30, 0.09);
   }
 
   .mobile-submit-summary,
@@ -4403,13 +4591,17 @@ body.ledger-management-open .mobile-submit-bar {
     white-space: nowrap;
   }
 
+  .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {
+    color: color-mix(in srgb, var(--ink) 72%, var(--muted));
+  }
+
   .mobile-submit-button {
     min-height: 46px;
     border-color: color-mix(in srgb, var(--submit-color, var(--green)) 48%, rgba(255, 255, 255, 0.62));
     border-radius: var(--control-radius-large);
     background: var(--submit-color, var(--green)); /* color-mix 静态回退 */
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 92%, white), var(--submit-color, var(--green))),
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 99%, white), var(--submit-color, var(--green))),
       var(--submit-color, var(--green));
     color: #fff;
     padding: 0 22px;
@@ -4417,9 +4609,9 @@ body.ledger-management-open .mobile-submit-bar {
       inset 0 1px 0 rgba(255, 255, 255, 0.034),
       inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent),
       0 0 0 2px color-mix(in srgb, var(--submit-color, var(--green)) 14%, transparent),
-      0 0 18px -6px color-mix(in srgb, var(--submit-color, var(--green)) 50%, transparent),
-      0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.58)),
-      0 14px 34px color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent);
+      0 0 24px -6px color-mix(in srgb, var(--submit-color, var(--green)) 62%, transparent),
+      0 0 60px -18px var(--submit-glow, rgba(23, 108, 95, 0.68)),
+      0 14px 36px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent);
     font-size: 0.96rem;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.16);
     white-space: nowrap;
@@ -4429,26 +4621,33 @@ body.ledger-management-open .mobile-submit-bar {
     background:
       linear-gradient(
         135deg,
-        color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
-        color-mix(in srgb, var(--submit-color, var(--green)) 14%, transparent) 52%,
-        color-mix(in srgb, var(--submit-color, var(--green)) 20%, transparent)
+        color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent)
       ),
       linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 58%),
       radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 2%, rgba(255, 255, 255, 0.10)), transparent 58%);
   }
 
-  /* 信息未填齐：中性灰“不可点击”态，不使用主题色 */
+  /* 信息未填齐：淡白引导态，仍然可点击 */
   .mobile-submit-button.is-blocked {
-    border-color: rgba(22, 26, 30, 0.12);
-    background: rgba(22, 26, 30, 0.09);
-    color: rgba(22, 26, 30, 0.40);
-    box-shadow: none;
-    text-shadow: none;
-    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.76);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.64)),
+      rgba(255, 255, 255, 0.60);
+    color: color-mix(in srgb, var(--ink) 84%, var(--muted));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.38),
+      0 10px 30px rgba(22, 26, 30, 0.08);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+    cursor: pointer;
   }
 
   .mobile-submit-button.is-blocked::before {
-    opacity: 0;
+    opacity: 0.18;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 68%);
   }
 
   .ledger-item {
@@ -4528,6 +4727,12 @@ body.ledger-management-open .mobile-submit-bar {
     max-width: 86px;
     padding: 3px 7px;
     font-size: 0.7rem;
+  }
+
+  .ledger-sync-badge {
+    min-height: 20px;
+    padding-inline: 6px;
+    font-size: 0.64rem;
   }
 
   .ledger-note {
@@ -4735,11 +4940,11 @@ body.ledger-management-open .mobile-submit-bar {
 
   .split-mode-button {
     grid-template-columns: 1fr;
-    gap: 3px;
+    gap: 0;
   }
 
   .split-mode-button small {
-    text-align: left;
+    display: none;
   }
 
   .date-label input {
@@ -4846,7 +5051,9 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .split-mode-button {
-    padding: 8px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0 5px;
   }
 
   .split-amount-row {
@@ -5040,9 +5247,15 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .mobile-submit-button.is-blocked {
-    border-color: var(--dark-hairline-strong);
-    background: rgba(232, 236, 233, 0.10);
-    color: rgba(232, 236, 233, 0.42);
+    border-color: rgba(232, 236, 233, 0.22);
+    background:
+      linear-gradient(135deg, rgba(232, 236, 233, 0.20), rgba(232, 236, 233, 0.10)),
+      rgba(232, 236, 233, 0.08);
+    color: rgba(232, 236, 233, 0.82);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 10px 28px rgba(0, 0, 0, 0.20);
+    text-shadow: none;
   }
 
   /* 亮色字面量组件底转暗 */
@@ -5131,6 +5344,25 @@ body.ledger-management-open .mobile-submit-bar {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
       color-mix(in srgb, var(--family-color) 12%, transparent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 28%, rgba(255, 255, 255, 0.08)),
+      0 8px 20px -14px color-mix(in srgb, var(--family-color) 78%, transparent),
+      0 0 30px -18px var(--family-soft);
+  }
+
+  .split-family-chip.is-selected {
+    border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.24));
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08)),
+      color-mix(in srgb, var(--family-color) 12%, transparent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.18)),
+      0 8px 20px -14px color-mix(in srgb, var(--family-color) 78%, transparent),
+      0 0 30px -18px var(--family-soft);
+  }
+
+  .split-family-chip.is-selected::before {
+    opacity: 1;
   }
 
   .amount-label {
@@ -5280,6 +5512,22 @@ body.ledger-management-open .mobile-submit-bar {
     color: color-mix(in srgb, var(--family-text, var(--ink)) 48%, white);
   }
 
+  .ledger-expand-cue {
+    color: rgba(232, 236, 233, 0.46);
+  }
+
+  .ledger-sync-badge {
+    border-color: color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.04));
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 42%, white);
+  }
+
+  .ledger-item.is-sync-failed .ledger-sync-badge {
+    border-color: rgba(240, 170, 160, 0.24);
+    background: rgba(183, 79, 56, 0.12);
+    color: #f0aaa0;
+  }
+
   .ledger-date {
     color: rgba(232, 236, 233, 0.54);
   }
@@ -5304,10 +5552,29 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .category-summary-block {
+    border-color: color-mix(in srgb, var(--category-glow-left) 16%, var(--dark-hairline-strong));
     background:
-      linear-gradient(135deg, rgba(30, 36, 33, 0.74), rgba(24, 29, 27, 0.58)),
+      linear-gradient(135deg, rgba(28, 34, 31, 0.84), rgba(22, 27, 25, 0.72)),
       var(--category-summary-aura),
       var(--category-summary-gradient);
+    box-shadow:
+      -16px 0 38px -26px var(--category-glow-left),
+      16px 0 38px -26px var(--category-glow-right),
+      var(--shadow-md);
+  }
+
+  .category-summary-block::before,
+  .category-summary-block::after {
+    opacity: 0.38;
+  }
+
+  .category-row span {
+    color: color-mix(in srgb, var(--category-text, var(--ink)) 42%, var(--ink));
+  }
+
+  .category-row strong,
+  .row-item.category-row strong {
+    color: color-mix(in srgb, var(--category-text, var(--ink)) 34%, var(--ink));
   }
 
   .split-scope-toggle {
@@ -5319,6 +5586,12 @@ body.ledger-management-open .mobile-submit-bar {
   .selectable-category-chip {
     background: color-mix(in srgb, var(--category-gradient) 12%, rgba(255, 255, 255, 0.06));
     color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
+  }
+
+  .selectable-category-chip.is-recent:not(.is-selected) {
+    border-color: color-mix(in srgb, var(--category-gradient) 28%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--category-gradient) 16%, rgba(255, 255, 255, 0.05));
+    box-shadow: 0 8px 22px -18px color-mix(in srgb, var(--category-gradient) 42%, transparent);
   }
 
   .selectable-category-chip.is-selected {
@@ -5366,27 +5639,46 @@ body.ledger-management-open .mobile-submit-bar {
   .split-mode-button::before {
     background:
       radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.08), transparent 58%),
-      linear-gradient(135deg, var(--theme-aura-medium), var(--dark-highlight));
+      linear-gradient(135deg, color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 20%, transparent), var(--dark-highlight));
   }
 
   .split-mode-button.is-selected {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent);
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 46%, transparent);
     background: var(--dark-highlight);
-    box-shadow: 0 10px 28px color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 22%, rgba(255, 255, 255, 0.05)),
+      0 0 30px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
+      0 10px 28px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 52%, transparent);
   }
 
   .split-mode-button.is-selected span {
-    color: color-mix(in srgb, var(--submit-text, var(--green)) 42%, white);
+    color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 42%, white);
   }
 
   .split-mode-button.is-selected small {
-    color: color-mix(in srgb, var(--submit-text, var(--green)) 30%, rgba(232, 236, 233, 0.70));
+    color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 30%, rgba(232, 236, 233, 0.70));
+  }
+
+  .split-detail-area {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 20%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--submit-color, var(--green)) 8%, rgba(20, 24, 22, 0.46));
   }
 
   .split-amount-row input {
     border-color: var(--dark-hairline-strong);
     background: var(--dark-field);
     color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 16%, var(--dark-hairline-strong)),
+      0 0 22px -16px color-mix(in srgb, var(--family-color) 64%, transparent);
+  }
+
+  .split-amount-row input:focus {
+    border-color: color-mix(in srgb, var(--family-color) 42%, var(--dark-hairline-strong));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline-strong)),
+      0 0 0 3px color-mix(in srgb, var(--family-color) 14%, transparent),
+      0 0 32px -16px color-mix(in srgb, var(--family-color) 76%, transparent);
   }
 
   /* 设置/账本管理抽屉的粘性顶栏白渐变转暗 */
@@ -5426,17 +5718,17 @@ body.ledger-management-open .mobile-submit-bar {
   .primary-button {
     border-color: color-mix(in srgb, var(--submit-color, var(--green)) 32%, var(--dark-hairline));
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
-      var(--dark-highlight);
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.04)),
+      color-mix(in srgb, var(--submit-color, var(--green)) 14%, var(--dark-highlight));
   }
 
   /* 玻璃高光层去掉白色成分，避免暗底上发亮 */
   .primary-button::before {
     background:
       linear-gradient(135deg,
-        color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent),
-        color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent) 52%,
-        color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent)),
+        color-mix(in srgb, var(--submit-color, var(--green)) 44%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent)),
       linear-gradient(180deg, var(--dark-highlight), transparent 58%);
   }
 
@@ -5503,8 +5795,23 @@ body.ledger-management-open .mobile-submit-bar {
   .mobile-submit-bar.submit-themed {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 48px -20px var(--submit-glow),
+      0 0 66px -18px var(--submit-glow),
+      0 0 28px -14px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
       0 24px 70px rgba(0, 0, 0, 0.40);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"] {
+    border-color: rgba(232, 236, 233, 0.16);
+    background:
+      linear-gradient(135deg, rgba(232, 236, 233, 0.12), rgba(232, 236, 233, 0.05)),
+      rgba(20, 24, 22, 0.52);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 22px 62px rgba(0, 0, 0, 0.30);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {
+    color: rgba(232, 236, 233, 0.78);
   }
 
   /* 选中态 inset 白高光降档，主题色辉光保留 */
