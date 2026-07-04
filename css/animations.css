@@ -1,0 +1,784 @@
+@keyframes sync-dot-breathe {
+  0%, 100% {
+    opacity: 0.6;
+    filter: brightness(0.9);
+    transform: scale(0.95);
+  }
+
+  50% {
+    opacity: 1;
+    filter: brightness(1.2);
+    transform: scale(1.05);
+  }
+}
+
+/* sync-lamp-overshoot 定义在下方；同步完成灯效见 misc.css .is-just-synced */
+/* 同步完成：从呼吸态一次性“过冲”——快速冲亮冲大越过稳态，再回落常亮。
+   单段绽放曲线（无中途折点），亮度与体积同步过冲，收尾稳定为 brightness(1)/scale(1)。 */
+@keyframes sync-lamp-overshoot {
+  0% {
+    opacity: 0.72;
+    filter: brightness(0.92);
+    transform: scale(0.96);
+  }
+
+  38% {
+    opacity: 1;
+    filter: brightness(1.5);
+    transform: scale(1.22);
+  }
+
+  70% {
+    filter: brightness(0.98);
+    transform: scale(0.985);
+  }
+
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+@keyframes amount-input-soft-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.018);
+  }
+}
+
+@keyframes amount-shell-input-pop {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 18%, transparent),
+      0 0 48px -22px var(--selected-family-glow),
+      0 24px 70px rgba(22, 26, 30, 0.12);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 26%, transparent),
+      0 0 66px -20px var(--selected-family-glow),
+      0 30px 82px rgba(22, 26, 30, 0.14);
+  }
+}
+
+@keyframes split-scope-panel-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.992);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes split-scope-panel-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.992);
+  }
+}
+
+@keyframes split-scope-content-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  42% {
+    opacity: 0.78;
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes add-button-glow {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent),
+      0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
+      0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
+      0 18px 50px rgba(22, 26, 30, 0.10);
+  }
+
+  34% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent),
+      0 0 68px -16px var(--submit-glow, rgba(23, 108, 95, 0.38)),
+      0 0 34px -12px color-mix(in srgb, var(--submit-color, var(--green)) 36%, transparent),
+      0 20px 54px rgba(22, 26, 30, 0.11);
+  }
+
+  72% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 16%, transparent),
+      0 0 58px -17px var(--submit-glow, rgba(23, 108, 95, 0.34)),
+      0 0 26px -12px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
+      0 22px 58px rgba(22, 26, 30, 0.12);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent),
+      0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
+      0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
+      0 18px 50px rgba(22, 26, 30, 0.10);
+  }
+}
+
+@keyframes add-button-sheen {
+  0% {
+    opacity: 0;
+    transform: rotate(18deg) translateX(-30%);
+  }
+
+  34% {
+    opacity: 0.82;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(18deg) translateX(430%);
+  }
+}
+
+@keyframes ledger-token-float {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translate(-50%, calc(-50% + 6px));
+  }
+
+  16% {
+    opacity: 0.82;
+    filter: blur(0);
+    transform: translate(-50%, calc(-50% - 8px));
+  }
+
+  58% {
+    opacity: 0.58;
+    filter: blur(0.4px);
+    transform: translate(-50%, calc(-50% - 30px));
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translate(-50%, calc(-50% - 50px));
+  }
+}
+
+@keyframes total-absorb {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.36),
+      inset 18px 0 38px -34px var(--total-edge-left),
+      inset -18px 0 38px -34px var(--total-edge-right),
+      0 0 0 1px var(--total-edge-soft),
+      -20px 0 58px -34px var(--total-glow-left),
+      20px 0 58px -34px var(--total-glow-right),
+      0 24px 74px rgba(22, 26, 30, 0.12);
+  }
+
+  42% {
+    box-shadow:
+      inset 0 0 0 1px var(--absorb-color),
+      inset 0 1px 0 rgba(255, 255, 255, 0.40),
+      inset 18px 0 40px -34px var(--total-edge-left),
+      inset -18px 0 40px -34px var(--total-edge-right),
+      0 0 0 1px var(--total-edge-soft),
+      0 0 42px -28px var(--absorb-glow),
+      -20px 0 60px -34px var(--total-glow-left),
+      20px 0 60px -34px var(--total-glow-right),
+      0 24px 76px rgba(22, 26, 30, 0.12);
+  }
+}
+
+@keyframes total-edge-absorb-left {
+  0%,
+  100% {
+    opacity: 0.54;
+    transform: scaleY(1);
+  }
+
+  42% {
+    opacity: 0.64;
+    background: var(--absorb-glow);
+    transform: scaleY(1.12);
+  }
+}
+
+@keyframes total-edge-absorb-right {
+  0%,
+  100% {
+    opacity: 0.54;
+    transform: scaleY(1);
+  }
+
+  42% {
+    opacity: 0.64;
+    background: var(--absorb-glow);
+    transform: scaleY(1.12);
+  }
+}
+
+@keyframes total-number-soft-refresh {
+  0% {
+    opacity: 0.72;
+    filter: blur(8px);
+    transform: translateY(7px);
+  }
+
+  56% {
+    opacity: 0.94;
+    filter: blur(1px);
+    transform: translateY(-1px);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes metric-number-soft-refresh {
+  0% {
+    opacity: 0.62;
+    transform: translateY(5px);
+  }
+
+  58% {
+    opacity: 0.96;
+    transform: translateY(-1px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes choice-select-pop {
+  0% {
+    opacity: 0.88;
+    box-shadow:
+      0 0 0 color-mix(in srgb, currentColor 0%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /* 前段短暂压住光晕，让填充先亮；随后光晕用平滑绽放段跟上，与光同节奏 */
+  18% {
+    box-shadow:
+      0 0 0 color-mix(in srgb, currentColor 0%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    animation-timing-function: cubic-bezier(0.30, 0.60, 0.35, 1);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes category-choice-select-pop {
+  0% {
+    transform: none;
+    box-shadow:
+      0 0 0 color-mix(in srgb, currentColor 0%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  18% {
+    box-shadow:
+      0 0 0 color-mix(in srgb, currentColor 0%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    animation-timing-function: cubic-bezier(0.30, 0.60, 0.35, 1);
+  }
+
+  60% {
+    transform: none;
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+/* 调光器坡道：慢起步由 --lamp-on 缓动提供 */
+@keyframes choice-selected-fill {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* liquid-glass 点亮（仅付款人标签）：两条并行动画拆开填充与亮度。
+   填充 320ms 快速涌上（即时响应感）；亮度只有首尾两帧，
+   过冲完全由 y>1 的单段贝塞尔产生——冲过 100% 再回稳是同一条连续曲线，无折点 */
+@keyframes lamp-fill-quick {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes lamp-glow-settle {
+  0% {
+    filter: brightness(0.80) saturate(0.96);
+  }
+
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes family-lamp-overshoot {
+  0% {
+    opacity: 0.88;
+    filter: brightness(0.96) saturate(0.98);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 14%, rgba(255, 255, 255, 0.52)),
+      0 6px 16px -14px var(--family-soft),
+      0 0 16px -18px color-mix(in srgb, var(--family-color) 38%, transparent);
+    transform: scale(0.985);
+  }
+
+  42% {
+    opacity: 1;
+    filter: brightness(1.15) saturate(1.08);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 30%, rgba(255, 255, 255, 0.78)),
+      0 12px 30px -10px var(--family-soft),
+      0 0 48px -10px color-mix(in srgb, var(--family-color) 74%, transparent),
+      0 0 22px -8px color-mix(in srgb, var(--family-color) 38%, white);
+    transform: scale(1.045);
+  }
+
+  72% {
+    filter: brightness(0.99) saturate(1);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 18%, rgba(255, 255, 255, 0.64)),
+      0 8px 20px -13px var(--family-soft),
+      0 0 24px -16px color-mix(in srgb, var(--family-color) 58%, transparent);
+    transform: scale(0.996);
+  }
+
+  100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
+      0 8px 20px -12px var(--family-soft),
+      0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
+    transform: scale(1);
+  }
+}
+
+/* 付款人标签光晕：跟随白炽灯主体同步过冲，先扩散再收回稳态。 */
+@keyframes family-halo-overshoot {
+  0% {
+    opacity: 0;
+    filter: blur(10px) saturate(1.08) brightness(0.96);
+    transform: scale(0.94);
+  }
+
+  42% {
+    opacity: 0.94;
+    filter: blur(13px) saturate(1.28) brightness(1.14);
+    transform: scale(1.18);
+  }
+
+  72% {
+    opacity: 0.68;
+    filter: blur(11px) saturate(1.16) brightness(1.04);
+    transform: scale(0.99);
+  }
+
+  100% {
+    opacity: 0.72;
+    filter: blur(11px) saturate(1.18) brightness(1.08);
+    transform: scale(1);
+  }
+}
+
+/* 分类外光晕：前 30% 按兵不动，之后再点亮 */
+@keyframes category-halo-ignite {
+  0%, 30% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes category-halo-lamp-settle {
+  0% {
+    opacity: 0;
+    filter: brightness(0.96) saturate(1.04);
+    transform: scale(0.98);
+  }
+
+  46% {
+    opacity: 0.88;
+    filter: brightness(1.08) saturate(1.14);
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    transform: scale(1);
+  }
+}
+
+@keyframes choice-selected-release {
+  0% {
+    opacity: 1;
+  }
+
+  16% {
+    opacity: 0.62;
+  }
+
+  48% {
+    opacity: 0.18;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes choice-label-settle {
+  0% {
+    transform: translateY(1px);
+  }
+
+  66% {
+    transform: translateY(-1px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes choice-label-release {
+  0% {
+    transform: translateY(-1px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes family-label-select {
+  0% {
+    color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+    transform: translateY(1px);
+  }
+
+  45% {
+    /* 过渡到深色选中标签，不再经过白色；与亮度过冲峰值（约 35%-45%）对齐 */
+    color: color-mix(in srgb, var(--family-text) 82%, black);
+    transform: translateY(-1px);
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--family-text) 70%, black);
+    transform: translateY(0);
+  }
+}
+
+@keyframes family-label-release {
+  0% {
+    color: color-mix(in srgb, var(--family-text) 70%, black);
+    transform: translateY(-1px);
+  }
+
+  48% {
+    color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
+    transform: translateY(0);
+  }
+}
+
+@keyframes category-label-release {
+  0% {
+    color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.30);
+    transform: none;
+  }
+
+  34% {
+    color: color-mix(in srgb, var(--category-text) 74%, var(--ink));
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--category-text) 82%, var(--ink));
+    text-shadow: none;
+    transform: none;
+  }
+}
+
+@keyframes split-mode-label-select {
+  0% {
+    color: var(--ink);
+    transform: translateY(1px);
+  }
+
+  60% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 54%, var(--ink));
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 78%, var(--ink));
+    transform: translateY(0);
+  }
+}
+
+@keyframes split-mode-small-label-select {
+  0% {
+    color: var(--muted);
+    transform: translateY(1px);
+  }
+
+  60% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 40%, var(--muted));
+  }
+
+  100% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 62%, var(--muted));
+    transform: translateY(0);
+  }
+}
+
+@keyframes split-mode-label-release {
+  0% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 78%, var(--ink));
+    transform: translateY(-1px);
+  }
+
+  26% {
+    color: color-mix(in srgb, var(--submit-text, var(--green)) 38%, var(--ink));
+  }
+
+  100% {
+    color: var(--ink);
+    transform: translateY(0);
+  }
+}
+
+@keyframes choice-release-soft {
+  0% {
+    filter: saturate(1.08);
+  }
+
+  28% {
+    filter: saturate(1.02);
+  }
+
+  100% {
+    filter: saturate(1);
+  }
+}
+
+@keyframes element-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  58% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes element-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes ledger-collapse {
+  0% {
+    max-height: 280px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  44% {
+    opacity: 0.72;
+    transform: translateY(-3px);
+  }
+
+  100% {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ledger-item-drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  54% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(80px) scale(0.92);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes app-content-refresh {
+  0% {
+    opacity: 0.58;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes settings-backdrop-enter {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes confirm-dialog-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes settings-backdrop-exit {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes settings-drawer-enter {
+  0% {
+    opacity: 0;
+    transform: translateX(42px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes settings-drawer-exit {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+}
+
+@keyframes settings-drawer-enter-mobile {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes settings-drawer-exit-mobile {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}

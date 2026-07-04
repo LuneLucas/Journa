@@ -22,6 +22,7 @@ create table if not exists public.travel_expenses (
   split_mode text not null default 'all' check (split_mode in ('all', 'families', 'custom')),
   split_family_ids text[] not null default array[]::text[],
   split_amounts jsonb not null default '{}'::jsonb,
+  is_deleted boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -30,6 +31,7 @@ alter table public.travel_expenses
   add column if not exists split_mode text not null default 'all',
   add column if not exists split_family_ids text[] not null default array[]::text[],
   add column if not exists split_amounts jsonb not null default '{}'::jsonb,
+  add column if not exists is_deleted boolean not null default false,
   add column if not exists created_by jsonb,
   add column if not exists updated_by jsonb;
 
@@ -84,11 +86,13 @@ $$;
 
 drop function if exists public.update_travel_ledger_settings(text, text[], jsonb);
 drop function if exists public.update_travel_ledger_settings(text, text[], jsonb, text);
+drop function if exists public.update_travel_ledger_settings(text, text[], jsonb, text, timestamptz);
 create function public.update_travel_ledger_settings(
   p_share_token text,
   p_categories text[],
   p_family_members jsonb,
-  p_name text
+  p_name text,
+  p_updated_at timestamptz default null
 )
 returns jsonb
 language plpgsql
@@ -103,12 +107,15 @@ begin
     name = coalesce(nullif(trim(p_name), ''), name),
     categories = p_categories,
     family_members = p_family_members,
-    updated_at = now()
-  where share_token = p_share_token
+    updated_at = coalesce(p_updated_at, now())
+  where share_token = p_share_token and (p_updated_at is null or updated_at < p_updated_at)
   returning * into ledger_row;
 
   if not found then
-    raise exception 'Ledger not found' using errcode = 'P0002';
+    select * into ledger_row from public.travel_ledgers where share_token = p_share_token;
+    if not found then
+      raise exception 'Ledger not found' using errcode = 'P0002';
+    end if;
   end if;
 
   return to_jsonb(ledger_row);
@@ -129,13 +136,15 @@ as $$
     p_share_token,
     p_categories,
     p_family_members,
-    null
+    null::text,
+    null::timestamptz
   );
 $$;
 
 drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date);
 drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb);
 drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb);
+drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb, boolean, timestamptz);
 create function public.save_travel_expense(
   p_share_token text,
   p_id uuid,
@@ -148,7 +157,9 @@ create function public.save_travel_expense(
   p_split_family_ids text[],
   p_split_amounts jsonb,
   p_created_by jsonb,
-  p_updated_by jsonb
+  p_updated_by jsonb,
+  p_is_deleted boolean default false,
+  p_updated_at timestamptz default null
 )
 returns jsonb
 language plpgsql
@@ -177,7 +188,7 @@ begin
   end if;
 
   insert into public.travel_expenses (
-    id, ledger_id, amount, payer_id, category, note, expense_date, split_mode, split_family_ids, split_amounts, created_by, updated_by, updated_at
+    id, ledger_id, amount, payer_id, category, note, expense_date, split_mode, split_family_ids, split_amounts, created_by, updated_by, is_deleted, updated_at
   ) values (
     p_id,
     ledger_row.id,
@@ -191,7 +202,8 @@ begin
     coalesce(p_split_amounts, '{}'::jsonb),
     p_created_by,
     p_updated_by,
-    now()
+    coalesce(p_is_deleted, false),
+    coalesce(p_updated_at, now())
   )
   on conflict (id) do update set
     amount = excluded.amount,
@@ -204,15 +216,20 @@ begin
     split_amounts = excluded.split_amounts,
     created_by = coalesce(public.travel_expenses.created_by, excluded.created_by),
     updated_by = excluded.updated_by,
-    updated_at = now()
+    is_deleted = excluded.is_deleted,
+    updated_at = excluded.updated_at
   where public.travel_expenses.ledger_id = ledger_row.id
+    and (p_updated_at is null or public.travel_expenses.updated_at < excluded.updated_at)
   returning * into expense_row;
 
   if expense_row.id is null then
-    raise exception 'Expense id conflict' using errcode = '23505';
+    select * into expense_row from public.travel_expenses where id = p_id;
+    if expense_row.id is null then
+      raise exception 'Expense id conflict' using errcode = '23505';
+    end if;
+  else
+    update public.travel_ledgers set updated_at = now() where id = ledger_row.id;
   end if;
-
-  update public.travel_ledgers set updated_at = now() where id = ledger_row.id;
 
   return to_jsonb(expense_row);
 end;
@@ -246,8 +263,10 @@ as $$
     p_split_mode,
     p_split_family_ids,
     p_split_amounts,
-    null,
-    null
+    null::jsonb,
+    null::jsonb,
+    false,
+    null::timestamptz
   );
 $$;
 
@@ -276,8 +295,10 @@ as $$
     'all',
     array[]::text[],
     '{}'::jsonb,
-    null,
-    null
+    null::jsonb,
+    null::jsonb,
+    false,
+    null::timestamptz
   );
 $$;
 
@@ -299,7 +320,10 @@ begin
     raise exception 'Ledger not found' using errcode = 'P0002';
   end if;
 
-  delete from public.travel_expenses where id = p_id and ledger_id = ledger_row.id;
+  update public.travel_expenses 
+  set is_deleted = true, updated_at = now() 
+  where id = p_id and ledger_id = ledger_row.id;
+  
   update public.travel_ledgers set updated_at = now() where id = ledger_row.id;
 end;
 $$;
@@ -327,9 +351,9 @@ $$;
 grant execute on function public.create_travel_ledger() to anon, authenticated;
 grant execute on function public.get_travel_ledger(text) to anon, authenticated;
 grant execute on function public.update_travel_ledger_settings(text, text[], jsonb) to anon, authenticated;
-grant execute on function public.update_travel_ledger_settings(text, text[], jsonb, text) to anon, authenticated;
+grant execute on function public.update_travel_ledger_settings(text, text[], jsonb, text, timestamptz) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb) to anon, authenticated;
-grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb, boolean, timestamptz) to anon, authenticated;
 grant execute on function public.delete_travel_expense(text, uuid) to anon, authenticated;
 grant execute on function public.clear_travel_ledger(text) to anon, authenticated;

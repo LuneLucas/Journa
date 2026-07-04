@@ -17,6 +17,8 @@ const MOTION_DELAYS = {
   splitSwitch: 260,
   mobilePanelOut: 150,
   mobilePanelIn: 280,
+  mobilePanelIndicator: 560,
+  barMorph: 800,
   addCelebrate: 1560,
   totalAbsorb: 1320,
   toast: 2600,
@@ -181,6 +183,8 @@ let settingsCloseTimer = 0;
 let ledgerManagementCloseTimer = 0;
 let ledgerSwitchTimer = 0;
 let mobilePanelSwitchTimer = 0;
+let mobilePanelIndicatorTimer = 0;
+let barMorphTimer = 0;
 let editReturnState = null;
 let editFormSnapshot = null;
 let totalAmountText = "";
@@ -416,6 +420,8 @@ function normalizeExpense(expense) {
     splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitMode === "families" ? defaultFamilies.map((family) => family.id) : []),
     splitAmounts: normalizeSplitAmounts(expense.splitAmounts),
     syncState: normalizeExpenseSyncState(expense.syncState),
+    isDeleted: Boolean(expense.isDeleted),
+    updatedAt: expense.updatedAt || new Date().toISOString(),
   };
 }
 
@@ -433,6 +439,10 @@ function isValidExpense(expense) {
     typeof expense.category === "string" &&
     typeof expense.date === "string"
   );
+}
+
+function getActiveExpenses(expenses = state.expenses) {
+  return (Array.isArray(expenses) ? expenses : []).filter((expense) => !expense.isDeleted);
 }
 
 function saveState() {
@@ -514,6 +524,7 @@ function normalizeRemotePayload(payload) {
     families: normalizeFamilies(ledger.families || defaultFamilies),
     familyMembers: normalizeFamilyMembers(familyMembers),
     categories: normalizeCategories([...categories, ...expenses.map((expense) => expense.category)]),
+    updatedAt: ledger.updated_at || new Date().toISOString(),
     expenses: expenses
       .map((expense) => ({
         id: String(expense.id),
@@ -526,6 +537,8 @@ function normalizeRemotePayload(payload) {
         splitFamilyIds: normalizeSplitFamilyIds(expense.split_family_ids),
         splitAmounts: normalizeSplitAmounts(expense.split_amounts),
         syncState: "synced",
+        isDeleted: Boolean(expense.is_deleted),
+        updatedAt: expense.updated_at || new Date().toISOString(),
       }))
       .filter(isValidExpense),
     activeDate: state.activeDate || todayIso(),
@@ -553,12 +566,34 @@ async function pullCloudLedger({ announce = false } = {}) {
   try {
     const payload = await supabaseRpc("get_travel_ledger", { p_share_token: cloudState.shareToken });
     const remote = normalizeRemotePayload(payload);
-    // 本地还没推上云的账单不能被拉取覆盖：合并进来，稍后重推
-    const unsyncedExpenses = state.expenses.filter((expense) => ["pending", "failed"].includes(normalizeExpenseSyncState(expense.syncState)));
-    if (unsyncedExpenses.length) {
-      const unsyncedIds = new Set(unsyncedExpenses.map((expense) => expense.id));
-      remote.expenses = [...remote.expenses.filter((expense) => !unsyncedIds.has(expense.id)), ...unsyncedExpenses];
+
+    // LWW Merge for settings
+    if (state.updatedAt && remote.updatedAt < state.updatedAt) {
+      remote.name = state.name;
+      remote.families = state.families;
+      remote.familyMembers = state.familyMembers;
+      remote.categories = state.categories;
+      remote.updatedAt = state.updatedAt;
     }
+
+    // LWW Merge for expenses
+    const localExpensesMap = new Map(state.expenses.map((e) => [e.id, e]));
+    const mergedExpenses = remote.expenses.map((remoteExpense) => {
+      const localExpense = localExpensesMap.get(remoteExpense.id);
+      if (localExpense && localExpense.updatedAt > remoteExpense.updatedAt) {
+        return localExpense; // Local is newer
+      }
+      localExpensesMap.delete(remoteExpense.id);
+      return remoteExpense; // Remote is newer or equal
+    });
+
+    for (const localExpense of localExpensesMap.values()) {
+      if (["pending", "failed"].includes(normalizeExpenseSyncState(localExpense.syncState))) {
+        mergedExpenses.push(localExpense);
+      }
+    }
+
+    remote.expenses = mergedExpenses;
     replaceActiveLedger({
       ...state,
       ...remote,
@@ -661,6 +696,7 @@ function setLedgerTokenHash(url, shareToken) {
 }
 
 function queueCloudSettingsSync() {
+  state.updatedAt = new Date().toISOString();
   if (!isCloudLedgerActive()) return;
   window.clearTimeout(pendingSettingsSync);
   pendingSettingsSync = window.setTimeout(() => {
@@ -676,6 +712,7 @@ async function syncCloudSettingsNow() {
     p_share_token: cloudState.shareToken,
     p_categories: state.categories,
     p_family_members: state.familyMembers,
+    p_updated_at: state.updatedAt,
   };
   const namePayload = {
     ...basePayload,
@@ -711,6 +748,8 @@ async function syncCloudExpense(expense) {
     p_split_mode: normalizeSplitMode(expense.splitMode),
     p_split_family_ids: normalizeSplitFamilyIds(expense.splitFamilyIds),
     p_split_amounts: normalizeSplitAmounts(expense.splitAmounts),
+    p_is_deleted: Boolean(expense.isDeleted),
+    p_updated_at: expense.updatedAt,
   };
 
   try {
@@ -802,11 +841,11 @@ function playSyncLampIgnite() {
   elements.syncStatus.classList.remove("is-just-synced");
   void elements.syncStatus.offsetWidth;
   elements.syncStatus.classList.add("is-just-synced");
-  /* 1250ms > sync-lamp-ignite 1150ms，动画播完后再摘类 */
+  /* 820ms > sync-lamp-overshoot 720ms，动画播完后再摘类，随后灯保持常亮 */
   syncLampTimer = window.setTimeout(() => {
     elements.syncStatus.classList.remove("is-just-synced");
     syncLampTimer = 0;
-  }, 1250);
+  }, 820);
 }
 
 function formatMoney(cents) {
@@ -1061,8 +1100,45 @@ function setMobilePanel(panel, options = {}) {
   const shouldAnimate = changed && options.animate && !prefersReducedMotion();
 
   window.clearTimeout(mobilePanelSwitchTimer);
+  window.clearTimeout(mobilePanelIndicatorTimer);
+  window.clearTimeout(barMorphTimer);
   elements.ledgerView.classList.remove("is-mobile-panel-switching-out", "is-mobile-panel-switching-in");
   elements.ledgerView.dataset.switchDirection = nextPanel === "data" ? "forward" : "backward";
+
+  /* liquid-glass indicator slide — cleared after keyframes complete */
+  elements.mobilePanelSwitch?.classList.remove("is-indicator-forward", "is-indicator-backward");
+
+  /*
+   * Slide the pill immediately on tap so it stays glued to the finger, rather
+   * than waiting out the 150ms panel-fade before moving (that delay read as lag).
+   */
+  if (shouldAnimate && elements.mobilePanelSwitch) {
+    // force reflow so re-adding the class retriggers the keyframes
+    void elements.mobilePanelSwitch.offsetWidth;
+    elements.mobilePanelSwitch.classList.add(nextPanel === "data" ? "is-indicator-forward" : "is-indicator-backward");
+    mobilePanelIndicatorTimer = window.setTimeout(() => {
+      elements.mobilePanelSwitch.classList.remove("is-indicator-forward", "is-indicator-backward");
+      mobilePanelIndicatorTimer = 0;
+    }, MOTION_DELAYS.mobilePanelIndicator);
+  }
+
+  /*
+   * Morph the submit bar immediately on tap (in parallel with the panel fade),
+   * not after the 150ms out-phase — the dead time before it moved read as lag.
+   * Toggling the body mode class here starts the geometry transition right away;
+   * renderMobilePanelState() re-applies it idempotently at commit.
+   */
+  elements.mobileSubmitBar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
+  if (shouldAnimate) {
+    document.body.classList.toggle("mobile-panel-entry", nextPanel === "entry");
+    document.body.classList.toggle("mobile-panel-data", nextPanel === "data");
+    void elements.mobileSubmitBar.offsetWidth;
+    elements.mobileSubmitBar.classList.add(nextPanel === "data" ? "is-bar-morphing-to-data" : "is-bar-morphing-to-entry");
+    barMorphTimer = window.setTimeout(() => {
+      elements.mobileSubmitBar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
+      barMorphTimer = 0;
+    }, MOTION_DELAYS.barMorph);
+  }
 
   const scrollToPanel = () => {
     if (!options.scroll) return;
@@ -1078,6 +1154,9 @@ function setMobilePanel(panel, options = {}) {
     scrollToPanel();
 
     if (!shouldAnimate) return;
+
+    /* bar morph already started on tap (see setMobilePanel top) */
+
     elements.ledgerView.classList.remove("is-mobile-panel-switching-out");
     elements.ledgerView.classList.add("is-mobile-panel-switching-in");
     mobilePanelSwitchTimer = window.setTimeout(() => {
@@ -1547,7 +1626,7 @@ function renderLedgerManagerItem(ledger) {
 }
 
 function calculateLedgerSummary(ledger) {
-  const expenses = Array.isArray(ledger.expenses) ? ledger.expenses : [];
+  const expenses = getActiveExpenses(Array.isArray(ledger.expenses) ? ledger.expenses : []);
   return {
     expenseCount: expenses.length,
     totalCents: expenses.reduce((sum, expense) => sum + expenseToCents(expense), 0),
@@ -1873,6 +1952,7 @@ function getVisibleExpenses() {
 }
 
 function isExpenseVisible(expense) {
+  if (expense.isDeleted) return false;
   return (!state.ledgerFamilyFilter || expense.payerId === state.ledgerFamilyFilter) && (!state.ledgerCategoryFilter || expense.category === state.ledgerCategoryFilter);
 }
 
@@ -2121,6 +2201,8 @@ function handleExpenseSubmit(event) {
     splitFamilyIds: splitDetails.splitFamilyIds,
     splitAmounts: splitDetails.splitAmounts,
     syncState: isCloudLedgerActive() ? "pending" : "synced",
+    isDeleted: false,
+    updatedAt: new Date().toISOString(),
   };
 
   if (wasEditing) {
@@ -2620,9 +2702,9 @@ function playLedgerTransitionRects(rects) {
 }
 
 function deleteExpense(expenseId, item) {
-  const expenseIndex = state.expenses.findIndex((expense) => expense.id === expenseId);
-  if (expenseIndex < 0) return;
-  const [deletedExpense] = state.expenses.slice(expenseIndex, expenseIndex + 1);
+  const expense = state.expenses.find((expense) => expense.id === expenseId);
+  if (!expense) return;
+
   if (expandedExpenseId === expenseId) expandedExpenseId = "";
   item?.classList.add("is-removing");
   const button = item?.querySelector("[data-delete-id]");
@@ -2630,10 +2712,10 @@ function deleteExpense(expenseId, item) {
 
   const delay = getCssDurationMs("--motion", 240) + 40;
   window.setTimeout(() => {
-    state.expenses = state.expenses.filter((expense) => expense.id !== expenseId);
-    deleteCloudExpense(expenseId).catch(() => {
-      showToast({ message: "云端删除失败，本地已删除" });
-    });
+    expense.isDeleted = true;
+    expense.updatedAt = new Date().toISOString();
+    syncCloudExpenseWithState(expenseId, { silent: true }).catch(() => {});
+
     if (editingExpenseId === expenseId) cancelEdit();
     smoothContainerResize(elements.ledgerSection, () => {
       render({ animateFinancialChanges: true });
@@ -2642,30 +2724,29 @@ function deleteExpense(expenseId, item) {
       message: "已删除账单",
       actionLabel: "撤销",
       onAction: () => {
-        state.expenses.splice(Math.min(expenseIndex, state.expenses.length), 0, deletedExpense);
+        expense.isDeleted = false;
+        expense.updatedAt = new Date().toISOString();
         smoothContainerResize(elements.ledgerSection, () => {
           render({ animateFinancialChanges: true });
         });
-        syncCloudExpense(deletedExpense).catch(() => {
-          showToast({ message: "云端撤销失败，本地已恢复" });
-        });
+        syncCloudExpenseWithState(expenseId, { silent: true }).catch(() => {});
       },
     });
   }, delay);
 }
 
 async function handleClearLedger() {
-  if (!state.expenses.length) return;
+  const activeExpenses = getActiveExpenses();
+  if (!activeExpenses.length) return;
   const confirmed = await showConfirmDialog({
     eyebrow: "清空账本",
     title: "清空当前账本？",
-    message: `会删除“${state.name}”里的 ${state.expenses.length} 笔账单，本地会先保留撤销入口。`,
+    message: `会删除“${state.name}”里的 ${activeExpenses.length} 笔账单，本地会先保留撤销入口。`,
     confirmLabel: "清空",
     danger: true,
   });
   if (!confirmed) return;
 
-  const deletedExpenses = [...state.expenses];
   expandedExpenseId = "";
   const previousDate = state.activeDate;
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
@@ -2675,14 +2756,17 @@ async function handleClearLedger() {
 
   window.setTimeout(
     () => {
-      state.expenses = [];
+      const now = new Date().toISOString();
+      activeExpenses.forEach(e => {
+        e.isDeleted = true;
+        e.updatedAt = now;
+        syncCloudExpenseWithState(e.id, { silent: true }).catch(() => {});
+      });
       state.activeDate = todayIso();
       editingExpenseId = "";
       editReturnState = null;
       editFormSnapshot = null;
-      clearCloudLedger().catch(() => {
-        showToast({ message: "云端清空失败，本地已清空" });
-      });
+
       smoothContainerResize(elements.ledgerSection, () => {
         render({ animateFinancialChanges: true });
       });
@@ -2690,13 +2774,15 @@ async function handleClearLedger() {
         message: "已清空账本",
         actionLabel: "撤销",
         onAction: () => {
-          state.expenses = deletedExpenses;
+          const undoNow = new Date().toISOString();
+          activeExpenses.forEach(e => {
+            e.isDeleted = false;
+            e.updatedAt = undoNow;
+            syncCloudExpenseWithState(e.id, { silent: true }).catch(() => {});
+          });
           state.activeDate = previousDate;
           smoothContainerResize(elements.ledgerSection, () => {
             render({ animateFinancialChanges: true });
-          });
-          syncAllLocalDataToCloud().catch(() => {
-            showToast({ message: "云端撤销失败，本地已恢复" });
           });
         },
       });

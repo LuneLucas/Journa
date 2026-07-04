@@ -1,0 +1,183 @@
+/* 抽屉滚到边缘不把惯性传给底下的页面 */
+.settings-drawer,
+.ledger-management-drawer {
+  overscroll-behavior: contain;
+}
+
+/* 抽屉等内部滚动容器的细滚动条（仅 WebKit） */
+.settings-drawer::-webkit-scrollbar,
+.ledger-management-drawer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-drawer::-webkit-scrollbar-thumb,
+.ledger-management-drawer::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: rgba(91, 98, 95, 0.28); /* --muted 低透明 */
+}
+
+.settings-drawer::-webkit-scrollbar-track,
+.ledger-management-drawer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-view {
+  position: fixed;
+  z-index: var(--z-settings);
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+}
+
+.settings-view[hidden] {
+  display: none;
+}
+
+.ledger-management-view {
+  position: fixed;
+  z-index: var(--z-ledger-management);
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(520px, 760px);
+}
+
+.ledger-management-view[hidden] {
+  display: none;
+}
+
+.confirm-view {
+  position: fixed;
+  z-index: var(--z-confirm);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.confirm-view[hidden] {
+  display: none;
+}
+
+/* 遮罩是真正悬浮在滚动内容之上的层，玻璃只留在这里与提交栏/toast */
+.settings-backdrop,
+.ledger-management-backdrop,
+.confirm-backdrop {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.settings-backdrop {
+  min-height: 100%;
+  border: 0;
+  background: rgba(22, 26, 30, 0.18);
+  animation: settings-backdrop-enter var(--motion-fast) var(--settle) both;
+}
+
+.ledger-management-backdrop {
+  min-height: 100%;
+  border: 0;
+  background: rgba(22, 26, 30, 0.20);
+  animation: settings-backdrop-enter var(--motion-fast) var(--settle) both;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  min-height: 100%;
+  border: 0;
+  background: rgba(22, 26, 30, 0.22);
+  animation: settings-backdrop-enter var(--motion-fast) var(--settle) both;
+}
+
+.ledger-management-drawer {
+  overflow: auto;
+  height: 100dvh;
+  padding: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.74)),
+    rgba(247, 249, 248, 0.95);
+  box-shadow: -24px 0 80px rgba(22, 26, 30, 0.17);
+  animation: settings-drawer-enter var(--motion) var(--spring) both;
+}
+
+.settings-view.is-closing .settings-backdrop {
+  animation: settings-backdrop-exit var(--motion-fast) var(--settle) both;
+}
+
+.ledger-management-view.is-closing .ledger-management-backdrop {
+  animation: settings-backdrop-exit var(--motion-fast) var(--settle) both;
+}
+
+.settings-view.is-closing .settings-drawer {
+  animation: settings-drawer-exit var(--motion) var(--settle) both;
+}
+
+.ledger-management-view.is-closing .ledger-management-drawer {
+  animation: settings-drawer-exit var(--motion) var(--settle) both;
+}
+
+body.settings-open,
+body.ledger-management-open {
+  overflow: hidden;
+}
+
+body.settings-open .mobile-submit-bar,
+body.ledger-management-open .mobile-submit-bar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px);
+}
+
+.settings-hero,
+.settings-panel,
+.ledger-management-hero,
+.ledger-management-tools,
+.ledger-manager-card {
+  border: 1px solid var(--line);
+  /* 抽屉内面板坐在近实底抽屉上，玻璃不可见，改实底（--surface）省性能 */
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.settings-hero,
+.ledger-management-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-radius: var(--radius-xl);
+  margin-bottom: 18px;
+  padding: 24px;
+}
+
+.settings-hero h2,
+.ledger-management-hero h2 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.ledger-management-tools {
+  display: grid;
+  gap: 12px;
+  border-radius: var(--radius-xl);
+  margin-bottom: 14px;
+  padding: 18px;
+}
+
+/* 老 WebView 不支持 backdrop-filter：玻璃层回退为实底 + 普通投影 */
+@supports not (backdrop-filter: blur(1px)) {
+  .mobile-submit-bar {
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-md);
+  }
+
+  .toast {
+    background: rgba(22, 26, 30, 0.92);
+  }
+
+  .settings-backdrop,
+  .ledger-management-backdrop,
+  .confirm-backdrop {
+    background: rgba(22, 26, 30, 0.34);
+  }
+}
