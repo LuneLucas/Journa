@@ -179,6 +179,9 @@ let editReturnState = null;
 let editFormSnapshot = null;
 let totalAmountText = "";
 let totalAmountSwapTimer = 0;
+let hasPlayedInitialTotalReveal = false;
+let totalRevealFrameId = 0;
+let totalRevealTargetText = "";
 let cloudState = loadCloudState();
 let cloudBusy = false;
 let cloudReady = false;
@@ -555,7 +558,7 @@ async function pullCloudLedger({ announce = false } = {}) {
     cloudReady = true;
     cloudState.lastPulledAt = new Date().toISOString();
     saveCloudState();
-    render({ skipCloudSave: true, animateFinancialChanges: announce });
+    render({ skipCloudSave: true, animateFinancialChanges: announce && hasPlayedInitialTotalReveal });
     if (announce) showToast({ message: "已同步云账本" });
     if (unsyncedExpenses.length) syncPendingCloudExpenses({ silent: true }).catch(() => {});
     return true;
@@ -1228,7 +1231,8 @@ function updateSplitScopePanelState() {
   }
 
   panel.classList.add("is-closing");
-  const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--motion-fast", 401) + 80;
+  // 等高度动画（--motion）跑完再真正 hidden，避免中途整块消失
+  const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 80;
 
   window.clearTimeout(splitScopeCloseTimer);
   splitScopeCloseTimer = window.setTimeout(() => {
@@ -1446,10 +1450,16 @@ function formatUpdatedAt(value) {
   }).format(date);
 }
 
-function renderTotalAmount(nextText, shouldAnimate) {
+function renderTotalAmount(nextText, shouldAnimate, options = {}) {
+  if (options.revealOnEntry) {
+    playInitialTotalReveal(nextText);
+    return;
+  }
+
   const previousText = totalAmountText || elements.totalAmount.textContent || nextText;
   totalAmountText = nextText;
   window.clearTimeout(totalAmountSwapTimer);
+  cancelInitialTotalReveal();
 
   if (!shouldAnimate || previousText === nextText || prefersReducedMotion()) {
     elements.totalAmount.classList.remove("is-soft-refresh");
@@ -1466,6 +1476,79 @@ function renderTotalAmount(nextText, shouldAnimate) {
     elements.totalAmount.classList.remove("is-soft-refresh");
     elements.totalAmount.textContent = totalAmountText;
   }, getCssDurationMs("--number-swap-motion", 980) + 60);
+}
+
+function revealInitialTotalAmount() {
+  renderTotalAmount(formatMoney(calculateSummary().totalCents), false, { revealOnEntry: true });
+}
+
+function playInitialTotalReveal(targetText) {
+  if (hasPlayedInitialTotalReveal) {
+    elements.totalAmount.textContent = targetText;
+    totalAmountText = targetText;
+    return;
+  }
+
+  hasPlayedInitialTotalReveal = true;
+  totalRevealTargetText = targetText;
+  totalAmountText = targetText;
+  window.clearTimeout(totalAmountSwapTimer);
+  cancelInitialTotalReveal();
+  elements.totalAmount.classList.remove("is-soft-refresh");
+
+  if (prefersReducedMotion()) {
+    elements.totalAmount.classList.remove("is-scrambling");
+    elements.totalAmount.textContent = targetText;
+    return;
+  }
+
+  const glyphs = "0123456789¥#%*&@";
+  const duration = 1200;
+  const introDelay = 120;
+  const stagger = 75;
+  const growEvery = 110;
+  const holdWindow = Math.max(120, duration - stagger * Math.max(targetText.length - 1, 0));
+  const startedAt = window.performance.now() + introDelay;
+  const targetChars = [...targetText];
+
+  elements.totalAmount.classList.add("is-scrambling");
+  elements.totalAmount.textContent = targetChars[0] || "";
+
+  const renderFrame = (now) => {
+    const elapsed = Math.max(0, now - startedAt);
+    const visibleLength = Math.min(targetChars.length, Math.max(1, Math.floor(elapsed / growEvery) + 1));
+    const nextText = targetChars
+      .slice(0, visibleLength)
+      .map((char, index) => {
+        if (char === "," || char === "." || char === "¥") return char;
+        const progress = Math.min(1, Math.max(0, (elapsed - index * stagger) / holdWindow));
+        if (progress >= 1) return char;
+        const glyphIndex = Math.floor((elapsed / 42 + index * 5) % glyphs.length);
+        return glyphs[glyphIndex];
+      })
+      .join("");
+
+    elements.totalAmount.textContent = nextText;
+
+    if (elapsed < duration && totalRevealTargetText === targetText) {
+      totalRevealFrameId = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    elements.totalAmount.textContent = targetText;
+    elements.totalAmount.classList.remove("is-scrambling");
+    totalRevealFrameId = 0;
+  };
+
+  totalRevealFrameId = window.requestAnimationFrame(renderFrame);
+}
+
+function cancelInitialTotalReveal() {
+  if (totalRevealFrameId) {
+    window.cancelAnimationFrame(totalRevealFrameId);
+    totalRevealFrameId = 0;
+  }
+  elements.totalAmount.classList.remove("is-scrambling");
 }
 
 function renderSoftText(element, nextText, shouldAnimate = false) {
@@ -2049,39 +2132,68 @@ function handleSplitScopeClick(event) {
     markSplitFamilyActivating(familyId);
     activeSplitFamilyIds = [...activeSplitFamilyIds, familyId];
   }
-  smoothSplitScopeResize(renderSplitScope);
+  // 勾选家庭不改变面板高度，直接增量渲染，跳过测量流程（否则会闪一帧）
+  renderSplitScope();
   applyChoiceStateClass("[data-split-family]", "data-split-family", familyId, activeSplitFamilyIds.includes(familyId) ? "is-activating" : "is-deactivating");
   renderMobileSubmitBar();
 }
 
+// 高度动画直接做在面板自己身上：面板逐帧变高/变矮，
+// 下方的日期/备注/提交按钮随布局自然跟随，不会瞬移。
 function smoothSplitScopeResize(update) {
+  const panel = elements.splitScopePanel;
   const restoreSplitAnchor = createSplitScopeAnchorRestorer();
 
-  if (!elements.entryPanel || prefersReducedMotion()) {
+  if (!panel || prefersReducedMotion()) {
     update();
     restoreSplitAnchor();
     return;
   }
 
-  smoothContainerResize(
-    elements.entryPanel,
-    () => {
-      elements.entryPanel.classList.add("is-measuring-split");
-      update();
-      restoreSplitAnchor();
-      window.requestAnimationFrame(() => {
-        elements.entryPanel.classList.remove("is-measuring-split");
-        restoreSplitAnchor();
-      });
-    },
-    () => {},
-    { clipDuringResize: false }
-  );
+  const readBox = () => {
+    if (panel.hidden) return { height: 0, marginTop: 0, paddingTop: 0, paddingBottom: 0 };
+    const style = getComputedStyle(panel);
+    return {
+      height: panel.getBoundingClientRect().height,
+      marginTop: Number.parseFloat(style.marginTop) || 0,
+      paddingTop: Number.parseFloat(style.paddingTop) || 0,
+      paddingBottom: Number.parseFloat(style.paddingBottom) || 0,
+    };
+  };
 
-  window.requestAnimationFrame(() => {
+  const from = readBox();
+  update();
+  panel._panelResizeAnimation?.cancel();
+  // 收起的目标是 0（面板随后才真正 hidden），展开/切换量实际布局
+  const to = splitScopeOpen ? readBox() : { height: 0, marginTop: 0, paddingTop: 0, paddingBottom: 0 };
+
+  if (Math.abs(from.height - to.height) < 1) {
     restoreSplitAnchor();
-    window.requestAnimationFrame(restoreSplitAnchor);
+    return;
+  }
+
+  panel.style.overflow = "hidden";
+  const duration = getCssDurationMs("--motion", 534);
+  const easing = getComputedStyle(document.documentElement).getPropertyValue("--settle").trim() || "cubic-bezier(0.16, 0.9, 0.14, 1)";
+  const toKeyframe = (box) => ({
+    height: `${box.height}px`,
+    marginTop: `${box.marginTop}px`,
+    paddingTop: `${box.paddingTop}px`,
+    paddingBottom: `${box.paddingBottom}px`,
   });
+  const animation = panel.animate([toKeyframe(from), toKeyframe(to)], { duration, easing, fill: "both" });
+  panel._panelResizeAnimation = animation;
+  animation.addEventListener(
+    "finish",
+    () => {
+      if (panel._panelResizeAnimation !== animation) return;
+      animation.cancel();
+      panel.style.removeProperty("overflow");
+      panel._panelResizeAnimation = null;
+    },
+    { once: true },
+  );
+  restoreSplitAnchor();
 }
 
 function createSplitScopeAnchorRestorer() {
@@ -3572,8 +3684,15 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-render();
-pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
+async function bootstrap() {
+  render();
+  if (isCloudLedgerActive()) {
+    await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
+  }
+  revealInitialTotalAmount();
+}
+
+bootstrap();
 
 // 屏幕键盘弹出标记：body 加 keyboard-open 后 CSS 隐藏移动端固定提交栏，
 // 避免悬在键盘上方挡住表单。优先用 visualViewport 的实际高度收缩判断

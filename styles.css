@@ -71,7 +71,7 @@
   --total-edge-left: rgba(169, 206, 181, 0.36);
   --total-edge-right: rgba(239, 194, 191, 0.36);
   --total-edge-soft: rgba(204, 197, 181, 0.22);
-  --total-text-color: #25302d;
+  --total-text-color: rgba(37, 48, 45, 0.86);
   --total-label-color: rgba(37, 48, 45, 0.72); /* 对比度 ≥ 4.5:1 */
   --category-bg: #e5e2d8;
   --category-text: #696252;
@@ -100,8 +100,10 @@
     system-ui,
     "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-number:
-    "Google Sans",
-    var(--font-body);
+    "SF Mono",
+    "SFMono-Regular",
+    ui-monospace,
+    Menlo, Consolas, "Liberation Mono", monospace;
   --font-number-features: "tnum" 1;
   /* 统一视觉语言：圆角、控件、色彩语义 token 集中管理。 */
   --brand-primary: var(--green);
@@ -538,6 +540,13 @@ h3 {
   animation: total-number-soft-refresh var(--number-swap-motion) var(--settle) both;
 }
 
+.metric.primary strong.is-scrambling {
+  opacity: 0.92;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 12px 28px rgba(45, 74, 66, 0.07);
+}
+
 .metric:not(.primary) strong.is-soft-refresh,
 .current-ledger-summary strong.is-soft-refresh,
 .ledger-card-stats strong.is-soft-refresh {
@@ -963,6 +972,9 @@ input[type="date"]:focus {
 
 .amount-label {
   position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(96px, 1fr);
+  align-items: stretch;
   overflow: hidden;
   gap: 7px;
   padding: 18px;
@@ -1086,7 +1098,7 @@ input[type="date"]:focus {
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 82px;
+  min-height: 96px;
   transform-origin: center;
   z-index: 1;
 }
@@ -1286,37 +1298,15 @@ input[type="date"]:focus {
   align-items: start;
 }
 
-.entry-panel.is-measuring-split .split-scope-panel {
-  animation: none !important;
-}
-
-.entry-panel.is-measuring-split .split-scope-panel.is-open {
-  max-height: none;
-  margin-top: var(--split-panel-offset);
-  opacity: 1;
-  padding-top: var(--split-panel-padding);
-  padding-bottom: var(--split-panel-padding);
-}
-
-.entry-panel.is-measuring-split .split-scope-panel.is-closing {
-  max-height: 0;
-  margin-top: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
 .split-scope-panel.is-open {
   animation: split-scope-panel-in 240ms var(--settle) both;
 }
 
+/* 收起只负责淡出：box 的收缩由 JS 高度动画驱动（smoothSplitScopeResize），
+   这里再归零 max-height/padding 会让面板瞬间塌掉。 */
 .split-scope-panel.is-closing {
   animation: split-scope-panel-out 220ms var(--settle) both;
-  max-height: 0;
-  margin-top: 0;
   overflow: hidden;
-  padding-top: 0;
-  padding-bottom: 0;
   pointer-events: none;
 }
 
@@ -3770,7 +3760,7 @@ body.ledger-management-open .mobile-submit-bar {
   grid-area: amount;
   color: color-mix(in srgb, var(--family-text) 88%, var(--ink));
   font-size: var(--num-md);
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-bold);
   letter-spacing: 0;
   white-space: nowrap;
   align-self: center;
@@ -4386,7 +4376,7 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active {
-    padding: 22px 18px 14px;
+    padding: 18px;
     border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
     transform: none;
   }
@@ -5115,7 +5105,7 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label.amount-active {
-    padding: 20px 15px 13px;
+    padding: 15px;
     transform: none;
   }
 
@@ -5258,7 +5248,7 @@ body.ledger-management-open .mobile-submit-bar {
     --theme-aura-soft: color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent);
     --theme-aura-medium: color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent);
     --theme-aura-strong: color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent);
-    --total-text-color: #f3f7f4;
+    --total-text-color: rgba(243, 247, 244, 0.86);
     --total-label-color: rgba(230, 235, 232, 0.64);
   }
 
@@ -6025,7 +6015,12 @@ body.ledger-management-open .mobile-submit-bar {
   .app-view.is-switching-ledger .ledger-section,
   .split-scope-panel,
   .split-mode-button,
+  .metric.primary strong.is-scrambling,
   .toast {
     animation: none !important;
+  }
+
+  .metric.primary strong.is-scrambling {
+    opacity: 1;
   }
 }
