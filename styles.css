@@ -96,6 +96,13 @@
   --num-lg: clamp(2.45rem, 6vw, 4.6rem);   /* 总支出主数字（保留英雄字号，断点精调见媒体查询） */
   --num-md: clamp(1.15rem, 3vw, 1.42rem);  /* 列表/平账金额 */
   --num-sm: 0.95rem;                        /* 次要数字 */
+  --font-body:
+    system-ui,
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-number:
+    "Google Sans",
+    var(--font-body);
+  --font-number-features: "tnum" 1;
   /* 统一视觉语言：圆角、控件、色彩语义 token 集中管理。 */
   --brand-primary: var(--green);
   --brand-primary-strong: var(--green-dark);
@@ -205,10 +212,8 @@ body {
     var(--bg);
   background-attachment: fixed;
   color: var(--ink);
-  /* 两级字体栈：西文与数字走 system-ui（已含 SF/Segoe UI/Roboto），中文明确 PingFang SC → 雅黑 → 兜底 */
-  font-family:
-    system-ui,
-    "PingFang SC", "Microsoft YaHei", sans-serif;
+  /* 正文与数字字体分别走变量，后续换字体只改 :root 的字体 token。 */
+  font-family: var(--font-body);
 }
 
 button,
@@ -390,14 +395,23 @@ h3 {
   margin-bottom: 18px;
 }
 
-/* 金额等宽数字：声明在容器上靠继承生效，列表滚动与数字变化不再左右抖动 */
+/* 数字字体入口：改 --font-number 即可替换金额/统计/日期数字的字体。 */
 .metric strong,
+.amount-field,
+.split-amount-row input,
+.split-total-line,
+.ledger-filter-summary,
+.current-ledger-summary,
+.ledger-card-stats,
 .ledger-item,
 .stat-block,
 .settlement-block,
+.ledger-token,
 .split-scope-panel,
 .mobile-submit-summary {
+  font-family: var(--font-number);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-number-features);
 }
 
 .glass,
@@ -2514,7 +2528,7 @@ body.ledger-management-open .mobile-submit-bar {
 
 .settings-category-chip {
   display: inline-grid;
-  grid-template-columns: auto auto auto;
+  grid-template-columns: minmax(0, auto) auto auto auto auto;
   gap: 7px;
   align-items: center;
 }
@@ -2525,7 +2539,7 @@ body.ledger-management-open .mobile-submit-bar {
   font-weight: var(--fw-bold);
 }
 
-.chip-remove-button {
+.chip-icon-button {
   display: inline-grid;
   place-items: center;
   width: 24px;
@@ -2542,9 +2556,18 @@ body.ledger-management-open .mobile-submit-bar {
     background-color var(--motion-fast) var(--spring);
 }
 
-.chip-remove-button:hover {
+.chip-icon-button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--category-text) 18%, transparent);
   transform: translateY(-1px);
+}
+
+.chip-icon-button:disabled {
+  cursor: default;
+  opacity: 0.36;
+}
+
+.chip-remove-button {
+  font-size: 1rem;
 }
 
 .settings-clear-button {

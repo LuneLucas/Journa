@@ -235,7 +235,8 @@ function normalizeAppState(saved) {
 function normalizeLedger(raw = {}, fallbackName = "旅行账本") {
   const today = todayIso();
   const expenses = Array.isArray(raw.expenses) ? raw.expenses.filter(isValidExpense).map(normalizeExpense) : [];
-  const categories = normalizeCategories([...(Array.isArray(raw.categories) ? raw.categories : []), ...expenses.map((expense) => expense.category)]);
+  const savedCategories = Array.isArray(raw.categories) ? raw.categories : defaultCategories;
+  const categories = normalizeCategories([...savedCategories, ...expenses.map((expense) => expense.category)]);
 
   return {
     id: typeof raw.id === "string" && raw.id ? raw.id : createId("ledger"),
@@ -338,7 +339,7 @@ function normalizeFamilyMembers(memberCounts = {}) {
 }
 
 function normalizeCategories(categories) {
-  const merged = [...defaultCategories, ...categories].map((category) => String(category).trim()).filter(Boolean);
+  const merged = categories.map((category) => String(category).trim()).filter(Boolean);
   return [...new Set(merged)];
 }
 
@@ -1088,9 +1089,8 @@ function renderFamilyRoster() {
 }
 
 function renderCategories() {
-  const sortedCategories = getEntryCategoryOrder();
   const recentCategories = new Set(getRecentCategories(3));
-  elements.categoryChips.innerHTML = sortedCategories
+  elements.categoryChips.innerHTML = state.categories
     .map((category) => {
       const isNew = category === lastAddedCategory;
       const selected = category === state.activeCategory;
@@ -1104,13 +1104,6 @@ function renderCategories() {
       `;
     })
     .join("");
-}
-
-function getEntryCategoryOrder() {
-  const active = state.activeCategory && state.categories.includes(state.activeCategory) ? [state.activeCategory] : [];
-  const recent = getRecentCategories(3).filter((category) => category !== state.activeCategory);
-  const rest = state.categories.filter((category) => !active.includes(category) && !recent.includes(category));
-  return [...active, ...recent, ...rest];
 }
 
 function getRecentCategories(limit = 3) {
@@ -1292,19 +1285,23 @@ function renderSettings() {
     .join("");
 
   elements.settingsCategoryChips.innerHTML = state.categories
-    .map((category) => {
+    .map((category, index) => {
       const isDefault = defaultCategories.includes(category);
       const isUsed = usedCategories.has(category);
-      const status = isDefault ? "预设" : isUsed ? "使用中" : "可删除";
-      const removeButton =
-        isDefault || isUsed
-          ? ""
-          : `<button class="chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}">×</button>`;
+      const status = isUsed ? "使用中" : isDefault ? "预设" : "可删除";
+      const removeButton = isUsed
+        ? ""
+        : `<button class="chip-icon-button chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}">×</button>`;
+      const moveControls = `
+        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" aria-label="上移 ${escapeHtml(category)}" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="1" aria-label="下移 ${escapeHtml(category)}" ${index === state.categories.length - 1 ? "disabled" : ""}>↓</button>
+      `;
 
       return `
         <span class="chip category-chip settings-category-chip" style="${categoryStyle(category)}">
           <span>${categoryLabelHtml(category)}</span>
           <small>${status}</small>
+          ${moveControls}
           ${removeButton}
         </span>
       `;
@@ -2146,13 +2143,36 @@ function setSplitScopeFromExpense(expense) {
 }
 
 function handleSettingsCategoryClick(event) {
+  const moveButton = event.target.closest("[data-move-category]");
+  if (moveButton) {
+    moveCategory(moveButton.dataset.moveCategory, Number(moveButton.dataset.direction));
+    return;
+  }
+
   const button = event.target.closest("[data-remove-category]");
   if (!button) return;
 
-  const category = button.dataset.removeCategory;
-  if (defaultCategories.includes(category)) return;
+  removeCategory(button.dataset.removeCategory);
+}
+
+function moveCategory(category, direction) {
+  const index = state.categories.indexOf(category);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= state.categories.length) return;
+
+  const nextCategories = [...state.categories];
+  [nextCategories[index], nextCategories[nextIndex]] = [nextCategories[nextIndex], nextCategories[index]];
+  state.categories = nextCategories;
+  render();
+  queueCloudSettingsSync();
+  saveState();
+}
+
+function removeCategory(category) {
   if (state.expenses.some((expense) => expense.category === category)) return;
   const categoryIndex = state.categories.indexOf(category);
+  if (categoryIndex < 0) return;
+
   state.categories = state.categories.filter((item) => item !== category);
   if (state.activeCategory === category) {
     state.activeCategory = "";
