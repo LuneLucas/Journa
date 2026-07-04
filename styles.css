@@ -96,17 +96,35 @@
   --num-lg: clamp(2.45rem, 6vw, 4.6rem);   /* 总支出主数字（保留英雄字号，断点精调见媒体查询） */
   --num-md: clamp(1.15rem, 3vw, 1.42rem);  /* 列表/平账金额 */
   --num-sm: 0.95rem;                        /* 次要数字 */
-  /* 圆角阶梯：sm/md/lg/xl/pill 五档；控件圆角另见 --control-radius* */
-  --radius-sm: 10px;
+  /* 统一视觉语言：圆角、控件、色彩语义 token 集中管理。 */
+  --brand-primary: var(--green);
+  --brand-primary-strong: var(--green-dark);
+  --brand-primary-soft: rgba(23, 108, 95, 0.12);
+  --brand-primary-wash: rgba(23, 108, 95, 0.07);
+  --brand-accent: var(--amber);
+  --brand-danger: var(--coral);
+  --control-surface: rgba(255, 255, 255, 0.68);
+  --control-surface-hover: rgba(255, 255, 255, 0.82);
+  --control-surface-strong: rgba(255, 255, 255, 0.90);
+  --control-border: rgba(22, 26, 30, 0.10);
+  --control-border-hover: rgba(22, 26, 30, 0.18);
+  --control-border-active: color-mix(in srgb, var(--brand-primary) 34%, rgba(22, 26, 30, 0.10));
+  --button-secondary-bg: color-mix(in srgb, var(--brand-primary) 10%, var(--control-surface));
+  --button-secondary-bg-hover: color-mix(in srgb, var(--brand-primary) 15%, var(--control-surface-hover));
+  --button-secondary-text: var(--brand-primary-strong);
+  --danger-soft: rgba(183, 79, 56, 0.10);
+  --danger-soft-hover: rgba(183, 79, 56, 0.16);
+  /* 圆角阶梯：12px 基准递增；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
+  --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-pill: 999px;
   --control-height: 46px;
-  --control-radius: 16px;
-  --control-radius-compact: 14px;
-  --control-radius-large: 20px;
-  --control-padding-x: 14px;
+  --control-radius: var(--radius-lg);
+  --control-radius-compact: var(--radius-md);
+  --control-radius-large: var(--radius-lg);
+  --control-padding-x: 16px;
   --spring: cubic-bezier(0.14, 0.98, 0.12, 1);
   --snap: cubic-bezier(0.18, 0.84, 0.2, 1);
   --settle: cubic-bezier(0.16, 0.9, 0.14, 1);
@@ -798,9 +816,9 @@ input,
 select {
   min-height: var(--control-height);
   width: 100%;
-  border: 1px solid var(--line-dark);
+  border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--control-surface);
   color: var(--ink);
   padding: 0 var(--control-padding-x);
   outline: none;
@@ -814,7 +832,7 @@ select {
 
 input:focus,
 select:focus {
-  border-color: var(--green);
+  border-color: var(--control-border-active);
   box-shadow: var(--focus-ring);
 }
 
@@ -844,11 +862,11 @@ input[type="date"] {
   max-width: 100%;
   min-width: 0;
   min-height: var(--control-height);
-  border-color: var(--line-dark);
+  border-color: var(--control-border);
   border-radius: var(--control-radius);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.52)),
-    rgba(255, 255, 255, 0.64);
+    linear-gradient(135deg, var(--control-surface-strong), var(--control-surface)),
+    var(--control-surface);
   color: var(--ink);
   line-height: normal;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
@@ -899,7 +917,7 @@ select {
 
 select:focus,
 input[type="date"]:focus {
-  border-color: var(--green);
+  border-color: var(--control-border-active);
   box-shadow: var(--focus-ring);
 }
 
@@ -1547,7 +1565,7 @@ input[type="date"]:focus {
   min-height: 36px;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   border-radius: var(--control-radius-compact);
-  background: rgba(255, 255, 255, 0.42);
+  background: var(--control-surface);
   color: inherit;
   padding: 0 14px;
   font-weight: 700;
@@ -1558,16 +1576,24 @@ input[type="date"]:focus {
 .ghost-button,
 .delete-button {
   min-height: var(--control-height);
-  border: 0;
+  border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
+  padding: 0 var(--control-padding-x);
   font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    transform var(--motion-fast) var(--spring),
+    border-color var(--motion-fast) var(--spring),
+    background-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring),
+    color var(--motion-fast) var(--spring);
 }
 
 .primary-button {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
+  border-color: color-mix(in srgb, var(--submit-color, var(--brand-primary)) 22%, rgba(255, 255, 255, 0.68));
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
@@ -1580,12 +1606,6 @@ input[type="date"]:focus {
     0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
     0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
     0 18px 50px rgba(22, 26, 30, 0.10);
-  transition:
-    transform var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    color var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring);
   will-change: transform, box-shadow;
 }
 
@@ -1855,29 +1875,30 @@ input[type="date"]:focus {
 }
 
 .secondary-button {
-  background: rgba(234, 223, 191, 0.82);
-  color: #3b2f14;
-  padding: 0 18px;
+  border-color: color-mix(in srgb, var(--brand-primary) 16%, var(--control-border));
+  background: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
   white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), var(--shadow-sm);
+}
+
+.secondary-button:hover {
+  border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--control-border-hover));
+  background: var(--button-secondary-bg-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .ghost-button {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--control-surface);
   color: var(--ink);
-  padding: 0 18px;
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
-  transition:
-    transform var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring);
 }
 
 .ghost-button:hover {
-  border-color: rgba(22, 26, 30, 0.22);
-  background: rgba(255, 255, 255, 0.62);
+  border-color: var(--control-border-hover);
+  background: var(--control-surface-hover);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
@@ -2429,9 +2450,9 @@ body.ledger-management-open .mobile-submit-bar {
   width: 38px;
   min-height: 38px;
   border: 1px solid color-mix(in srgb, var(--family-color) 22%, rgba(22, 26, 30, 0.12));
-  border-radius: var(--radius-pill);
+  border-radius: var(--control-radius-compact);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.44)),
+    linear-gradient(135deg, var(--control-surface-strong), var(--control-surface)),
     color-mix(in srgb, var(--family-color) 10%, transparent);
   color: var(--family-text);
   font-size: 1.05rem;
@@ -2488,9 +2509,9 @@ body.ledger-management-open .mobile-submit-bar {
   place-items: center;
   width: 24px;
   min-height: 24px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--category-text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--category-text) 14%, transparent);
+  border-radius: var(--control-radius-compact);
+  background: color-mix(in srgb, var(--category-text) 10%, transparent);
   color: var(--category-text);
   font-size: 1rem;
   font-weight: 700;
@@ -5154,6 +5175,14 @@ body.ledger-management-open .mobile-submit-bar {
     --dark-hairline: rgba(232, 236, 233, 0.10);
     --dark-hairline-strong: rgba(232, 236, 233, 0.16);
     --dark-highlight: rgba(255, 255, 255, 0.05);
+    --control-surface: var(--dark-field-strong);
+    --control-surface-hover: rgba(255, 255, 255, 0.16);
+    --control-surface-strong: rgba(255, 255, 255, 0.14);
+    --control-border: var(--dark-hairline);
+    --control-border-hover: var(--dark-hairline-strong);
+    --button-secondary-bg: color-mix(in srgb, var(--green) 14%, rgba(255, 255, 255, 0.04));
+    --button-secondary-bg-hover: color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.07));
+    --button-secondary-text: #bfe4da;
     --theme-aura-soft: color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent);
     --theme-aura-medium: color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent);
     --theme-aura-strong: color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent);
