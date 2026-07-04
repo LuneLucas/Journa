@@ -6,9 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <meta name="referrer" content="no-referrer" />
     <title>三家庭旅游记账</title>
+    <meta name="theme-color" content="#f7f9f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#141816" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content="三家庭旅游记账" />
+    <meta property="og:description" content="三个家庭一起旅行的共享账本：记账、按人数分摊、平账建议。" />
+    <meta property="og:type" content="website" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，更新这里的 v 值。 -->
-    <link rel="stylesheet" href="./styles.css?v=fill-button-light-20260704" />
+    <link rel="stylesheet" href="./styles.css?v=design-review-20260704" />
   </head>
   <body>
     <main class="app-shell">
@@ -25,7 +30,7 @@
 
       <div class="app-view" id="ledgerView">
         <section class="summary-band" aria-label="账本总览">
-          <div class="metric primary" id="totalMetric">
+          <div class="metric primary" id="totalMetric" role="status">
             <span>总支出</span>
             <strong id="totalAmount">¥0.00</strong>
           </div>
@@ -48,7 +53,7 @@
             <form id="expenseForm" class="expense-form" novalidate>
               <fieldset class="payer-field full-row" id="payerField">
                 <legend>付款家庭</legend>
-                <div id="familyRoster" class="family-roster" aria-label="选择付款家庭"></div>
+                <div id="familyRoster" class="family-roster" role="radiogroup" aria-label="选择付款家庭"></div>
                 <p class="field-error" id="payerError" role="alert"></p>
               </fieldset>
 
@@ -66,7 +71,7 @@
               <fieldset class="category-picker full-row">
                 <legend>类别</legend>
                 <input id="categoryInput" name="category" type="hidden" />
-                <div id="categoryChips" class="category-chips selectable-category-chips" aria-label="选择类别"></div>
+                <div id="categoryChips" class="category-chips selectable-category-chips" role="radiogroup" aria-label="选择类别"></div>
                 <div id="categoryForm" class="category-form inline-category-form" aria-label="新增类别">
                   <input id="newCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" />
                   <button class="secondary-button" type="button">添加</button>
@@ -79,7 +84,7 @@
                   <strong id="splitScopeSummary">全部家庭 · 按人数</strong>
                 </button>
                 <div class="split-scope-panel" id="splitScopePanel" hidden>
-                  <div class="split-mode-buttons" id="splitModeButtons" aria-label="选择分摊范围"></div>
+                  <div class="split-mode-buttons" id="splitModeButtons" role="radiogroup" aria-label="选择分摊范围"></div>
                   <div class="split-detail-area" id="splitDetailArea">
                     <div class="split-family-choices" id="splitFamilyChoices" aria-label="选择参与分摊的家庭"></div>
                     <div class="split-custom-amounts" id="splitCustomAmounts" aria-label="分别填写承担金额"></div>
@@ -276,6 +281,6 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，更新这里的 v 值。 -->
-    <script src="./app.js?v=code-cleanup-20260704"></script>
+    <script src="./app.js?v=design-review-20260704"></script>
   </body>
 </html>

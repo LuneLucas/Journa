@@ -96,17 +96,35 @@
   --num-lg: clamp(2.45rem, 6vw, 4.6rem);   /* 总支出主数字（保留英雄字号，断点精调见媒体查询） */
   --num-md: clamp(1.15rem, 3vw, 1.42rem);  /* 列表/平账金额 */
   --num-sm: 0.95rem;                        /* 次要数字 */
-  /* 圆角阶梯：sm/md/lg/xl/pill 五档；控件圆角另见 --control-radius* */
-  --radius-sm: 10px;
+  /* 统一视觉语言：圆角、控件、色彩语义 token 集中管理。 */
+  --brand-primary: var(--green);
+  --brand-primary-strong: var(--green-dark);
+  --brand-primary-soft: rgba(23, 108, 95, 0.12);
+  --brand-primary-wash: rgba(23, 108, 95, 0.07);
+  --brand-accent: var(--amber);
+  --brand-danger: var(--coral);
+  --control-surface: rgba(255, 255, 255, 0.68);
+  --control-surface-hover: rgba(255, 255, 255, 0.82);
+  --control-surface-strong: rgba(255, 255, 255, 0.90);
+  --control-border: rgba(22, 26, 30, 0.10);
+  --control-border-hover: rgba(22, 26, 30, 0.18);
+  --control-border-active: color-mix(in srgb, var(--brand-primary) 34%, rgba(22, 26, 30, 0.10));
+  --button-secondary-bg: color-mix(in srgb, var(--brand-primary) 10%, var(--control-surface));
+  --button-secondary-bg-hover: color-mix(in srgb, var(--brand-primary) 15%, var(--control-surface-hover));
+  --button-secondary-text: var(--brand-primary-strong);
+  --danger-soft: rgba(183, 79, 56, 0.10);
+  --danger-soft-hover: rgba(183, 79, 56, 0.16);
+  /* 圆角阶梯：12px 基准递增；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
+  --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-pill: 999px;
   --control-height: 46px;
-  --control-radius: 16px;
-  --control-radius-compact: 14px;
-  --control-radius-large: 20px;
-  --control-padding-x: 14px;
+  --control-radius: var(--radius-lg);
+  --control-radius-compact: var(--radius-md);
+  --control-radius-large: var(--radius-lg);
+  --control-padding-x: 16px;
   --spring: cubic-bezier(0.14, 0.98, 0.12, 1);
   --snap: cubic-bezier(0.18, 0.84, 0.2, 1);
   --settle: cubic-bezier(0.16, 0.9, 0.14, 1);
@@ -124,6 +142,19 @@
   --shadow-sm: 0 10px 26px rgba(22, 26, 30, 0.06);
   --shadow-md: 0 14px 44px rgba(22, 26, 30, 0.08);
   --shadow-lg: 0 24px 80px rgba(22, 26, 30, 0.12);
+  /* 字重语义：正文继承系统默认，强调只用这三档 */
+  --fw-bold: 700;
+  --fw-heavy: 800;
+  --fw-black: 900;
+  /* 浮层 z-index 总表：局部堆叠(0/1/2/-1)不入表 */
+  --z-settings: 20;
+  --z-ledger-management: 22;
+  --z-mobile-submit: 25;
+  --z-confirm: 28;
+  --z-toast: 30;
+  --z-flying-token: 40;
+  /* 提交主题色由 app.js 按选中家庭内联覆盖；这里声明兜底值 */
+  --submit-color: var(--green);
 }
 
 * {
@@ -174,9 +205,9 @@ body {
     var(--bg);
   background-attachment: fixed;
   color: var(--ink);
-  /* 两级字体栈：西文与数字走系统栈，中文明确 PingFang SC → 雅黑 → 兜底 */
+  /* 两级字体栈：西文与数字走 system-ui（已含 SF/Segoe UI/Roboto），中文明确 PingFang SC → 雅黑 → 兜底 */
   font-family:
-    system-ui, -apple-system, "Segoe UI", Roboto,
+    system-ui,
     "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -251,7 +282,7 @@ button:disabled {
     rgba(255, 255, 255, 0.38);
   color: var(--muted);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   cursor: default;
   user-select: none;
   box-shadow:
@@ -323,7 +354,7 @@ button:disabled {
   margin: 0 0 6px;
   color: var(--green);
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: 0.05em; /* 全局唯一保留 letter-spacing 的层级 */
 }
 
@@ -336,20 +367,20 @@ p {
 
 h1 {
   font-size: clamp(2.15rem, 5vw, 4.7rem);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 0.98;
   letter-spacing: 0;
 }
 
 h2 {
   font-size: 1.24rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 h3 {
   color: var(--muted);
   font-size: 0.95rem; /* 与 h2(1.24)/eyebrow(0.82) 形成约 1.2~1.25 模数阶梯 */
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .summary-band {
@@ -398,14 +429,14 @@ h3 {
   margin-bottom: 10px;
   color: var(--muted);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .metric strong {
   display: block;
   color: var(--green-dark);
   font-size: clamp(1.45rem, 3.3vw, 2.35rem);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -567,7 +598,7 @@ h3 {
   color: var(--green-dark);
   padding: 5px 9px;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -592,7 +623,7 @@ h3 {
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
   padding: 0 16px;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.28),
     var(--shadow-sm);
@@ -765,7 +796,7 @@ label,
   gap: 7px;
   color: var(--muted);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .payer-field,
@@ -786,7 +817,7 @@ label,
   min-height: 18px;
   color: var(--coral);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .field-error:empty,
@@ -798,9 +829,9 @@ input,
 select {
   min-height: var(--control-height);
   width: 100%;
-  border: 1px solid var(--line-dark);
+  border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--control-surface);
   color: var(--ink);
   padding: 0 var(--control-padding-x);
   outline: none;
@@ -814,7 +845,7 @@ select {
 
 input:focus,
 select:focus {
-  border-color: var(--green);
+  border-color: var(--control-border-active);
   box-shadow: var(--focus-ring);
 }
 
@@ -844,11 +875,11 @@ input[type="date"] {
   max-width: 100%;
   min-width: 0;
   min-height: var(--control-height);
-  border-color: var(--line-dark);
+  border-color: var(--control-border);
   border-radius: var(--control-radius);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.52)),
-    rgba(255, 255, 255, 0.64);
+    linear-gradient(135deg, var(--control-surface-strong), var(--control-surface)),
+    var(--control-surface);
   color: var(--ink);
   line-height: normal;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
@@ -899,7 +930,7 @@ select {
 
 select:focus,
 input[type="date"]:focus {
-  border-color: var(--green);
+  border-color: var(--control-border-active);
   box-shadow: var(--focus-ring);
 }
 
@@ -994,7 +1025,7 @@ input[type="date"]:focus {
   margin-top: 0;
   color: var(--selected-family-text);
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.2;
 }
 
@@ -1013,7 +1044,7 @@ input[type="date"]:focus {
   background: color-mix(in srgb, var(--selected-family-color, var(--green)) 8%, rgba(255, 255, 255, 0.44));
   color: color-mix(in srgb, var(--selected-family-text) 58%, var(--muted));
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   letter-spacing: 0;
   line-height: 1;
   opacity: 0;
@@ -1041,7 +1072,7 @@ input[type="date"]:focus {
   flex: 0 0 auto;
   color: var(--selected-family-text);
   font-size: 2.1rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1;
   transform-origin: center;
   transition:
@@ -1059,7 +1090,7 @@ input[type="date"]:focus {
   box-shadow: inset 0 0 0 1px rgba(22, 26, 30, 0.10);
   color: var(--selected-family-text);
   font-size: clamp(2.2rem, 6vw, 4.2rem);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: 0;
   transform-origin: center;
   transition:
@@ -1149,7 +1180,7 @@ input[type="date"]:focus {
   min-height: 20px;
   color: var(--coral);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   grid-column: 1 / -1;
 }
 
@@ -1194,14 +1225,14 @@ input[type="date"]:focus {
 
 .split-scope-toggle > span {
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .split-scope-toggle > strong {
   min-width: 0;
   color: color-mix(in srgb, var(--submit-text, var(--green)) 84%, var(--ink));
   font-size: 0.9rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1339,7 +1370,7 @@ input[type="date"]:focus {
   z-index: 1;
   color: var(--ink);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   transition:
     color calc(var(--selection-motion) * 0.74) var(--settle),
     transform var(--selection-motion) var(--settle);
@@ -1349,7 +1380,7 @@ input[type="date"]:focus {
   position: relative;
   z-index: 1;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.2;
   transition:
     color calc(var(--selection-motion) * 0.74) var(--settle),
@@ -1489,7 +1520,7 @@ input[type="date"]:focus {
 
 .split-amount-row span {
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
 }
 
 .split-amount-row input {
@@ -1502,7 +1533,7 @@ input[type="date"]:focus {
     color-mix(in srgb, var(--family-color) 5%, transparent);
   color: var(--family-text);
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   line-height: 1.15;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.68)),
@@ -1526,7 +1557,7 @@ input[type="date"]:focus {
   margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .edit-banner {
@@ -1540,17 +1571,17 @@ input[type="date"]:focus {
   color: var(--selected-family-text);
   padding: 10px 12px;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .inline-button {
   min-height: 36px;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   border-radius: var(--control-radius-compact);
-  background: rgba(255, 255, 255, 0.42);
+  background: var(--control-surface);
   color: inherit;
   padding: 0 14px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .primary-button,
@@ -1558,16 +1589,24 @@ input[type="date"]:focus {
 .ghost-button,
 .delete-button {
   min-height: var(--control-height);
-  border: 0;
+  border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
-  font-weight: 700;
+  padding: 0 var(--control-padding-x);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.01em;
+  transition:
+    transform var(--motion-fast) var(--spring),
+    border-color var(--motion-fast) var(--spring),
+    background-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring),
+    color var(--motion-fast) var(--spring);
 }
 
 .primary-button {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
+  border-color: color-mix(in srgb, var(--submit-color, var(--brand-primary)) 22%, rgba(255, 255, 255, 0.68));
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
@@ -1580,12 +1619,6 @@ input[type="date"]:focus {
     0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
     0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
     0 18px 50px rgba(22, 26, 30, 0.10);
-  transition:
-    transform var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    color var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring);
   will-change: transform, box-shadow;
 }
 
@@ -1709,7 +1742,7 @@ input[type="date"]:focus {
 
 .ledger-token {
   position: fixed;
-  z-index: 40;
+  z-index: var(--z-flying-token);
   left: var(--start-x);
   top: var(--start-y);
   display: inline-flex;
@@ -1724,7 +1757,7 @@ input[type="date"]:focus {
   color: color-mix(in srgb, var(--token-text) 88%, var(--ink));
   padding: 0 14px;
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.44),
@@ -1855,29 +1888,30 @@ input[type="date"]:focus {
 }
 
 .secondary-button {
-  background: rgba(234, 223, 191, 0.82);
-  color: #3b2f14;
-  padding: 0 18px;
+  border-color: color-mix(in srgb, var(--brand-primary) 16%, var(--control-border));
+  background: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
   white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), var(--shadow-sm);
+}
+
+.secondary-button:hover {
+  border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--control-border-hover));
+  background: var(--button-secondary-bg-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .ghost-button {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--control-surface);
   color: var(--ink);
-  padding: 0 18px;
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
-  transition:
-    transform var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring);
 }
 
 .ghost-button:hover {
-  border-color: rgba(22, 26, 30, 0.22);
-  background: rgba(255, 255, 255, 0.62);
+  border-color: var(--control-border-hover);
+  background: var(--control-surface-hover);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
@@ -1895,7 +1929,7 @@ input[type="date"]:focus {
 
 .settings-view {
   position: fixed;
-  z-index: 20;
+  z-index: var(--z-settings);
   inset: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
@@ -1907,7 +1941,7 @@ input[type="date"]:focus {
 
 .ledger-management-view {
   position: fixed;
-  z-index: 22;
+  z-index: var(--z-ledger-management);
   inset: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(520px, 760px);
@@ -1919,7 +1953,7 @@ input[type="date"]:focus {
 
 .confirm-view {
   position: fixed;
-  z-index: 28;
+  z-index: var(--z-confirm);
   inset: 0;
   display: grid;
   place-items: center;
@@ -1988,7 +2022,7 @@ input[type="date"]:focus {
 .confirm-message {
   color: var(--muted);
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.55;
 }
 
@@ -2116,7 +2150,7 @@ body.ledger-management-open .mobile-submit-bar {
   color: var(--muted);
   padding: 5px 9px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .compact-button {
@@ -2159,7 +2193,7 @@ body.ledger-management-open .mobile-submit-bar {
 .current-ledger-card small {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .current-ledger-card strong {
@@ -2208,7 +2242,7 @@ body.ledger-management-open .mobile-submit-bar {
   min-height: 42px;
   color: var(--muted);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 
@@ -2265,7 +2299,7 @@ body.ledger-management-open .mobile-submit-bar {
 .ledger-card-status {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
 }
 
 .ledger-card-stats {
@@ -2287,7 +2321,7 @@ body.ledger-management-open .mobile-submit-bar {
 .ledger-card-meta {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .ledger-card-stats strong {
@@ -2343,7 +2377,7 @@ body.ledger-management-open .mobile-submit-bar {
 .ledger-manager-main span {
   overflow: hidden;
   max-width: 100%;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2351,7 +2385,7 @@ body.ledger-management-open .mobile-submit-bar {
 .ledger-manager-main small {
   color: var(--muted);
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .ledger-manager-item.is-active .ledger-manager-main span {
@@ -2367,7 +2401,7 @@ body.ledger-management-open .mobile-submit-bar {
   border-radius: var(--control-radius-compact);
   padding: 0 14px;
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 
@@ -2406,7 +2440,7 @@ body.ledger-management-open .mobile-submit-bar {
   display: grid;
   gap: 2px;
   color: var(--family-text);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .settings-family small {
@@ -2420,22 +2454,30 @@ body.ledger-management-open .mobile-submit-bar {
   gap: 8px;
   color: var(--family-text);
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .member-stepper button {
+  position: relative;
   display: inline-grid;
   place-items: center;
   width: 38px;
   min-height: 38px;
   border: 1px solid color-mix(in srgb, var(--family-color) 22%, rgba(22, 26, 30, 0.12));
-  border-radius: var(--radius-pill);
+  border-radius: var(--control-radius-compact);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.44)),
+    linear-gradient(135deg, var(--control-surface-strong), var(--control-surface)),
     color-mix(in srgb, var(--family-color) 10%, transparent);
   color: var(--family-text);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
+}
+
+/* 视觉保持 38px，触控热区扩到 44px（WCAG 2.5.5） */
+.member-stepper button::after {
+  position: absolute;
+  inset: -3px;
+  content: "";
 }
 
 .member-stepper strong {
@@ -2448,14 +2490,14 @@ body.ledger-management-open .mobile-submit-bar {
 .settings-rule strong,
 .settings-data-item strong {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 
 .settings-rule span,
 .settings-data-item span {
   color: var(--muted);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .settings-rule-list {
@@ -2480,7 +2522,7 @@ body.ledger-management-open .mobile-submit-bar {
 .settings-category-chip small {
   color: color-mix(in srgb, var(--category-text) 68%, transparent);
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .chip-remove-button {
@@ -2488,12 +2530,12 @@ body.ledger-management-open .mobile-submit-bar {
   place-items: center;
   width: 24px;
   min-height: 24px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--category-text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--category-text) 14%, transparent);
+  border-radius: var(--control-radius-compact);
+  background: color-mix(in srgb, var(--category-text) 10%, transparent);
   color: var(--category-text);
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1;
   transition:
     transform var(--motion-fast) var(--spring),
@@ -2547,7 +2589,7 @@ body.ledger-management-open .mobile-submit-bar {
   color: var(--category-text);
   padding: 7px 11px;
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   transition:
     transform var(--motion-fast) var(--spring),
@@ -2968,7 +3010,7 @@ body.ledger-management-open .mobile-submit-bar {
 
 .category-row span {
   color: var(--category-text);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .category-row strong {
@@ -3006,12 +3048,12 @@ body.ledger-management-open .mobile-submit-bar {
   grid-column: 2;
   color: color-mix(in srgb, var(--family-text) 70%, var(--muted));
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .row-item strong {
   color: color-mix(in srgb, var(--family-text, var(--ink)) 82%, var(--ink));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 
@@ -3085,13 +3127,13 @@ body.ledger-management-open .mobile-submit-bar {
 .settlement-amount span {
   color: var(--muted);
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .settlement-party strong {
   overflow: hidden;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3117,7 +3159,7 @@ body.ledger-management-open .mobile-submit-bar {
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.46);
   color: var(--amber);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .settlement-amount {
@@ -3134,7 +3176,7 @@ body.ledger-management-open .mobile-submit-bar {
 .settlement-amount strong {
   color: var(--coral);
   font-size: var(--num-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 
@@ -3155,7 +3197,7 @@ body.ledger-management-open .mobile-submit-bar {
 .settlement-done small {
   color: var(--muted);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .empty-state {
@@ -3172,7 +3214,7 @@ body.ledger-management-open .mobile-submit-bar {
   margin-top: 6px;
   color: #676158;
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .empty-state-action {
@@ -3218,7 +3260,7 @@ body.ledger-management-open .mobile-submit-bar {
   padding-inline: 14px 34px;
   color: color-mix(in srgb, var(--green-dark) 82%, var(--ink));
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.54),
     0 8px 22px rgba(22, 26, 30, 0.05);
@@ -3266,7 +3308,7 @@ body.ledger-management-open .mobile-submit-bar {
   padding: 0 4px 0 0;
   color: var(--muted);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .ledger-day-heading::before {
@@ -3506,7 +3548,7 @@ body.ledger-management-open .mobile-submit-bar {
   max-width: 0;
   color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
   font-size: 0.88rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   line-height: 1;
   opacity: 0;
   pointer-events: none;
@@ -3534,7 +3576,7 @@ body.ledger-management-open .mobile-submit-bar {
 .ledger-date strong {
   margin-top: 5px;
   font-size: 1.18rem;
-  font-weight: 900;
+  font-weight: var(--fw-black);
 }
 
 .ledger-main {
@@ -3548,7 +3590,7 @@ body.ledger-management-open .mobile-submit-bar {
   gap: 8px;
   align-items: center;
   margin-bottom: 3px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.14;
   min-width: 0;
   transition: margin var(--motion-fast) var(--spring);
@@ -3567,7 +3609,7 @@ body.ledger-management-open .mobile-submit-bar {
   max-width: min(132px, 48%);
   color: var(--family-text);
   font-size: 0.96rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   min-width: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3597,7 +3639,7 @@ body.ledger-management-open .mobile-submit-bar {
   margin-top: 0;
   color: color-mix(in srgb, var(--family-text) 68%, var(--muted));
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.25;
   opacity: 0;
   overflow-wrap: anywhere;
@@ -3624,7 +3666,7 @@ body.ledger-management-open .mobile-submit-bar {
   margin-top: 0;
   color: color-mix(in srgb, var(--family-text) 64%, var(--muted));
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   line-height: 1.25;
   opacity: 0;
   transform: translateY(-4px);
@@ -3665,7 +3707,7 @@ body.ledger-management-open .mobile-submit-bar {
   color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
   padding: 0 7px;
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--fw-black);
   line-height: 1;
 }
 
@@ -3687,7 +3729,7 @@ body.ledger-management-open .mobile-submit-bar {
   color: var(--category-text);
   padding: 4px 8px;
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   flex: 0 1 auto;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3697,7 +3739,7 @@ body.ledger-management-open .mobile-submit-bar {
   grid-area: amount;
   color: color-mix(in srgb, var(--family-text) 88%, var(--ink));
   font-size: var(--num-md);
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   letter-spacing: 0;
   white-space: nowrap;
   align-self: center;
@@ -3719,7 +3761,7 @@ body.ledger-management-open .mobile-submit-bar {
   bottom: 6px;
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
   font-size: 0.66rem;
-  font-weight: 900;
+  font-weight: var(--fw-black);
   letter-spacing: 0;
   opacity: 0.68;
   pointer-events: none;
@@ -3768,7 +3810,7 @@ body.ledger-management-open .mobile-submit-bar {
   min-height: 0;
   border-radius: var(--control-radius-compact);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: var(--fw-heavy);
   opacity: 0;
   padding: 0;
   pointer-events: none;
@@ -3811,7 +3853,7 @@ body.ledger-management-open .mobile-submit-bar {
 
 .toast-host {
   position: fixed;
-  z-index: 30;
+  z-index: var(--z-toast);
   left: 50%;
   bottom: max(18px, env(safe-area-inset-bottom));
   width: min(420px, calc(100% - 28px));
@@ -3838,7 +3880,7 @@ body.ledger-management-open .mobile-submit-bar {
 
 .toast span {
   overflow: hidden;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3850,7 +3892,7 @@ body.ledger-management-open .mobile-submit-bar {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
   padding: 0 14px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 
@@ -4213,7 +4255,7 @@ body.ledger-management-open .mobile-submit-bar {
     min-width: 0;
     min-height: 36px;
     font-size: 0.82rem;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
 
   .ledger-controls .compact-button {
@@ -4366,7 +4408,7 @@ body.ledger-management-open .mobile-submit-bar {
       rgba(255, 255, 255, 0.68);
     color: var(--ink);
     font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     line-height: 1.2;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
   }
@@ -4508,7 +4550,7 @@ body.ledger-management-open .mobile-submit-bar {
 
   .mobile-submit-bar {
     position: fixed;
-    z-index: 25;
+    z-index: var(--z-mobile-submit);
     right: 12px;
     bottom: max(12px, env(safe-area-inset-bottom));
     left: 12px;
@@ -4605,7 +4647,7 @@ body.ledger-management-open .mobile-submit-bar {
     color: var(--ink);
     padding-left: 4px;
     font-size: 0.82rem;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -5174,6 +5216,14 @@ body.ledger-management-open .mobile-submit-bar {
     --dark-hairline: rgba(232, 236, 233, 0.10);
     --dark-hairline-strong: rgba(232, 236, 233, 0.16);
     --dark-highlight: rgba(255, 255, 255, 0.05);
+    --control-surface: var(--dark-field-strong);
+    --control-surface-hover: rgba(255, 255, 255, 0.16);
+    --control-surface-strong: rgba(255, 255, 255, 0.14);
+    --control-border: var(--dark-hairline);
+    --control-border-hover: var(--dark-hairline-strong);
+    --button-secondary-bg: color-mix(in srgb, var(--green) 14%, rgba(255, 255, 255, 0.04));
+    --button-secondary-bg-hover: color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.07));
+    --button-secondary-text: #bfe4da;
     --theme-aura-soft: color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent);
     --theme-aura-medium: color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent);
     --theme-aura-strong: color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent);

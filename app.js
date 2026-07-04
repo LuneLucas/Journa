@@ -538,9 +538,16 @@ async function pullCloudLedger({ announce = false } = {}) {
   updateCloudControls();
   try {
     const payload = await supabaseRpc("get_travel_ledger", { p_share_token: cloudState.shareToken });
+    const remote = normalizeRemotePayload(payload);
+    // 本地还没推上云的账单不能被拉取覆盖：合并进来，稍后重推
+    const unsyncedExpenses = state.expenses.filter((expense) => ["pending", "failed"].includes(normalizeExpenseSyncState(expense.syncState)));
+    if (unsyncedExpenses.length) {
+      const unsyncedIds = new Set(unsyncedExpenses.map((expense) => expense.id));
+      remote.expenses = [...remote.expenses.filter((expense) => !unsyncedIds.has(expense.id)), ...unsyncedExpenses];
+    }
     replaceActiveLedger({
       ...state,
-      ...normalizeRemotePayload(payload),
+      ...remote,
       id: state.id,
       cloudShareToken: cloudState.shareToken,
     });
@@ -549,6 +556,7 @@ async function pullCloudLedger({ announce = false } = {}) {
     saveCloudState();
     render({ skipCloudSave: true, animateFinancialChanges: announce });
     if (announce) showToast({ message: "已同步云账本" });
+    if (unsyncedExpenses.length) syncPendingCloudExpenses({ silent: true }).catch(() => {});
     return true;
   } catch (error) {
     cloudReady = false;
@@ -831,6 +839,12 @@ function formatCategoryLabel(category) {
   return `${visual.emoji} ${category}`;
 }
 
+// HTML 上下文用：emoji 是装饰，读屏跳过，只读类别名。
+function categoryLabelHtml(category) {
+  const visual = getCategoryVisual(category);
+  return `<span aria-hidden="true">${visual.emoji}</span> ${escapeHtml(category)}`;
+}
+
 function getCategoryEmoji(category, fallback) {
   const normalized = String(category || "").trim();
   const matchedRule = categoryEmojiRules.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)));
@@ -1048,9 +1062,11 @@ function classNames(...tokens) {
   return tokens.filter(Boolean).join(" ");
 }
 
-function renderFamilyChoiceButton(family, { dataName, extraClass = "", selected = false, activating = false, deactivating = false }) {
+function renderFamilyChoiceButton(family, { dataName, extraClass = "", selected = false, activating = false, deactivating = false, singleSelect = false }) {
+  // 单选组用 radio 语义（读屏播报"第 x 项，已选中"），多选保留 toggle 按钮语义。
+  const stateAttr = singleSelect ? `role="radio" aria-checked="${selected}"` : `aria-pressed="${selected}"`;
   return `
-    <button class="${classNames("family-tag", extraClass, selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" ${dataName}="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" aria-pressed="${selected}">
+    <button class="${classNames("family-tag", extraClass, selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" ${dataName}="${escapeHtml(family.id)}" style="${familyStyle(family.id)}" ${stateAttr}>
       <span>${escapeHtml(family.name)}</span>
     </button>
   `;
@@ -1062,6 +1078,7 @@ function renderFamilyRoster() {
       const selected = family.id === state.selectedPayerId;
       return renderFamilyChoiceButton(family, {
         dataName: "data-payer-id",
+        singleSelect: true,
         selected,
         activating: selected && family.id === activatingPayerId,
         deactivating: !selected && family.id === deactivatingPayerId,
@@ -1081,8 +1098,8 @@ function renderCategories() {
       const activating = selected && category === activatingCategory;
       const deactivating = !selected && category === deactivatingCategory;
       return `
-        <button class="${classNames("chip", "category-chip", "selectable-category-chip", selected && "is-selected", recent && "is-recent", isNew && "is-entering", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" aria-pressed="${selected}">
-          <span>${escapeHtml(formatCategoryLabel(category))}</span>
+        <button class="${classNames("chip", "category-chip", "selectable-category-chip", selected && "is-selected", recent && "is-recent", isNew && "is-entering", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" role="radio" aria-checked="${selected}">
+          <span>${categoryLabelHtml(category)}</span>
         </button>
       `;
     })
@@ -1121,7 +1138,7 @@ function renderSplitScope() {
       const activating = selected && option.id === activatingSplitMode;
       const deactivating = !selected && option.id === deactivatingSplitMode;
       return `
-        <button class="${classNames("split-mode-button", selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-split-mode="${escapeHtml(option.id)}" aria-pressed="${selected}">
+        <button class="${classNames("split-mode-button", selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-split-mode="${escapeHtml(option.id)}" role="radio" aria-checked="${selected}">
           <span>${escapeHtml(option.label)}</span>
           <small>${escapeHtml(option.description)}</small>
         </button>
@@ -1286,7 +1303,7 @@ function renderSettings() {
 
       return `
         <span class="chip category-chip settings-category-chip" style="${categoryStyle(category)}">
-          <span>${escapeHtml(formatCategoryLabel(category))}</span>
+          <span>${categoryLabelHtml(category)}</span>
           <small>${status}</small>
           ${removeButton}
         </span>
@@ -1462,7 +1479,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
         .map(
           (category) => `
             <div class="row-item category-row${enterClass}" style="${categoryStyle(category)}">
-              <span>${escapeHtml(formatCategoryLabel(category))}</span>
+              <span>${categoryLabelHtml(category)}</span>
               <strong>${formatMoney(summary.categoryTotals[category])}</strong>
             </div>
           `,
@@ -1577,7 +1594,7 @@ function renderLedgerItem(expense) {
       <div class="ledger-main">
         <div class="ledger-title">
           <span class="ledger-family">${escapeHtml(getFamilyName(expense.payerId))}</span>
-          <span class="category-pill" style="${categoryStyle(expense.category)}">${escapeHtml(formatCategoryLabel(expense.category))}</span>
+          <span class="category-pill" style="${categoryStyle(expense.category)}">${categoryLabelHtml(expense.category)}</span>
           ${syncBadge}
         </div>
         <p class="ledger-note">${escapeHtml(expense.note || "无备注")}</p>
@@ -3476,15 +3493,24 @@ document.addEventListener("keydown", (event) => {
 render();
 pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
 
-// 屏幕键盘弹出标记：文本类控件聚焦时给 body 加 keyboard-open，
-// CSS 据此隐藏移动端固定提交栏，避免悬在键盘上方挡住表单。
+// 屏幕键盘弹出标记：body 加 keyboard-open 后 CSS 隐藏移动端固定提交栏，
+// 避免悬在键盘上方挡住表单。优先用 visualViewport 的实际高度收缩判断
+// （外接键盘、桌面端聚焦不会误判），不支持时退回焦点推断。
 // focusout 延迟一拍再判断，防止焦点在输入间切换时提交栏闪烁。
 (() => {
+  const KEYBOARD_MIN_OVERLAP = 140;
+  const viewport = window.visualViewport;
   const isTextEntry = (el) =>
     el && (el.tagName === "SELECT" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
-  const syncKeyboardFlag = () => {
-    document.body.classList.toggle("keyboard-open", isTextEntry(document.activeElement));
+  const isKeyboardOpen = () => {
+    if (!isTextEntry(document.activeElement)) return false;
+    if (!viewport) return true;
+    return window.innerHeight - viewport.height > KEYBOARD_MIN_OVERLAP;
   };
+  const syncKeyboardFlag = () => {
+    document.body.classList.toggle("keyboard-open", isKeyboardOpen());
+  };
+  viewport?.addEventListener("resize", syncKeyboardFlag);
   document.addEventListener("focusin", syncKeyboardFlag);
   document.addEventListener("focusout", () => setTimeout(syncKeyboardFlag, 0));
 })();
