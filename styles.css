@@ -204,16 +204,25 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--bg);
+  color: var(--ink);
+  /* 正文与数字字体分别走变量，后续换字体只改 :root 的字体 token。 */
+  font-family: var(--font-body);
+}
+
+/* 氛围渐变放在固定图层上：等价于 background-attachment: fixed，
+   但滚动/高度动画时不触发全视口重绘。 */
+body::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
   background:
     radial-gradient(ellipse at 16% 2%, rgba(169, 206, 181, 0.07), transparent 42%),
     radial-gradient(ellipse at 84% 8%, rgba(185, 201, 230, 0.07), transparent 40%),
     radial-gradient(ellipse at 92% 86%, rgba(239, 194, 191, 0.05), transparent 44%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 249, 248, 0.99) 52%, rgba(250, 251, 250, 0.99) 100%),
-    var(--bg);
-  background-attachment: fixed;
-  color: var(--ink);
-  /* 正文与数字字体分别走变量，后续换字体只改 :root 的字体 token。 */
-  font-family: var(--font-body);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 249, 248, 0.99) 52%, rgba(250, 251, 250, 0.99) 100%);
+  content: "";
+  pointer-events: none;
 }
 
 button,
@@ -3378,10 +3387,9 @@ body.ledger-management-open .mobile-submit-bar {
     inset 0 1px 0 rgba(255, 255, 255, 0.46),
     0 10px 28px rgba(22, 26, 30, 0.06);
   contain: layout paint;
+  /* 高度/内边距不走 CSS 过渡：展开收起由 JS 按实测高度做 WAAPI 动画
+     （playLedgerTransitionRects），避免 max-height 猜测值导致的缓动失真。 */
   transition:
-    min-height var(--motion) var(--settle),
-    max-height var(--motion) var(--settle),
-    padding calc(var(--motion) * 0.72) var(--settle),
     border-color var(--motion-fast) var(--settle),
     transform var(--motion-fast) var(--settle),
     background-color var(--motion-fast) var(--settle),
@@ -5254,14 +5262,13 @@ body.ledger-management-open .mobile-submit-bar {
     --total-label-color: rgba(230, 235, 232, 0.64);
   }
 
-  /* body 底色渐变的白色层改暗色等价物 */
-  body {
+  /* body 底色渐变的白色层改暗色等价物（固定图层，见浅色 body::before 注释） */
+  body::before {
     background:
       radial-gradient(ellipse at 16% 2%, rgba(169, 206, 181, 0.05), transparent 42%),
       radial-gradient(ellipse at 84% 8%, rgba(185, 201, 230, 0.05), transparent 40%),
       radial-gradient(ellipse at 92% 86%, rgba(239, 194, 191, 0.04), transparent 44%),
-      linear-gradient(180deg, rgba(24, 29, 27, 0.99) 0%, rgba(20, 24, 22, 0.99) 52%, rgba(22, 27, 25, 0.99) 100%),
-      var(--bg);
+      linear-gradient(180deg, rgba(24, 29, 27, 0.99) 0%, rgba(20, 24, 22, 0.99) 52%, rgba(22, 27, 25, 0.99) 100%);
   }
 
   /* 抽屉与确认框的白色渐变改暗面 */

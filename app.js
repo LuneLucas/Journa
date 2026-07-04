@@ -1125,52 +1125,88 @@ function renderSplitScope() {
   elements.splitScopePanel.dataset.activeSplitMode = activeSplitMode;
   updateSplitScopePanelState();
 
-  elements.splitModeButtons.innerHTML = splitModeOptions
-    .map((option) => {
-      const selected = activeSplitMode === option.id;
-      const activating = selected && option.id === activatingSplitMode;
-      const deactivating = !selected && option.id === deactivatingSplitMode;
-      return `
-        <button class="${classNames("split-mode-button", selected && "is-selected", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-split-mode="${escapeHtml(option.id)}" role="radio" aria-checked="${selected}">
+  syncSplitModeButtons();
+  elements.splitDetailArea.hidden = activeSplitMode === "all";
+  elements.splitFamilyChoices.hidden = activeSplitMode !== "families";
+  syncSplitFamilyChoices();
+  elements.splitCustomAmounts.hidden = activeSplitMode !== "custom";
+  syncSplitCustomAmounts();
+  updateAmountFieldForSplitMode();
+}
+
+// 面板内的按钮结构固定，切换时只改类名/aria，不重建 DOM：
+// 避免高度动画期间的布局抖动，也保住键盘用户的焦点。
+function syncSplitModeButtons() {
+  const container = elements.splitModeButtons;
+  let buttons = [...container.querySelectorAll("[data-split-mode]")];
+  if (buttons.length !== splitModeOptions.length || buttons.some((button, index) => button.dataset.splitMode !== splitModeOptions[index].id)) {
+    container.innerHTML = splitModeOptions
+      .map(
+        (option) => `
+        <button class="split-mode-button" type="button" data-split-mode="${escapeHtml(option.id)}" role="radio" aria-checked="false">
           <span>${escapeHtml(option.label)}</span>
           <small>${escapeHtml(option.description)}</small>
         </button>
-      `;
-    })
-    .join("");
+      `,
+      )
+      .join("");
+    buttons = [...container.querySelectorAll("[data-split-mode]")];
+  }
+  buttons.forEach((button) => {
+    const id = button.dataset.splitMode;
+    const selected = activeSplitMode === id;
+    button.classList.toggle("is-selected", selected);
+    button.classList.toggle("is-activating", selected && id === activatingSplitMode);
+    button.classList.toggle("is-deactivating", !selected && id === deactivatingSplitMode);
+    button.setAttribute("aria-checked", String(selected));
+  });
+}
 
-  elements.splitDetailArea.hidden = activeSplitMode === "all";
+function syncSplitFamilyChoices() {
+  const container = elements.splitFamilyChoices;
+  let buttons = [...container.querySelectorAll("[data-split-family]")];
+  if (buttons.length !== state.families.length || buttons.some((button, index) => button.dataset.splitFamily !== state.families[index].id)) {
+    container.innerHTML = state.families
+      .map((family) => renderFamilyChoiceButton(family, { dataName: "data-split-family", extraClass: "split-family-chip" }))
+      .join("");
+    buttons = [...container.querySelectorAll("[data-split-family]")];
+  }
+  buttons.forEach((button) => {
+    const id = button.dataset.splitFamily;
+    const selected = activeSplitFamilyIds.includes(id);
+    button.classList.toggle("is-selected", selected);
+    button.classList.toggle("is-activating", activatingSplitFamilyIds.has(id));
+    button.classList.toggle("is-deactivating", !selected && deactivatingSplitFamilyIds.has(id));
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
 
-  elements.splitFamilyChoices.hidden = activeSplitMode !== "families";
-  elements.splitFamilyChoices.innerHTML = state.families
-    .map((family) => {
-      const selected = activeSplitFamilyIds.includes(family.id);
-      return renderFamilyChoiceButton(family, {
-        dataName: "data-split-family",
-        extraClass: "split-family-chip",
-        selected,
-        activating: activatingSplitFamilyIds.has(family.id),
-        deactivating: !selected && deactivatingSplitFamilyIds.has(family.id),
-      });
-    })
-    .join("");
-
-  elements.splitCustomAmounts.hidden = activeSplitMode !== "custom";
-  elements.splitCustomAmounts.innerHTML = `
-    ${state.families
-      .map((family) => {
-        const amount = Number(activeSplitAmounts[family.id]) || 0;
-        return `
+function syncSplitCustomAmounts() {
+  const container = elements.splitCustomAmounts;
+  let inputs = [...container.querySelectorAll("[data-split-amount]")];
+  if (inputs.length !== state.families.length || inputs.some((input, index) => input.dataset.splitAmount !== state.families[index].id)) {
+    container.innerHTML = `
+      ${state.families
+        .map(
+          (family) => `
           <label class="split-amount-row" style="${familyStyle(family.id)}">
             <span>${escapeHtml(family.name)}</span>
-            <input type="text" inputmode="decimal" autocomplete="off" data-split-amount="${escapeHtml(family.id)}" value="${amount > 0 ? escapeHtml(String(amount)) : ""}" placeholder="0.00" />
+            <input type="text" inputmode="decimal" autocomplete="off" data-split-amount="${escapeHtml(family.id)}" placeholder="0.00" />
           </label>
-        `;
-      })
-      .join("")}
-    <p class="split-total-line">${escapeHtml(formatCustomSplitTotalLine())}</p>
-  `;
-  updateAmountFieldForSplitMode();
+        `,
+        )
+        .join("")}
+      <p class="split-total-line"></p>
+    `;
+    inputs = [...container.querySelectorAll("[data-split-amount]")];
+  }
+  inputs.forEach((input) => {
+    if (document.activeElement === input) return; // 正在输入时不回写，避免打断
+    const amount = Number(activeSplitAmounts[input.dataset.splitAmount]) || 0;
+    input.value = amount > 0 ? String(amount) : "";
+  });
+  const totalLine = container.querySelector(".split-total-line");
+  if (totalLine) totalLine.textContent = formatCustomSplitTotalLine();
 }
 
 function updateSplitScopePanelState() {
@@ -2286,6 +2322,8 @@ function captureLedgerTransitionRects(items) {
   const rects = new Map();
   const selectors = [".ledger-main", ".ledger-family", ".category-pill", ".ledger-note", ".ledger-amount", ".ledger-date", ".ledger-edit-button", ".delete-button"];
   items.forEach((item) => {
+    // 卡片自身也入表：高度变化由 play 阶段按实测值做动画
+    rects.set(item, item.getBoundingClientRect());
     item.querySelectorAll(selectors.join(",")).forEach((element) => {
       const rect = element.getBoundingClientRect();
       if (rect.width > 1 && rect.height > 1) rects.set(element, rect);
@@ -2299,9 +2337,33 @@ function playLedgerTransitionRects(rects) {
   const duration = getCssDurationMs("--motion", 534);
   const easing = getComputedStyle(document.documentElement).getPropertyValue("--settle").trim() || "cubic-bezier(0.16, 0.9, 0.14, 1)";
 
+  // 先取消上一轮高度动画（fill: both 会夹住高度），保证下面量到真实终点
+  rects.forEach((fromRect, element) => {
+    if (element.classList?.contains("ledger-item")) {
+      element._heightAnimation?.cancel();
+      element._heightAnimation = null;
+    }
+  });
+
   rects.forEach((fromRect, element) => {
     if (!element.isConnected) return;
     const toRect = element.getBoundingClientRect();
+
+    // 卡片自身：按前后实测高度过渡（min/max 同步夹紧，兼容各断点的尺寸差异）
+    if (element.classList.contains("ledger-item")) {
+      if (Math.abs(fromRect.height - toRect.height) < 1) return;
+      const animation = element.animate(
+        [
+          { minHeight: `${fromRect.height}px`, maxHeight: `${fromRect.height}px` },
+          { minHeight: `${toRect.height}px`, maxHeight: `${toRect.height}px` },
+        ],
+        { duration, easing, fill: "both" },
+      );
+      element._heightAnimation = animation;
+      animation.addEventListener("finish", () => animation.cancel(), { once: true });
+      return;
+    }
+
     if (toRect.width <= 1 || toRect.height <= 1) return;
 
     const dx = fromRect.left - toRect.left;
