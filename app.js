@@ -15,6 +15,8 @@ const MOTION_DELAYS = {
   categoryActivate: 760,
   choiceRelease: 460,
   splitSwitch: 260,
+  mobilePanelOut: 150,
+  mobilePanelIn: 280,
   addCelebrate: 1560,
   totalAbsorb: 1320,
   toast: 2600,
@@ -81,6 +83,9 @@ const elements = {
   ledgerManagementView: document.querySelector("#ledgerManagementView"),
   ledgerManagementBackdrop: document.querySelector("#ledgerManagementBackdrop"),
   closeLedgerManagerButton: document.querySelector("#closeLedgerManagerButton"),
+  mobilePanelSwitch: document.querySelector("#mobilePanelSwitch"),
+  mobileEntryTab: document.querySelector("#mobileEntryTab"),
+  mobileDataTab: document.querySelector("#mobileDataTab"),
   ledgerCreateForm: document.querySelector("#ledgerCreateForm"),
   ledgerCreateNameInput: document.querySelector("#ledgerCreateNameInput"),
   ledgerInheritSettingsInput: document.querySelector("#ledgerInheritSettingsInput"),
@@ -175,6 +180,7 @@ let toastTimer = 0;
 let settingsCloseTimer = 0;
 let ledgerManagementCloseTimer = 0;
 let ledgerSwitchTimer = 0;
+let mobilePanelSwitchTimer = 0;
 let editReturnState = null;
 let editFormSnapshot = null;
 let totalAmountText = "";
@@ -182,14 +188,18 @@ let totalAmountSwapTimer = 0;
 let hasPlayedInitialTotalReveal = false;
 let totalRevealFrameId = 0;
 let totalRevealTargetText = "";
+let amountLabelScrollFrameId = 0;
 let cloudState = loadCloudState();
 let cloudBusy = false;
+let syncStatusWasSyncing = false;
+let syncLampTimer = 0;
 let cloudReady = false;
 let pendingSettingsSync = 0;
 let confirmResolve = null;
 let settingsReturnFocus = null;
 let ledgerManagementReturnFocus = null;
 let confirmReturnFocus = null;
+let activeMobilePanel = "entry";
 
 function loadState() {
   const storageKeys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
@@ -770,8 +780,12 @@ async function clearCloudLedger() {
 function updateCloudControls(forcedStatus = "") {
   const configured = isCloudConfigured();
   const active = isCloudLedgerActive();
+  const syncing = active && cloudBusy && !forcedStatus;
   elements.syncStatus.classList.toggle("is-cloud", active && !forcedStatus);
   elements.syncStatus.classList.toggle("is-error", Boolean(forcedStatus));
+  elements.syncStatus.classList.toggle("is-syncing", syncing);
+  if (syncStatusWasSyncing && !syncing && active && !forcedStatus) playSyncLampIgnite();
+  syncStatusWasSyncing = syncing;
   elements.syncStatus.textContent = forcedStatus || (active ? (cloudBusy ? "云账本同步中" : "云账本") : configured ? "本地账本" : "本地账本");
   elements.createCloudLedgerButton.hidden = active;
   elements.createCloudLedgerButton.disabled = cloudBusy;
@@ -780,6 +794,19 @@ function updateCloudControls(forcedStatus = "") {
   if (elements.storageModeLabel) {
     elements.storageModeLabel.textContent = active ? "Supabase 云端" : "当前浏览器";
   }
+}
+
+function playSyncLampIgnite() {
+  if (prefersReducedMotion()) return;
+  window.clearTimeout(syncLampTimer);
+  elements.syncStatus.classList.remove("is-just-synced");
+  void elements.syncStatus.offsetWidth;
+  elements.syncStatus.classList.add("is-just-synced");
+  /* 1250ms > sync-lamp-ignite 1150ms，动画播完后再摘类 */
+  syncLampTimer = window.setTimeout(() => {
+    elements.syncStatus.classList.remove("is-just-synced");
+    syncLampTimer = 0;
+  }, 1250);
 }
 
 function formatMoney(cents) {
@@ -1017,11 +1044,80 @@ function render(options = {}) {
   renderLedger({ animateFinancialChanges });
   renderSettings();
   renderEditState();
+  renderMobilePanelState();
   renderMobileSubmitBar();
   applySelectedFamilyTheme();
   applySubmitButtonTheme();
   updateAmountMotionState();
   saveState();
+}
+
+function setMobilePanel(panel, options = {}) {
+  const nextPanel = panel === "data" ? "data" : "entry";
+  const changed = activeMobilePanel !== nextPanel;
+  if (nextPanel === "data" && elements.expenseForm.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
+  const shouldAnimate = changed && options.animate && !prefersReducedMotion();
+
+  window.clearTimeout(mobilePanelSwitchTimer);
+  elements.ledgerView.classList.remove("is-mobile-panel-switching-out", "is-mobile-panel-switching-in");
+  elements.ledgerView.dataset.switchDirection = nextPanel === "data" ? "forward" : "backward";
+
+  const scrollToPanel = () => {
+    if (!options.scroll) return;
+    const target = nextPanel === "data" ? elements.ledgerSection : elements.entryPanel;
+    window.requestAnimationFrame(() => {
+      target?.scrollIntoView({ block: "start", behavior: options.behavior || "smooth" });
+    });
+  };
+
+  const commitPanel = () => {
+    activeMobilePanel = nextPanel;
+    renderMobilePanelState();
+    scrollToPanel();
+
+    if (!shouldAnimate) return;
+    elements.ledgerView.classList.remove("is-mobile-panel-switching-out");
+    elements.ledgerView.classList.add("is-mobile-panel-switching-in");
+    mobilePanelSwitchTimer = window.setTimeout(() => {
+      elements.ledgerView.classList.remove("is-mobile-panel-switching-in");
+      mobilePanelSwitchTimer = 0;
+    }, MOTION_DELAYS.mobilePanelIn);
+  };
+
+  if (!shouldAnimate) {
+    commitPanel();
+    return;
+  }
+
+  elements.ledgerView.classList.add("is-mobile-panel-switching-out");
+  mobilePanelSwitchTimer = window.setTimeout(commitPanel, MOTION_DELAYS.mobilePanelOut);
+}
+
+function renderMobilePanelState() {
+  elements.ledgerView.dataset.mobilePanel = activeMobilePanel;
+  document.body.classList.toggle("mobile-panel-entry", activeMobilePanel === "entry");
+  document.body.classList.toggle("mobile-panel-data", activeMobilePanel === "data");
+  [
+    [elements.mobileEntryTab, "entry"],
+    [elements.mobileDataTab, "data"],
+  ].forEach(([tab, panel]) => {
+    if (!tab) return;
+    const active = activeMobilePanel === panel;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+    tab.tabIndex = active ? 0 : -1;
+  });
+}
+
+function handleMobilePanelSwitchKeydown(event) {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  const nextPanel = event.key === "ArrowLeft" || event.key === "Home" ? "entry" : "data";
+  setMobilePanel(nextPanel, { animate: true });
+  const nextTab = nextPanel === "entry" ? elements.mobileEntryTab : elements.mobileDataTab;
+  nextTab.focus();
 }
 
 function renderCurrentLedgerLabel() {
@@ -1107,6 +1203,27 @@ function renderCategories() {
       `;
     })
     .join("");
+  scheduleCategoryEdgeFades();
+}
+
+let categoryFadeFrame = 0;
+
+function scheduleCategoryEdgeFades() {
+  if (categoryFadeFrame) return;
+  categoryFadeFrame = window.requestAnimationFrame(() => {
+    categoryFadeFrame = 0;
+    updateCategoryEdgeFades();
+  });
+}
+
+// 按横滚位置切换两侧渐隐：只在该侧仍有内容可滚时显示（iOS 边缘行为）
+function updateCategoryEdgeFades() {
+  const el = elements.categoryChips;
+  if (!el) return;
+  const maxScroll = el.scrollWidth - el.clientWidth;
+  const threshold = 2;
+  el.classList.toggle("can-fade-start", el.scrollLeft > threshold);
+  el.classList.toggle("can-fade-end", el.scrollLeft < maxScroll - threshold);
 }
 
 function getRecentCategories(limit = 3) {
@@ -1503,11 +1620,11 @@ function playInitialTotalReveal(targetText) {
   }
 
   const glyphs = "0123456789¥#%*&@";
-  const duration = 1200;
+  const duration = 1450;
   const introDelay = 120;
-  const stagger = 75;
-  const growEvery = 110;
-  const holdWindow = Math.max(120, duration - stagger * Math.max(targetText.length - 1, 0));
+  const stagger = 92;
+  const growEvery = 112;
+  const holdWindow = Math.max(260, duration - stagger * Math.max(targetText.length - 1, 0));
   const startedAt = window.performance.now() + introDelay;
   const targetChars = [...targetText];
 
@@ -1523,7 +1640,10 @@ function playInitialTotalReveal(targetText) {
         if (char === "," || char === "." || char === "¥") return char;
         const progress = Math.min(1, Math.max(0, (elapsed - index * stagger) / holdWindow));
         if (progress >= 1) return char;
-        const glyphIndex = Math.floor((elapsed / 42 + index * 5) % glyphs.length);
+        const slowdownProgress = Math.max(0, (progress - 0.5) / 0.5);
+        const slowedProgress = easeOutCubic(slowdownProgress);
+        const glyphInterval = 24 + slowedProgress * 126;
+        const glyphIndex = Math.floor((elapsed / glyphInterval + index * 5 + slowedProgress * 3) % glyphs.length);
         return glyphs[glyphIndex];
       })
       .join("");
@@ -1541,6 +1661,10 @@ function playInitialTotalReveal(targetText) {
   };
 
   totalRevealFrameId = window.requestAnimationFrame(renderFrame);
+}
+
+function easeOutCubic(value) {
+  return 1 - Math.pow(1 - value, 3);
 }
 
 function cancelInitialTotalReveal() {
@@ -1784,7 +1908,7 @@ function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
   }
 
   if (target === "amount") {
-    elements.amountLabel.scrollIntoView(scrollOptions);
+    elements.amountLabel.scrollIntoView({ block: "center", behavior: "auto" });
     elements.amountInput.focus();
     elements.formError.textContent = "请输入金额。";
     return;
@@ -1956,6 +2080,7 @@ function handleExpenseSubmit(event) {
   const missing = getExpenseMissingState();
 
   if (missing.target) {
+    setMobilePanel("entry", { behavior: "auto", scroll: false });
     focusExpenseMissingTarget(missing.target);
     return;
   }
@@ -3237,7 +3362,7 @@ function applySelectedFamilyTheme() {
     element.style.setProperty("--selected-family-text", style.text);
     element.style.setProperty("--selected-family-soft", style.soft);
     element.style.setProperty("--selected-family-wash", colorWithAlpha(style.color, 0.24));
-    element.style.setProperty("--selected-family-glow", colorWithAlpha(style.color, 0.42));
+    element.style.setProperty("--selected-family-glow", colorWithAlpha(style.color, 0.58));
   });
 }
 
@@ -3246,8 +3371,8 @@ function applySubmitButtonTheme() {
   const color = style?.color || "#176c5f";
   const text = style?.text || "#176c5f";
   const wash = style?.wash || "rgba(23, 108, 95, 0.14)";
-  const glow = colorWithAlpha(color, state.selectedPayerId ? 0.42 : 0.30);
-  [elements.expenseForm, elements.mobileSubmitBar].forEach((element) => {
+  const glow = colorWithAlpha(color, state.selectedPayerId ? 0.58 : 0.42);
+  [elements.expenseForm, elements.mobileSubmitBar, elements.mobilePanelSwitch].forEach((element) => {
     element.style.setProperty("--submit-color", color);
     element.style.setProperty("--submit-text", text);
     element.style.setProperty("--submit-wash", wash);
@@ -3348,7 +3473,21 @@ function formatPercent(value) {
 }
 
 function updateAmountMotionState() {
-  elements.amountLabel.classList.toggle("amount-active", document.activeElement === elements.amountInput);
+  const isActive = document.activeElement === elements.amountInput;
+  elements.amountLabel.classList.toggle("amount-active", isActive);
+  if (isActive) lockAmountLabelScroll();
+}
+
+function lockAmountLabelScroll() {
+  window.cancelAnimationFrame(amountLabelScrollFrameId);
+  elements.amountLabel.scrollTop = 0;
+  amountLabelScrollFrameId = window.requestAnimationFrame(() => {
+    elements.amountLabel.scrollTop = 0;
+    amountLabelScrollFrameId = window.requestAnimationFrame(() => {
+      elements.amountLabel.scrollTop = 0;
+      amountLabelScrollFrameId = 0;
+    });
+  });
 }
 
 function formatAmountFieldOnBlur() {
@@ -3368,7 +3507,8 @@ function pulseAmountField() {
 
 async function requestStartEditExpense(expenseId) {
   if (editingExpenseId === expenseId) {
-    elements.expenseForm.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    setMobilePanel("entry", { behavior: "auto" });
+    elements.expenseForm.scrollIntoView({ block: "start", behavior: "auto" });
     elements.amountInput.focus();
     showToast({ message: "正在编辑这笔账单" });
     return;
@@ -3397,6 +3537,7 @@ function startEditExpense(expenseId) {
   }
   editingExpenseId = expense.id;
   expandedExpenseId = expense.id;
+  setMobilePanel("entry", { behavior: "auto" });
   state.selectedPayerId = expense.payerId;
   state.activeCategory = expense.category;
   state.activeDate = expense.date;
@@ -3407,7 +3548,7 @@ function startEditExpense(expenseId) {
   elements.amountInput.value = activeSplitMode === "custom" ? formatAmountInput(getActiveCustomSplitTotalCents()) : String(expense.amount);
   elements.noteInput.value = expense.note;
   editFormSnapshot = captureExpenseFormSnapshot();
-  elements.expenseForm.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  elements.expenseForm.scrollIntoView({ block: "start", behavior: "auto" });
   elements.amountInput.focus();
   showToast({ message: "已载入账单，可直接修改" });
 }
@@ -3512,7 +3653,7 @@ function markLedgerSwitching() {
 
 function triggerAddEffect(payerId, amount) {
   const visual = getFamilyVisual(payerId);
-  const themedGlow = colorWithAlpha(visual.color, 0.52);
+  const themedGlow = colorWithAlpha(visual.color, 0.66);
   elements.expenseForm.classList.remove("form-celebrate");
   elements.expenseForm.style.setProperty("--submit-color", visual.color);
   elements.expenseForm.style.setProperty("--submit-glow", themedGlow);
@@ -3576,6 +3717,8 @@ elements.categoryForm.addEventListener("click", (event) => {
 });
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
 elements.categoryChips.addEventListener("click", handleCategorySelection);
+elements.categoryChips.addEventListener("scroll", scheduleCategoryEdgeFades, { passive: true });
+window.addEventListener("resize", scheduleCategoryEdgeFades);
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
 elements.splitScopePanel.addEventListener("input", handleSplitAmountInput);
@@ -3607,15 +3750,27 @@ elements.confirmBackdrop.addEventListener("click", () => closeConfirmDialog(fals
 elements.confirmCancelButton.addEventListener("click", () => closeConfirmDialog(false));
 elements.confirmOkButton.addEventListener("click", () => closeConfirmDialog(true));
 elements.cancelEditButton.addEventListener("click", cancelEdit);
+elements.mobilePanelSwitch.addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-mobile-panel-target]");
+  if (!tab) return;
+  setMobilePanel(tab.dataset.mobilePanelTarget, { animate: true });
+});
+elements.mobilePanelSwitch.addEventListener("keydown", handleMobilePanelSwitchKeydown);
 elements.mobileSubmitButton.addEventListener("click", () => {
+  if (activeMobilePanel === "data") {
+    setMobilePanel("entry", { animate: true, scroll: true });
+    return;
+  }
   const missing = getExpenseMissingState();
   if (missing.target) {
     elements.formError.textContent = "";
     elements.payerError.textContent = "";
-    focusExpenseMissingTarget(missing.target);
+    setMobilePanel("entry", { behavior: "auto", scroll: false });
+    window.requestAnimationFrame(() => focusExpenseMissingTarget(missing.target));
     renderMobileSubmitBar();
     return;
   }
+  setMobilePanel("entry", { behavior: "auto", scroll: false });
   elements.expenseForm.requestSubmit();
 });
 elements.amountInput.addEventListener("focus", updateAmountMotionState);

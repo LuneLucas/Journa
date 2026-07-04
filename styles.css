@@ -28,6 +28,43 @@
   initial-value: rgba(0, 0, 0, 0);
 }
 
+@property --submit-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0);
+}
+
+@property --submit-text {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0);
+}
+
+@property --submit-wash {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0);
+}
+
+@property --submit-glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0);
+}
+
+/* 类别横滚两侧渐隐宽度：注册为 <length> 才能被 transition 平滑淡入淡出 */
+@property --cat-fade-l {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --cat-fade-r {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 :root {
   color-scheme: light;
   --bg: #f7f9f8;
@@ -67,6 +104,7 @@
     radial-gradient(circle at 56% 4%, rgba(185, 201, 230, 0.32), transparent 48%),
     radial-gradient(circle at 88% 42%, rgba(239, 194, 191, 0.32), transparent 50%);
   --total-glow-left: rgba(169, 206, 181, 0.42);
+  --total-glow-center: rgba(185, 201, 230, 0.42);
   --total-glow-right: rgba(239, 194, 191, 0.42);
   --total-edge-left: rgba(169, 206, 181, 0.36);
   --total-edge-right: rgba(239, 194, 191, 0.36);
@@ -91,6 +129,7 @@
     radial-gradient(circle at 52% 8%, rgba(193, 205, 226, 0.30), transparent 44%),
     radial-gradient(circle at 86% 42%, rgba(230, 199, 170, 0.30), transparent 46%);
   --category-glow-left: rgba(185, 216, 204, 0.46);
+  --category-glow-center: rgba(193, 205, 226, 0.46);
   --category-glow-right: rgba(230, 199, 170, 0.46);
   /* 金额字号三级阶梯 */
   --num-lg: clamp(2.45rem, 6vw, 4.6rem);   /* 总支出主数字（保留英雄字号，断点精调见媒体查询） */
@@ -142,6 +181,17 @@
   --motion-slow: 713ms;
   --selection-motion: 520ms;
   --selection-release-motion: 360ms;
+  /* 灯泡点亮：慢启动缓动 + 较长升亮时长；熄灯走快速调暗。
+     --lamp-on-motion 必须 < app.js MOTION_DELAYS.payerActivate/categoryActivate(760ms)，否则动画会被类清理截断 */
+  --lamp-on: cubic-bezier(0.55, 0.06, 0.28, 1);
+  --lamp-on-motion: 660ms;
+  --lamp-off-motion: var(--selection-release-motion);
+  --lamp-glow-delay: 90ms;
+  /* liquid-glass 节奏曲线：quick=光快速聚拢；bloom=y>1 单段过冲再回稳（用于亮度与光晕） */
+  --lamp-quick: cubic-bezier(0.20, 0.70, 0.30, 1);
+  --lamp-bloom: cubic-bezier(0.26, 1.85, 0.44, 1);
+  /* 触屏按压响应时长：按下即时压缩，松开走各自基础过渡回弹 */
+  --press-motion: 90ms;
   --amount-motion: 580ms;
   --family-focus-motion: 713ms;
   --number-swap-motion: 980ms;
@@ -313,12 +363,14 @@ button:disabled {
   height: 10px;
   border-radius: var(--radius-pill);
   background:
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.92) 0 18%, transparent 28%),
-    radial-gradient(circle, color-mix(in srgb, var(--status-dot) 94%, white) 0 42%, var(--status-dot) 64%, color-mix(in srgb, var(--status-dot) 76%, rgba(255, 255, 255, 0.28)) 100%);
+    radial-gradient(circle at 45% 45%, #ffffff 0%, rgba(255, 255, 255, 0.8) 20%, transparent 60%),
+    var(--status-dot);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--status-dot-glow) 12%, transparent),
-    0 0 9px color-mix(in srgb, var(--status-dot-glow) 34%, transparent),
-    inset 0 1px 1px rgba(255, 255, 255, 0.86);
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.9),
+    0 0 6px color-mix(in srgb, var(--status-dot-glow) 90%, transparent),
+    0 0 14px 2px color-mix(in srgb, var(--status-dot-glow) 70%, transparent),
+    16px 0 32px 6px color-mix(in srgb, var(--status-dot-glow) 40%, transparent); /* 柔和版右打灯 */
+  z-index: 1;
   content: "";
 }
 
@@ -342,6 +394,114 @@ button:disabled {
   color: var(--coral);
   background: rgba(255, 237, 230, 0.74);
   border-color: rgba(183, 79, 56, 0.18);
+}
+
+/* 同步中：指示灯呼吸 + 圆点外一圈旋转加载环 */
+.sync-status.is-syncing::before {
+  animation: sync-dot-breathe 1.2s ease-in-out infinite;
+}
+
+.sync-status.is-syncing::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 1.5px solid transparent;
+  border-top-color: color-mix(in srgb, var(--status-dot-glow) 78%, transparent);
+  border-right-color: color-mix(in srgb, var(--status-dot-glow) 30%, transparent);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+  animation: sync-ring-spin 900ms linear infinite;
+}
+
+/* 同步完成：老式灯管点亮——闪几下、亮度微波动、最后稳定（JS 一次性挂类触发） */
+.sync-status.is-just-synced::before {
+  animation: sync-lamp-ignite 1.15s linear both;
+}
+
+@keyframes sync-dot-breathe {
+  0%, 100% {
+    opacity: 0.6;
+    filter: brightness(0.9);
+    transform: scale(0.95);
+  }
+
+  50% {
+    opacity: 1;
+    filter: brightness(1.2);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes sync-ring-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes sync-lamp-ignite {
+  0% {
+    opacity: 0.30;
+    filter: brightness(0.72);
+    transform: scale(0.95);
+  }
+
+  7% {
+    opacity: 1;
+    filter: brightness(1.3);
+    transform: scale(1.05);
+  }
+
+  11% {
+    opacity: 0.34;
+    filter: brightness(0.78);
+    transform: scale(0.96);
+  }
+
+  20% {
+    opacity: 0.95;
+    filter: brightness(1.2);
+    transform: scale(1.04);
+  }
+
+  25% {
+    opacity: 0.42;
+    filter: brightness(0.82);
+    transform: scale(0.97);
+  }
+
+  36% {
+    opacity: 1;
+    filter: brightness(1.3);
+    transform: scale(1.06);
+  }
+
+  48% {
+    opacity: 0.88;
+    filter: brightness(1.1);
+    transform: scale(1.02);
+  }
+
+  62% {
+    opacity: 1;
+    filter: brightness(1.2);
+    transform: scale(1.04);
+  }
+
+  78% {
+    opacity: 0.96;
+    filter: brightness(1.05);
+    transform: scale(1.01);
+  }
+
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+    transform: scale(1);
+  }
 }
 
 .app-view[hidden] {
@@ -484,6 +644,9 @@ h3 {
     0 0 0 1px var(--total-edge-soft),
     -20px 0 58px -34px var(--total-glow-left),
     20px 0 58px -34px var(--total-glow-right),
+    -30px 30px 60px -24px var(--total-glow-left),
+    0 30px 60px -24px var(--total-glow-center),
+    30px 30px 60px -24px var(--total-glow-right),
     0 24px 74px rgba(22, 26, 30, 0.12);
 }
 
@@ -658,14 +821,15 @@ h3 {
   font-weight: var(--fw-bold);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-    var(--shadow-sm);
+    var(--shadow-sm),
+    0 0 32px -12px transparent;
   transition:
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring),
-    background-color var(--selection-motion) var(--settle),
-    border-color var(--selection-motion) var(--settle),
-    box-shadow var(--selection-motion) var(--settle),
-    color calc(var(--selection-motion) * 0.74) var(--settle);
+    background-color calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    border-color calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    color calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .family-tag::before {
@@ -682,7 +846,7 @@ h3 {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--selection-motion) var(--settle);
+  transition: opacity var(--lamp-off-motion) var(--settle);
 }
 
 .family-tag > span {
@@ -703,20 +867,26 @@ h3 {
 
 .family-tag.is-selected {
   border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
-    color-mix(in srgb, var(--family-color) 9%, transparent);
-  /* 深色家庭标签坐在浅色填充上，对比 ≥ 5.3:1 */
+  /* 点亮填充完全由 ::before 承担（渐变不可插值，元素本体不改背景以免首帧跳变）。
+     深色家庭标签坐在浅色填充上，对比 ≥ 5.3:1 */
   color: color-mix(in srgb, var(--family-text) 70%, black);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
-    0 8px 20px -12px var(--family-soft),
-    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 28%, rgba(255, 255, 255, 0.76)),
+    0 10px 24px -10px color-mix(in srgb, var(--family-color) 25%, transparent),
+    0 0 32px -12px color-mix(in srgb, var(--family-color) 15%, transparent);
   transform: none;
+  transition:
+    opacity var(--motion-fast) var(--spring),
+    transform var(--motion-fast) var(--spring),
+    background-color calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    border-color calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    color calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .family-tag.is-selected::before {
   opacity: 1;
+  transition: opacity var(--lamp-on-motion) var(--lamp-on);
 }
 
 .family-tag.is-selected.is-activating::before,
@@ -729,7 +899,7 @@ h3 {
 .family-tag.is-activating,
 .selectable-category-chip.is-activating,
 .split-mode-button.is-activating {
-  animation: choice-select-pop var(--selection-motion) var(--settle) both;
+  animation: choice-select-pop var(--lamp-on-motion) var(--lamp-on) both;
 }
 
 .selectable-category-chip.is-activating {
@@ -753,7 +923,36 @@ h3 {
 .family-tag.is-activating::before,
 .selectable-category-chip.is-activating::before,
 .split-mode-button.is-activating::before {
-  animation: choice-selected-fill var(--selection-motion) var(--settle) both;
+  animation: choice-selected-fill var(--lamp-on-motion) var(--lamp-on) both;
+}
+
+/* 关键按钮待遇：付款人标签按 liquid-glass 节奏点亮——
+   光快速聚拢（强 ease-out），亮度走单段过冲贝塞尔冲过 100% 再平滑回稳，全程无折点 */
+.family-tag.is-activating::before {
+  animation:
+    lamp-fill-quick 220ms var(--lamp-quick) both,
+    lamp-glow-settle 440ms var(--lamp-bloom) both;
+}
+
+/* 光晕与光同节奏：内圈第 0 帧即亮（玻璃锐边），外发光延迟 80ms 后过冲绽放。
+   关键帧只写 0% 帧，100% 自动落到 .is-selected 稳态（亮/暗模式各自正确） */
+.family-tag.is-activating {
+  animation: family-shadow-bloom 380ms var(--lamp-bloom) 36ms both;
+}
+
+/* 分账成员芯片带 family-tag 类，压回共享 pop（须位于上一条之后） */
+.split-family-chip.is-activating {
+  animation: choice-select-pop var(--lamp-on-motion) var(--lamp-on) both;
+}
+
+/* 分账成员芯片同时带 family-tag 类，压回无过冲的平滑渐亮（须位于上一条之后） */
+.split-family-chip.is-activating::before {
+  animation: choice-selected-fill var(--lamp-on-motion) var(--lamp-on) both;
+}
+
+/* 分类外光晕滞后于填充点亮 */
+.selectable-category-chip.is-activating::after {
+  animation: category-halo-ignite var(--lamp-on-motion) var(--lamp-on) both;
 }
 
 .family-tag.is-deactivating::before,
@@ -767,7 +966,7 @@ h3 {
 .selectable-category-chip.is-activating > span,
 .split-mode-button.is-activating span,
 .split-mode-button.is-activating small {
-  animation: choice-label-settle var(--selection-motion) var(--settle) both;
+  animation: choice-label-settle var(--lamp-on-motion) var(--lamp-on) both;
 }
 
 .family-tag.is-deactivating > span,
@@ -787,7 +986,8 @@ h3 {
 }
 
 .family-tag.is-activating > span {
-  animation: family-label-select var(--selection-motion) var(--settle) both;
+  /* 与 liquid-glass 点亮同节奏：快速加深，长尾回稳 */
+  animation: family-label-select 640ms var(--lamp-quick) both;
 }
 
 .family-tag.is-deactivating > span {
@@ -795,11 +995,11 @@ h3 {
 }
 
 .split-mode-button.is-activating span {
-  animation: split-mode-label-select var(--selection-motion) var(--settle) both;
+  animation: split-mode-label-select var(--lamp-on-motion) var(--lamp-on) both;
 }
 
 .split-mode-button.is-activating small {
-  animation: split-mode-small-label-select var(--selection-motion) var(--settle) both;
+  animation: split-mode-small-label-select var(--lamp-on-motion) var(--lamp-on) both;
 }
 
 .family-tag:focus-visible {
@@ -973,11 +1173,14 @@ input[type="date"]:focus {
 .amount-label {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(96px, 1fr);
+  grid-template-rows: minmax(18px, auto) minmax(88px, 1fr);
   align-items: stretch;
+  box-sizing: border-box;
+  min-height: 136px;
   overflow: hidden;
-  gap: 7px;
-  padding: 18px;
+  overflow: clip;
+  gap: 2px;
+  padding: 8px 18px 14px;
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
   border-radius: var(--radius-xl);
   background:
@@ -985,19 +1188,20 @@ input[type="date"]:focus {
     rgba(255, 255, 255, 0.76);
   box-shadow:
     inset 0 0 0 1px rgba(22, 26, 30, 0.06),
+    0 24px 64px -24px transparent,
     0 18px 50px rgba(22, 26, 30, 0.10);
   transform-origin: center;
   transition:
-    --selected-family-color calc(var(--motion) * 1.32) var(--settle),
-    --selected-family-text calc(var(--motion) * 1.32) var(--settle),
-    --selected-family-soft calc(var(--motion) * 1.32) var(--settle),
-    --selected-family-wash calc(var(--motion) * 1.32) var(--settle),
-    --selected-family-glow calc(var(--motion) * 1.32) var(--settle),
+    --selected-family-color calc(var(--motion) * 2.2) cubic-bezier(0.4, 0, 0.2, 1),
+    --selected-family-text calc(var(--motion) * 1.8) cubic-bezier(0.4, 0, 0.2, 1),
+    --selected-family-soft calc(var(--motion) * 2.2) cubic-bezier(0.4, 0, 0.2, 1),
+    --selected-family-wash calc(var(--motion) * 2.2) cubic-bezier(0.4, 0, 0.2, 1),
+    --selected-family-glow calc(var(--motion) * 2.8) cubic-bezier(0.4, 0, 0.2, 1),
     padding var(--amount-motion) var(--spring),
     transform var(--amount-motion) var(--spring),
     border-radius var(--amount-motion) var(--spring),
     background-color var(--motion-fast) var(--spring),
-    box-shadow var(--amount-motion) var(--spring);
+    box-shadow calc(var(--motion) * 2.8) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .amount-label::before,
@@ -1018,7 +1222,7 @@ input[type="date"]:focus {
     radial-gradient(ellipse at 88% 76%, color-mix(in srgb, var(--selected-family-color) 12%, transparent), transparent 52%);
   opacity: 0;
   transition:
-    opacity calc(var(--motion) * 1.32) var(--settle);
+    opacity calc(var(--motion) * 2.8) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .amount-label::after {
@@ -1031,15 +1235,15 @@ input[type="date"]:focus {
   opacity: 0;
   transform: scale(1.02);
   transition:
-    opacity calc(var(--motion) * 1.45) var(--settle),
-    --selected-family-color calc(var(--motion) * 1.45) var(--settle);
+    opacity calc(var(--motion) * 2.8) cubic-bezier(0.4, 0, 0.2, 1),
+    --selected-family-color calc(var(--motion) * 2.8) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .amount-label.amount-themed {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 16%, transparent),
-    0 0 46px -20px var(--selected-family-glow),
-    0 18px 50px rgba(22, 26, 30, 0.10);
+    inset 0 0 0 1px var(--selected-family-wash),
+    0 24px 64px -24px var(--selected-family-glow),
+    0 12px 34px rgba(22, 26, 30, 0.08);
 }
 
 .amount-label.amount-themed::before {
@@ -1098,7 +1302,7 @@ input[type="date"]:focus {
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 96px;
+  min-height: 88px;
   transform-origin: center;
   z-index: 1;
 }
@@ -1118,7 +1322,7 @@ input[type="date"]:focus {
 .amount-label input {
   min-width: 0;
   flex: 1;
-  min-height: 68px;
+  height: 68px;
   border: 0;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.56);
@@ -1127,9 +1331,10 @@ input[type="date"]:focus {
   font-size: clamp(2.2rem, 6vw, 4.2rem);
   font-weight: var(--fw-bold);
   letter-spacing: 0;
+  line-height: normal;
   transform-origin: center;
   transition:
-    min-height var(--amount-motion) var(--spring),
+    height var(--amount-motion) var(--spring),
     transform var(--amount-motion) var(--spring),
     background-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring);
@@ -1151,30 +1356,28 @@ input[type="date"]:focus {
 }
 
 .amount-label.amount-active {
-  padding: 22px;
   border-radius: 34px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
   box-shadow:
     inset 0 0 0 1px rgba(22, 26, 30, 0.08),
     0 34px 92px rgba(22, 26, 30, 0.14);
-  transform: none;
+  transform: scale(1.018);
 }
 
 .amount-label.amount-active.amount-themed {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 22%, transparent),
-    0 0 68px -20px var(--selected-family-glow),
+    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 30%, transparent),
+    0 0 84px -18px var(--selected-family-glow),
     0 34px 92px rgba(22, 26, 30, 0.14);
 }
 
 .amount-label.amount-active input {
-  min-height: 82px;
   background: rgba(255, 255, 255, 0.78);
-  transform: none;
+  transform: scale(1.025);
 }
 
 .amount-label.amount-active .currency-mark {
   color: var(--selected-family-text);
-  transform: none;
+  transform: scale(1.04);
 }
 
 .amount-label.amount-pulse .amount-field {
@@ -1357,10 +1560,11 @@ input[type="date"]:focus {
   color: var(--muted);
   padding: 9px 10px;
   text-align: left;
+  /* 基础规则的 timing 即“熄灯”方向：快速调暗 */
   transition:
-    background-color var(--selection-motion) var(--settle),
-    border-color var(--selection-motion) var(--settle),
-    box-shadow var(--selection-motion) var(--settle),
+    background-color var(--lamp-off-motion) var(--settle),
+    border-color var(--lamp-off-motion) var(--settle),
+    box-shadow var(--lamp-off-motion) var(--settle),
     transform var(--motion-fast) var(--spring);
 }
 
@@ -1375,7 +1579,7 @@ input[type="date"]:focus {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--selection-motion) var(--settle);
+  transition: opacity var(--lamp-off-motion) var(--settle);
 }
 
 .split-mode-button span {
@@ -1407,18 +1611,31 @@ input[type="date"]:focus {
     inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 12%, rgba(255, 255, 255, 0.58)),
     0 0 26px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
     0 10px 26px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 48%, transparent);
+  /* 点灯方向：慢启动坡道，光晕略滞后 */
+  transition:
+    background-color var(--lamp-on-motion) var(--lamp-on),
+    border-color var(--lamp-on-motion) var(--lamp-on),
+    box-shadow var(--lamp-on-motion) var(--lamp-on) var(--lamp-glow-delay),
+    transform var(--motion-fast) var(--spring);
 }
 
 .split-mode-button.is-selected::before {
   opacity: 1;
+  transition: opacity var(--lamp-on-motion) var(--lamp-on);
 }
 
 .split-mode-button.is-selected span {
   color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 78%, var(--ink));
+  transition:
+    color var(--lamp-on-motion) var(--lamp-on),
+    transform var(--lamp-on-motion) var(--lamp-on);
 }
 
 .split-mode-button.is-selected small {
   color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 62%, var(--muted));
+  transition:
+    color var(--lamp-on-motion) var(--lamp-on),
+    transform var(--lamp-on-motion) var(--lamp-on);
 }
 
 .split-detail-area {
@@ -1500,9 +1717,6 @@ input[type="date"]:focus {
 
 .split-family-chip.is-selected {
   border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
-    color-mix(in srgb, var(--family-color) 9%, transparent);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
     0 8px 20px -12px var(--family-soft),
@@ -1601,6 +1815,10 @@ input[type="date"]:focus {
 .secondary-button,
 .ghost-button,
 .delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: var(--control-height);
   border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
@@ -1619,18 +1837,18 @@ input[type="date"]:focus {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border-color: color-mix(in srgb, var(--submit-color, var(--brand-primary)) 22%, rgba(255, 255, 255, 0.68));
+  border-color: color-mix(in srgb, var(--submit-color, var(--brand-primary)) 30%, rgba(255, 255, 255, 0.64));
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
-    color-mix(in srgb, var(--submit-color, var(--green)) 22%, rgba(255, 255, 255, 0.54));
+    color-mix(in srgb, var(--submit-color, var(--green)) 32%, rgba(255, 255, 255, 0.48));
   color: var(--submit-text, var(--green-dark));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
   transform-origin: center;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 16%, transparent),
-    0 0 42px -18px var(--submit-glow, rgba(23, 108, 95, 0.30)),
-    0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
+    0 0 58px -16px var(--submit-glow, rgba(23, 108, 95, 0.46)),
+    0 0 26px -9px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
     0 18px 50px rgba(22, 26, 30, 0.10);
   will-change: transform, box-shadow;
 }
@@ -1643,9 +1861,9 @@ input[type="date"]:focus {
 .primary-button:hover {
   transform: translateY(-1px);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent),
-    0 0 56px -18px var(--submit-glow, rgba(23, 108, 95, 0.34)),
-    0 0 24px -10px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent),
+    0 0 70px -16px var(--submit-glow, rgba(23, 108, 95, 0.50)),
+    0 0 32px -9px color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent),
     0 22px 58px rgba(22, 26, 30, 0.12);
 }
 
@@ -1664,9 +1882,9 @@ input[type="date"]:focus {
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
-      color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent) 52%,
-      color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent)
+      color-mix(in srgb, var(--submit-color, var(--green)) 58%, transparent),
+      color-mix(in srgb, var(--submit-color, var(--green)) 44%, transparent) 52%,
+      color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent)
     ),
     linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 58%),
     radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 22%, white), transparent 58%);
@@ -1938,6 +2156,66 @@ input[type="date"]:focus {
   background: rgba(255, 255, 255, 0.28);
   color: rgba(107, 103, 95, 0.48);
   box-shadow: none;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  transition: background-color var(--motion-fast) var(--spring), color var(--motion-fast) var(--spring);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--control-surface-hover);
+}
+
+.sf-symbol {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, sans-serif;
+  font-weight: 400;
+  font-size: 1.25em;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+}
+
+.sf-icon { display: none; }
+.svg-icon { display: none; }
+
+.sf-supported .sf-icon { display: inline-block; }
+.sf-unsupported .svg-icon { display: inline-block; }
+
+/* In flex contexts like buttons, we want inline-block but let flex alignment handle them */
+.primary-button .sf-icon,
+.secondary-button .sf-icon,
+.ghost-button .sf-icon,
+.icon-button .sf-icon,
+.primary-button .svg-icon,
+.secondary-button .svg-icon,
+.ghost-button .svg-icon,
+.icon-button .svg-icon {
+  display: none;
+}
+
+.sf-supported .primary-button .sf-icon,
+.sf-supported .secondary-button .sf-icon,
+.sf-supported .ghost-button .sf-icon,
+.sf-supported .icon-button .sf-icon {
+  display: block; /* Use block in flex container */
+}
+
+.sf-unsupported .primary-button .svg-icon,
+.sf-unsupported .secondary-button .svg-icon,
+.sf-unsupported .ghost-button .svg-icon,
+.sf-unsupported .icon-button .svg-icon {
+  display: block;
 }
 
 .settings-view {
@@ -2655,7 +2933,7 @@ body.ledger-management-open .mobile-submit-bar {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--selection-motion) var(--settle);
+  transition: opacity var(--lamp-off-motion) var(--settle);
 }
 
 .selectable-category-chip::after {
@@ -2668,7 +2946,7 @@ body.ledger-management-open .mobile-submit-bar {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--selection-motion) var(--settle);
+  transition: opacity var(--lamp-off-motion) var(--settle);
 }
 
 .selectable-category-chip > span {
@@ -2709,7 +2987,7 @@ body.ledger-management-open .mobile-submit-bar {
 
 .selectable-category-chip.is-selected {
   border-color: color-mix(in srgb, var(--category-gradient) 70%, white);
-  background: color-mix(in srgb, var(--category-gradient) 8%, rgba(255, 255, 255, 0.50));
+  /* 点亮填充完全由 ::before 承担，元素本体不改背景以免首帧跳变 */
   color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
   box-shadow:
@@ -2718,15 +2996,30 @@ body.ledger-management-open .mobile-submit-bar {
     0 0 24px -18px var(--category-gradient),
     inset 0 1px 0 rgba(255, 255, 255, 0.20);
   transform: none;
+  /* 点灯方向：慢启动坡道，光晕略滞后 */
+  transition:
+    transform var(--motion-fast) var(--spring),
+    border-color var(--lamp-on-motion) var(--lamp-on),
+    background-color var(--motion-fast) var(--spring),
+    box-shadow var(--lamp-on-motion) var(--lamp-on) var(--lamp-glow-delay),
+    color var(--lamp-on-motion) var(--lamp-on);
 }
 
-.selectable-category-chip.is-selected::before,
+.selectable-category-chip.is-selected::before {
+  opacity: 1;
+  transition: opacity var(--lamp-on-motion) var(--lamp-on);
+}
+
 .selectable-category-chip.is-selected::after {
   opacity: 1;
+  transition: opacity var(--lamp-on-motion) var(--lamp-on) var(--lamp-glow-delay);
 }
 
 .selectable-category-chip.is-selected > span {
   color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
+  transition:
+    color var(--lamp-on-motion) var(--lamp-on),
+    transform var(--lamp-on-motion) var(--lamp-on);
 }
 
 .selectable-category-chip:focus-visible {
@@ -2742,7 +3035,15 @@ body.ledger-management-open .mobile-submit-bar {
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
-  46% {
+  /* 前段短暂压住光晕，让填充先亮；随后光晕用平滑绽放段跟上，与光同节奏 */
+  18% {
+    box-shadow:
+      0 0 0 color-mix(in srgb, currentColor 0%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    animation-timing-function: cubic-bezier(0.30, 0.60, 0.35, 1);
+  }
+
+  60% {
     opacity: 1;
   }
 
@@ -2759,7 +3060,14 @@ body.ledger-management-open .mobile-submit-bar {
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
-  46% {
+  18% {
+    box-shadow:
+      0 0 0 color-mix(in srgb, currentColor 0%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    animation-timing-function: cubic-bezier(0.30, 0.60, 0.35, 1);
+  }
+
+  60% {
     transform: none;
   }
 
@@ -2768,13 +3076,68 @@ body.ledger-management-open .mobile-submit-bar {
   }
 }
 
+/* 调光器坡道：慢起步由 --lamp-on 缓动提供 */
 @keyframes choice-selected-fill {
   0% {
     opacity: 0;
   }
 
-  54% {
+  100% {
     opacity: 1;
+  }
+}
+
+/* liquid-glass 点亮（仅付款人标签）：两条并行动画拆开填充与亮度。
+   填充 320ms 快速涌上（即时响应感）；亮度只有首尾两帧，
+   过冲完全由 y>1 的单段贝塞尔产生——冲过 100% 再回稳是同一条连续曲线，无折点 */
+@keyframes lamp-fill-quick {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes lamp-glow-settle {
+  0% {
+    filter: brightness(0.80) saturate(0.96);
+  }
+
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+}
+
+/* 付款人标签光晕绽放：中段给一个白炽灯式亮度峰值，再回到 .is-selected 稳态。 */
+@keyframes family-shadow-bloom {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 28%, rgba(255, 255, 255, 0.76)),
+      0 8px 20px -12px transparent,
+      0 0 26px -16px transparent;
+  }
+
+  58% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 42%, rgba(255, 255, 255, 0.86)),
+      0 13px 30px -9px color-mix(in srgb, var(--family-color) 94%, transparent),
+      0 0 58px -10px color-mix(in srgb, var(--family-color) 100%, transparent);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 28%, rgba(255, 255, 255, 0.76)),
+      0 10px 24px -11px color-mix(in srgb, var(--family-color) 86%, transparent),
+      0 0 42px -14px color-mix(in srgb, var(--family-color) 90%, transparent);
+  }
+}
+
+/* 分类外光晕：前 30% 按兵不动，之后再点亮 */
+@keyframes category-halo-ignite {
+  0%, 30% {
+    opacity: 0;
   }
 
   100% {
@@ -2805,7 +3168,7 @@ body.ledger-management-open .mobile-submit-bar {
     transform: translateY(1px);
   }
 
-  54% {
+  66% {
     transform: translateY(-1px);
   }
 
@@ -2830,9 +3193,9 @@ body.ledger-management-open .mobile-submit-bar {
     transform: translateY(1px);
   }
 
-  62% {
-    /* 过渡到深色选中标签，不再经过白色 */
-    color: color-mix(in srgb, var(--family-text) 78%, black);
+  45% {
+    /* 过渡到深色选中标签，不再经过白色；与亮度过冲峰值（约 35%-45%）对齐 */
+    color: color-mix(in srgb, var(--family-text) 82%, black);
     transform: translateY(-1px);
   }
 
@@ -2883,7 +3246,7 @@ body.ledger-management-open .mobile-submit-bar {
     transform: translateY(1px);
   }
 
-  46% {
+  60% {
     color: color-mix(in srgb, var(--submit-text, var(--green)) 54%, var(--ink));
   }
 
@@ -2899,7 +3262,7 @@ body.ledger-management-open .mobile-submit-bar {
     transform: translateY(1px);
   }
 
-  46% {
+  60% {
     color: color-mix(in srgb, var(--submit-text, var(--green)) 40%, var(--muted));
   }
 
@@ -2964,6 +3327,9 @@ body.ledger-management-open .mobile-submit-bar {
   box-shadow:
     -16px 0 44px -24px var(--category-glow-left),
     16px 0 44px -24px var(--category-glow-right),
+    -20px 20px 44px -20px var(--category-glow-left),
+    0 20px 44px -20px var(--category-glow-center),
+    20px 20px 44px -20px var(--category-glow-right),
     var(--shadow-lg);
 }
 
@@ -3882,21 +4248,32 @@ body.ledger-management-open .mobile-submit-bar {
   pointer-events: none;
 }
 
+@media (max-width: 820px) {
+  .toast-host {
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 84px);
+  }
+}
+
 .toast {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.56);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
-  background: rgba(22, 26, 30, 0.82);
-  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.25) 40%),
+    rgba(247, 249, 248, 0.52);
+  color: var(--ink);
   padding: 10px 12px 10px 16px;
-  box-shadow: 0 18px 48px rgba(22, 26, 30, 0.20);
-  backdrop-filter: blur(12px) saturate(112%);
-  -webkit-backdrop-filter: blur(12px) saturate(112%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.3),
+    0 18px 48px rgba(22, 26, 30, 0.16);
+  backdrop-filter: blur(6px) saturate(160%);
+  -webkit-backdrop-filter: blur(6px) saturate(160%);
   pointer-events: auto;
-  animation: toast-enter var(--motion) var(--spring) both;
+  animation: toast-enter 0.6s var(--spring) both;
 }
 
 .toast span {
@@ -3910,16 +4287,21 @@ body.ledger-management-open .mobile-submit-bar {
   min-height: 36px;
   border: 0;
   border-radius: var(--control-radius-compact);
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: rgba(22, 26, 30, 0.08);
+  color: var(--ink);
   padding: 0 14px;
   font-weight: var(--fw-bold);
   white-space: nowrap;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5);
 }
 
 .mobile-submit-bar {
   display: none;
   transition:
+    --submit-color calc(var(--motion) * 1.32) var(--settle),
+    --submit-text calc(var(--motion) * 1.32) var(--settle),
+    --submit-wash calc(var(--motion) * 1.32) var(--settle),
+    --submit-glow calc(var(--motion) * 1.32) var(--settle),
     opacity var(--motion-fast) var(--settle),
     transform var(--motion-fast) var(--settle),
     border-color var(--motion-fast) var(--spring),
@@ -3927,15 +4309,19 @@ body.ledger-management-open .mobile-submit-bar {
     background-color var(--motion-fast) var(--spring);
 }
 
+.mobile-panel-switch {
+  display: none;
+}
+
 @keyframes toast-enter {
   0% {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(80px) scale(0.92);
   }
 
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -4035,6 +4421,11 @@ body.ledger-management-open .mobile-submit-bar {
   .app-shell {
     width: min(100% - 28px, 720px);
     padding: 20px 0 calc(112px + env(safe-area-inset-bottom));
+  }
+
+  body.mobile-panel-data .app-shell,
+  body.keyboard-open .app-shell {
+    padding-bottom: 44px;
   }
 
   .app-header {
@@ -4214,9 +4605,13 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .summary-band {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 9px;
     margin-bottom: 13px;
+  }
+
+  .summary-band .metric:not(.primary) {
+    display: none;
   }
 
   .metric.primary {
@@ -4225,13 +4620,13 @@ body.ledger-management-open .mobile-submit-bar {
     justify-items: center;
     grid-column: 1 / -1;
     grid-row: auto;
-    min-height: 112px;
+    min-height: 92px;
     text-align: center;
   }
 
   .metric {
-    min-height: 66px;
-    padding: 13px;
+    min-height: 74px;
+    padding: 12px;
     border-radius: var(--control-radius-large);
   }
 
@@ -4242,13 +4637,13 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .metric strong {
-    font-size: clamp(1.24rem, 5.4vw, 1.68rem);
+    font-size: clamp(1rem, 4.4vw, 1.42rem);
     line-height: 1.05;
   }
 
   .metric.primary strong {
     display: inline-block;
-    font-size: clamp(2.62rem, 12.2vw, 4rem);
+    font-size: clamp(2.08rem, 9.4vw, 3.28rem);
     line-height: 1.04;
     overflow: visible;
   }
@@ -4292,7 +4687,7 @@ body.ledger-management-open .mobile-submit-bar {
   .app-view {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 
   .summary-band {
@@ -4300,12 +4695,124 @@ body.ledger-management-open .mobile-submit-bar {
     margin-bottom: 0;
   }
 
+  .mobile-panel-switch {
+    order: 2;
+    position: sticky;
+    top: 8px;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.58));
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0.24)),
+      radial-gradient(ellipse at 16% -36%, rgba(255, 255, 255, 0.88), transparent 55%),
+      radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent), transparent 64%),
+      rgba(247, 249, 248, 0.18);
+    padding: 4px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.82),
+      inset 0 -1px 0 rgba(22, 26, 30, 0.08),
+      0 0 28px -16px color-mix(in srgb, var(--submit-color, var(--green)) 68%, transparent),
+      0 14px 38px rgba(22, 26, 30, 0.10);
+    backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
+    -webkit-backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
+  }
+
+  .mobile-panel-switch::before,
+  .mobile-panel-switch::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    content: "";
+    pointer-events: none;
+  }
+
+  .mobile-panel-switch::before {
+    z-index: -1;
+    background:
+      linear-gradient(110deg, rgba(255, 255, 255, 0.72), transparent 26%),
+      radial-gradient(ellipse at 50% -42%, rgba(255, 255, 255, 0.78), transparent 50%);
+    filter: blur(1px);
+    opacity: 0.68;
+  }
+
+  .mobile-panel-switch::after {
+    z-index: 2;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.16) 44%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(22, 26, 30, 0.10)));
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.92;
+  }
+
+  .mobile-panel-tab {
+    position: relative;
+    z-index: 1;
+    min-height: 40px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: color-mix(in srgb, var(--ink) 75%, var(--muted));
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: var(--fw-heavy);
+    cursor: pointer;
+    transition:
+      background-color var(--motion-fast) var(--spring),
+      box-shadow var(--motion-fast) var(--spring),
+      color var(--motion-fast) var(--spring),
+      transform var(--motion-fast) var(--spring);
+  }
+
+  .mobile-panel-tab.is-active {
+    color: var(--submit-text, var(--green-dark));
+  }
+
+  .mobile-panel-indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 6px);
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.72));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 2px 8px -2px rgba(22, 26, 30, 0.12),
+      0 4px 16px -4px rgba(22, 26, 30, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .mobile-panel-switch:has(#mobileEntryTab.is-active) .mobile-panel-indicator {
+    transform: translateX(0);
+  }
+
+  .mobile-panel-switch:has(#mobileDataTab.is-active) .mobile-panel-indicator {
+    transform: translateX(calc(100% + 4px));
+  }
+
+  .mobile-panel-tab:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent);
+    outline-offset: 2px;
+  }
+
   .workspace {
     display: contents;
   }
 
   .entry-panel {
-    order: 2;
+    order: 3;
   }
 
   .ledger-section {
@@ -4319,6 +4826,121 @@ body.ledger-management-open .mobile-submit-bar {
 
   .insights-panel {
     order: 4;
+  }
+
+  .app-view[data-mobile-panel="entry"] .ledger-section,
+  .app-view[data-mobile-panel="entry"] .insights-panel,
+  .app-view[data-mobile-panel="data"] .entry-panel {
+    display: none;
+  }
+
+  .app-view.is-mobile-panel-switching-out .entry-panel,
+  .app-view.is-mobile-panel-switching-out .ledger-section,
+  .app-view.is-mobile-panel-switching-out .insights-panel {
+    animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 150ms) cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
+  .app-view.is-mobile-panel-switching-in .entry-panel,
+  .app-view.is-mobile-panel-switching-in .ledger-section,
+  .app-view.is-mobile-panel-switching-in .insights-panel {
+    animation: mobile-panel-fade-in var(--mobile-panel-in-motion, 280ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar {
+    left: calc(100% - 74px);
+    padding: 0;
+    gap: 0;
+    grid-template-columns: 0px 1fr;
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 40%),
+      rgba(247, 249, 248, 0.38);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.04),
+      0 0 40px 6px color-mix(in srgb, var(--submit-color, var(--green)) 35%, transparent),
+      0 12px 34px rgba(22, 26, 30, 0.12);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.submit-themed {
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 60%, var(--submit-color)) 0%, transparent 40%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%),
+      color-mix(in srgb, var(--submit-color) 35%, rgba(255, 255, 255, 0.35));
+    background:
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.88 0.08 h / 0.5) 0%, transparent 40%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%),
+      oklch(from var(--submit-color) 0.65 c h / 0.45);
+    box-shadow:
+      inset 0 1px 3px color-mix(in srgb, white 70%, var(--submit-color)),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 40%, rgba(22, 26, 30, 0.06)),
+      0 0 44px 8px var(--submit-glow, rgba(23, 108, 95, 0.5)),
+      0 12px 30px -10px var(--submit-glow, rgba(23, 108, 95, 0.3)),
+      0 8px 24px rgba(22, 26, 30, 0.08);
+  }
+
+  body.mobile-panel-data .mobile-submit-summary {
+    opacity: 0;
+    pointer-events: none;
+    padding-left: 0;
+  }
+
+  body.mobile-panel-data .mobile-submit-button {
+    min-height: 62px;
+    height: 62px;
+    padding: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  body.mobile-panel-data .mobile-submit-button::before {
+    opacity: 0;
+  }
+
+  body.mobile-panel-data .mobile-submit-button .button-label {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  body.mobile-panel-data .mobile-submit-button::after {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  .app-view {
+    --switch-out-x: -6px;
+    --switch-in-x: 6px;
+  }
+
+  .app-view[data-switch-direction="backward"] {
+    --switch-out-x: 6px;
+    --switch-in-x: -6px;
+  }
+
+  @keyframes mobile-panel-fade-out {
+    from {
+      opacity: 1;
+      transform: scale(1) translate(0, 0);
+    }
+
+    to {
+      opacity: 0;
+      transform: scale(0.985) translate(var(--switch-out-x), 3px);
+    }
+  }
+
+  @keyframes mobile-panel-fade-in {
+    from {
+      opacity: 0;
+      transform: scale(0.985) translate(var(--switch-in-x), 3px);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1) translate(0, 0);
+    }
   }
 
   .entry-panel,
@@ -4371,14 +4993,13 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label {
-    padding: 17px;
+    padding: 7px 17px 13px;
     border-radius: var(--radius-xl);
   }
 
   .amount-label.amount-active {
-    padding: 18px;
     border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
-    transform: none;
+    transform: scale(1.014);
   }
 
   .currency-mark {
@@ -4387,20 +5008,18 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label input {
-    min-height: 72px;
+    height: 72px;
     padding: 0 12px;
     font-size: clamp(2.82rem, 14.2vw, 4.45rem);
-    line-height: 1.06;
+    line-height: normal;
   }
 
   .amount-label.amount-active input {
-    min-height: 76px;
-    font-size: clamp(2.88rem, 14.6vw, 4.58rem);
-    transform: none;
+    transform: scale(1.018);
   }
 
   .amount-label.amount-active .currency-mark {
-    transform: none;
+    transform: scale(1.035);
   }
 
   .expense-form {
@@ -4464,12 +5083,37 @@ body.ledger-management-open .mobile-submit-bar {
     flex-wrap: nowrap;
     gap: 9px;
     overflow-x: auto;
+    touch-action: pan-x;
     margin: -6px -14px -8px;
     padding: 8px 14px 18px;
     scroll-padding-inline: 14px;
     scrollbar-width: none;
     overscroll-behavior-x: contain; /* 横滚到头不带动页面 */
     -webkit-overflow-scrolling: touch;
+    /* iOS 风格边缘柔化：mask 渐隐固定在可视框两端，chips 滚过时渐隐而非硬切。
+       渐隐宽度由 JS 按滚动位置切换 can-fade-* 类驱动，仅在该侧还有内容时出现 */
+    --cat-edge-fade: 30px;
+    -webkit-mask-image: linear-gradient(to right,
+      transparent 0,
+      #000 var(--cat-fade-l),
+      #000 calc(100% - var(--cat-fade-r)),
+      transparent 100%);
+    mask-image: linear-gradient(to right,
+      transparent 0,
+      #000 var(--cat-fade-l),
+      #000 calc(100% - var(--cat-fade-r)),
+      transparent 100%);
+    transition:
+      --cat-fade-l 260ms var(--spring),
+      --cat-fade-r 260ms var(--spring);
+  }
+
+  .selectable-category-chips.can-fade-start {
+    --cat-fade-l: var(--cat-edge-fade);
+  }
+
+  .selectable-category-chips.can-fade-end {
+    --cat-fade-r: var(--cat-edge-fade);
   }
 
   .selectable-category-chips::-webkit-scrollbar {
@@ -4582,6 +5226,14 @@ body.ledger-management-open .mobile-submit-bar {
     isolation: isolate;
     border: 1px solid transparent;
     border-radius: var(--radius-lg);
+    transition:
+      left 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      padding 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-radius 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      grid-template-columns 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      gap 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      background 0.45s ease,
+      box-shadow 0.45s ease;
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
       radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 42%),
@@ -4596,8 +5248,8 @@ body.ledger-management-open .mobile-submit-bar {
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 54px -22px color-mix(in srgb, var(--submit-color, var(--green)) 76%, transparent),
       0 24px 72px rgba(22, 26, 30, 0.16);
-    backdrop-filter: blur(8px) saturate(185%) brightness(1.08);
-    -webkit-backdrop-filter: blur(8px) saturate(185%) brightness(1.08);
+    backdrop-filter: blur(4px) saturate(211%) brightness(1.08);
+    -webkit-backdrop-filter: blur(4px) saturate(211%) brightness(1.08);
   }
 
   .mobile-submit-bar::before,
@@ -4641,8 +5293,8 @@ body.ledger-management-open .mobile-submit-bar {
   .mobile-submit-bar.submit-themed {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.42),
-      0 0 70px -18px var(--submit-glow),
-      0 0 28px -12px color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent),
+      0 0 84px -16px var(--submit-glow),
+      0 0 36px -10px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
       0 24px 70px rgba(22, 26, 30, 0.18);
   }
 
@@ -4672,6 +5324,7 @@ body.ledger-management-open .mobile-submit-bar {
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
   }
 
   .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {
@@ -4680,7 +5333,7 @@ body.ledger-management-open .mobile-submit-bar {
 
   .mobile-submit-button {
     min-height: 46px;
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 48%, rgba(255, 255, 255, 0.62));
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 60%, rgba(255, 255, 255, 0.56));
     border-radius: var(--control-radius-large);
     background: var(--submit-color, var(--green)); /* color-mix 静态回退 */
     background:
@@ -4690,23 +5343,48 @@ body.ledger-management-open .mobile-submit-bar {
     padding: 0 22px;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.034),
-      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent),
-      0 0 0 2px color-mix(in srgb, var(--submit-color, var(--green)) 14%, transparent),
-      0 0 24px -6px color-mix(in srgb, var(--submit-color, var(--green)) 62%, transparent),
-      0 0 60px -18px var(--submit-glow, rgba(23, 108, 95, 0.68)),
-      0 14px 36px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent);
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
+      0 0 0 2px color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent),
+      0 0 30px -5px color-mix(in srgb, var(--submit-color, var(--green)) 88%, transparent),
+      0 0 76px -16px var(--submit-glow, rgba(23, 108, 95, 0.82)),
+      0 14px 42px color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent);
     font-size: 0.96rem;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.16);
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      height 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      padding 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-radius 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .mobile-submit-button .button-label {
+    transition: opacity 0.3s ease, transform 0.4s var(--spring);
+  }
+
+  .mobile-submit-button::after {
+    content: "";
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    background-color: white;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
+    opacity: 0;
+    transform: scale(0.4) rotate(-90deg);
+    transition: opacity 0.3s ease, transform 0.4s var(--spring);
   }
 
   .mobile-submit-button::before {
     background:
       linear-gradient(
         135deg,
-        color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
-        color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent) 52%,
-        color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent)
+        color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--green)) 50%, transparent)
       ),
       linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 58%),
       radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 2%, rgba(255, 255, 255, 0.10)), transparent 58%);
@@ -4867,6 +5545,11 @@ body.ledger-management-open .mobile-submit-bar {
     padding-bottom: 96px;
   }
 
+  body.mobile-panel-data .app-shell,
+  body.keyboard-open .app-shell {
+    padding-bottom: 24px;
+  }
+
   /* 浏览器滚焦点入视区时，避开提交栏/键盘边缘 */
   input,
   select {
@@ -4885,7 +5568,8 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .header-actions {
-    justify-content: flex-start;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .sync-status {
@@ -4921,6 +5605,17 @@ body.ledger-management-open .mobile-submit-bar {
     padding: 16px;
   }
 
+  .app-view[data-mobile-panel="entry"] .entry-panel {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    scroll-padding-block: 12px 84px;
+  }
+
+  body.keyboard-open .app-view[data-mobile-panel="entry"] .entry-panel {
+    max-height: none;
+  }
+
   .ledger-section {
     padding: 15px 12px 13px;
   }
@@ -4946,20 +5641,20 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .metric {
-    padding: 12px;
-    min-height: 64px;
+    padding: 10px;
+    min-height: 78px;
   }
 
   .metric.primary {
-    min-height: 106px;
+    min-height: 88px;
   }
 
   .metric strong {
-    font-size: clamp(1.16rem, 5.4vw, 1.58rem);
+    font-size: clamp(0.95rem, 4vw, 1.22rem);
   }
 
   .metric.primary strong {
-    font-size: clamp(2.46rem, 12vw, 3.72rem);
+    font-size: clamp(1.96rem, 9vw, 2.82rem);
   }
 
   .section-heading {
@@ -4968,13 +5663,12 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label input {
-    min-height: 66px;
+    height: 66px;
     font-size: clamp(2.62rem, 13.6vw, 4.1rem);
   }
 
   .amount-label.amount-active input {
-    min-height: 74px;
-    font-size: clamp(2.68rem, 14vw, 4.22rem);
+    transform: scale(1.016);
   }
 
   .secondary-button {
@@ -5101,20 +5795,18 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .amount-label {
-    padding: 14px;
+    padding: 6px 14px 11px;
   }
 
   .amount-label.amount-active {
-    padding: 15px;
-    transform: none;
+    transform: scale(1.012);
   }
 
   .currency-mark {
     font-size: 2.1rem;
   }
 
-  .amount-label input,
-  .amount-label.amount-active input {
+  .amount-label input {
     font-size: clamp(2.54rem, 13.4vw, 3.8rem);
   }
 
@@ -5167,51 +5859,96 @@ body.ledger-management-open .mobile-submit-bar {
 }
 
 @media (hover: none) and (pointer: coarse) {
+  /* iOS26 触感系统：按下＝玻璃压缩（即时 scale + wash 变色，~90ms 快速响应），
+     松开＝走各自基础过渡的弹簧/点灯回弹。压缩幅度按控件体量分档：
+     小胶囊 0.96 / 图标钮 0.90 / 中型钮 0.97 / 大钮 0.98 / 整行 0.99 */
+
+  /* 触屏上中和桌面 hover 位移（iOS 粘滞 hover 会残留在松开后） */
   .family-tag:hover,
-  .selectable-category-chip:hover {
+  .selectable-category-chip:hover,
+  .primary-button:hover,
+  .ledger-item:hover {
     transform: none;
   }
 
-  .family-tag:active,
-  .selectable-category-chip:active {
-    background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
-    transform: translateY(1px);
-    transition-duration: 120ms;
+  /* 回弹兜底：这些控件基础规则缺 transform/box-shadow 过渡，补齐后松开才有弹性回弹；
+     transform/box-shadow 用过冲曲线（liquid-glass 松手回弹），其余属性保持原节奏 */
+  .inline-button,
+  .toast-action,
+  .family-tag,
+  .member-stepper button,
+  .ledger-edit-button,
+  .ledger-delete-button,
+  .delete-button,
+  .chip-icon-button {
+    transition:
+      transform 320ms var(--lamp-bloom),
+      box-shadow 320ms var(--lamp-bloom),
+      opacity var(--motion-fast) var(--spring),
+      background-color var(--motion-fast) var(--spring);
   }
 
-  .family-tag.is-selected:active {
-    transform: translateY(1px);
+  .selectable-category-chip:active {
+    background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
+    transform: scale(0.96);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
   }
 
   .selectable-category-chip.is-selected:active {
-    transform: translateY(1px);
+    transform: scale(0.96);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
   }
 
-  /* 按压＝快速填色下沉（~90ms），松开走各自原有过渡慢速回弹。
-     inset 大铺满 box-shadow 作为“颜色填充”层：能盖住渐变底、可过渡、亮暗双模式都表现为加深 */
-  .primary-button:active,
-  .mobile-submit-button:active,
+  .family-tag:active,
+  .family-tag.is-selected:active {
+    background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
+    transform: scale(1.025);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+  /* inset 大铺满 box-shadow 作为“颜色填充”层：能盖住渐变底、可过渡、亮暗双模式都表现为加深 */
   .ghost-button:active,
   .secondary-button:active,
   .split-mode-button:active,
   .split-scope-toggle:active,
-  .member-stepper button:active,
-  .ledger-edit-button:active {
+  .inline-button:active,
+  .delete-button:active {
     box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.12);
-    transform: translateY(1px);
-    transition-duration: 90ms;
+    transform: scale(0.97);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+  /* 图标小钮：目标区小，压缩幅度加大以确认命中 */
+  .chip-icon-button:active,
+  .member-stepper button:active,
+  .ledger-edit-button:active,
+  .ledger-delete-button:active,
+  .toast-action:active {
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.12);
+    transform: scale(0.90);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
   }
 
   .primary-button:active,
   .mobile-submit-button:active {
-    transform: translateY(1px) scale(0.99);
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.10);
+    transform: scale(0.98);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
   }
 
-  /* 账单列表项：按压填充家庭色 wash */
+  /* 账单列表项：按压填充家庭色 wash + 整行轻压 */
   .ledger-item:active {
     background-color: rgba(127, 160, 143, 0.16); /* color-mix 静态回退 */
     background-color: color-mix(in srgb, var(--family-color) 14%, transparent);
+    transform: scale(0.99);
     transition-duration: 120ms;
+    transition-timing-function: var(--lamp-quick);
   }
 }
 
@@ -5219,19 +5956,19 @@ body.ledger-management-open .mobile-submit-bar {
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #141816;
-    --surface: rgba(35, 42, 39, 0.92);
-    --surface-strong: rgba(40, 47, 44, 0.96);
-    --surface-soft: rgba(30, 36, 33, 0.78);
-    --ink: #e8ece9;
-    --muted: #a7b0ab;
-    --line: rgba(232, 236, 233, 0.10);
-    --line-dark: rgba(232, 236, 233, 0.16);
-    --green: #58b09b;        /* 文字/边框语义提亮；按钮填充由 JS 内联 --submit-color 提供，不受影响 */
-    --green-dark: #6cc2ad;   /* 数字/强调文字 7.1:1 */
-    --dark-panel: linear-gradient(145deg, rgba(40, 47, 44, 0.96), rgba(30, 36, 33, 0.92)), rgba(20, 24, 22, 0.96);
-    --dark-card: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.05);
-    --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(169, 206, 181, 0.10);
+    --bg: #121212;
+    --surface: rgba(28, 28, 30, 0.92);
+    --surface-strong: rgba(36, 36, 38, 0.96);
+    --surface-soft: rgba(22, 22, 24, 0.78);
+    --ink: #f0f0f0;
+    --muted: #a1a1a6;
+    --line: rgba(255, 255, 255, 0.10);
+    --line-dark: rgba(255, 255, 255, 0.16);
+    --green: #52a38c;        /* 文字/边框语义提亮；按钮填充由 JS 内联 --submit-color 提供，不受影响 */
+    --green-dark: #5cb89f;   /* 数字/强调文字，降低饱和度与明度实现淡雅 */
+    --dark-panel: linear-gradient(145deg, rgba(36, 36, 38, 0.96), rgba(28, 28, 30, 0.92)), rgba(18, 18, 20, 0.96);
+    --dark-card: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.03);
+    --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.05);
     --dark-field: rgba(255, 255, 255, 0.08);
     --dark-field-strong: rgba(255, 255, 255, 0.10);
     --dark-hairline: rgba(232, 236, 233, 0.10);
@@ -5255,10 +5992,10 @@ body.ledger-management-open .mobile-submit-bar {
   /* body 底色渐变的白色层改暗色等价物（固定图层，见浅色 body::before 注释） */
   body::before {
     background:
-      radial-gradient(ellipse at 16% 2%, rgba(169, 206, 181, 0.05), transparent 42%),
-      radial-gradient(ellipse at 84% 8%, rgba(185, 201, 230, 0.05), transparent 40%),
-      radial-gradient(ellipse at 92% 86%, rgba(239, 194, 191, 0.04), transparent 44%),
-      linear-gradient(180deg, rgba(24, 29, 27, 0.99) 0%, rgba(20, 24, 22, 0.99) 52%, rgba(22, 27, 25, 0.99) 100%);
+      radial-gradient(ellipse at 16% 2%, rgba(255, 255, 255, 0.03), transparent 42%),
+      radial-gradient(ellipse at 84% 8%, rgba(255, 255, 255, 0.02), transparent 40%),
+      radial-gradient(ellipse at 92% 86%, rgba(255, 255, 255, 0.02), transparent 44%),
+      linear-gradient(180deg, rgba(24, 24, 26, 0.99) 0%, rgba(17, 17, 17, 0.99) 52%, rgba(20, 20, 22, 0.99) 100%);
   }
 
   /* 抽屉与确认框的白色渐变改暗面 */
@@ -5287,20 +6024,20 @@ body.ledger-management-open .mobile-submit-bar {
   .ledger-family,
   .ledger-edit-button,
   .ledger-amount {
-    color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 40%, white);
   }
 
   .amount-heading,
   .currency-mark,
   .amount-label input,
   .amount-label.amount-active .currency-mark {
-    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white); /* 混白 62%，暗底 ≥6:1 */
+    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 30%, white); /* 混白 62%，暗底 ≥6:1 */
   }
 
   .amount-auto-badge {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 24%, var(--dark-hairline));
-    background: color-mix(in srgb, var(--selected-family-color, var(--green)) 12%, rgba(255, 255, 255, 0.06));
-    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--selected-family-color, var(--green)) 8%, rgba(255, 255, 255, 0.04));
+    color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 28%, white);
   }
 
   .amount-label input {
@@ -5328,12 +6065,95 @@ body.ledger-management-open .mobile-submit-bar {
     color: color-mix(in srgb, var(--settlement-target-text, var(--ink)) 50%, white);
   }
 
+  .mobile-panel-switch {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 22%, var(--dark-hairline));
+    background:
+      linear-gradient(135deg, rgba(232, 236, 233, 0.13), rgba(232, 236, 233, 0.03) 48%, rgba(232, 236, 233, 0.10)),
+      radial-gradient(ellipse at 16% -36%, rgba(232, 236, 233, 0.24), transparent 55%),
+      radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent), transparent 64%),
+      rgba(22, 22, 24, 0.28);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.32),
+      0 0 30px -16px color-mix(in srgb, var(--submit-color, var(--green)) 82%, transparent),
+      0 12px 34px rgba(0, 0, 0, 0.26);
+  }
+
+  .mobile-panel-switch::before {
+    background:
+      linear-gradient(110deg, rgba(255, 255, 255, 0.18), transparent 26%),
+      radial-gradient(ellipse at 50% -42%, rgba(255, 255, 255, 0.22), transparent 50%);
+    opacity: 0.72;
+  }
+
+  .mobile-panel-switch::after {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.06) 44%, color-mix(in srgb, var(--submit-color, var(--green)) 28%, rgba(0, 0, 0, 0.18)));
+    opacity: 0.88;
+  }
+
+  .mobile-panel-tab {
+    color: rgba(232, 236, 233, 0.68);
+  }
+
+  .mobile-panel-tab.is-active {
+    color: white;
+  }
+
+  .mobile-panel-indicator {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 4px 12px -2px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
   /* 提交栏玻璃与摘要浅底转暗 */
   .mobile-submit-bar {
     background:
       radial-gradient(ellipse at 78% 50%, var(--theme-aura-soft), transparent 62%),
-      linear-gradient(135deg, rgba(40, 47, 44, 0.30), rgba(30, 36, 33, 0.18)),
-      rgba(20, 24, 22, 0.30);
+      linear-gradient(135deg, rgba(32, 32, 34, 0.30), rgba(24, 24, 26, 0.18)),
+      rgba(18, 18, 20, 0.30);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 40%),
+      rgba(30, 36, 33, 0.62);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.4),
+      0 12px 34px rgba(0, 0, 0, 0.42);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.submit-themed {
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 50%, var(--submit-color)) 0%, transparent 40%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%),
+      color-mix(in srgb, var(--submit-color) 35%, rgba(24, 24, 26, 0.5));
+    background:
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.75 0.08 h / 0.4) 0%, transparent 40%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%),
+      oklch(from var(--submit-color) 0.45 c h / 0.4);
+    box-shadow:
+      inset 0 1px 3px color-mix(in srgb, white 60%, var(--submit-color)),
+      inset 0 -1px 4px rgba(0, 0, 0, 0.3),
+      0 12px 30px -10px var(--submit-glow, rgba(23, 108, 95, 0.3)),
+      0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .toast {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 40%),
+      rgba(24, 24, 26, 0.65);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
+      0 18px 48px rgba(0, 0, 0, 0.42);
+  }
+
+  .toast-action {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
   }
 
   .mobile-submit-button.is-blocked {
@@ -5351,9 +6171,9 @@ body.ledger-management-open .mobile-submit-bar {
   /* 亮色字面量组件底转暗 */
   .entry-panel {
     background:
-      radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.07), transparent 48%),
-      linear-gradient(145deg, rgba(38, 45, 42, 0.94), rgba(28, 34, 31, 0.80)),
-      rgba(24, 29, 27, 0.88);
+      radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.03), transparent 48%),
+      linear-gradient(145deg, rgba(32, 32, 34, 0.94), rgba(22, 22, 24, 0.80)),
+      rgba(17, 17, 17, 0.88);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 26px 86px rgba(0, 0, 0, 0.32);
@@ -5361,8 +6181,8 @@ body.ledger-management-open .mobile-submit-bar {
 
   .insights-panel {
     background:
-      linear-gradient(145deg, rgba(36, 43, 40, 0.82), rgba(28, 34, 31, 0.62)),
-      rgba(24, 29, 27, 0.72);
+      linear-gradient(145deg, rgba(32, 32, 34, 0.82), rgba(22, 22, 24, 0.62)),
+      rgba(17, 17, 17, 0.72);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
       var(--shadow-md);
@@ -5431,20 +6251,14 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .family-tag.is-selected {
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
-      color-mix(in srgb, var(--family-color) 12%, transparent);
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--family-color) 28%, rgba(255, 255, 255, 0.08)),
-      0 8px 20px -14px color-mix(in srgb, var(--family-color) 78%, transparent),
-      0 0 30px -18px var(--family-soft);
+      0 10px 24px -10px color-mix(in srgb, var(--family-color) 25%, transparent),
+      0 0 32px -12px color-mix(in srgb, var(--family-color) 15%, transparent);
   }
 
   .split-family-chip.is-selected {
     border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.24));
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08)),
-      color-mix(in srgb, var(--family-color) 12%, transparent);
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.18)),
       0 8px 20px -14px color-mix(in srgb, var(--family-color) 78%, transparent),
@@ -5684,9 +6498,32 @@ body.ledger-management-open .mobile-submit-bar {
     color: color-mix(in srgb, var(--category-text, var(--ink)) 34%, var(--ink));
   }
 
-  .split-scope-toggle {
+  .ledger-controls select {
+    border-color: var(--dark-hairline);
+    background:
+      linear-gradient(45deg, transparent 50%, var(--muted) 50%) calc(100% - 17px) 50% / 6px 6px no-repeat,
+      var(--dark-card);
+    color: var(--ink);
+    box-shadow: inset 0 1px 0 var(--dark-highlight);
+  }
+
+  .ledger-controls select:hover {
     border-color: var(--dark-hairline-strong);
+    background-color: var(--dark-field);
+  }
+
+  .split-scope-toggle {
+    border-color: var(--dark-hairline);
     background: var(--dark-card);
+    box-shadow: inset 0 1px 0 var(--dark-highlight);
+  }
+
+  .split-scope-toggle:hover,
+  .split-scope-toggle[aria-expanded="true"] {
+    border-color: var(--dark-hairline-strong);
+    box-shadow:
+      inset 0 1px 0 var(--dark-highlight),
+      0 12px 34px rgba(0, 0, 0, 0.32);
   }
 
   /* 未选中类别芯片：底转暗、文字混白提亮 */
@@ -5702,7 +6539,6 @@ body.ledger-management-open .mobile-submit-bar {
   }
 
   .selectable-category-chip.is-selected {
-    background: color-mix(in srgb, var(--category-gradient) 12%, rgba(255, 255, 255, 0.08));
     color: color-mix(in srgb, var(--category-text) 88%, #101412);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
   }
@@ -5823,19 +6659,24 @@ body.ledger-management-open .mobile-submit-bar {
 
   /* 主按钮静息态（账本"打开"等）白渐变底 + 亮边转暗，绿字保留 */
   .primary-button {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 32%, var(--dark-hairline));
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 42%, var(--dark-hairline));
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.04)),
-      color-mix(in srgb, var(--submit-color, var(--green)) 14%, var(--dark-highlight));
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 34%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.04)),
+      color-mix(in srgb, var(--submit-color, var(--green)) 22%, var(--dark-highlight));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent),
+      0 0 62px -16px var(--submit-glow, rgba(23, 108, 95, 0.52)),
+      0 0 30px -10px color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
+      0 18px 50px rgba(0, 0, 0, 0.28);
   }
 
   /* 玻璃高光层去掉白色成分，避免暗底上发亮 */
   .primary-button::before {
     background:
       linear-gradient(135deg,
-        color-mix(in srgb, var(--submit-color, var(--green)) 44%, transparent),
-        color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent) 52%,
-        color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent)),
+        color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent)),
       linear-gradient(180deg, var(--dark-highlight), transparent 58%);
   }
 
@@ -5902,8 +6743,8 @@ body.ledger-management-open .mobile-submit-bar {
   .mobile-submit-bar.submit-themed {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 66px -18px var(--submit-glow),
-      0 0 28px -14px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
+      0 0 82px -16px var(--submit-glow),
+      0 0 38px -12px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
       0 24px 70px rgba(0, 0, 0, 0.40);
   }
 
@@ -5921,12 +6762,40 @@ body.ledger-management-open .mobile-submit-bar {
     color: rgba(232, 236, 233, 0.78);
   }
 
-  /* 选中态 inset 白高光降档，主题色辉光保留 */
+  /* 暗底下提高家庭色光量，避免选中态只剩白边。 */
   .family-tag.is-selected {
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-      0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 42%, rgba(255, 255, 255, 0.16)),
+      0 11px 28px -11px color-mix(in srgb, var(--family-color) 86%, transparent),
+      0 0 56px -15px color-mix(in srgb, var(--family-color) 100%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  }
+
+  /* 光晕绽放 0% 帧按暗色稳态的阴影层结构重定义（层类型不匹配会退化为跳变） */
+  @keyframes family-shadow-bloom {
+    0% {
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--family-color) 34%, rgba(255, 255, 255, 0.12)),
+        0 10px 24px -12px transparent,
+        0 0 42px -17px transparent,
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    58% {
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.22)),
+        0 13px 34px -9px color-mix(in srgb, var(--family-color) 96%, transparent),
+        0 0 76px -12px color-mix(in srgb, var(--family-color) 100%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    }
+
+    100% {
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--family-color) 42%, rgba(255, 255, 255, 0.16)),
+        0 11px 28px -11px color-mix(in srgb, var(--family-color) 86%, transparent),
+        0 0 56px -15px color-mix(in srgb, var(--family-color) 100%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
   }
 
   .selectable-category-chip.is-selected {

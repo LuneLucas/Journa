@@ -29,7 +29,9 @@ create table if not exists public.travel_expenses (
 alter table public.travel_expenses
   add column if not exists split_mode text not null default 'all',
   add column if not exists split_family_ids text[] not null default array[]::text[],
-  add column if not exists split_amounts jsonb not null default '{}'::jsonb;
+  add column if not exists split_amounts jsonb not null default '{}'::jsonb,
+  add column if not exists created_by jsonb,
+  add column if not exists updated_by jsonb;
 
 create index if not exists travel_expenses_ledger_date_idx
   on public.travel_expenses (ledger_id, expense_date desc, created_at desc);
@@ -133,6 +135,7 @@ $$;
 
 drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date);
 drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb);
+drop function if exists public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb);
 create function public.save_travel_expense(
   p_share_token text,
   p_id uuid,
@@ -143,7 +146,9 @@ create function public.save_travel_expense(
   p_expense_date date,
   p_split_mode text,
   p_split_family_ids text[],
-  p_split_amounts jsonb
+  p_split_amounts jsonb,
+  p_created_by jsonb,
+  p_updated_by jsonb
 )
 returns jsonb
 language plpgsql
@@ -172,7 +177,7 @@ begin
   end if;
 
   insert into public.travel_expenses (
-    id, ledger_id, amount, payer_id, category, note, expense_date, split_mode, split_family_ids, split_amounts, updated_at
+    id, ledger_id, amount, payer_id, category, note, expense_date, split_mode, split_family_ids, split_amounts, created_by, updated_by, updated_at
   ) values (
     p_id,
     ledger_row.id,
@@ -184,6 +189,8 @@ begin
     case when p_split_mode in ('all', 'families', 'custom') then p_split_mode else 'all' end,
     coalesce(p_split_family_ids, array[]::text[]),
     coalesce(p_split_amounts, '{}'::jsonb),
+    p_created_by,
+    p_updated_by,
     now()
   )
   on conflict (id) do update set
@@ -195,6 +202,8 @@ begin
     split_mode = excluded.split_mode,
     split_family_ids = excluded.split_family_ids,
     split_amounts = excluded.split_amounts,
+    created_by = coalesce(public.travel_expenses.created_by, excluded.created_by),
+    updated_by = excluded.updated_by,
     updated_at = now()
   where public.travel_expenses.ledger_id = ledger_row.id
   returning * into expense_row;
@@ -207,6 +216,39 @@ begin
 
   return to_jsonb(expense_row);
 end;
+$$;
+
+create function public.save_travel_expense(
+  p_share_token text,
+  p_id uuid,
+  p_amount numeric,
+  p_payer_id text,
+  p_category text,
+  p_note text,
+  p_expense_date date,
+  p_split_mode text,
+  p_split_family_ids text[],
+  p_split_amounts jsonb
+)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select public.save_travel_expense(
+    p_share_token,
+    p_id,
+    p_amount,
+    p_payer_id,
+    p_category,
+    p_note,
+    p_expense_date,
+    p_split_mode,
+    p_split_family_ids,
+    p_split_amounts,
+    null,
+    null
+  );
 $$;
 
 create function public.save_travel_expense(
@@ -233,7 +275,9 @@ as $$
     p_expense_date,
     'all',
     array[]::text[],
-    '{}'::jsonb
+    '{}'::jsonb,
+    null,
+    null
   );
 $$;
 
@@ -286,5 +330,6 @@ grant execute on function public.update_travel_ledger_settings(text, text[], jso
 grant execute on function public.update_travel_ledger_settings(text, text[], jsonb, text) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb) to anon, authenticated;
+grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb) to anon, authenticated;
 grant execute on function public.delete_travel_expense(text, uuid) to anon, authenticated;
 grant execute on function public.clear_travel_ledger(text) to anon, authenticated;
