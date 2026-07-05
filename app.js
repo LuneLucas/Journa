@@ -17,7 +17,7 @@ const MOTION_DELAYS = {
   splitSwitch: 260,
   mobilePanelOut: 150,
   mobilePanelIn: 280,
-  mobilePanelIndicator: 560,
+  mobilePanelIndicator: 680,
   barMorph: 620,
   addCelebrate: 1560,
   totalAbsorb: 1320,
@@ -27,6 +27,8 @@ const MOTION_DELAYS = {
   toast: 2600,
   toastWithAction: 5200,
 };
+const SPRING_BAR_COLLAPSE = { stiffness: 220, damping: 20, mass: 1 };
+const SPRING_BAR_EXPAND = { stiffness: 220, damping: 18, mass: 1 };
 const defaultFamilies = [
   { id: "family-a", name: "乐家" },
   { id: "family-b", name: "祺家" },
@@ -193,6 +195,8 @@ let ledgerSwitchTimer = 0;
 let mobilePanelSwitchTimer = 0;
 let mobilePanelIndicatorTimer = 0;
 let barMorphTimer = 0;
+let ledgerMorphTimer = 0;
+let barFlipAnimations = [];
 let editReturnState = null;
 let editFormSnapshot = null;
 let totalAmountText = "";
@@ -1117,13 +1121,138 @@ function render(options = {}) {
   saveState();
 }
 
+function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
+  const w0 = Math.sqrt(stiffness / mass);
+  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  const wd = w0 * Math.sqrt(1 - zeta * zeta);
+  const settle = Math.log(1 / epsilon) / (zeta * w0);
+  const duration = Math.min(900, Math.max(250, settle * 1000));
+  const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
+  const values = [];
+
+  for (let i = 0; i <= count; i++) {
+    const t = (settle * i) / count;
+    values.push(1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)));
+  }
+
+  values[count] = 1;
+  return { values, duration };
+}
+
+function cancelBarFlip() {
+  barFlipAnimations.forEach((animation) => animation.cancel());
+  barFlipAnimations = [];
+}
+
+function clearBarMorphState() {
+  elements.mobileSubmitBar.classList.remove("is-flip-morphing", "is-bar-morphing-to-data", "is-bar-morphing-to-entry");
+}
+
+function spawnSummaryGhost(rect) {
+  if (!rect.width) return;
+
+  document.querySelectorAll(".bar-summary-ghost").forEach((ghost) => ghost.remove());
+  const ghost = document.createElement("span");
+  ghost.className = "bar-summary-ghost";
+  ghost.textContent = elements.mobileSubmitSummary.textContent;
+  ghost.style.left = `${rect.left}px`;
+  ghost.style.top = `${rect.top}px`;
+  ghost.style.maxWidth = `${rect.width}px`;
+  document.body.appendChild(ghost);
+  ghost.addEventListener("animationend", () => ghost.remove());
+  window.setTimeout(() => {
+    if (ghost.isConnected) ghost.remove();
+  }, 400);
+}
+
+function animateBarFlip(nextPanel) {
+  const bar = elements.mobileSubmitBar;
+  const button = elements.mobileSubmitButton;
+  const summary = elements.mobileSubmitSummary;
+  const toData = nextPanel === "data";
+  const firstBar = bar.getBoundingClientRect();
+  const firstButton = button.getBoundingClientRect();
+  const firstSummary = summary.getBoundingClientRect();
+
+  cancelBarFlip();
+  bar.classList.add("is-flip-morphing");
+  bar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
+  void bar.offsetWidth;
+  bar.classList.add(toData ? "is-bar-morphing-to-data" : "is-bar-morphing-to-entry");
+  document.body.classList.toggle("mobile-panel-entry", !toData);
+  document.body.classList.toggle("mobile-panel-data", toData);
+
+  const lastBar = bar.getBoundingClientRect();
+  const lastButton = button.getBoundingClientRect();
+  if (!firstBar.width || !lastBar.width || !firstButton.width || !lastButton.width) {
+    clearBarMorphState();
+    return;
+  }
+
+  const { values, duration } = springSamples(toData ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND);
+  const relX = lastButton.left - lastBar.left;
+  const relY = lastButton.top - lastBar.top;
+  const barFrames = [];
+  const buttonFrames = [];
+
+  values.forEach((progress, index) => {
+    const offset = index / (values.length - 1);
+    const width = firstBar.width + (lastBar.width - firstBar.width) * progress;
+    const height = firstBar.height + (lastBar.height - firstBar.height) * progress;
+    const x = firstBar.left + (lastBar.left - firstBar.left) * progress;
+    const y = firstBar.top + (lastBar.top - firstBar.top) * progress;
+    const scaleX = width / lastBar.width;
+    const scaleY = height / lastBar.height;
+    const translateX = x - lastBar.left;
+    const translateY = y - lastBar.top;
+    barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})` });
+
+    const buttonWidth = firstButton.width + (lastButton.width - firstButton.width) * progress;
+    const buttonHeight = firstButton.height + (lastButton.height - firstButton.height) * progress;
+    const buttonX = firstButton.left + (lastButton.left - firstButton.left) * progress;
+    const buttonY = firstButton.top + (lastButton.top - firstButton.top) * progress;
+    const childScaleX = buttonWidth / (scaleX * lastButton.width);
+    const childScaleY = buttonHeight / (scaleY * lastButton.height);
+    const childTranslateX = (buttonX - lastBar.left - translateX) / scaleX - relX;
+    const childTranslateY = (buttonY - lastBar.top - translateY) / scaleY - relY;
+    buttonFrames.push({ offset, transform: `translate(${childTranslateX}px, ${childTranslateY}px) scale(${childScaleX}, ${childScaleY})` });
+  });
+
+  const options = { duration, easing: "linear", fill: "none", composite: "replace" };
+  const barAnimation = bar.animate(barFrames, options);
+  const buttonAnimation = button.animate(buttonFrames, options);
+  barFlipAnimations = [barAnimation, buttonAnimation];
+
+  if (toData) {
+    spawnSummaryGhost(firstSummary);
+  } else {
+    barFlipAnimations.push(summary.animate(
+      [
+        { opacity: 0, transform: "translateX(-14px)" },
+        { opacity: 1, transform: "translateX(0)" },
+      ],
+      { duration: 240, delay: 180, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)", fill: "backwards" }
+    ));
+  }
+
+  barAnimation.onfinish = () => {
+    if (!barFlipAnimations.includes(barAnimation)) return;
+    clearBarMorphState();
+    barFlipAnimations = [];
+  };
+}
+
 function setMobilePanel(panel, options = {}) {
   const nextPanel = panel === "data" ? "data" : "entry";
-  const changed = activeMobilePanel !== nextPanel;
+  const panelChanged = activeMobilePanel !== nextPanel;
+  const visualPanel = document.body.classList.contains("mobile-panel-data") ? "data" : "entry";
+  const visualChanged = visualPanel !== nextPanel;
   if (nextPanel === "data" && elements.expenseForm.contains(document.activeElement)) {
     document.activeElement.blur();
   }
-  const shouldAnimate = changed && options.animate && !prefersReducedMotion();
+  const canAnimate = options.animate && !prefersReducedMotion();
+  const shouldAnimatePanel = panelChanged && canAnimate;
+  const shouldAnimateChrome = (panelChanged || visualChanged) && canAnimate;
 
   window.clearTimeout(mobilePanelSwitchTimer);
   window.clearTimeout(mobilePanelIndicatorTimer);
@@ -1138,7 +1267,7 @@ function setMobilePanel(panel, options = {}) {
    * Slide the pill immediately on tap so it stays glued to the finger, rather
    * than waiting out the 150ms panel-fade before moving (that delay read as lag).
    */
-  if (shouldAnimate && elements.mobilePanelSwitch) {
+  if (shouldAnimateChrome && elements.mobilePanelSwitch) {
     // force reflow so re-adding the class retriggers the keyframes
     void elements.mobilePanelSwitch.offsetWidth;
     elements.mobilePanelSwitch.classList.add(nextPanel === "data" ? "is-indicator-forward" : "is-indicator-backward");
@@ -1149,19 +1278,19 @@ function setMobilePanel(panel, options = {}) {
   }
 
   /*
-   * Morph the submit bar immediately on tap (in parallel with the panel fade),
-   * not after the 150ms out-phase — the dead time before it moved read as lag.
-   * Toggling the body mode class here starts the geometry transition right away;
-   * renderMobilePanelState() re-applies it idempotently at commit.
+   * Morph the submit bar immediately on tap (in parallel with the panel fade).
+   * WAAPI-capable browsers use a FLIP spring so the expensive glass geometry is
+   * laid out once, then the visible motion stays on transform.
    */
-  elements.mobileSubmitBar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
-  if (shouldAnimate) {
+  const canFlipBar = typeof elements.mobileSubmitBar.animate === "function" && typeof elements.mobileSubmitButton.animate === "function";
+  if (shouldAnimateChrome && canFlipBar) {
+    animateBarFlip(nextPanel);
+  } else if (shouldAnimateChrome) {
+    cancelBarFlip();
+    clearBarMorphState();
     /* Add the morph class BEFORE toggling the body mode class so the direction-
-     * scoped geometry easing (e.g. the gentle-start collapse curve) is already
-     * in effect when the geometry transition starts — otherwise the transition
-     * would begin with the base easing and the scoped override would never apply.
-     * The reflow here flushes the class removal above so re-adding retriggers the
-     * squash keyframe animation. */
+     * scoped geometry easing is already in effect when the geometry transition
+     * starts. This remains as the no-WAAPI fallback path. */
     void elements.mobileSubmitBar.offsetWidth;
     elements.mobileSubmitBar.classList.add(nextPanel === "data" ? "is-bar-morphing-to-data" : "is-bar-morphing-to-entry");
     document.body.classList.toggle("mobile-panel-entry", nextPanel === "entry");
@@ -1170,6 +1299,9 @@ function setMobilePanel(panel, options = {}) {
       elements.mobileSubmitBar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
       barMorphTimer = 0;
     }, MOTION_DELAYS.barMorph);
+  } else {
+    cancelBarFlip();
+    clearBarMorphState();
   }
 
   const scrollToPanel = () => {
@@ -1185,7 +1317,7 @@ function setMobilePanel(panel, options = {}) {
     renderMobilePanelState();
     scrollToPanel();
 
-    if (!shouldAnimate) return;
+    if (!shouldAnimatePanel) return;
 
     /* bar morph already started on tap (see setMobilePanel top) */
 
@@ -1197,7 +1329,7 @@ function setMobilePanel(panel, options = {}) {
     }, MOTION_DELAYS.mobilePanelIn);
   };
 
-  if (!shouldAnimate) {
+  if (!shouldAnimatePanel) {
     commitPanel();
     return;
   }
@@ -2300,7 +2432,11 @@ function handleExpenseSubmit(event) {
   syncCloudExpenseWithState(expenseId).catch(() => {
     showToast({ message: "云端保存失败，本地已保留，稍后会重试" });
   });
-  elements.amountInput.focus();
+  if (wasEditing) {
+    elements.amountInput.focus();
+  } else if (elements.expenseForm.contains(document.activeElement) && typeof document.activeElement.blur === "function") {
+    document.activeElement.blur();
+  }
   window.setTimeout(() => {
     if (lastAddedExpenseId === expenseId) lastAddedExpenseId = "";
   }, MOTION_DELAYS.ledgerSettle);
@@ -2713,9 +2849,19 @@ function captureLedgerTransitionRects(items) {
 }
 
 function playLedgerTransitionRects(rects) {
-  if (!rects.size || prefersReducedMotion()) return;
+  if (!rects.size || prefersReducedMotion() || typeof Element.prototype.animate !== "function") return;
   const duration = getCssDurationMs("--motion", 534);
   const easing = getComputedStyle(document.documentElement).getPropertyValue("--settle").trim() || "cubic-bezier(0.16, 0.9, 0.14, 1)";
+  const animations = [];
+  const settleLedgerMorph = () => {
+    window.clearTimeout(ledgerMorphTimer);
+    ledgerMorphTimer = window.setTimeout(() => {
+      elements.ledgerList?.classList.remove("is-morphing-ledger-items");
+    }, duration + 34);
+  };
+
+  elements.ledgerList?.classList.add("is-morphing-ledger-items");
+  settleLedgerMorph();
 
   // 先取消上一轮高度动画（fill: both 会夹住高度），保证下面量到真实终点
   rects.forEach((fromRect, element) => {
@@ -2740,7 +2886,15 @@ function playLedgerTransitionRects(rects) {
         { duration, easing, fill: "both" },
       );
       element._heightAnimation = animation;
-      animation.addEventListener("finish", () => animation.cancel(), { once: true });
+      animations.push(animation);
+      animation.addEventListener(
+        "finish",
+        () => {
+          animation.cancel();
+          if (element._heightAnimation === animation) element._heightAnimation = null;
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -2758,8 +2912,13 @@ function playLedgerTransitionRects(rects) {
       ],
       { duration, easing, fill: "both" },
     );
+    animations.push(animation);
     animation.addEventListener("finish", () => animation.cancel(), { once: true });
   });
+
+  if (animations.length) {
+    Promise.allSettled(animations.map((animation) => animation.finished)).then(settleLedgerMorph);
+  }
 }
 
 function deleteExpense(expenseId, item) {

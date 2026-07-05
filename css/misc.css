@@ -3,16 +3,22 @@
 }
 
 /* 氛围渐变放在固定图层上：等价于 background-attachment: fixed，
-   但滚动/高度动画时不触发全视口重绘。 */
+   但滚动/高度动画时不触发全视口重绘。
+   顶层平铺一张细噪点（overlay 混合的中灰 turbulence）做抖动：下面的
+   氛围渐变对比度极低（如线性层跨半屏只变 8 个色阶），8-bit 渲染会在
+   每个色阶边界产生 ~50px 一条的横向条纹（banding）；噪点把量化边界
+   打散后条纹不可见。深色主题同样受益（同结构渐变，见下方覆盖）。 */
 body::before {
   position: fixed;
   z-index: -1;
   inset: 0;
   background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 0.05'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E") left top / 160px 160px repeat,
     radial-gradient(ellipse at 16% 2%, rgba(169, 206, 181, 0.07), transparent 42%),
     radial-gradient(ellipse at 84% 8%, rgba(185, 201, 230, 0.07), transparent 40%),
     radial-gradient(ellipse at 92% 86%, rgba(239, 194, 191, 0.05), transparent 44%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 249, 248, 0.99) 52%, rgba(250, 251, 250, 0.99) 100%);
+  background-blend-mode: overlay, normal, normal, normal, normal;
   content: "";
   pointer-events: none;
 }
@@ -402,8 +408,11 @@ label,
     inset 0 0 0 1px rgba(22, 26, 30, 0.06),
     0 24px 64px -24px transparent,
     0 18px 50px rgba(22, 26, 30, 0.10);
+  contain: layout paint;
   margin: 0;
   transform-origin: center;
+  --amount-scale: 1;
+  transform: scale(var(--amount-scale));
   transition:
     padding var(--amount-motion) var(--spring),
     margin var(--amount-motion) var(--spring),
@@ -537,7 +546,7 @@ label,
   box-shadow:
     inset 0 0 0 1px rgba(22, 26, 30, 0.08),
     0 34px 92px rgba(22, 26, 30, 0.14);
-  transform: scale(1.018);
+  --amount-scale: 1.018;
   margin-top: 10px;
   margin-bottom: 10px;
 }
@@ -557,11 +566,15 @@ label,
 }
 
 .amount-label.amount-pulse .amount-field {
-  animation: amount-input-soft-pop calc(var(--amount-motion) * 0.5) var(--spring) alternate 2;
+  animation: amount-input-soft-pop 480ms var(--spring) both;
 }
 
 .amount-label.amount-pulse {
-  animation: amount-shell-input-pop calc(var(--amount-motion) * 0.5) var(--spring) alternate 2;
+  animation: amount-shell-input-pop 480ms var(--spring) both;
+}
+
+.amount-label.amount-pulse::after {
+  animation: amount-aura-soft-pop 480ms var(--spring) both;
 }
 
 .form-error {
@@ -644,7 +657,6 @@ label,
   padding: var(--split-panel-padding);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
   transform-origin: top center;
-  will-change: height, opacity;
 }
 
 .split-scope-panel.is-open {
@@ -2199,7 +2211,7 @@ label,
     transform-origin: center;
     will-change: transform;
     /* resting fallback (keyboard/no-anim); real switches use the keyframes below */
-    transition: transform 0.5s var(--spring-overshoot);
+    transition: transform var(--spring-glide-motion) var(--spring-glide);
     z-index: 0;
     pointer-events: none;
   }
@@ -2223,11 +2235,11 @@ label,
    * The overshoot lives in the curve (y > 1), not in keyframe stops.
    */
   .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator {
-    animation: mps-indicator-forward var(--motion) cubic-bezier(0.33, 1.14, 0.4, 1) both;
+    animation: mps-indicator-forward var(--spring-glide-motion) var(--spring-glide) both;
   }
 
   .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
-    animation: mps-indicator-backward var(--motion) cubic-bezier(0.33, 1.14, 0.4, 1) both;
+    animation: mps-indicator-backward var(--spring-glide-motion) var(--spring-glide) both;
   }
 
   @keyframes mps-indicator-forward {
@@ -2354,17 +2366,90 @@ label,
   body.mobile-panel-data .mobile-submit-button::after {
     opacity: 1;
     transform: scale(1) rotate(0deg);
-    /* Themed "+" instead of white. Uses a darker oklch derivative of --submit-color 
-       because the light-theme circle background (below) is a pale, near-white glass tint 
-       — --submit-color/--submit-text sits too close to it in lightness to read clearly. 
-       Lowering lightness to 0.28 ensures a high contrast similar to dark mode.
-       (Dark theme overrides this back to --submit-color — see dark section,
-       where the circle background is dark enough for the mid-tone to pop.) */
-    background-color: var(--submit-text, var(--green-dark));
-    background-color: oklch(from var(--submit-color) 0.28 c h);
+    /* Light mode data pill: keep the plus as a flat, non-themed ink color.
+       The full background reset prevents the primary-button shine gradient from
+       leaking through the mask and making the plus look smudged. */
+    background: #34443c;
   }
 
   /* ── bar morph animations: non-linear staggered keyframes ── */
+
+  .mobile-submit-bar.is-flip-morphing,
+  .mobile-submit-bar.is-flip-morphing .mobile-submit-button {
+    transition: none !important;
+    animation: none !important;
+    transform-origin: 0 0 !important;
+    will-change: transform;
+  }
+
+  .mobile-submit-bar.is-flip-morphing {
+    contain: layout style;
+  }
+
+  .mobile-submit-bar.is-flip-morphing .mobile-submit-summary {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing::before {
+    transition: none !important;
+    will-change: opacity, transform;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data,
+  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 32%),
+      radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.24), transparent 45%),
+      radial-gradient(ellipse at 76% 54%, color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent), transparent 62%),
+      rgba(247, 249, 248, 0.18);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.70),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.26),
+      inset 0 -6px 14px rgba(255, 255, 255, 0.12),
+      0 0 36px -12px color-mix(in srgb, var(--submit-color, var(--green)) 60%, transparent),
+      0 16px 44px rgba(22, 26, 30, 0.14);
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-data::before {
+    animation: bar-aura-collapse 360ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-entry::before {
+    animation: bar-aura-expand 320ms 80ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  .bar-summary-ghost {
+    position: fixed;
+    z-index: calc(var(--z-mobile-submit) + 1);
+    pointer-events: none;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.82rem;
+    font-weight: var(--fw-bold);
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-left: 4px;
+    animation: bar-summary-ghost-out 160ms cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
+  @keyframes bar-summary-ghost-out {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(-16px); }
+  }
+
+  @keyframes bar-aura-collapse {
+    0% { opacity: var(--bar-aura-opacity, 0.78); transform: scale(1); }
+    48% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.68); transform: scale(0.86); }
+    100% { opacity: var(--bar-aura-collapsed-opacity, 0.30); transform: scale(0.68); }
+  }
+
+  @keyframes bar-aura-expand {
+    0% { opacity: var(--bar-aura-collapsed-opacity, 0.30); transform: scale(0.70); }
+    62% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.88); transform: scale(1.03); }
+    100% { opacity: var(--bar-aura-opacity, 0.78); transform: scale(1); }
+  }
 
   /* Morphing TO data (bar collapses to pill button):
      - bar border-radius races ahead to pill early
@@ -2378,6 +2463,7 @@ label,
        pivot the squash at right-bottom: it grows upward when it gets taller
        rather than pushing off the bottom of the screen. */
     transform-origin: right bottom;
+    will-change: transform;
     /* Fluid and premium custom ease-out curve */
     animation: bar-collapse-squash 580ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
     /* Collapse-only geometry easing: fluid and elegant */
@@ -2414,6 +2500,7 @@ label,
      - summary text fades in delayed after bar has mostly expanded */
   .mobile-submit-bar.is-bar-morphing-to-entry {
     transform-origin: right bottom;
+    will-change: transform;
     animation: bar-expand-stretch 580ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
     /* Keep the outer glass shell pill-shaped throughout expand and final state. */
     border-radius: var(--radius-pill) !important;
@@ -2445,17 +2532,17 @@ label,
     100% { transform: scaleX(1)    scaleY(1); }
   }
 
-  /* Expand: one strong horizontal stretch, then relax to rest (single rebound).
+  /* Expand: one stronger horizontal stretch, then relax to rest (single rebound).
      Volume is conserved — stretching wider (scaleX > 1) makes it shorter
-     (scaleY = 1/scaleX): 1.18 * 0.847 ≈ 1.0. */
+     (scaleY = 1/scaleX): 1.24 * 0.806 ≈ 1.0. */
   @keyframes bar-expand-stretch {
     0%   { transform: scaleX(1)    scaleY(1);     border-radius: var(--radius-pill); }
     /* Reach max stretch at 26%, then HOLD it flat until 42% — a visible pause at
        maximum horizontal stretch (both keyframes identical → true plateau,
-       volume still conserved: 1.18 * 0.847 ≈ 1.0). */
-    26%  { transform: scaleX(1.18) scaleY(0.847); border-radius: var(--radius-pill); }
+       volume still conserved: 1.24 * 0.806 ≈ 1.0). */
+    26%  { transform: scaleX(1.24) scaleY(0.806); border-radius: var(--radius-pill); }
     42%  {
-      transform: scaleX(1.18) scaleY(0.847); border-radius: var(--radius-pill);
+      transform: scaleX(1.24) scaleY(0.806); border-radius: var(--radius-pill);
       /* Recovery (42%→100%, ~440ms) leaves the plateau with near-zero velocity
          (P1 y≈0) and eases back gently. Both control-point Y in [0,1] → strictly
          monotonic, no reverse-wobble overshoot. */
@@ -2587,7 +2674,7 @@ label,
 
   .amount-label.amount-active {
     border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
-    transform: scale(1.014);
+    --amount-scale: 1.014;
   }
 
   .currency-mark {
@@ -2603,7 +2690,7 @@ label,
   }
 
   .amount-label.amount-active input {
-    transform: scale(1.018);
+    --input-scale: 1.018;
   }
 
   .amount-label.amount-active .currency-mark {
@@ -2804,6 +2891,8 @@ label,
   .mobile-submit-bar {
     position: fixed;
     z-index: var(--z-mobile-submit);
+    --bar-aura-opacity: 0.78;
+    --bar-aura-collapsed-opacity: 0.30;
     right: 12px;
     bottom: max(12px, env(safe-area-inset-bottom));
     left: 12px;
@@ -2816,7 +2905,7 @@ label,
     contain: layout paint style;
     transform: translateZ(0);
     backface-visibility: hidden;
-    will-change: left, transform, padding, gap, border-radius, opacity;
+    will-change: transform;
     /*
      * Geometry settles MONOTONICALLY (no overshoot). The single rebound comes
      * entirely from the volume-conserving scaleX/scaleY squash keyframes above;
@@ -2865,6 +2954,12 @@ label,
       linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(247, 249, 248, 0.30) 54%, rgba(247, 249, 248, 0));
     filter: blur(14px);
     opacity: 0.78;
+    transform: scale(1);
+    transform-origin: right bottom;
+    transition:
+      opacity 220ms ease,
+      transform 360ms cubic-bezier(0.3, 0.9, 0.15, 1);
+    will-change: opacity, transform;
     -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.20), #000 30%, #000 78%, rgba(0, 0, 0, 0.12));
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.20), #000 30%, #000 78%, rgba(0, 0, 0, 0.12));
   }
@@ -2973,17 +3068,17 @@ label,
     position: absolute;
     /* .primary-button::after (buttons.css) is an unrelated diagonal shine-sweep
        decoration on the same pseudo-element (this button carries both classes).
-       It sets inset/filter but not width/height/background-color/mask, so those
-       stray values otherwise leak through per-property cascade — pushing this
-       icon ~42px off-position and blurring it. Reset both explicitly and center
-       via inset+margin so scale/rotate (below) stays free for the reveal
-       animation instead of having to share the transform with a translate. */
+       It sets inset/filter/background-image, so those stray values otherwise
+       leak through per-property cascade — pushing this icon ~42px off-position
+       and making the masked plus look gradient-filled. Reset the full background
+       and center via inset+margin so scale/rotate (below) stays free for the
+       reveal animation instead of having to share the transform with a translate. */
     inset: 0;
     margin: auto;
     filter: none;
     width: 28px;
     height: 28px;
-    background-color: white;
+    background: #fff;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
     opacity: 0;
@@ -3360,6 +3455,10 @@ label,
     padding: 9px;
   }
 
+  body.mobile-panel-data .mobile-submit-bar {
+    left: calc(100% - 70px);
+  }
+
   .mobile-submit-button {
     min-height: 52px;
     border-radius: var(--control-radius-large);
@@ -3414,7 +3513,7 @@ label,
   }
 
   .amount-label.amount-active {
-    transform: scale(1.012);
+    --amount-scale: 1.012;
   }
 
   .currency-mark {
@@ -3457,6 +3556,10 @@ label,
     display: flex;
     gap: 7px;
     padding: 7px;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar {
+    left: calc(100% - 69px);
   }
 
   .mobile-submit-button {
@@ -3592,9 +3695,13 @@ label,
     --total-label-color: rgba(230, 235, 232, 0.64);
   }
 
-  /* body 底色渐变的白色层改暗色等价物（固定图层，见浅色 body::before 注释） */
+  /* body 底色渐变的白色层改暗色等价物（固定图层，见浅色 body::before 注释）。
+     首层噪点必须保留：这里的渐变对比同样极低（7 个色阶跨半屏），且深色
+     大面积平色下 banding 更显眼；覆盖 background 时若丢掉噪点层，
+     blend-mode 列表也会错位。 */
   body::before {
     background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 0.05'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E") left top / 160px 160px repeat,
       radial-gradient(ellipse at 16% 2%, rgba(255, 255, 255, 0.03), transparent 42%),
       radial-gradient(ellipse at 84% 8%, rgba(255, 255, 255, 0.02), transparent 40%),
       radial-gradient(ellipse at 92% 86%, rgba(255, 255, 255, 0.02), transparent 44%),
@@ -3712,6 +3819,8 @@ label,
 
   /* 提交栏玻璃与摘要浅底转暗 */
   .mobile-submit-bar {
+    --bar-aura-opacity: 0.55;
+    --bar-aura-collapsed-opacity: 0.24;
     background:
       radial-gradient(ellipse at 78% 50%, var(--theme-aura-soft), transparent 62%),
       linear-gradient(135deg, rgba(32, 32, 34, 0.30), rgba(24, 24, 26, 0.18)),
@@ -3725,14 +3834,26 @@ label,
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 1px rgba(0, 0, 0, 0.4),
+      0 0 22px -8px color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent),
       0 12px 34px rgba(0, 0, 0, 0.42);
   }
 
+  body.mobile-panel-data .mobile-submit-bar::before {
+    background:
+      radial-gradient(ellipse at 70% 56%, color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent), transparent 56%),
+      radial-gradient(ellipse at 30% 18%, rgba(232, 236, 233, 0.12), transparent 44%);
+    opacity: 0.68;
+  }
+
   body.mobile-panel-data .mobile-submit-button::after {
-    /* Override the light-theme --submit-text (dark, high-contrast on pale
-       glass) back to --submit-color — the dark circle background here is dark
-       enough that the mid-tone color already reads clearly against it. */
-    background-color: var(--submit-color, var(--green));
+    /* The dark glass pill already carries the family color. Keep the plus as a
+       pale, color-tinted highlight so it stays readable over every family hue. */
+    width: 30px;
+    height: 30px;
+    background: color-mix(in srgb, white 86%, var(--submit-color, var(--green)) 14%);
+    filter:
+      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.52))
+      drop-shadow(0 0 7px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent));
   }
 
   body.mobile-panel-data .mobile-submit-bar.submit-themed {
@@ -3751,11 +3872,27 @@ label,
        values do on light, so this halo is noticeably tighter (smaller blur+
        spread, lower alpha) than the light-theme version above. */
     box-shadow:
-      inset 0 1px 3px color-mix(in srgb, white 60%, var(--submit-color)),
+      inset 0 1px 3px color-mix(in srgb, white 68%, var(--submit-color)),
       inset 0 -1px 4px rgba(0, 0, 0, 0.3),
-      0 0 10px 1px color-mix(in srgb, white 25%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 26px 5px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 14px 2px color-mix(in srgb, white 32%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 7px color-mix(in srgb, white 12%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 64px -12px color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data,
+  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 34%),
+      radial-gradient(120% 140% at 18% 0%, rgba(255, 255, 255, 0.10), transparent 46%),
+      radial-gradient(ellipse at 76% 54%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent), transparent 62%),
+      rgba(24, 29, 27, 0.44);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.13),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.08),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.18),
+      0 0 26px -10px color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
+      0 16px 44px rgba(0, 0, 0, 0.36);
   }
 
   .toast {

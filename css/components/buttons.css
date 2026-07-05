@@ -225,9 +225,9 @@ input[type="number"]::-webkit-inner-spin-button {
     transform var(--lamp-on-motion) var(--lamp-on);
 }
 
-.split-scope-panel.is-open .split-mode-buttons,
-.split-scope-panel.is-open .split-family-choices:not([hidden]),
-.split-scope-panel.is-open .split-custom-amounts:not([hidden]) {
+.split-scope-panel.is-switching .split-mode-buttons,
+.split-scope-panel.is-switching .split-family-choices:not([hidden]),
+.split-scope-panel.is-switching .split-custom-amounts:not([hidden]) {
   will-change: opacity, transform;
 }
 
@@ -280,7 +280,7 @@ input[type="number"]::-webkit-inner-spin-button {
     0 0 58px -16px var(--submit-glow, rgba(23, 108, 95, 0.46)),
     0 0 26px -9px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
     0 18px 50px rgba(22, 26, 30, 0.10);
-  will-change: transform, box-shadow;
+  will-change: transform;
 }
 
 .primary-button .button-label {
@@ -345,6 +345,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .expense-form.form-celebrate .primary-button {
   animation: add-button-glow 1560ms var(--settle);
+  will-change: transform, box-shadow;
 }
 
 .expense-form.form-celebrate .primary-button::after {

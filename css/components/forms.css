@@ -167,6 +167,8 @@ input[type="date"]:focus {
   letter-spacing: 0;
   line-height: normal;
   transform-origin: center;
+  --input-scale: 1;
+  transform: scale(var(--input-scale));
   transition:
     height var(--amount-motion) var(--spring),
     transform var(--amount-motion) var(--spring),
@@ -186,7 +188,7 @@ input[type="date"]:focus {
 
 .amount-label.amount-active input {
   background: rgba(255, 255, 255, 0.78);
-  transform: scale(1.025);
+  --input-scale: 1.025;
 }
 
 .split-family-chip.is-selected {

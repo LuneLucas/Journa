@@ -173,6 +173,8 @@
   --control-padding-x: 16px;
   --spring: cubic-bezier(0.14, 0.98, 0.12, 1);
   --spring-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1.1);
+  --spring-glide: cubic-bezier(0.33, 1.14, 0.4, 1);
+  --spring-glide-motion: 620ms;
   --snap: cubic-bezier(0.18, 0.84, 0.2, 1);
   --settle: cubic-bezier(0.16, 0.9, 0.14, 1);
   --motion-fast: 401ms;
@@ -213,6 +215,15 @@
   --z-flying-token: 40;
   /* 提交主题色由 app.js 按选中家庭内联覆盖；这里声明兜底值 */
   --submit-color: var(--green);
+}
+
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    --spring-glide: linear(0, 0.0722, 0.2411, 0.4475, 0.6495, 0.8217, 0.9525,
+      1.04, 1.089, 1.1075, 1.1046, 1.0888, 1.0671, 1.0447, 1.0248, 1.0091,
+      0.9982, 0.9916, 0.9887, 0.9884, 0.9897, 0.9919, 0.9944, 0.9967, 0.9985,
+      0.9999, 1);
+  }
 }
 
 /* 数字字体入口：改 --font-number 即可替换金额/统计/日期数字的字体。 */

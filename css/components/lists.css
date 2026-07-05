@@ -252,6 +252,16 @@
     opacity var(--motion-fast) var(--settle);
 }
 
+.ledger-list.is-morphing-ledger-items .ledger-item > * {
+  transition:
+    opacity var(--motion-fast) var(--settle);
+}
+
+.ledger-list.is-morphing-ledger-items .ledger-item-actions {
+  transition:
+    opacity var(--motion-fast) var(--spring);
+}
+
 .ledger-item:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.84);
