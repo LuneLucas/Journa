@@ -213,6 +213,15 @@
             </section>
 
             <section class="settings-panel">
+              <h3>个人设置</h3>
+              <p class="settings-note">设置您的名字，在创建或修改账单时将自动作为记录人。</p>
+              <form id="settingsOperatorForm" class="settings-operator-form">
+                <input id="settingsOperatorInput" type="text" maxlength="20" placeholder="例如：小明" />
+                <button class="secondary-button" id="saveOperatorButton" type="submit">保存姓名</button>
+              </form>
+            </section>
+
+            <section class="settings-panel">
               <div class="settings-panel-title">
                 <h3>家庭与规则</h3>
                 <span class="readonly-badge">人数可调</span>
@@ -332,6 +341,23 @@
             <button class="secondary-button" id="confirmCancelButton" type="button">取消</button>
             <button class="primary-button danger-action" id="confirmOkButton" type="button">确认</button>
           </div>
+        </div>
+      </section>
+
+      <section class="confirm-view" id="operatorModalView" hidden aria-label="设置您的名字" aria-modal="true" role="dialog">
+        <div class="confirm-backdrop" style="cursor: default;" aria-label="背景"></div>
+        <div class="confirm-dialog" role="document">
+          <div>
+            <p class="eyebrow" style="color: var(--brand-primary); font-weight: var(--fw-bold);">Hi～：）</p>
+            <h2>设置一下名字吧</h2>
+          </div>
+          <p class="confirm-message" style="margin-bottom: 16px;">设置您的姓名，以便在账单中自动记录为您创建或更新的。</p>
+          <form id="operatorModalForm" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <input id="operatorModalInput" type="text" required maxlength="20" placeholder="您的姓名，例如：小明" />
+            <div class="confirm-actions" style="margin-top: 4px;">
+              <button class="primary-button" type="submit" style="width: 100%; justify-content: center; height: var(--control-height); border-radius: var(--control-radius);">确认</button>
+            </div>
+          </form>
         </div>
       </section>
 

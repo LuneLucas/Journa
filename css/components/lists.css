@@ -269,6 +269,11 @@
   animation: ledger-item-drop-in 360ms var(--settle) both;
 }
 
+/* 令牌落定：卡片“接住”这笔金额，家庭色内发光一次脉冲。 */
+.ledger-item.is-catching {
+  animation: ledger-item-catch 420ms var(--spring) both;
+}
+
 .row-item.is-entering,
 .settlement-item.is-entering,
 .empty-state.is-entering,
@@ -371,4 +376,22 @@
   opacity: 1;
   pointer-events: auto;
   transform: none;
+}
+
+.ledger-meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 8px;
+  border-top: 1px dashed var(--line);
+  padding-top: 6px;
+  width: 100%;
+}
+
+.ledger-meta-info span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

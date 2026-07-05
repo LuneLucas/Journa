@@ -183,7 +183,7 @@
   /* 灯泡点亮：慢启动缓动 + 较长升亮时长；熄灯走快速调暗。
      --lamp-on-motion 必须 < app.js MOTION_DELAYS.payerActivate/categoryActivate(760ms)，否则动画会被类清理截断 */
   --lamp-on: cubic-bezier(0.55, 0.06, 0.28, 1);
-  --lamp-on-motion: 660ms;
+  --lamp-on-motion: 730ms;
   --lamp-off-motion: var(--selection-release-motion);
   --lamp-glow-delay: 90ms;
   /* liquid-glass 节奏曲线：quick=光快速聚拢；bloom=y>1 单段过冲再回稳（用于亮度与光晕） */

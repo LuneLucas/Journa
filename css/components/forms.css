@@ -156,7 +156,7 @@ input[type="date"]:focus {
 .amount-label input {
   min-width: 0;
   flex: 1;
-  height: 54px;
+  height: 72px;
   border: 0;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.56);

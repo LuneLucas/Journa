@@ -18,9 +18,12 @@ const MOTION_DELAYS = {
   mobilePanelOut: 150,
   mobilePanelIn: 280,
   mobilePanelIndicator: 560,
-  barMorph: 800,
+  barMorph: 620,
   addCelebrate: 1560,
   totalAbsorb: 1320,
+  tokenFlight: 680,
+  totalBloom: 460,
+  catchPulse: 420,
   toast: 2600,
   toastWithAction: 5200,
 };
@@ -129,6 +132,11 @@ const elements = {
   ledgerNameForm: document.querySelector("#ledgerNameForm"),
   currentLedgerNameInput: document.querySelector("#currentLedgerNameInput"),
   saveLedgerNameButton: document.querySelector("#saveLedgerNameButton"),
+  settingsOperatorForm: document.querySelector("#settingsOperatorForm"),
+  settingsOperatorInput: document.querySelector("#settingsOperatorInput"),
+  operatorModalView: document.querySelector("#operatorModalView"),
+  operatorModalForm: document.querySelector("#operatorModalForm"),
+  operatorModalInput: document.querySelector("#operatorModalInput"),
   currentLedgerSummary: document.querySelector("#currentLedgerSummary"),
   ledgerManagerList: document.querySelector("#ledgerManagerList"),
   settingsDataSummary: document.querySelector("#settingsDataSummary"),
@@ -407,6 +415,16 @@ function normalizeCategoryFilter(category, categories) {
   return categories.includes(normalized) ? normalized : "";
 }
 
+function normalizeOperator(val) {
+  if (!val) return null;
+  if (typeof val === "object") {
+    const name = String(val.name || "").trim();
+    return name ? { name } : null;
+  }
+  const name = String(val).trim();
+  return name ? { name } : null;
+}
+
 function normalizeExpense(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
   return {
@@ -419,6 +437,8 @@ function normalizeExpense(expense) {
     splitMode,
     splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitMode === "families" ? defaultFamilies.map((family) => family.id) : []),
     splitAmounts: normalizeSplitAmounts(expense.splitAmounts),
+    createdBy: normalizeOperator(expense.createdBy),
+    updatedBy: normalizeOperator(expense.updatedBy),
     syncState: normalizeExpenseSyncState(expense.syncState),
     isDeleted: Boolean(expense.isDeleted),
     updatedAt: expense.updatedAt || new Date().toISOString(),
@@ -536,6 +556,8 @@ function normalizeRemotePayload(payload) {
         splitMode: normalizeSplitMode(expense.split_mode),
         splitFamilyIds: normalizeSplitFamilyIds(expense.split_family_ids),
         splitAmounts: normalizeSplitAmounts(expense.split_amounts),
+        createdBy: normalizeOperator(expense.created_by),
+        updatedBy: normalizeOperator(expense.updated_by),
         syncState: "synced",
         isDeleted: Boolean(expense.is_deleted),
         updatedAt: expense.updated_at || new Date().toISOString(),
@@ -605,6 +627,7 @@ async function pullCloudLedger({ announce = false } = {}) {
     saveCloudState();
     render({ skipCloudSave: true, animateFinancialChanges: announce && hasPlayedInitialTotalReveal });
     if (announce) showToast({ message: "已同步云账本" });
+    const unsyncedExpenses = state.expenses.filter((expense) => ["pending", "failed"].includes(normalizeExpenseSyncState(expense.syncState)));
     if (unsyncedExpenses.length) syncPendingCloudExpenses({ silent: true }).catch(() => {});
     return true;
   } catch (error) {
@@ -646,6 +669,7 @@ async function createCloudLedger() {
     updateLedgerUrl();
     await syncAllLocalDataToCloud();
     await pullCloudLedger({ announce: true });
+    checkOperatorNamePrompt();
   } catch (error) {
     showToast({ message: "创建云账本失败，请确认 SQL 已执行" });
   } finally {
@@ -748,6 +772,8 @@ async function syncCloudExpense(expense) {
     p_split_mode: normalizeSplitMode(expense.splitMode),
     p_split_family_ids: normalizeSplitFamilyIds(expense.splitFamilyIds),
     p_split_amounts: normalizeSplitAmounts(expense.splitAmounts),
+    p_created_by: expense.createdBy || null,
+    p_updated_by: expense.updatedBy || null,
     p_is_deleted: Boolean(expense.isDeleted),
     p_updated_at: expense.updatedAt,
   };
@@ -1130,10 +1156,16 @@ function setMobilePanel(panel, options = {}) {
    */
   elements.mobileSubmitBar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
   if (shouldAnimate) {
-    document.body.classList.toggle("mobile-panel-entry", nextPanel === "entry");
-    document.body.classList.toggle("mobile-panel-data", nextPanel === "data");
+    /* Add the morph class BEFORE toggling the body mode class so the direction-
+     * scoped geometry easing (e.g. the gentle-start collapse curve) is already
+     * in effect when the geometry transition starts — otherwise the transition
+     * would begin with the base easing and the scoped override would never apply.
+     * The reflow here flushes the class removal above so re-adding retriggers the
+     * squash keyframe animation. */
     void elements.mobileSubmitBar.offsetWidth;
     elements.mobileSubmitBar.classList.add(nextPanel === "data" ? "is-bar-morphing-to-data" : "is-bar-morphing-to-entry");
+    document.body.classList.toggle("mobile-panel-entry", nextPanel === "entry");
+    document.body.classList.toggle("mobile-panel-data", nextPanel === "data");
     barMorphTimer = window.setTimeout(() => {
       elements.mobileSubmitBar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
       barMorphTimer = 0;
@@ -1502,6 +1534,7 @@ function renderSettings() {
   const summary = calculateSummary();
   const usedCategories = new Set(state.expenses.map((expense) => expense.category));
   elements.currentLedgerNameInput.value = state.name;
+  elements.settingsOperatorInput.value = localStorage.getItem("travel-ledger-operator-name") || "";
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
 
@@ -1908,6 +1941,23 @@ function renderLedgerItem(expense) {
   const syncLine = syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : "";
   const expandCue = isExpanded ? `<span class="ledger-expand-cue" aria-hidden="true">收起</span>` : "";
 
+  let metaHtml = "";
+  if (isExpanded) {
+    const createdName = expense.createdBy?.name || expense.createdBy;
+    const updatedName = expense.updatedBy?.name || expense.updatedBy;
+    
+    let metaItems = "";
+    if (createdName) {
+      metaItems += `<span>✍️ 创建: ${escapeHtml(createdName)}</span>`;
+    }
+    if (updatedName && updatedName !== createdName) {
+      metaItems += `<span>✏️ 更新: ${escapeHtml(updatedName)}</span>`;
+    }
+    if (metaItems) {
+      metaHtml = `<div class="ledger-meta-info">${metaItems}</div>`;
+    }
+  }
+
   return `
     <article class="${itemClass}" style="${familyStyle(expense.payerId)}" data-expense-id="${escapeHtml(expense.id)}" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
       <div class="ledger-main">
@@ -1919,6 +1969,7 @@ function renderLedgerItem(expense) {
         <p class="ledger-note">${escapeHtml(expense.note || "无备注")}</p>
         <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
         ${syncLine}
+        ${metaHtml}
       </div>
       <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
       <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
@@ -2190,6 +2241,9 @@ function handleExpenseSubmit(event) {
   }
 
   const expenseId = editingExpenseId || crypto.randomUUID();
+  const operatorName = localStorage.getItem("travel-ledger-operator-name") || getFamilyName(payerId);
+  const originalExpense = wasEditing ? state.expenses.find((item) => item.id === editingExpenseId) : null;
+
   const savedExpense = {
     id: expenseId,
     amount: Math.round(amount * 100) / 100,
@@ -2200,6 +2254,8 @@ function handleExpenseSubmit(event) {
     splitMode: splitDetails.splitMode,
     splitFamilyIds: splitDetails.splitFamilyIds,
     splitAmounts: splitDetails.splitAmounts,
+    createdBy: wasEditing ? (originalExpense?.createdBy || { name: operatorName }) : { name: operatorName },
+    updatedBy: wasEditing ? { name: operatorName } : null,
     syncState: isCloudLedgerActive() ? "pending" : "synced",
     isDeleted: false,
     updatedAt: new Date().toISOString(),
@@ -2213,7 +2269,7 @@ function handleExpenseSubmit(event) {
   } else {
     state.expenses.push(savedExpense);
     lastAddedExpenseId = expenseId;
-    triggerAddEffect(payerId, savedExpense.amount);
+    triggerSubmitCelebrate(payerId);
   }
 
   if (wasEditing) {
@@ -2224,11 +2280,16 @@ function handleExpenseSubmit(event) {
     state.selectedPayerId = payerId;
   }
 
+  // 落账拍的起点：金额输入框中心。须在 reset()/render() 之前测量。
+  const addStartRect = wasEditing ? null : elements.amountLabel.getBoundingClientRect();
   elements.expenseForm.reset();
   if (!wasEditing) resetSplitScope();
   smoothContainerResize(elements.ledgerSection, () => {
     render({ animateFinancialChanges: true });
   });
+  if (!wasEditing) {
+    landAddCeremony(payerId, savedExpense.amount, expenseId, addStartRect);
+  }
   if (wasEditing && hasActiveLedgerFilters() && !isExpenseVisible(savedExpense)) {
     showToast({
       message: "已保存，但不在当前筛选内",
@@ -2838,6 +2899,7 @@ function switchLedger(ledgerId, { announce = true } = {}) {
   render({ animateFinancialChanges: true });
   markLedgerSwitching();
   if (announce) showToast({ message: `已切换到“${state.name}”` });
+  checkOperatorNamePrompt();
 }
 
 function renameCurrentLedger() {
@@ -3001,7 +3063,9 @@ function joinCloudLedger(shareToken) {
   ledger.cloudShareToken = shareToken;
   appState.ledgers.push(ledger);
   switchLedger(ledger.id, { announce: false });
-  pullCloudLedger({ announce: true });
+  pullCloudLedger({ announce: true }).then(() => {
+    checkOperatorNamePrompt();
+  });
 }
 
 async function deleteLedger(ledgerId) {
@@ -3160,6 +3224,53 @@ function restoreFocus(element) {
   if (element && typeof element.focus === "function" && document.contains(element)) {
     element.focus();
   }
+}
+
+function checkOperatorNamePrompt() {
+  if (!isCloudLedgerActive()) return;
+  const savedName = localStorage.getItem("travel-ledger-operator-name");
+  if (!savedName) {
+    showOperatorModal();
+  }
+}
+
+function showOperatorModal() {
+  if (!elements.operatorModalView) return;
+  elements.operatorModalView.hidden = false;
+  document.body.classList.add("confirm-open");
+  elements.operatorModalInput.value = "";
+  elements.operatorModalInput.focus();
+}
+
+function closeOperatorModal() {
+  if (!elements.operatorModalView) return;
+  elements.operatorModalView.hidden = true;
+  document.body.classList.remove("confirm-open");
+}
+
+function handleOperatorModalSubmit(event) {
+  event.preventDefault();
+  const name = elements.operatorModalInput.value.trim();
+  if (!name) return;
+
+  localStorage.setItem("travel-ledger-operator-name", name);
+  if (elements.settingsOperatorInput) {
+    elements.settingsOperatorInput.value = name;
+  }
+  closeOperatorModal();
+  showToast({ message: `欢迎你，${name}！已设置您的操作者身份` });
+}
+
+function handleSettingsOperatorSubmit(event) {
+  event.preventDefault();
+  const name = elements.settingsOperatorInput.value.trim();
+  if (!name) {
+    showToast({ message: "请输入有效的姓名" });
+    return;
+  }
+
+  localStorage.setItem("travel-ledger-operator-name", name);
+  showToast({ message: `保存成功，您的名字已设置为“${name}”` });
 }
 
 function getFocusableElements(container) {
@@ -3448,7 +3559,7 @@ function applySelectedFamilyTheme() {
     element.style.setProperty("--selected-family-text", style.text);
     element.style.setProperty("--selected-family-soft", style.soft);
     element.style.setProperty("--selected-family-wash", colorWithAlpha(style.color, 0.24));
-    element.style.setProperty("--selected-family-glow", colorWithAlpha(style.color, 0.58));
+    element.style.setProperty("--selected-family-glow", colorWithAlpha(style.color, 0.72));
   });
 }
 
@@ -3737,7 +3848,8 @@ function markLedgerSwitching() {
   }, getCssDurationMs("--motion", 534) + 160);
 }
 
-function triggerAddEffect(payerId, amount) {
+// 提交瞬间的即时拍：按钮按付款家庭色定格发光/扫光。
+function triggerSubmitCelebrate(payerId) {
   const visual = getFamilyVisual(payerId);
   const themedGlow = colorWithAlpha(visual.color, 0.66);
   elements.expenseForm.classList.remove("form-celebrate");
@@ -3745,33 +3857,42 @@ function triggerAddEffect(payerId, amount) {
   elements.expenseForm.style.setProperty("--submit-glow", themedGlow);
   void elements.expenseForm.offsetWidth;
   elements.expenseForm.classList.add("form-celebrate");
-  triggerTotalAbsorbEffect(visual);
-  emitLedgerToken(visual, amount);
   window.setTimeout(() => {
     elements.expenseForm.classList.remove("form-celebrate");
   }, MOTION_DELAYS.addCelebrate);
 }
 
-function triggerTotalAbsorbEffect(visual) {
-  elements.totalMetric.classList.remove("is-absorbing");
-  elements.totalMetric.style.setProperty("--absorb-color", colorWithAlpha(visual.color, 0.18));
-  elements.totalMetric.style.setProperty("--absorb-glow", colorWithAlpha(visual.gradient, 0.30));
-  void elements.totalMetric.offsetWidth;
-  elements.totalMetric.classList.add("is-absorbing");
-  window.setTimeout(() => {
-    elements.totalMetric.classList.remove("is-absorbing");
-  }, MOTION_DELAYS.totalAbsorb);
+// 落账拍：令牌从金额框飞入新生成的账单卡片，落定时卡片接住脉冲 + 总额绽放 + 移动端震动。
+function landAddCeremony(payerId, amount, expenseId, startRect) {
+  const visual = getFamilyVisual(payerId);
+  const card = elements.ledgerList?.querySelector(`[data-expense-id="${cssEscapeId(expenseId)}"]`);
+  const cardRect = card?.getBoundingClientRect();
+
+  if (prefersReducedMotion() || !startRect || !cardRect || cardRect.width === 0) {
+    // 降级（减少动态效果 / 卡片被筛选隐藏）：直接落定总额绽放。
+    triggerTotalBloomEffect(visual);
+    return;
+  }
+
+  flyLedgerTokenToCard(visual, amount, startRect, cardRect, () => {
+    pulseLedgerCatch(card);
+    triggerTotalBloomEffect(visual);
+    triggerHapticFeedback();
+  });
 }
 
-function emitLedgerToken(visual, amount) {
-  if (prefersReducedMotion()) return;
+function flyLedgerTokenToCard(visual, amount, startRect, cardRect, onLand) {
+  const startX = startRect.left + startRect.width * 0.5;
+  const startY = startRect.top + startRect.height * 0.38;
+  const endX = cardRect.left + cardRect.width * 0.5;
+  const endY = cardRect.top + cardRect.height * 0.5;
+  const dx = endX - startX;
+  const dy = endY - startY;
+  // 抛物线拱起高度：随水平跨度略增，制造弧线而非直线。
+  const lift = Math.min(52, Math.max(20, Math.abs(dx) * 0.18 + 22));
 
-  const amountRect = elements.amountLabel.getBoundingClientRect();
-  const startX = amountRect.left + amountRect.width * 0.5;
-  const startY = amountRect.top + amountRect.height * 0.38;
   const token = document.createElement("div");
-
-  token.className = "ledger-token";
+  token.className = "ledger-token is-flying";
   token.textContent = formatMoney(Math.round(Number(amount) * 100));
   token.style.setProperty("--token-color", visual.color);
   token.style.setProperty("--token-text", visual.text);
@@ -3779,7 +3900,60 @@ function emitLedgerToken(visual, amount) {
   token.style.setProperty("--start-x", `${startX}px`);
   token.style.setProperty("--start-y", `${startY}px`);
   document.body.append(token);
-  token.addEventListener("animationend", () => token.remove(), { once: true });
+
+  const easing = getComputedStyle(document.documentElement).getPropertyValue("--snap").trim() || "cubic-bezier(0.18, 0.84, 0.2, 1)";
+  const animation = token.animate(
+    [
+      { transform: "translate(-50%, -50%) scale(1)", opacity: 0, filter: "blur(3px)", offset: 0 },
+      { opacity: 0.95, filter: "blur(0px)", offset: 0.16 },
+      { transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy * 0.5 - lift}px)) scale(1.02)`, opacity: 0.9, offset: 0.5 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.7)`, opacity: 0, filter: "blur(1px)", offset: 1 },
+    ],
+    { duration: MOTION_DELAYS.tokenFlight, easing, fill: "both" },
+  );
+
+  let landed = false;
+  const finish = () => {
+    if (landed) return;
+    landed = true;
+    token.remove();
+    onLand?.();
+  };
+  animation.addEventListener("finish", finish, { once: true });
+  // 兜底：若 finish 事件因页面切后台等未触发，仍确保落定与清理。
+  window.setTimeout(finish, MOTION_DELAYS.tokenFlight + 140);
+}
+
+function pulseLedgerCatch(card) {
+  if (!card || prefersReducedMotion()) return;
+  card.classList.remove("is-catching");
+  void card.offsetWidth;
+  card.classList.add("is-catching");
+  window.setTimeout(() => card.classList.remove("is-catching"), MOTION_DELAYS.catchPulse);
+}
+
+function triggerTotalBloomEffect(visual) {
+  if (prefersReducedMotion()) return;
+  elements.totalMetric.classList.remove("is-blooming");
+  elements.totalMetric.style.setProperty("--absorb-color", colorWithAlpha(visual.color, 0.18));
+  elements.totalMetric.style.setProperty("--absorb-glow", colorWithAlpha(visual.gradient, 0.30));
+  void elements.totalMetric.offsetWidth;
+  elements.totalMetric.classList.add("is-blooming");
+  window.setTimeout(() => {
+    elements.totalMetric.classList.remove("is-blooming");
+  }, MOTION_DELAYS.totalAbsorb);
+}
+
+function triggerHapticFeedback() {
+  if (prefersReducedMotion()) return;
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  // 轻双击手感，呼应“接住/落定”，不做长震。
+  navigator.vibrate([14, 30, 14]);
+}
+
+function cssEscapeId(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
+  return String(value).replace(/["\\\]]/g, "\\$&");
 }
 
 function updateClearLedgerButton() {
@@ -3820,6 +3994,8 @@ elements.ledgerJoinForm.addEventListener("submit", handleLedgerJoinSubmit);
 elements.ledgerManagerList.addEventListener("click", handleLedgerManagerClick);
 elements.settingsCategoryForm.addEventListener("submit", handleSettingsCategorySubmit);
 elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryClick);
+elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
+elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.settingsFamilyList.addEventListener("click", handleFamilyMemberStep);
 elements.familyRoster.addEventListener("click", handleFamilySelection);
 elements.ledgerList.addEventListener("click", handleLedgerClick);
@@ -3930,6 +4106,7 @@ async function bootstrap() {
   if (isCloudLedgerActive()) {
     await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
   }
+  checkOperatorNamePrompt();
   revealInitialTotalAmount();
 }
 

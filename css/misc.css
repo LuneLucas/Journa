@@ -266,15 +266,17 @@ h3 {
   animation: metric-number-soft-refresh var(--motion) var(--settle) both;
 }
 
-.metric.primary.is-absorbing {
-  animation: total-absorb 1320ms var(--settle) both;
+.metric.primary.is-blooming {
+  animation:
+    total-absorb 1320ms var(--settle) both,
+    total-bloom var(--motion) var(--spring-overshoot) both;
 }
 
-.metric.primary.is-absorbing::before {
+.metric.primary.is-blooming::before {
   animation: total-edge-absorb-left 1320ms var(--settle) both;
 }
 
-.metric.primary.is-absorbing::after {
+.metric.primary.is-blooming::after {
   animation: total-edge-absorb-right 1320ms var(--settle) both;
 }
 
@@ -383,10 +385,10 @@ label,
 .amount-label {
   position: relative;
   display: grid;
-  grid-template-rows: minmax(16px, auto) minmax(68px, 1fr);
+  grid-template-rows: minmax(16px, auto) minmax(80px, 1fr);
   align-items: stretch;
   box-sizing: border-box;
-  min-height: 112px;
+  min-height: 128px;
   overflow: hidden;
   overflow: clip;
   gap: 0px;
@@ -400,12 +402,15 @@ label,
     inset 0 0 0 1px rgba(22, 26, 30, 0.06),
     0 24px 64px -24px transparent,
     0 18px 50px rgba(22, 26, 30, 0.10);
+  margin: 0;
   transform-origin: center;
   transition:
     padding var(--amount-motion) var(--spring),
+    margin var(--amount-motion) var(--spring),
     transform var(--amount-motion) var(--spring),
     border-radius var(--amount-motion) var(--spring),
-    background-color var(--motion-fast) var(--spring);
+    background-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .amount-label::before,
@@ -505,7 +510,7 @@ label,
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 68px;
+  min-height: 80px;
   transform-origin: center;
   z-index: 1;
 }
@@ -533,12 +538,16 @@ label,
     inset 0 0 0 1px rgba(22, 26, 30, 0.08),
     0 34px 92px rgba(22, 26, 30, 0.14);
   transform: scale(1.018);
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .amount-label.amount-active.amount-themed {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 30%, transparent),
-    0 0 84px -18px var(--selected-family-glow),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--selected-family-color) 45%, transparent),
+    0 0 16px -2px var(--selected-family-glow),
+    0 0 54px -6px var(--selected-family-glow),
+    0 0 96px -10px var(--selected-family-glow),
     0 34px 92px rgba(22, 26, 30, 0.14);
 }
 
@@ -779,6 +788,11 @@ label,
   will-change: transform, opacity, filter;
 }
 
+/* 飞入卡片的令牌由 Web Animations API 驱动动态坐标，禁用默认飘散动画。 */
+.ledger-token.is-flying {
+  animation: none;
+}
+
 .sf-symbol {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, sans-serif;
   font-weight: 400;
@@ -922,7 +936,8 @@ label,
   font-size: 1.05rem;
 }
 
-.ledger-name-form {
+.ledger-name-form,
+.settings-operator-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(108px, auto);
   gap: 10px;
@@ -1954,12 +1969,14 @@ label,
     grid-column: 1 / -1;
   }
 
-  .ledger-name-form {
+  .ledger-name-form,
+  .settings-operator-form {
     grid-template-columns: minmax(0, 1fr) 104px;
     gap: 8px;
   }
 
-  .ledger-name-form .secondary-button {
+  .ledger-name-form .secondary-button,
+  .settings-operator-form .secondary-button {
     width: auto;
     padding-inline: 12px;
   }
@@ -2291,12 +2308,18 @@ label,
       radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.88 0.08 h / 0.5) 0%, transparent 40%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%),
       oklch(from var(--submit-color) 0.65 c h / 0.45);
+    /*
+     * Two concentric 0-offset rings, both brightened with white, instead of the
+     * old single muted-alpha ring plus a downward-offset duplicate — the offset
+     * layer read as a cast shadow beneath the circle rather than a glow around
+     * it. A small neutral (uncolored) shadow still grounds the circle.
+     */
     box-shadow:
       inset 0 1px 3px color-mix(in srgb, white 70%, var(--submit-color)),
       inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 40%, rgba(22, 26, 30, 0.06)),
-      0 0 44px 8px var(--submit-glow, rgba(23, 108, 95, 0.5)),
-      0 12px 30px -10px var(--submit-glow, rgba(23, 108, 95, 0.3)),
-      0 8px 24px rgba(22, 26, 30, 0.08);
+      0 0 18px 3px color-mix(in srgb, white 45%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 58px 16px color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -8px rgba(22, 26, 30, 0.10);
   }
 
   body.mobile-panel-data .mobile-submit-summary {
@@ -2331,6 +2354,14 @@ label,
   body.mobile-panel-data .mobile-submit-button::after {
     opacity: 1;
     transform: scale(1) rotate(0deg);
+    /* Themed "+" instead of white. Uses a darker oklch derivative of --submit-color 
+       because the light-theme circle background (below) is a pale, near-white glass tint 
+       — --submit-color/--submit-text sits too close to it in lightness to read clearly. 
+       Lowering lightness to 0.28 ensures a high contrast similar to dark mode.
+       (Dark theme overrides this back to --submit-color — see dark section,
+       where the circle background is dark enough for the mid-tone to pop.) */
+    background-color: var(--submit-text, var(--green-dark));
+    background-color: oklch(from var(--submit-color) 0.28 c h);
   }
 
   /* ── bar morph animations: non-linear staggered keyframes ── */
@@ -2347,15 +2378,34 @@ label,
        pivot the squash at right-bottom: it grows upward when it gets taller
        rather than pushing off the bottom of the screen. */
     transform-origin: right bottom;
-    animation: bar-collapse-squash 760ms cubic-bezier(0.3, 0.85, 0.2, 1) both;
+    /* Fluid and premium custom ease-out curve */
+    animation: bar-collapse-squash 580ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    /* Collapse-only geometry easing: fluid and elegant */
+    transition-timing-function:
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      ease;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button {
+    /* Same elegant geometry easing for the button. Order matches its base
+       transition: min-width, height, padding, border-radius, opacity. */
+    transition-timing-function:
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.3, 0.9, 0.15, 1),
+      ease;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-summary {
-    animation: summary-collapse 220ms cubic-bezier(0.4, 0, 1, 1) both;
+    animation: summary-collapse 180ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button::after {
-    animation: icon-appear 260ms 120ms cubic-bezier(0.22, 0.72, 0.18, 1) both;
+    animation: icon-appear 220ms 90ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
   }
 
   /* Morphing TO entry (pill button expands back to bar):
@@ -2364,7 +2414,7 @@ label,
      - summary text fades in delayed after bar has mostly expanded */
   .mobile-submit-bar.is-bar-morphing-to-entry {
     transform-origin: right bottom;
-    animation: bar-expand-stretch 760ms cubic-bezier(0.3, 0.85, 0.2, 1) both;
+    animation: bar-expand-stretch 580ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
     /* Keep the outer glass shell pill-shaped throughout expand and final state. */
     border-radius: var(--radius-pill) !important;
   }
@@ -2375,15 +2425,15 @@ label,
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-summary {
-    animation: summary-expand 300ms 90ms cubic-bezier(0.22, 0.72, 0.18, 1) both;
+    animation: summary-expand 240ms 80ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button .button-label {
-    animation: label-appear 240ms 100ms cubic-bezier(0.22, 0.72, 0.18, 1) both;
+    animation: label-appear 200ms 80ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button::after {
-    animation: icon-dismiss 180ms cubic-bezier(0.4, 0, 1, 1) both;
+    animation: icon-dismiss 150ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
   }
 
   /* Collapse: one strong horizontal squash, then relax to rest (single rebound).
@@ -2400,13 +2450,15 @@ label,
      (scaleY = 1/scaleX): 1.18 * 0.847 ≈ 1.0. */
   @keyframes bar-expand-stretch {
     0%   { transform: scaleX(1)    scaleY(1);     border-radius: var(--radius-pill); }
-    30%  {
+    /* Reach max stretch at 26%, then HOLD it flat until 42% — a visible pause at
+       maximum horizontal stretch (both keyframes identical → true plateau,
+       volume still conserved: 1.18 * 0.847 ≈ 1.0). */
+    26%  { transform: scaleX(1.18) scaleY(0.847); border-radius: var(--radius-pill); }
+    42%  {
       transform: scaleX(1.18) scaleY(0.847); border-radius: var(--radius-pill);
-      /* Peak reached at 30%, so the recovery owns ~530ms of the 760ms. The curve
-         is ease-in-out (P1 y≈0 → very low velocity leaving the peak) so the
-         animation visibly SLOWS at maximum stretch and eases back gently instead
-         of immediately rushing away from the peak. Both control-point Y in [0,1]
-         → strictly monotonic, no reverse-wobble overshoot. */
+      /* Recovery (42%→100%, ~440ms) leaves the plateau with near-zero velocity
+         (P1 y≈0) and eases back gently. Both control-point Y in [0,1] → strictly
+         monotonic, no reverse-wobble overshoot. */
       animation-timing-function: cubic-bezier(0.4, 0, 0.5, 1);
     }
     100% { transform: scaleX(1)    scaleY(1);     border-radius: var(--radius-pill); }
@@ -2544,7 +2596,7 @@ label,
   }
 
   .amount-label input {
-    height: 56px;
+    height: 72px;
     padding: 0 12px;
     font-size: clamp(2.2rem, 11vw, 3.5rem);
     line-height: normal;
@@ -2769,14 +2821,14 @@ label,
      * Geometry settles MONOTONICALLY (no overshoot). The single rebound comes
      * entirely from the volume-conserving scaleX/scaleY squash keyframes above;
      * if this transition also overshot, the two bounce sources would compound
-     * into a visible double rebound. Same 760ms so layout settles exactly when
+     * into a visible double rebound. Same 684ms so layout settles exactly when
      * the squash relaxes.
      */
     transition:
-      left 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
-      padding 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
-      gap 680ms cubic-bezier(0.32, 0.78, 0.14, 1),
-      border-radius 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
+      left 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      padding 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      gap 500ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      border-radius 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
       opacity 220ms ease;
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
@@ -2905,10 +2957,10 @@ label,
     min-width: 132px;
     /* monotonic like the bar — the rebound lives in the scale squash, not here */
     transition:
-      min-width 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
-      height 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
-      padding 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
-      border-radius 760ms cubic-bezier(0.32, 0.78, 0.14, 1),
+      min-width 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      height 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      padding 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      border-radius 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
       opacity 220ms ease;
   }
 
@@ -2919,12 +2971,23 @@ label,
   .mobile-submit-button::after {
     content: "";
     position: absolute;
+    /* .primary-button::after (buttons.css) is an unrelated diagonal shine-sweep
+       decoration on the same pseudo-element (this button carries both classes).
+       It sets inset/filter but not width/height/background-color/mask, so those
+       stray values otherwise leak through per-property cascade — pushing this
+       icon ~42px off-position and blurring it. Reset both explicitly and center
+       via inset+margin so scale/rotate (below) stays free for the reveal
+       animation instead of having to share the transform with a translate. */
+    inset: 0;
+    margin: auto;
+    filter: none;
     width: 28px;
     height: 28px;
     background-color: white;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
     opacity: 0;
+    z-index: 2;
     transform: scale(0.4) rotate(-90deg);
     transition: opacity 0.3s ease, transform 0.4s var(--spring-overshoot);
   }
@@ -3214,7 +3277,7 @@ label,
   }
 
   .amount-label input {
-    height: 52px;
+    height: 64px;
     font-size: clamp(2rem, 11vw, 3.2rem);
   }
 
@@ -3665,6 +3728,13 @@ label,
       0 12px 34px rgba(0, 0, 0, 0.42);
   }
 
+  body.mobile-panel-data .mobile-submit-button::after {
+    /* Override the light-theme --submit-text (dark, high-contrast on pale
+       glass) back to --submit-color — the dark circle background here is dark
+       enough that the mid-tone color already reads clearly against it. */
+    background-color: var(--submit-color, var(--green));
+  }
+
   body.mobile-panel-data .mobile-submit-bar.submit-themed {
     background:
       radial-gradient(circle at 30% 20%, color-mix(in srgb, white 50%, var(--submit-color)) 0%, transparent 40%),
@@ -3674,11 +3744,18 @@ label,
       radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.75 0.08 h / 0.4) 0%, transparent 40%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%),
       oklch(from var(--submit-color) 0.45 c h / 0.4);
+    /* Same two-ring 0-offset glow as the light theme (see note there) — this
+       variant previously had ONLY the downward-offset shadow layer with no
+       ambient ring at all, so it read as pure drop-shadow with no light source.
+       Dark backgrounds make any glow read much larger/brighter than the same
+       values do on light, so this halo is noticeably tighter (smaller blur+
+       spread, lower alpha) than the light-theme version above. */
     box-shadow:
       inset 0 1px 3px color-mix(in srgb, white 60%, var(--submit-color)),
       inset 0 -1px 4px rgba(0, 0, 0, 0.3),
-      0 12px 30px -10px var(--submit-glow, rgba(23, 108, 95, 0.3)),
-      0 8px 24px rgba(0, 0, 0, 0.25);
+      0 0 10px 1px color-mix(in srgb, white 25%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 26px 5px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -6px rgba(0, 0, 0, 0.28);
   }
 
   .toast {
