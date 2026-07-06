@@ -2444,39 +2444,28 @@ label,
   }
 
   /*
-   * iOS26 liquid-glass segment slide: the pill accelerates off, stretches like
-   * liquid mid-flight, overshoots the target, then rebounds/settles. Driven by a
-   * direction class (added in JS) so the keyframes retrigger on every switch.
-   *
-   * The physics now lives in the keyframe stops (translate + squash/stretch +
-   * overshoot/rebound), so the easing is plain — a bouncy easing here would
-   * double the overshoot. transform-origin sits on the LEADING edge of travel so
-   * the horizontal stretch reads as the pill leaning into its run.
+   * The segment pill uses a single uninterrupted glide. The previous mid-flight
+   * scale/settle stops looked expressive in isolation, but felt like a tiny
+   * pause when the page and bottom bar were moving at the same time.
    */
   .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator {
-    transform-origin: right center;
-    animation: mps-indicator-forward var(--spring-glide-motion) linear both;
+    transform-origin: center;
+    animation: mps-indicator-forward var(--spring-glide-motion) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
-    transform-origin: left center;
-    animation: mps-indicator-backward var(--spring-glide-motion) linear both;
+    transform-origin: center;
+    animation: mps-indicator-backward var(--spring-glide-motion) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   @keyframes mps-indicator-forward {
-    0%   { transform: translateX(0)                          scaleX(1)     scaleY(1); }
-    28%  { transform: translateX(calc((100% + 4px) * 0.43))  scaleX(1.16)  scaleY(1.025); }
-    62%  { transform: translateX(calc((100% + 4px) * 1.035)) scaleX(1.065) scaleY(1.012); }
-    84%  { transform: translateX(calc((100% + 4px) * 0.992)) scaleX(0.99)  scaleY(0.995); }
-    100% { transform: translateX(calc(100% + 4px))           scaleX(1)     scaleY(1); }
+    from { transform: translateX(0); }
+    to   { transform: translateX(calc(100% + 4px)); }
   }
 
   @keyframes mps-indicator-backward {
-    0%   { transform: translateX(calc(100% + 4px))            scaleX(1)     scaleY(1); }
-    28%  { transform: translateX(calc((100% + 4px) * 0.57))   scaleX(1.16)  scaleY(1.025); }
-    62%  { transform: translateX(calc((100% + 4px) * -0.035)) scaleX(1.065) scaleY(1.012); }
-    84%  { transform: translateX(calc((100% + 4px) * 0.008))  scaleX(0.99)  scaleY(0.995); }
-    100% { transform: translateX(0)                           scaleX(1)     scaleY(1); }
+    from { transform: translateX(calc(100% + 4px)); }
+    to   { transform: translateX(0); }
   }
 
   /*
@@ -2487,14 +2476,13 @@ label,
    */
   .mobile-panel-switch.is-indicator-forward #mobileDataTab,
   .mobile-panel-switch.is-indicator-backward #mobileEntryTab {
-    animation: mps-tab-pop 320ms cubic-bezier(0.26, 1.6, 0.44, 1) both;
-    animation-delay: 260ms;
+    animation: mps-tab-pop 180ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation-delay: 360ms;
   }
 
   @keyframes mps-tab-pop {
-    0%   { transform: scale(0.955); }
-    58%  { transform: scale(1.045); }
-    86%  { transform: scale(0.992); }
+    0%   { transform: scale(0.992); }
+    72%  { transform: scale(1.008); }
     100% { transform: scale(1); }
   }
 
@@ -2533,13 +2521,13 @@ label,
   .app-view.is-mobile-panel-switching-out .entry-panel,
   .app-view.is-mobile-panel-switching-out .ledger-section,
   .app-view.is-mobile-panel-switching-out .insights-panel {
-    animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 120ms) cubic-bezier(0.35, 0, 0.65, 1) both;
+    animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 100ms) cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
   .app-view.is-mobile-panel-switching-in .entry-panel,
   .app-view.is-mobile-panel-switching-in .ledger-section,
   .app-view.is-mobile-panel-switching-in .insights-panel {
-    animation: mobile-panel-fade-in var(--mobile-panel-in-motion, 500ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: mobile-panel-fade-in var(--mobile-panel-in-motion, 460ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   body.mobile-panel-data .mobile-submit-bar {
@@ -2725,6 +2713,13 @@ label,
     transition: none !important;
   }
 
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry::before {
+    animation: none !important;
+    opacity: var(--bar-aura-opacity, 0.78) !important;
+    transform: scale(1) !important;
+    transition: none !important;
+  }
+
   body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 32%),
@@ -2773,6 +2768,26 @@ label,
       inset 0 1px 1px rgba(255, 255, 255, 0.68),
       0 0 34px -18px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
       0 18px 52px rgba(22, 26, 30, 0.09) !important;
+  }
+
+  /* Only the READY state wears this translucent themed flight bg. When the bar is
+     also needs-input, the [data-state="needs-input"] flight rule above owns the
+     background (matching its resting look) — otherwise this rule, equal in
+     specificity but later in source order, would win during flight and then snap
+     to the needs-input bg at settle (background gradients can't transition). */
+  .mobile-submit-bar.submit-themed.is-bar-morphing-to-entry:not([data-state="needs-input"]),
+  .mobile-submit-bar.submit-themed.is-flip-morphing.is-bar-morphing-to-entry:not([data-state="needs-input"]) {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
+      radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 42%),
+      radial-gradient(ellipse at 78% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
+      rgba(247, 249, 248, 0.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 0 84px -16px var(--submit-glow),
+      0 0 36px -10px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 24px 70px rgba(22, 26, 30, 0.18) !important;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data::before {
@@ -2950,6 +2965,8 @@ label,
   .app-view {
     --switch-out-x: -6px;
     --switch-in-x: 6px;
+    --switch-in-y: -4px;
+    --switch-out-y: 4px;
   }
 
   .app-view[data-switch-direction="backward"] {
@@ -2960,33 +2977,45 @@ label,
   @keyframes mobile-panel-fade-out {
     from {
       opacity: 1;
+      filter: blur(0);
       transform: scale(1) translate(0, 0);
     }
 
     to {
       opacity: 0;
-      transform: scale(0.986) translate(var(--switch-out-x), 3px);
+      filter: blur(2px);
+      transform: scale(0.99) translate(var(--switch-out-x), var(--switch-out-y));
     }
   }
 
   @keyframes mobile-panel-fade-in {
     0% {
       opacity: 0;
-      transform: scale(0.986) translate(var(--switch-in-x), 4px);
+      filter: blur(3px);
+      transform: scale(0.995) translate(var(--switch-in-x), var(--switch-in-y));
+    }
+
+    22% {
+      opacity: 0.70;
+      filter: blur(0);
+      transform: scale(0.997) translate(calc(var(--switch-in-x) * 0.5), calc(var(--switch-in-y) * 0.75));
     }
 
     64% {
       opacity: 1;
-      transform: scale(1.002) translate(calc(var(--switch-in-x) * -0.08), -1px);
+      filter: blur(0);
+      transform: scale(1.001) translate(calc(var(--switch-in-x) * -0.05), calc(var(--switch-in-y) * 0.1));
     }
 
     86% {
       opacity: 1;
-      transform: scale(0.999) translate(0, 0.6px);
+      filter: blur(0);
+      transform: scale(1) translate(0, calc(var(--switch-in-y) * -0.05));
     }
 
     100% {
       opacity: 1;
+      filter: blur(0);
       transform: scale(1) translate(0, 0);
     }
   }
@@ -2996,6 +3025,7 @@ label,
   .ledger-section {
     padding: 18px;
     border-radius: var(--radius-xl);
+    will-change: transform, opacity;
   }
 
   .ledger-section {
@@ -3266,9 +3296,9 @@ label,
     z-index: var(--z-mobile-submit);
     --bar-aura-opacity: 0.78;
     --bar-aura-collapsed-opacity: 0.30;
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    left: 12px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 16px;
     display: flex;
     gap: 12px;
     align-items: center;
@@ -3310,8 +3340,8 @@ label,
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 54px -22px color-mix(in srgb, var(--submit-color, var(--green)) 76%, transparent),
       0 24px 72px rgba(22, 26, 30, 0.16);
-    backdrop-filter: blur(4px) saturate(211%) brightness(1.08);
-    -webkit-backdrop-filter: blur(4px) saturate(211%) brightness(1.08);
+    backdrop-filter: blur(2px) saturate(211%) brightness(1.08);
+    -webkit-backdrop-filter: blur(2px) saturate(211%) brightness(1.08);
   }
 
   .mobile-submit-bar::before,
@@ -3496,9 +3526,10 @@ label,
       rgba(255, 255, 255, 0.12);
     color: color-mix(in srgb, var(--ink) 82%, var(--muted));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.62),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.30),
-      inset 0 -6px 14px rgba(255, 255, 255, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.40),
+      inset 0 -6px 14px rgba(255, 255, 255, 0.15),
+      0 0 16px -4px color-mix(in srgb, var(--submit-color, var(--green)) 25%, transparent),
       0 8px 24px -6px rgba(22, 26, 30, 0.12);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
     backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
@@ -3644,7 +3675,7 @@ label,
     width: min(100% - 28px, 520px);
     padding-top: 16px;
     /* 底部预留固定提交栏的高度，滚到底时内容不被盖住 */
-    padding-bottom: 96px;
+    padding-bottom: calc(108px + env(safe-area-inset-bottom));
   }
 
   body.mobile-panel-data .app-shell,
@@ -3839,9 +3870,9 @@ label,
   }
 
   .mobile-submit-bar {
-    right: 8px;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: 8px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 16px;
     border-radius: var(--radius-pill);
     display: flex;
     gap: 10px;
@@ -3943,9 +3974,9 @@ label,
   }
 
   .mobile-submit-bar {
-    right: 7px;
-    bottom: max(7px, env(safe-area-inset-bottom));
-    left: 7px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 16px;
     display: flex;
     gap: 7px;
     padding: 7px;
@@ -3999,7 +4030,8 @@ label,
       background-color var(--motion-fast) var(--spring);
   }
 
-  .selectable-category-chip:active {
+  .selectable-category-chip:active,
+  .family-tag:active {
     background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
     transform: scale(0.96);
     transition-duration: var(--press-motion);
@@ -4268,7 +4300,7 @@ label,
   /* 提交栏玻璃与摘要浅底转暗 */
   .mobile-submit-bar {
     --bar-aura-opacity: 0.55;
-    --bar-aura-collapsed-opacity: 0.24;
+    --bar-aura-collapsed-opacity: 0.16;
     background:
       radial-gradient(ellipse at 78% 50%, var(--theme-aura-soft), transparent 62%),
       linear-gradient(135deg, rgba(32, 32, 34, 0.30), rgba(24, 24, 26, 0.18)),
@@ -4277,8 +4309,8 @@ label,
 
   body.mobile-panel-data .mobile-submit-bar {
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 40%),
-      rgba(30, 36, 33, 0.62);
+      linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 40%),
+      rgba(48, 56, 52, 0.74);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 1px rgba(0, 0, 0, 0.4),
@@ -4300,7 +4332,7 @@ label,
     width: 30px;
     height: 30px;
     background: none;
-    background-color: color-mix(in srgb, var(--submit-text, var(--submit-color, var(--green))) 58%, white);
+    background-color: color-mix(in srgb, var(--submit-text, var(--submit-color, var(--green))) 20%, white);
     filter:
       drop-shadow(0 1px 1px rgba(0, 0, 0, 0.44))
       drop-shadow(0 0 4px color-mix(in srgb, var(--submit-color, var(--green)) 26%, transparent));
@@ -4308,15 +4340,15 @@ label,
 
   body.mobile-panel-data .mobile-submit-bar.submit-themed {
     background:
-      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 68%, var(--submit-color)) 0%, transparent 44%),
-      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
-      color-mix(in srgb, var(--submit-color) 14%, rgba(24, 24, 26, 0.5));
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 82%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 12%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 12%, rgba(35, 35, 38, 0.62));
     background:
-      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.74 0.035 h / 0.22) 0%, transparent 44%),
-      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.50 0.04 h / 0.10) 0%, transparent 58%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
-      oklch(from var(--submit-color) 0.46 0.045 h / 0.18);
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.88 0.02 h / 0.24) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.68 0.025 h / 0.14) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.62 0.025 h / 0.22);
     /* Same two-ring 0-offset glow as the light theme (see note there) — this
        variant previously had ONLY the downward-offset shadow layer with no
        ambient ring at all, so it read as pure drop-shadow with no light source.
@@ -4326,9 +4358,9 @@ label,
     box-shadow:
       inset 0 1px 3px color-mix(in srgb, white 58%, var(--submit-color)),
       inset 0 -1px 4px rgba(0, 0, 0, 0.32),
-      0 0 12px 0 color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 24px 2px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 44px -18px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 0 10px -1px color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 22px 0 color-mix(in srgb, white 7%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28);
   }
 
@@ -4350,21 +4382,21 @@ label,
      for the whole flight so the tint lands with the geometry, not after it. */
   body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
     background:
-      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 68%, var(--submit-color)) 0%, transparent 44%),
-      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
-      color-mix(in srgb, var(--submit-color) 14%, rgba(24, 24, 26, 0.5));
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 82%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 12%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 12%, rgba(35, 35, 38, 0.62));
     background:
-      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.74 0.035 h / 0.22) 0%, transparent 44%),
-      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.50 0.04 h / 0.10) 0%, transparent 58%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
-      oklch(from var(--submit-color) 0.46 0.045 h / 0.18);
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.88 0.02 h / 0.24) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.68 0.025 h / 0.14) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.62 0.025 h / 0.22);
     box-shadow:
       inset 0 1px 3px color-mix(in srgb, white 58%, var(--submit-color)),
       inset 0 -1px 4px rgba(0, 0, 0, 0.32),
-      0 0 12px 0 color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 24px 2px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 44px -18px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 0 10px -1px color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 22px 0 color-mix(in srgb, white 7%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28);
   }
 
@@ -4375,9 +4407,9 @@ label,
     box-shadow:
       inset 0 1px 3px color-mix(in srgb, white 58%, var(--submit-color)),
       inset 0 -1px 4px rgba(0, 0, 0, 0.32),
-      0 0 12px 0 color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 24px 2px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 44px -18px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 0 10px -1px color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 22px 0 color-mix(in srgb, white 7%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28) !important;
   }
 
@@ -4403,8 +4435,10 @@ label,
       rgba(232, 236, 233, 0.08);
     color: rgba(232, 236, 233, 0.82);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
-      0 10px 28px rgba(0, 0, 0, 0.20);
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 0 12px -2px color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent),
+      0 0 24px -6px color-mix(in srgb, var(--submit-color, var(--green)) 20%, transparent),
+      0 10px 28px rgba(0, 0, 0, 0.35);
     text-shadow: none;
   }
 
@@ -4491,13 +4525,126 @@ label,
   }
 
   .family-tag.is-selected {
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
-      color-mix(in srgb, var(--family-color) 12%, transparent);
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 28%, rgba(255, 255, 255, 0.08)),
-      0 8px 20px -14px color-mix(in srgb, var(--family-color) 78%, transparent),
-      0 0 30px -18px var(--family-soft);
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .family-tag:not(.split-family-chip).is-activating {
+    animation-name: family-lamp-overshoot-dark;
+  }
+
+  @keyframes family-lamp-overshoot-dark {
+    0% {
+      opacity: 0.88;
+      filter: brightness(0.96) saturate(0.98);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 6px 16px color-mix(in srgb, var(--family-color) 12%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.02);
+      transform: scale(0.96);
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    38% {
+      opacity: 1;
+      filter: brightness(1.15) saturate(1.08);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+        0 16px 36px color-mix(in srgb, var(--family-color) 42%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transform: scale(1.045);
+      animation-timing-function: cubic-bezier(0.445, 0.05, 0.55, 0.95);
+    }
+
+    70% {
+      filter: brightness(0.99) saturate(1);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 11px 26px color-mix(in srgb, var(--family-color) 26%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transform: scale(0.996);
+      animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    100% {
+      opacity: 1;
+      filter: brightness(1) saturate(1);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+        0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transform: scale(1);
+    }
+  }
+
+  .family-tag.is-activating > span {
+    animation-name: family-label-select-dark;
+  }
+
+  .family-tag.is-deactivating > span {
+    animation-name: family-label-release-dark;
+  }
+
+  @keyframes family-label-select-dark {
+    0% {
+      color: color-mix(in srgb, var(--family-text, var(--ink)) 40%, white);
+      transform: translateY(1px);
+    }
+
+    45% {
+      color: color-mix(in srgb, var(--family-text) 82%, black);
+      transform: translateY(-1px);
+    }
+
+    100% {
+      color: color-mix(in srgb, var(--family-text) 70%, black);
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes family-label-release-dark {
+    0% {
+      color: color-mix(in srgb, var(--family-text) 70%, black);
+      transform: translateY(-1px);
+    }
+
+    48% {
+      color: color-mix(in srgb, var(--family-text, var(--ink)) 40%, white);
+    }
+
+    100% {
+      color: color-mix(in srgb, var(--family-text, var(--ink)) 40%, white);
+      transform: translateY(0);
+    }
+  }
+
+  .selectable-category-chip.is-deactivating {
+    color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
+  }
+
+  .selectable-category-chip.is-deactivating > span {
+    animation-name: category-label-release-dark;
+  }
+
+  @keyframes category-label-release-dark {
+    0% {
+      color: color-mix(in srgb, var(--category-text) 88%, #101412);
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+      transform: none;
+    }
+
+    34% {
+      color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
+      text-shadow: none;
+    }
+
+    100% {
+      color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
+      text-shadow: none;
+      transform: none;
+    }
   }
 
   .split-family-chip.is-selected {
@@ -5037,17 +5184,26 @@ label,
       0 22px 62px rgba(0, 0, 0, 0.30) !important;
   }
 
+  /* Dark twin: ready-only flight bg, so needs-input keeps its own bg through
+     flight and doesn't snap at settle (see the light-mode note above). */
+  .mobile-submit-bar.submit-themed.is-bar-morphing-to-entry:not([data-state="needs-input"]),
+  .mobile-submit-bar.submit-themed.is-flip-morphing.is-bar-morphing-to-entry:not([data-state="needs-input"]) {
+    background:
+      radial-gradient(ellipse at 78% 50%, var(--theme-aura-soft), transparent 62%),
+      linear-gradient(135deg, rgba(32, 32, 34, 0.30), rgba(24, 24, 26, 0.18)),
+      rgba(18, 18, 20, 0.30);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 82px -16px var(--submit-glow),
+      0 0 38px -12px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 24px 70px rgba(0, 0, 0, 0.40) !important;
+  }
+
   .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {
     color: rgba(232, 236, 233, 0.78);
   }
 
-  /* 选中态 inset 白高光降档，主题色辉光保留 */
-  .family-tag.is-selected {
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-      0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
+
 
   .selectable-category-chip.is-selected {
     box-shadow:

@@ -6,9 +6,6 @@
 
 .family-tag.is-selected {
   border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
-    color-mix(in srgb, var(--family-color) 9%, transparent);
   /* 深色家庭标签坐在浅色填充上，对比 ≥ 5.3:1 */
   color: color-mix(in srgb, var(--family-text) 70%, black);
   box-shadow:
@@ -32,7 +29,7 @@
 }
 
 .selectable-category-chip.is-deactivating {
-  color: color-mix(in srgb, var(--category-text) 82%, var(--ink));
+  color: color-mix(in srgb, var(--category-text) 78%, var(--ink));
 }
 
 

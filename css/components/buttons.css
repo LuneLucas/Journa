@@ -46,7 +46,11 @@ button:disabled {
   animation: family-lamp-overshoot var(--lamp-on-motion) var(--lamp-on) both;
 }
 
-.family-tag.is-deactivating,
+.family-tag:not(.split-family-chip).is-deactivating {
+  animation: family-release-soft var(--selection-release-motion) var(--settle) both;
+}
+
+.family-tag.split-family-chip.is-deactivating,
 .selectable-category-chip.is-deactivating,
 .split-mode-button.is-deactivating {
   animation: choice-release-soft var(--selection-release-motion) var(--settle) both;

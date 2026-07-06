@@ -99,10 +99,12 @@
 
 .family-tag.is-activating {
   animation: choice-select-pop var(--selection-motion) var(--settle) both;
+  will-change: transform, filter;
 }
 
 .family-tag.is-deactivating {
   animation: choice-release-soft var(--selection-release-motion) var(--settle) both;
+  will-change: transform, filter;
 }
 
 .family-tag.is-activating::before {
