@@ -301,6 +301,18 @@ input[type="number"]::-webkit-inner-spin-button {
     0 22px 58px rgba(22, 26, 30, 0.12);
 }
 
+.primary-button:active {
+  transform: scale(0.95) translateY(2px) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 36%, transparent),
+    inset 0 2px 6px rgba(0, 0, 0, 0.16),
+    0 0 40px -18px var(--submit-glow, rgba(23, 108, 95, 0.35)),
+    0 6px 18px rgba(22, 26, 30, 0.06) !important;
+  filter: brightness(0.95);
+  transition-duration: var(--press-motion) !important;
+  transition-timing-function: var(--lamp-quick) !important;
+}
+
 .primary-button.danger-action {
   --submit-color: var(--coral);
   --submit-text: var(--coral);
@@ -347,6 +359,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: inherit;
   background: rgba(23, 108, 95, 0.18); /* 老 WebView 不支持 color-mix 时的静态回退 */
   background:
+    radial-gradient(circle 90px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.35), transparent 85%),
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--submit-color, var(--green)) 58%, transparent),
@@ -380,13 +393,63 @@ input[type="number"]::-webkit-inner-spin-button {
   transform: rotate(18deg) translateX(-30%);
 }
 
-.expense-form.form-celebrate .primary-button {
-  animation: add-button-glow 1560ms var(--settle);
+.expense-form.form-celebrate .primary-button,
+.mobile-submit-bar.form-celebrate .primary-button {
+  animation: 
+    add-button-press-rebound 750ms var(--spring-overshoot),
+    add-button-glow 1560ms var(--settle);
   will-change: transform, box-shadow;
 }
 
-.expense-form.form-celebrate .primary-button::after {
+.expense-form.form-celebrate .primary-button::after,
+.mobile-submit-bar.form-celebrate .primary-button::after {
   animation: add-button-sheen 1560ms var(--settle);
+}
+
+/* 极光脉冲环 */
+.button-glow-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--submit-color, var(--brand-primary));
+  box-shadow: 0 0 20px var(--submit-glow, rgba(23, 108, 95, 0.46));
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transform: scale(1);
+}
+
+.expense-form.form-celebrate .button-glow-ring,
+.mobile-submit-bar.form-celebrate .button-glow-ring {
+  animation: button-ring-pulse 800ms var(--settle) forwards;
+}
+
+/* 按钮微粒/星尘 */
+.button-particle {
+  position: absolute;
+  width: var(--size, 6px);
+  height: var(--size, 6px);
+  border-radius: var(--radius, 50%);
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform, opacity;
+}
+
+.button-particle.star-shape {
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+}
+
+/* 按钮文本平滑滑移切换 */
+.text-slide-out {
+  animation: text-slide-out 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+
+.text-slide-in {
+  animation: text-slide-in 200ms var(--spring) forwards;
+  display: inline-block;
+  will-change: transform, opacity, filter;
 }
 
 .secondary-button {

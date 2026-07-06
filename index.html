@@ -142,7 +142,10 @@
               </div>
 
               <p class="form-error" id="formError" role="alert"></p>
-              <button class="primary-button full-row" type="submit"><span class="button-label" id="submitButtonLabel">添加账单</span></button>
+              <button class="primary-button full-row" id="submitButton" type="submit">
+                <span class="button-glow-ring"></span>
+                <span class="button-label" id="submitButtonLabel">添加账单</span>
+              </button>
             </form>
 
           </section>
@@ -343,6 +346,7 @@
       <div class="mobile-submit-bar" id="mobileSubmitBar" data-state="needs-input" data-missing-target="payer">
         <div class="mobile-submit-summary" id="mobileSubmitSummary">还差：付款家庭</div>
         <button class="primary-button mobile-submit-button is-blocked" id="mobileSubmitButton" type="button" aria-disabled="false" aria-label="还差：付款家庭">
+          <span class="button-glow-ring"></span>
           <span class="button-label">去选择</span>
         </button>
       </div>

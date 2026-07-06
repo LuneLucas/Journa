@@ -178,6 +178,7 @@ const elements = {
   formError: document.querySelector("#formError"),
   editBanner: document.querySelector("#editBanner"),
   cancelEditButton: document.querySelector("#cancelEditButton"),
+  submitButton: document.querySelector("#submitButton"),
   submitButtonLabel: document.querySelector("#submitButtonLabel"),
   categoryForm: document.querySelector("#categoryForm"),
   newCategoryInput: document.querySelector("#newCategoryInput"),
@@ -2682,7 +2683,22 @@ function formatLedgerCardDate(date) {
 function renderEditState() {
   const isEditing = Boolean(editingExpenseId);
   elements.editBanner.hidden = !isEditing;
-  elements.submitButtonLabel.textContent = isEditing ? "保存修改" : "添加账单";
+  
+  const label = elements.submitButtonLabel;
+  const newText = isEditing ? "保存修改" : "添加账单";
+  
+  if (label.textContent !== newText) {
+    label.classList.add("text-slide-out");
+    window.setTimeout(() => {
+      label.textContent = newText;
+      label.classList.remove("text-slide-out");
+      label.classList.add("text-slide-in");
+      window.setTimeout(() => {
+        label.classList.remove("text-slide-in");
+      }, 210);
+    }, 150);
+  }
+  
   elements.expenseForm.classList.toggle("is-editing", isEditing);
 }
 
@@ -4519,13 +4535,34 @@ function markLedgerSwitching() {
 function triggerSubmitCelebrate(payerId) {
   const visual = getFamilyVisual(payerId);
   const themedGlow = colorWithAlpha(visual.color, 0.66);
+  
   elements.expenseForm.classList.remove("form-celebrate");
+  elements.mobileSubmitBar.classList.remove("form-celebrate");
+  
   elements.expenseForm.style.setProperty("--submit-color", visual.color);
   elements.expenseForm.style.setProperty("--submit-glow", themedGlow);
+  elements.mobileSubmitBar.style.setProperty("--submit-color", visual.color);
+  elements.mobileSubmitBar.style.setProperty("--submit-glow", themedGlow);
+  
   void elements.expenseForm.offsetWidth;
+  void elements.mobileSubmitBar.offsetWidth;
+  
   elements.expenseForm.classList.add("form-celebrate");
+  elements.mobileSubmitBar.classList.add("form-celebrate");
+  
+  // 触发精致星尘粒子爆裂动效（自动选择屏幕上当前可见的按钮）
+  const visibleButton = [elements.submitButton, elements.mobileSubmitButton].find((btn) => {
+    if (!btn) return false;
+    const rect = btn.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  });
+  if (visibleButton) {
+    spawnButtonParticles(visibleButton, visual, themedGlow);
+  }
+  
   window.setTimeout(() => {
     elements.expenseForm.classList.remove("form-celebrate");
+    elements.mobileSubmitBar.classList.remove("form-celebrate");
   }, MOTION_DELAYS.addCelebrate);
 }
 
@@ -4772,7 +4809,103 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+function setupSubmitButtonSpotlight() {
+  const buttons = [elements.submitButton, elements.mobileSubmitButton].filter(Boolean);
+  buttons.forEach((btn) => {
+    btn.addEventListener("mousemove", (e) => {
+      const rect = btn.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      btn.style.setProperty("--mouse-x", `${x}px`);
+      btn.style.setProperty("--mouse-y", `${y}px`);
+    });
+  });
+}
+
+function spawnButtonParticles(btn, visual, themedGlow) {
+  if (prefersReducedMotion()) return;
+  const rect = btn.getBoundingClientRect();
+  const startX = rect.left + rect.width / 2 + window.scrollX;
+  const startY = rect.top + rect.height / 2 + window.scrollY;
+  
+  const particleCount = 16;
+  const container = document.body;
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement("div");
+    particle.className = "button-particle";
+    
+    const isStar = i % 2 === 0;
+    if (isStar) {
+      particle.classList.add("star-shape");
+    }
+    
+    const size = Math.floor(Math.random() * 5) + 5; // 5px - 9px
+    particle.style.setProperty("--size", `${size}px`);
+    particle.style.setProperty("--radius", isStar ? "0" : "50%");
+    
+    // 颜色配比：1/3 为金色星芒，其余使用家庭颜色或白色
+    let particleColor = visual.color;
+    if (i % 3 === 1) {
+      particleColor = "#ffd700"; // 金沙
+    } else if (i % 3 === 2) {
+      particleColor = "#ffffff"; // 亮白微粒
+    }
+    
+    particle.style.backgroundColor = particleColor;
+    particle.style.boxShadow = `0 0 6px ${colorWithAlpha(particleColor, 0.65)}`;
+    
+    // 居中起始点
+    particle.style.left = `${startX - size / 2}px`;
+    particle.style.top = `${startY - size / 2}px`;
+    
+    container.appendChild(particle);
+    
+    const angle = (i * (360 / particleCount) + Math.random() * 20 - 10) * (Math.PI / 180);
+    const velocity = Math.random() * 60 + 35; // 扩散半径
+    const destX = Math.cos(angle) * velocity;
+    // 整体向上轻微漂浮（模拟烟花星尘微光升空）
+    const destY = Math.sin(angle) * velocity - (Math.random() * 30 + 20);
+    
+    const rotation = Math.random() * 360;
+    const destRotation = rotation + (Math.random() * 360 + 180) * (Math.random() > 0.5 ? 1 : -1);
+    
+    const animation = particle.animate(
+      [
+        {
+          transform: `translate(0, 0) scale(0.2) rotate(${rotation}deg)`,
+          opacity: 0,
+        },
+        {
+          transform: `translate(${destX * 0.18}px, ${destY * 0.18}px) scale(1) rotate(${rotation + (destRotation - rotation) * 0.18}deg)`,
+          opacity: 0.95,
+          offset: 0.18
+        },
+        {
+          transform: `translate(${destX}px, ${destY}px) scale(0.6) rotate(${destRotation}deg)`,
+          opacity: 0.45,
+          offset: 0.8
+        },
+        {
+          transform: `translate(${destX * 1.08}px, ${destY - 18}px) scale(0) rotate(${destRotation + 15}deg)`,
+          opacity: 0,
+        }
+      ],
+      {
+        duration: Math.random() * 350 + 750, // 750ms - 1100ms
+        easing: "cubic-bezier(0.1, 0.8, 0.2, 1)",
+        fill: "forwards"
+      }
+    );
+    
+    animation.onfinish = () => {
+      particle.remove();
+    };
+  }
+}
+
 async function bootstrap() {
+  setupSubmitButtonSpotlight();
   render();
   if (isCloudLedgerActive()) {
     await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });

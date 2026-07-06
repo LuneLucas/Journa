@@ -998,6 +998,7 @@
   /* 玻璃高光层去掉白色成分，避免暗底上发亮 */
   .primary-button::before {
     background:
+      radial-gradient(circle 90px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.15), transparent 85%),
       linear-gradient(135deg,
         color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
         color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent) 52%,
