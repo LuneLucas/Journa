@@ -1,4 +1,4 @@
-const CACHE_VERSION = "bar-motion-20260706";
+const CACHE_VERSION = "ios-zoom-fix-20260706";
 const CACHE_NAME = `ledger-cache-${CACHE_VERSION}`;
 const PRECACHE_URLS = [
   "./",
@@ -14,6 +14,9 @@ const PRECACHE_URLS = [
   "./css/components/toast.css",
   "./css/animations.css",
   "./css/misc.css",
+  "./css/responsive.css",
+  "./css/dark.css",
+  "./css/a11y.css",
   "./app.js",
 ];
 

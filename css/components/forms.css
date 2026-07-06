@@ -1,6 +1,6 @@
-/* 品牌化文字选中色：浅绿底 + 深墨字 */
+/* 品牌化文字选中色：浅主题色底 + 深墨字 */
 ::selection {
-  background: rgba(23, 108, 95, 0.16);
+  background: color-mix(in srgb, var(--green) 16%, transparent);
   color: var(--ink);
 }
 
@@ -61,6 +61,7 @@
 
 input,
 select {
+  font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
   min-height: var(--control-height);
   width: 100%;
   border: 1px solid var(--control-border);
@@ -209,7 +210,7 @@ input[type="date"]:focus {
     linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.56)),
     color-mix(in srgb, var(--family-color) 5%, transparent);
   color: var(--family-text);
-  font-size: 0.92rem;
+  font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
   font-weight: var(--fw-heavy);
   line-height: 1.15;
   box-shadow:
@@ -366,7 +367,7 @@ input[type="date"]:focus {
     color-mix(in srgb, var(--green) 7%, rgba(255, 255, 255, 0.72));
   padding-inline: 14px 34px;
   color: color-mix(in srgb, var(--green-dark) 82%, var(--ink));
-  font-size: 0.86rem;
+  font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
   font-weight: var(--fw-heavy);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.54),

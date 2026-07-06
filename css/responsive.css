@@ -1,0 +1,2058 @@
+@media (max-width: 820px) {
+  .toast-host {
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 84px);
+  }
+}
+
+.mobile-submit-bar {
+  display: none;
+  transition:
+    --submit-color calc(var(--motion) * 1.32) var(--settle),
+    --submit-text calc(var(--motion) * 1.32) var(--settle),
+    --submit-wash calc(var(--motion) * 1.32) var(--settle),
+    --submit-glow calc(var(--motion) * 1.32) var(--settle),
+    opacity var(--motion-fast) var(--settle),
+    transform var(--motion-fast) var(--settle),
+    border-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring),
+    background-color var(--motion-fast) var(--spring);
+}
+
+.mobile-panel-switch {
+  display: none;
+}
+
+@media (max-width: 820px), (pointer: coarse) {
+  .app-shell {
+    width: min(100% - 28px, 720px);
+    padding: 20px 0 calc(112px + env(safe-area-inset-bottom));
+  }
+
+  body.mobile-panel-data .app-shell,
+  body.keyboard-open .app-shell {
+    padding-bottom: 44px;
+  }
+
+  .app-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .header-actions {
+    justify-content: flex-end;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 8.5vw, 2.95rem);
+    line-height: 1;
+  }
+
+  .app-header .eyebrow {
+    display: none;
+  }
+
+  .app-header .ghost-button {
+    min-height: 40px;
+    border-radius: var(--control-radius-compact);
+    padding: 0 13px;
+    white-space: nowrap;
+  }
+
+  .settings-hero,
+  .ledger-management-hero {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: -12px -12px 12px;
+    border-width: 0 0 1px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62)),
+      rgba(247, 249, 248, 0.94);
+    box-shadow: var(--shadow-md);
+  }
+
+  .settings-hero .eyebrow,
+  .ledger-management-hero .eyebrow {
+    display: none;
+  }
+
+  .settings-hero h2,
+  .ledger-management-hero h2 {
+    font-size: 1.55rem;
+  }
+
+  .settings-hero .ghost-button,
+  .ledger-management-hero .ghost-button {
+    width: auto;
+    min-height: 42px;
+    border-radius: var(--control-radius-compact);
+    padding: 0 16px;
+  }
+
+  .settings-view,
+  .ledger-management-view {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-backdrop,
+  .ledger-management-backdrop {
+    display: none;
+  }
+
+  .settings-drawer,
+  .ledger-management-drawer {
+    height: 100dvh;
+    padding: 12px;
+    animation-name: settings-drawer-enter-mobile;
+  }
+
+  .settings-view.is-closing .settings-drawer,
+  .ledger-management-view.is-closing .ledger-management-drawer {
+    animation-name: settings-drawer-exit-mobile;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settings-panel,
+  .settings-panel:nth-child(3) {
+    grid-column: auto;
+    padding: 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .settings-panel-title {
+    gap: 12px;
+  }
+
+  .settings-panel-title .compact-button {
+    min-width: 100px;
+  }
+
+  .ledger-management-tools {
+    padding: 14px;
+    border-radius: var(--radius-lg);
+  }
+
+  .ledger-create-form,
+  .ledger-join-form {
+    grid-template-columns: 1fr;
+  }
+
+  .checkbox-option {
+    min-height: 32px;
+  }
+
+  .ledger-manager-card {
+    border-radius: var(--radius-lg);
+    padding: 16px;
+  }
+
+  .ledger-card-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .ledger-card-actions > * {
+    flex: 1 1 112px;
+    min-width: 0;
+  }
+
+  .ledger-card-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ledger-card-stats div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .ledger-name-form,
+  .settings-operator-form {
+    grid-template-columns: minmax(0, 1fr) 104px;
+    gap: 8px;
+  }
+
+  .ledger-name-form .secondary-button,
+  .settings-operator-form .secondary-button {
+    width: auto;
+    padding-inline: 12px;
+  }
+
+  .ledger-manager-item {
+    gap: 8px;
+    padding: 7px;
+  }
+
+  .ledger-delete-button,
+  .ledger-active-badge {
+    min-height: 40px;
+    padding-inline: 11px;
+  }
+
+  .settings-family {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .member-stepper {
+    justify-content: flex-end;
+    min-width: 126px;
+  }
+
+  .member-stepper button {
+    width: 38px;
+    min-height: 38px;
+  }
+
+  .summary-band {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+    margin-bottom: 13px;
+  }
+
+  .summary-band .metric:not(.primary) {
+    display: none;
+  }
+
+  .metric.primary {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    min-height: 92px;
+    text-align: center;
+  }
+
+  .metric {
+    min-height: 74px;
+    padding: 12px;
+    border-radius: var(--control-radius-large);
+  }
+
+  .metric span {
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+
+  .metric strong {
+    font-size: clamp(1rem, 4.4vw, 1.42rem);
+    line-height: 1.05;
+  }
+
+  .metric.primary strong {
+    display: inline-block;
+    font-size: clamp(2.08rem, 9.4vw, 3.28rem);
+    line-height: 1.04;
+    overflow: visible;
+  }
+
+  .family-roster {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .ledger-section .section-heading {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-bottom: 10px;
+  }
+
+  .ledger-controls {
+    justify-content: stretch;
+    gap: 7px;
+  }
+
+  .ledger-controls select {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 36px;
+    font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
+    font-weight: var(--fw-bold);
+  }
+
+  .ledger-controls .compact-button {
+    flex: 1 1 100%;
+    min-height: 36px;
+  }
+
+  .workspace,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-view {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .summary-band {
+    order: 1;
+    margin-bottom: 0;
+  }
+
+  .mobile-panel-switch {
+    order: 2;
+    position: sticky;
+    top: 8px;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.58));
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0.24)),
+      radial-gradient(ellipse at 16% -36%, rgba(255, 255, 255, 0.88), transparent 55%),
+      radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent), transparent 64%),
+      rgba(247, 249, 248, 0.18);
+    padding: 4px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.82),
+      inset 0 -1px 0 rgba(22, 26, 30, 0.08),
+      0 0 28px -16px color-mix(in srgb, var(--submit-color, var(--green)) 68%, transparent),
+      0 14px 38px rgba(22, 26, 30, 0.10);
+    backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
+    -webkit-backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
+  }
+
+  .mobile-panel-switch::before,
+  .mobile-panel-switch::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    content: "";
+    pointer-events: none;
+  }
+
+  .mobile-panel-switch::before {
+    z-index: -1;
+    background:
+      linear-gradient(110deg, rgba(255, 255, 255, 0.72), transparent 26%),
+      radial-gradient(ellipse at 50% -42%, rgba(255, 255, 255, 0.78), transparent 50%);
+    filter: blur(1px);
+    opacity: 0.68;
+  }
+
+  .mobile-panel-switch::after {
+    z-index: 2;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.16) 44%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(22, 26, 30, 0.10)));
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.92;
+  }
+
+  .mobile-panel-tab {
+    position: relative;
+    z-index: 1;
+    min-height: 40px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: color-mix(in srgb, var(--ink) 75%, var(--muted));
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: var(--fw-heavy);
+    cursor: pointer;
+    transition:
+      background-color var(--motion-fast) var(--spring),
+      box-shadow var(--motion-fast) var(--spring),
+      color var(--motion-fast) var(--spring),
+      transform var(--motion-fast) var(--spring);
+  }
+
+  .mobile-panel-tab.is-active {
+    color: var(--submit-text, var(--green-dark));
+  }
+
+  .mobile-panel-tab:active {
+    transform: scale(0.955);
+    transition: transform 0.12s cubic-bezier(0.3, 0.86, 0.28, 1);
+  }
+
+  .mobile-panel-indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 6px);
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.72));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 2px 8px -2px rgba(22, 26, 30, 0.12),
+      0 4px 16px -4px rgba(22, 26, 30, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transform-origin: center;
+    will-change: transform;
+    /* resting fallback (keyboard/no-anim); real switches use the keyframes below */
+    transition: transform var(--spring-glide-motion) var(--spring-glide);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .mobile-panel-switch:has(#mobileEntryTab.is-active) .mobile-panel-indicator {
+    transform: translateX(0);
+  }
+
+  .mobile-panel-switch:has(#mobileDataTab.is-active) .mobile-panel-indicator {
+    transform: translateX(calc(100% + 4px));
+  }
+
+  /*
+   * The segment pill uses a single uninterrupted glide. The previous mid-flight
+   * scale/settle stops looked expressive in isolation, but felt like a tiny
+   * pause when the page and bottom bar were moving at the same time.
+   */
+  .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator {
+    transform-origin: center;
+    animation: mps-indicator-forward var(--spring-glide-motion) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
+    transform-origin: center;
+    animation: mps-indicator-backward var(--spring-glide-motion) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  @keyframes mps-indicator-forward {
+    from { transform: translateX(0); }
+    to   { transform: translateX(calc(100% + 4px)); }
+  }
+
+  @keyframes mps-indicator-backward {
+    from { transform: translateX(calc(100% + 4px)); }
+    to   { transform: translateX(0); }
+  }
+
+  /*
+   * The incoming tab's label pops as the pill lands (delayed to meet the slide's
+   * overshoot), so the switch reads as one coordinated impulse rather than a pill
+   * moving under static text. Direction class semantics: forward → data is new,
+   * backward → entry is new.
+   */
+  .mobile-panel-switch.is-indicator-forward #mobileDataTab,
+  .mobile-panel-switch.is-indicator-backward #mobileEntryTab {
+    animation: mps-tab-pop 180ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation-delay: 360ms;
+  }
+
+  @keyframes mps-tab-pop {
+    0%   { transform: scale(0.992); }
+    72%  { transform: scale(1.008); }
+    100% { transform: scale(1); }
+  }
+
+  .mobile-panel-tab:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent);
+    outline-offset: 2px;
+  }
+
+  .workspace {
+    display: contents;
+  }
+
+  .entry-panel {
+    order: 3;
+  }
+
+  .ledger-section {
+    order: 3;
+    margin-top: 0;
+  }
+
+  .ledger-list {
+    gap: 10px;
+  }
+
+  .insights-panel {
+    order: 4;
+  }
+
+  .app-view[data-mobile-panel="entry"] .ledger-section,
+  .app-view[data-mobile-panel="entry"] .insights-panel,
+  .app-view[data-mobile-panel="data"] .entry-panel {
+    display: none;
+  }
+
+  .app-view.is-mobile-panel-switching-out .entry-panel,
+  .app-view.is-mobile-panel-switching-out .ledger-section,
+  .app-view.is-mobile-panel-switching-out .insights-panel {
+    animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 100ms) cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
+  .app-view.is-mobile-panel-switching-in .entry-panel,
+  .app-view.is-mobile-panel-switching-in .ledger-section,
+  .app-view.is-mobile-panel-switching-in .insights-panel {
+    animation: mobile-panel-fade-in var(--mobile-panel-in-motion, 460ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar {
+    /* Explicit square, right-anchored (release the left edge) so the pill radius
+       renders as a TRUE circle instead of a 62x64 oval. box-sizing: border-box,
+       so 62 includes the 1px border on every side. */
+    left: auto;
+    width: 62px;
+    height: 62px;
+    padding: 0;
+    gap: 0;
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 40%),
+      rgba(247, 249, 248, 0.38);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.04),
+      0 0 40px 6px color-mix(in srgb, var(--submit-color, var(--green)) 35%, transparent),
+      0 12px 34px rgba(22, 26, 30, 0.12);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.submit-themed {
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 82%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 12%, rgba(255, 255, 255, 0.54));
+    background:
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.94 0.035 h / 0.24) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.78 0.04 h / 0.12) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.86 0.035 h / 0.18);
+    /*
+     * Two concentric 0-offset rings, both brightened with white, instead of the
+     * old single muted-alpha ring plus a downward-offset duplicate — the offset
+     * layer read as a cast shadow beneath the circle rather than a glow around
+     * it. A small neutral (uncolored) shadow still grounds the circle.
+     */
+    box-shadow:
+      inset 0 1px 3px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 16%, rgba(22, 26, 30, 0.05)),
+      0 0 12px 0 color-mix(in srgb, white 64%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 4px color-mix(in srgb, white 48%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -8px rgba(22, 26, 30, 0.10);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar::before {
+    opacity: var(--bar-aura-collapsed-opacity, 0.30);
+    transform: scale(0.68);
+  }
+
+  body.mobile-panel-data .mobile-submit-summary {
+    opacity: 0;
+    pointer-events: none;
+    padding-left: 0;
+    max-width: 0;
+    transform: translateX(-20px);
+  }
+
+  body.mobile-panel-data .mobile-submit-button {
+    min-height: 0;
+    height: 100%;
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  body.mobile-panel-data .mobile-submit-button::before {
+    opacity: 0;
+  }
+
+  body.mobile-panel-data .mobile-submit-button .button-label {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  body.mobile-panel-data .mobile-submit-button::after {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    /* Light mode data pill: use the selected family's dark theme color.
+       The full background reset prevents the primary-button shine gradient from
+       leaking through the mask and making the plus look smudged. */
+    background: none;
+    background-color: var(--submit-text, color-mix(in srgb, var(--submit-color, var(--green)) 70%, #1f2a25));
+  }
+
+  /* ── bar morph animations: non-linear staggered keyframes ── */
+
+  .mobile-submit-bar.is-flip-morphing,
+  .mobile-submit-bar.is-flip-morphing .mobile-submit-button {
+    /* Geometry (left/width/height/padding/border-radius) is deliberately NOT
+       listed, so it snaps to the end state instantly — the WAAPI transform owns
+       the visible motion. The FILL colour is also NOT transitioned: it snaps to
+       the final themed circle colour on the first frame and holds, so only the
+       SHAPE animates — no separate 300ms colour-fade reading as its own process.
+       (Flight fill == resting fill, so the snap-back at settle is a no-op.) Only
+       the edge glow is present during the same flight instead of arriving as a
+       second colour pass. */
+    transition:
+      border-color 240ms ease,
+      color 240ms ease !important;
+    animation: none !important;
+    transform-origin: 0 0 !important;
+    will-change: transform;
+  }
+
+  .mobile-submit-bar.is-flip-morphing {
+    contain: layout style;
+    /* The 6-layer glass shadow shears badly when the bar is scaled to ~0.17x
+       width. Collapse it to a single soft grounding shadow for the flight; the
+       full shadow blooms back via the base transition when the class is removed
+       at settle. */
+    box-shadow:
+      0 10px 30px -10px rgba(22, 26, 30, 0.18),
+      0 0 26px -12px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent) !important;
+  }
+
+  /* Collapse uses the resting circle glow exactly. Any separate flight shadow
+     blooms after the spring lands, which reads as late colouring. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data {
+    box-shadow:
+      inset 0 1px 3px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 16%, rgba(22, 26, 30, 0.05)),
+      0 0 12px 0 color-mix(in srgb, white 64%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 4px color-mix(in srgb, white 48%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -8px rgba(22, 26, 30, 0.10) !important;
+  }
+
+  /* Expand (circle → pill): mirror the resting pill glow's 4-layer structure with
+     tight (large-negative-spread) rings so the themed halo is already present
+     during flight and eases open at settle — no end-of-expand colour bloom. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 0 84px -40px var(--submit-glow),
+      0 0 36px -26px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 16px 44px -18px rgba(22, 26, 30, 0.18) !important;
+  }
+
+  @keyframes mobile-plus-morph-reveal {
+    0% {
+      opacity: 0;
+      transform: scale(0.48) rotate(-58deg);
+    }
+    36% {
+      opacity: 0.28;
+      transform: scale(0.68) rotate(-30deg);
+    }
+    72% {
+      opacity: 0.88;
+      transform: scale(0.98) rotate(-5deg);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+  }
+
+  .mobile-submit-bar.is-flip-morphing .mobile-submit-summary {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing::before {
+    /* Kill the aura keyframes (they run on their own 320-360ms clock, drifting
+       off the spring-driven shell) and simply fade the blurred glow out during
+       flight — a blur(14px) layer squashed 6x looks wrong. It re-blooms from the
+       base rule once the class is removed. */
+    animation: none !important;
+    opacity: 0 !important;
+    transition: opacity 180ms ease !important;
+    will-change: opacity;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data::before {
+    opacity: var(--bar-aura-collapsed-opacity, 0.30) !important;
+    transform: scale(0.68) !important;
+    transition: none !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry::before {
+    animation: none !important;
+    opacity: var(--bar-aura-opacity, 0.78) !important;
+    transform: scale(1) !important;
+    transition: none !important;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 32%),
+      radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.24), transparent 45%),
+      radial-gradient(ellipse at 76% 54%, color-mix(in srgb, var(--submit-color, var(--green)) 18%, transparent), transparent 62%),
+      rgba(247, 249, 248, 0.18);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.70),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.26),
+      inset 0 -6px 14px rgba(255, 255, 255, 0.12),
+      0 0 36px -12px color-mix(in srgb, var(--submit-color, var(--green)) 60%, transparent),
+      0 16px 44px rgba(22, 26, 30, 0.14);
+  }
+
+  /* Themed collapse: wear the FINAL (lightened) circle fill for the whole flight,
+     identical to the resting .submit-themed background above, so the tint is done
+     by the time the flip class drops at settle — no end-of-animation colour pop. */
+  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 82%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 12%, rgba(255, 255, 255, 0.54));
+    background:
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.94 0.035 h / 0.24) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.78 0.04 h / 0.12) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.86 0.035 h / 0.18);
+    box-shadow:
+      inset 0 1px 3px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 16%, rgba(22, 26, 30, 0.05)),
+      0 0 12px 0 color-mix(in srgb, white 64%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 4px color-mix(in srgb, white 48%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -8px rgba(22, 26, 30, 0.10);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"].is-bar-morphing-to-entry,
+  .mobile-submit-bar[data-state="needs-input"].is-flip-morphing.is-bar-morphing-to-entry {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 16%, rgba(255, 255, 255, 0.62));
+    background:
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.42), transparent 44%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.28)),
+      rgba(247, 249, 248, 0.24);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.68),
+      0 0 34px -18px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
+      0 18px 52px rgba(22, 26, 30, 0.09) !important;
+  }
+
+  /* Only the READY state wears this translucent themed flight bg. When the bar is
+     also needs-input, the [data-state="needs-input"] flight rule above owns the
+     background (matching its resting look) — otherwise this rule, equal in
+     specificity but later in source order, would win during flight and then snap
+     to the needs-input bg at settle (background gradients can't transition). */
+  .mobile-submit-bar.submit-themed.is-bar-morphing-to-entry:not([data-state="needs-input"]),
+  .mobile-submit-bar.submit-themed.is-flip-morphing.is-bar-morphing-to-entry:not([data-state="needs-input"]) {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
+      radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 42%),
+      radial-gradient(ellipse at 78% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
+      rgba(247, 249, 248, 0.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 0 84px -16px var(--submit-glow),
+      0 0 36px -10px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 24px 70px rgba(22, 26, 30, 0.18) !important;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-data::before {
+    animation: bar-aura-collapse 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-entry::before {
+    animation: bar-aura-expand 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  /* Themed halo that fades in as the bar collapses into the circle. Sits just
+     BEHIND the bar so the glow reads as emanating from the forming button.
+     Fixed-position (outside the scaled bar) so it never shears. */
+  .bar-morph-glow {
+    position: fixed;
+    z-index: calc(var(--z-mobile-submit) - 1);
+    pointer-events: none;
+    border-radius: var(--radius-pill);
+    transform-origin: center;
+    will-change: opacity, transform;
+    background:
+      radial-gradient(circle, color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))) 0%, transparent 66%);
+    filter: blur(16px);
+  }
+
+  .bar-summary-ghost {
+    position: fixed;
+    z-index: calc(var(--z-mobile-submit) + 1);
+    pointer-events: none;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.82rem;
+    font-weight: var(--fw-bold);
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-left: 4px;
+    animation: bar-summary-ghost-out 160ms cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
+  @keyframes bar-summary-ghost-out {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(-16px); }
+  }
+
+  @keyframes bar-aura-collapse {
+    0% { opacity: var(--bar-aura-opacity, 0.78); transform: scale(1); }
+    58% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.72); transform: scale(0.82); }
+    100% { opacity: var(--bar-aura-collapsed-opacity, 0.30); transform: scale(0.68); }
+  }
+
+  @keyframes bar-aura-expand {
+    0% { opacity: var(--bar-aura-collapsed-opacity, 0.30); transform: scale(0.70); }
+    66% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.88); transform: scale(1.02); }
+    100% { opacity: var(--bar-aura-opacity, 0.78); transform: scale(1); }
+  }
+
+  /* Morphing TO data (bar collapses to pill button):
+     - bar border-radius races ahead to pill early
+     - button label fades first, icon appears delayed
+     - WAAPI owns the visible geometry in modern browsers; this fallback squash
+       stays subtle so it never creates a second rebound. */
+  .mobile-submit-bar.is-bar-morphing-to-data {
+    /* Right edge anchored (right: 12px) and bar sits on the bottom margin, so
+       pivot the squash at right-bottom: it grows upward when it gets taller
+       rather than pushing off the bottom of the screen. */
+    transform-origin: right bottom;
+    will-change: transform;
+    animation: bar-collapse-squash 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    /* Collapse-only geometry easing: fluid and elegant */
+    transition-timing-function:
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      ease;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button {
+    /* Same elegant geometry easing for the button. Order matches its base
+       transition: min-width, height, padding, border-radius, opacity. */
+    transition-timing-function:
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      ease;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-summary {
+    animation: summary-collapse 170ms cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button::after {
+    animation: mobile-plus-morph-reveal 360ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  /* Morphing TO entry (pill button expands back to bar):
+     - KEEP pill radius during expand so no square corners appear mid-animation
+     - fallback stretch is continuous, with no maximum-stretch plateau
+     - summary text fades in delayed after bar has mostly expanded */
+  .mobile-submit-bar.is-bar-morphing-to-entry {
+    transform-origin: right bottom;
+    will-change: transform;
+    animation: bar-expand-stretch 460ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    /* Keep the outer glass shell pill-shaped throughout expand and final state. */
+    border-radius: var(--radius-pill) !important;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button {
+    /* Keep button pill-shaped during expand so bar corners stay round */
+    border-radius: var(--radius-pill) !important;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-summary {
+    animation: summary-expand 240ms 90ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button .button-label {
+    animation: label-appear 210ms 90ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button::after {
+    animation: icon-dismiss 150ms cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
+  /* Fallback-only shape accents. Keep them small; FLIP is the real motion. */
+  @keyframes bar-collapse-squash {
+    0%   { transform: translateY(0) scaleX(1)     scaleY(1); }
+    48%  { transform: translateY(-5px) scaleX(0.955) scaleY(1.047); }
+    84%  { transform: translateY(1.4px) scaleX(0.992) scaleY(1.008); }
+    100% { transform: translateY(0) scaleX(1)     scaleY(1); }
+  }
+
+  @keyframes bar-expand-stretch {
+    0%   { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
+    46%  { transform: translateY(-5px) scaleX(1.045) scaleY(0.957); border-radius: var(--radius-pill); }
+    84%  { transform: translateY(1.4px) scaleX(1.008) scaleY(0.992); border-radius: var(--radius-pill); }
+    100% { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
+  }
+
+  /* Summary text collapses: fast fade + slide left */
+  @keyframes summary-collapse {
+    0%   { opacity: 1; transform: translateX(0); max-width: 400px; }
+    100% { opacity: 0; transform: translateX(-16px); max-width: 0; }
+  }
+
+  /* Summary text expands: delayed fade-in + slide from left with overshoot */
+  @keyframes summary-expand {
+    0%   { opacity: 0; transform: translateX(-20px); max-width: 0; }
+    60%  { opacity: 0.82; transform: translateX(0); max-width: 400px; }
+    100% { opacity: 1; transform: translateX(0); max-width: 400px; }
+  }
+
+  /* Plus icon springs into view with rotation + overshoot scale */
+  @keyframes icon-appear {
+    0%   { opacity: 0; transform: scale(0.48) rotate(-58deg); }
+    70%  { opacity: 0.9; transform: scale(0.98) rotate(-4deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  /* Plus icon shrinks away */
+  @keyframes icon-dismiss {
+    0%   { opacity: 1; transform: scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: scale(0.3) rotate(90deg); }
+  }
+
+  /* Button label fades in with a subtle scale pop */
+  @keyframes label-appear {
+    0%   { opacity: 0; transform: scale(0.5); }
+    70%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .app-view {
+    --switch-out-x: -6px;
+    --switch-in-x: 6px;
+    --switch-in-y: -4px;
+    --switch-out-y: 4px;
+  }
+
+  .app-view[data-switch-direction="backward"] {
+    --switch-out-x: 6px;
+    --switch-in-x: -6px;
+  }
+
+  @keyframes mobile-panel-fade-out {
+    from {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1) translate(0, 0);
+    }
+
+    to {
+      opacity: 0;
+      filter: blur(2px);
+      transform: scale(0.99) translate(var(--switch-out-x), var(--switch-out-y));
+    }
+  }
+
+  @keyframes mobile-panel-fade-in {
+    0% {
+      opacity: 0;
+      filter: blur(3px);
+      transform: scale(0.995) translate(var(--switch-in-x), var(--switch-in-y));
+    }
+
+    22% {
+      opacity: 0.70;
+      filter: blur(0);
+      transform: scale(0.997) translate(calc(var(--switch-in-x) * 0.5), calc(var(--switch-in-y) * 0.75));
+    }
+
+    64% {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1.001) translate(calc(var(--switch-in-x) * -0.05), calc(var(--switch-in-y) * 0.1));
+    }
+
+    86% {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1) translate(0, calc(var(--switch-in-y) * -0.05));
+    }
+
+    100% {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1) translate(0, 0);
+    }
+  }
+
+  .entry-panel,
+  .insights-panel,
+  .ledger-section {
+    padding: 18px;
+    border-radius: var(--radius-xl);
+    will-change: transform, opacity;
+  }
+
+  .ledger-section {
+    padding: 16px 14px 14px;
+  }
+
+  .section-heading h2 {
+    color: var(--ink);
+    font-size: 1.28rem;
+    line-height: 1.12;
+  }
+
+  .entry-panel .section-heading {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .family-tag {
+    min-height: 42px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 0.9rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .payer-field legend,
+  .category-picker legend,
+  .split-scope-toggle > span,
+  .date-label > span,
+  .note-label > span,
+  .amount-heading {
+    color: color-mix(in srgb, var(--muted) 86%, transparent);
+    font-size: 0.74rem;
+    line-height: 1.15;
+  }
+
+  .amount-auto-badge {
+    min-height: 18px;
+    padding: 0 7px;
+    font-size: 0.62rem;
+  }
+
+  .amount-label {
+    padding: 10px 17px 9px;
+    border-radius: var(--radius-xl);
+  }
+
+  .amount-label.amount-active {
+    border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
+    --amount-scale: 1.014;
+  }
+
+  .currency-mark {
+    flex: 0 0 auto;
+    font-size: clamp(1.8rem, 8vw, 2.3rem);
+  }
+
+  .amount-label input {
+    height: 72px;
+    padding: 0 12px;
+    font-size: clamp(2.2rem, 11vw, 3.5rem);
+    line-height: normal;
+  }
+
+  .amount-label.amount-active input {
+    --input-scale: 1.018;
+  }
+
+  .amount-label.amount-active .currency-mark {
+    transform: scale(1.035);
+  }
+
+  .expense-form {
+    grid-template-columns: minmax(126px, 0.86fr) minmax(0, 1.14fr);
+    gap: 12px;
+  }
+
+  .date-label,
+  .note-label {
+    grid-column: auto;
+    align-content: start;
+    grid-template-rows: 16px 46px;
+    min-width: 0;
+  }
+
+  .date-label input,
+  .note-label input {
+    box-sizing: border-box;
+    height: 46px;
+    min-height: 46px;
+    max-height: 46px;
+    border: 1px solid rgba(22, 26, 30, 0.14);
+    border-radius: var(--radius-md);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
+      rgba(255, 255, 255, 0.68);
+    color: var(--ink);
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
+    font-weight: var(--fw-bold);
+    line-height: 1.2;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
+  }
+
+  .date-label input {
+    border-color: rgba(22, 26, 30, 0.10);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.46)),
+      rgba(255, 255, 255, 0.52);
+    color: color-mix(in srgb, var(--ink) 78%, var(--muted));
+    padding: 0 10px 0 12px;
+    line-height: 1;
+  }
+
+  .date-label > span {
+    color: color-mix(in srgb, var(--muted) 70%, transparent);
+  }
+
+  .note-label input {
+    border-color: rgba(22, 26, 30, 0.17);
+    padding-inline: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .category-picker {
+    overflow: visible;
+  }
+
+  .selectable-category-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 9px;
+    overflow-x: auto;
+    touch-action: pan-x;
+    margin: -12px -20px -14px;
+    padding: 16px 20px 24px;
+    scroll-padding-inline: 20px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain; /* 横滚到头不带动页面 */
+    -webkit-overflow-scrolling: touch;
+    /* iOS 风格边缘柔化：mask 渐隐固定在可视框两端，chips 滚过时渐隐而非硬切。
+       渐隐宽度由 JS 按滚动位置切换 can-fade-* 类驱动，仅在该侧还有内容时出现 */
+    --cat-edge-fade: 36px;
+    -webkit-mask-image: linear-gradient(to right,
+      transparent 0,
+      #000 var(--cat-fade-l),
+      #000 calc(100% - var(--cat-fade-r)),
+      transparent 100%);
+    mask-image: linear-gradient(to right,
+      transparent 0,
+      #000 var(--cat-fade-l),
+      #000 calc(100% - var(--cat-fade-r)),
+      transparent 100%);
+    transition:
+      --cat-fade-l 260ms var(--spring),
+      --cat-fade-r 260ms var(--spring);
+  }
+
+  .selectable-category-chips.can-fade-start {
+    --cat-fade-l: var(--cat-edge-fade);
+  }
+
+  .selectable-category-chips.can-fade-end {
+    --cat-fade-r: var(--cat-edge-fade);
+  }
+
+  .selectable-category-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .selectable-category-chip {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding-inline: 14px;
+    font-size: 0.86rem;
+    line-height: 1.1;
+  }
+
+  .family-tag,
+  .selectable-category-chip {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .inline-category-form {
+    display: none;
+  }
+
+  .split-scope-toggle {
+    min-height: 46px;
+    border-radius: var(--radius-md);
+    padding-inline: 12px;
+  }
+
+  .split-scope-toggle > strong {
+    font-size: 0.82rem;
+  }
+
+  .split-scope-panel {
+    --split-panel-padding: 10px;
+    --split-panel-offset: 10px;
+    border-radius: var(--split-outer-radius);
+  }
+
+  .split-mode-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .split-mode-button {
+    height: 44px;
+    min-height: 44px;
+    justify-items: center;
+    gap: 0;
+    padding: 0 6px;
+    text-align: center;
+  }
+
+  .split-mode-button span {
+    font-size: 0.76rem;
+    line-height: 1.12;
+  }
+
+  .split-mode-button small {
+    display: none;
+  }
+
+  .split-detail-area {
+    min-height: 0;
+    padding: 8px 8px 10px;
+  }
+
+  .split-family-choices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .split-family-chip {
+    min-height: 36px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 0.82rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .split-custom-amounts {
+    grid-template-columns: 1fr;
+  }
+
+  .split-amount-row {
+    grid-template-columns: minmax(0, 56px) minmax(0, 1fr);
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .split-amount-row input {
+    min-height: 44px;
+  }
+
+  .split-total-line {
+    font-size: 0.76rem;
+  }
+
+  .mobile-submit-bar {
+    position: fixed;
+    z-index: var(--z-mobile-submit);
+    --bar-aura-opacity: 0.78;
+    --bar-aura-collapsed-opacity: 0.30;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    isolation: isolate;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    contain: layout paint style;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+    /*
+     * Geometry settles MONOTONICALLY (no overshoot). The single rebound comes
+     * entirely from the volume-conserving scaleX/scaleY squash keyframes above;
+     * if this transition also overshot, the two bounce sources would compound
+     * into a visible double rebound. Same 684ms so layout settles exactly when
+     * the squash relaxes.
+     */
+    transition:
+      left 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      padding 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      gap 500ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      border-radius 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      background-color 320ms ease,
+      background-image 320ms ease,
+      border-color 320ms ease,
+      box-shadow 320ms ease,
+      opacity 220ms ease;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
+      radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 42%),
+      radial-gradient(ellipse at 78% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
+      rgba(247, 249, 248, 0.06);
+    padding: 9px;
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.75),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.30),
+      inset 0 -8px 18px rgba(255, 255, 255, 0.14),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.06),
+      0 0 54px -22px color-mix(in srgb, var(--submit-color, var(--green)) 76%, transparent),
+      0 24px 72px rgba(22, 26, 30, 0.16);
+    backdrop-filter: blur(2px) saturate(211%) brightness(1.08);
+    -webkit-backdrop-filter: blur(2px) saturate(211%) brightness(1.08);
+  }
+
+  .mobile-submit-bar::before,
+  .mobile-submit-bar::after {
+    position: absolute;
+    border-radius: inherit;
+    content: "";
+    pointer-events: none;
+  }
+
+  .mobile-submit-bar::before {
+    z-index: -1;
+    inset: -14px -10px -18px;
+    background:
+      radial-gradient(ellipse at 78% 62%, color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent), transparent 54%),
+      radial-gradient(ellipse at 18% 20%, rgba(255, 255, 255, 0.88), transparent 48%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(247, 249, 248, 0.30) 54%, rgba(247, 249, 248, 0));
+    filter: blur(14px);
+    opacity: 0.78;
+    transform: scale(1);
+    transform-origin: right bottom;
+    transition:
+      opacity 220ms ease,
+      transform 360ms cubic-bezier(0.3, 0.9, 0.15, 1);
+    will-change: opacity, transform;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.20), #000 30%, #000 78%, rgba(0, 0, 0, 0.12));
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.20), #000 30%, #000 78%, rgba(0, 0, 0, 0.12));
+  }
+
+  .mobile-submit-bar::after {
+    z-index: 1;
+    inset: 0;
+    padding: 1px;                     /* 环的粗细 */
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.62),      /* 迎光边 */
+      rgba(255, 255, 255, 0.14) 38%,
+      rgba(255, 255, 255, 0.04) 60%,
+      rgba(28, 38, 34, 0.12));        /* 背光边 */
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.85;
+  }
+
+  .mobile-submit-bar.submit-themed {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 0 84px -16px var(--submit-glow),
+      0 0 36px -10px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 24px 70px rgba(22, 26, 30, 0.18);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"] {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 16%, rgba(255, 255, 255, 0.62));
+    background:
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.42), transparent 44%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.28)),
+      rgba(247, 249, 248, 0.24);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.68),
+      0 0 34px -18px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
+      0 18px 52px rgba(22, 26, 30, 0.09);
+  }
+
+  .mobile-submit-summary,
+  .mobile-submit-button {
+    position: relative;
+    z-index: 1;
+  }
+
+  .mobile-submit-summary {
+    overflow: hidden;
+    /* 文字直接坐在玻璃 bar 上，不再套浅底方框 */
+    color: var(--ink);
+    padding-left: 4px;
+    font-size: 0.82rem;
+    font-weight: var(--fw-bold);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity 0.3s ease, transform 0.4s var(--spring-overshoot), max-width 0.4s var(--spring-overshoot);
+    flex: 1;
+    min-width: 0;
+    max-width: 400px;
+  }
+
+  .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {
+    color: color-mix(in srgb, var(--ink) 72%, var(--muted));
+  }
+
+  .mobile-submit-button {
+    min-height: 46px;
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 60%, rgba(255, 255, 255, 0.56));
+    border-radius: var(--control-radius-large);
+    background: var(--submit-color, var(--green)); /* color-mix 静态回退 */
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 99%, white), var(--submit-color, var(--green))),
+      var(--submit-color, var(--green));
+    color: #fff;
+    padding: 0 22px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.034),
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
+      0 0 0 2px color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent),
+      0 0 30px -5px color-mix(in srgb, var(--submit-color, var(--green)) 88%, transparent),
+      0 0 76px -16px var(--submit-glow, rgba(23, 108, 95, 0.82)),
+      0 14px 42px color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent);
+    font-size: 0.96rem;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.16);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 132px;
+    /* monotonic like the bar — the rebound lives in the scale squash, not here */
+    transition:
+      min-width 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      height 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      padding 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      border-radius 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      background-color 320ms ease,
+      background-image 320ms ease,
+      border-color 320ms ease,
+      box-shadow 320ms ease,
+      opacity 220ms ease;
+  }
+
+  .mobile-submit-button .button-label {
+    transition: opacity 0.3s ease, transform 0.4s var(--spring-overshoot);
+  }
+
+  .mobile-submit-button::after {
+    content: "";
+    position: absolute;
+    /* .primary-button::after (buttons.css) is an unrelated diagonal shine-sweep
+       decoration on the same pseudo-element (this button carries both classes).
+       It sets inset/filter/background-image, so those stray values otherwise
+       leak through per-property cascade — pushing this icon ~42px off-position
+       and making the masked plus look gradient-filled. Reset the full background
+       and center via inset+margin so scale/rotate (below) stays free for the
+       reveal animation instead of having to share the transform with a translate. */
+    inset: 0;
+    margin: auto;
+    filter: none;
+    width: 28px;
+    height: 28px;
+    background: none;
+    background-color: #fff;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
+    opacity: 0;
+    z-index: 2;
+    transform: scale(0.4) rotate(-90deg);
+    transition:
+      opacity 0.3s ease,
+      transform 0.4s var(--spring-overshoot),
+      background-color 260ms cubic-bezier(0.3, 0.9, 0.15, 1);
+  }
+
+  .mobile-submit-button::before {
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--green)) 50%, transparent)
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 58%),
+      radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 2%, rgba(255, 255, 255, 0.10)), transparent 58%);
+  }
+
+  /* 信息未填齐：淡白引导态，仍然可点击。玻璃胶囊：半透明磨砂 + 胶囊形。 */
+  .mobile-submit-button.is-blocked {
+    border-radius: var(--radius-pill);
+    border-color: rgba(255, 255, 255, 0.55);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16) 60%),
+      rgba(255, 255, 255, 0.12);
+    color: color-mix(in srgb, var(--ink) 82%, var(--muted));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.40),
+      inset 0 -6px 14px rgba(255, 255, 255, 0.15),
+      0 0 16px -4px color-mix(in srgb, var(--submit-color, var(--green)) 25%, transparent),
+      0 8px 24px -6px rgba(22, 26, 30, 0.12);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
+    -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
+    cursor: pointer;
+  }
+
+  .mobile-submit-button.is-blocked::before {
+    opacity: 0.28;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 66%),
+      radial-gradient(ellipse at 50% -20%, rgba(255, 255, 255, 0.4), transparent 60%);
+  }
+
+  .ledger-item {
+    grid-template-columns: minmax(0, 1fr) auto 0 0;
+    grid-template-rows: auto;
+    grid-template-areas: "main amount date delete";
+    gap: 8px 10px;
+    min-height: 58px;
+    max-height: 76px;
+    padding: 8px 8px 8px 11px;
+  }
+
+  .ledger-item.is-expanded {
+    grid-template-columns: minmax(0, 1fr) 52px 100px;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "main date delete"
+      "amount date delete";
+    gap: 12px 10px;
+    min-height: 124px;
+    max-height: 238px;
+    padding: 14px;
+  }
+
+  .ledger-main {
+    grid-area: main;
+  }
+
+  .ledger-date {
+    grid-area: date;
+    align-self: center;
+    justify-self: center;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    font-size: 0.94rem;
+    line-height: 0.98;
+    opacity: 0;
+  }
+
+  .ledger-item.is-expanded .ledger-date {
+    width: 46px;
+    min-width: 46px;
+    max-width: 52px;
+    opacity: 0.46;
+  }
+
+  .ledger-item.is-expanded .ledger-item-actions {
+    width: 100px;
+    min-width: 100px;
+    gap: 7px;
+  }
+
+  .ledger-item.is-expanded .ledger-edit-button,
+  .ledger-item.is-expanded .delete-button {
+    width: 46px;
+    min-width: 46px;
+  }
+
+  .ledger-date span {
+    font-size: 0.84rem;
+  }
+
+  .ledger-date strong {
+    margin-top: 6px;
+    font-size: 1.34rem;
+  }
+
+  .ledger-title {
+    gap: 6px;
+    margin-bottom: 3px;
+    font-size: 0.94rem;
+    line-height: 1.2;
+  }
+
+  .category-pill {
+    max-width: 86px;
+    padding: 3px 7px;
+    font-size: 0.7rem;
+  }
+
+  .ledger-sync-badge {
+    min-height: 20px;
+    padding-inline: 6px;
+    font-size: 0.64rem;
+  }
+
+  .ledger-note {
+    font-size: 0.78rem;
+    line-height: 1.25;
+  }
+
+  .ledger-amount {
+    grid-area: amount;
+    align-self: center;
+    justify-self: end;
+    font-size: 1.18rem;
+    line-height: 1.1;
+  }
+
+  .ledger-item.is-expanded .ledger-amount {
+    align-self: end;
+    justify-self: start;
+    font-size: 1.42rem;
+  }
+
+  .ledger-item-actions {
+    grid-area: delete;
+    align-self: center;
+    justify-self: end;
+    width: 0;
+    min-width: 0;
+  }
+
+  .ledger-item.is-expanded .ledger-item-actions {
+    width: 96px;
+    min-width: 96px;
+  }
+
+  .ledger-item.is-expanded .ledger-edit-button,
+  .ledger-item.is-expanded .delete-button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 42px;
+  }
+
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    width: min(100% - 28px, 520px);
+    padding-top: 16px;
+    /* 底部预留固定提交栏的高度，滚到底时内容不被盖住 */
+    padding-bottom: calc(108px + env(safe-area-inset-bottom));
+  }
+
+  body.mobile-panel-data .app-shell,
+  body.keyboard-open .app-shell {
+    padding-bottom: 24px;
+  }
+
+  /* 浏览器滚焦点入视区时，避开提交栏/键盘边缘 */
+  input,
+  select {
+    scroll-margin-block: 12px 96px;
+  }
+
+  /* 屏幕键盘弹出（JS 标记）：提交栏让位，与抽屉打开时同款隐藏 */
+  body.keyboard-open .mobile-submit-bar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px);
+  }
+
+  .app-header {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .sync-status {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 0.8rem;
+  }
+
+  .app-header .ghost-button,
+  .settings-hero .ghost-button {
+    justify-self: start;
+  }
+
+  .expense-form,
+  .category-form {
+    grid-template-columns: 1fr;
+  }
+
+  .expense-form {
+    grid-template-columns: minmax(122px, 0.86fr) minmax(0, 1.14fr);
+  }
+
+  .expense-form > .primary-button {
+    display: none;
+  }
+
+  .entry-panel,
+  .insights-panel,
+  .ledger-section,
+  .settings-hero,
+  .ledger-management-hero,
+  .settings-panel {
+    padding: 16px;
+  }
+
+  .app-view[data-mobile-panel="entry"] .entry-panel {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    scroll-padding-block: 12px 84px;
+  }
+
+  body.keyboard-open .app-view[data-mobile-panel="entry"] .entry-panel {
+    max-height: none;
+  }
+
+  .ledger-section {
+    padding: 15px 12px 13px;
+  }
+
+  .settings-hero,
+  .ledger-management-hero {
+    padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+  }
+
+  .settings-family,
+  .settings-rule,
+  .settings-data-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-action-stack,
+  .confirm-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-band {
+    gap: 8px;
+  }
+
+  .metric {
+    padding: 10px;
+    min-height: 78px;
+  }
+
+  .metric.primary {
+    min-height: 88px;
+  }
+
+  .metric strong {
+    font-size: clamp(0.95rem, 4vw, 1.22rem);
+  }
+
+  .metric.primary strong {
+    font-size: clamp(1.96rem, 9vw, 2.82rem);
+  }
+
+  .section-heading {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .amount-label input {
+    height: 64px;
+    font-size: clamp(2rem, 11vw, 3.2rem);
+  }
+
+  .amount-label.amount-active input {
+    transform: scale(1.016);
+  }
+
+  .secondary-button {
+    width: 100%;
+  }
+
+  .settings-panel-title .compact-button {
+    width: auto;
+    min-width: 96px;
+  }
+
+  .ledger-card-main,
+  .ledger-card-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ledger-card-actions > * {
+    width: 100%;
+  }
+
+  .date-label,
+  .note-label {
+    gap: 4px;
+  }
+
+  .date-label input,
+  .note-label input {
+    box-sizing: border-box;
+    height: 46px;
+    min-height: 46px;
+    max-height: 46px;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
+  }
+
+  .split-scope-toggle {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    align-items: start;
+    padding-block: 9px;
+  }
+
+  .split-scope-toggle > strong {
+    width: 100%;
+  }
+
+  .split-mode-button {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .split-mode-button small {
+    display: none;
+  }
+
+  .date-label input {
+    padding-inline: 10px 8px;
+  }
+
+  .note-label input {
+    padding-inline: 14px;
+  }
+
+  .inline-category-form {
+    display: none;
+  }
+
+  .mobile-submit-bar {
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 16px;
+    border-radius: var(--radius-pill);
+    display: flex;
+    gap: 10px;
+    padding: 9px;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar {
+    left: auto; /* square circle is right-anchored + fixed-width now */
+  }
+
+  .mobile-submit-button {
+    min-height: 52px;
+    border-radius: var(--control-radius-large);
+    padding: 0 18px;
+    font-size: 0.98rem;
+    min-width: 124px;
+  }
+
+  .row-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settlement-item {
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .row-item strong {
+    white-space: nowrap;
+  }
+
+  .settlement-party strong {
+    font-size: 0.94rem;
+  }
+
+  .settlement-amount strong {
+    font-size: 1.15rem;
+  }
+
+  .settlement-flow {
+    width: 32px;
+    min-height: 32px;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    width: min(100% - 20px, 380px);
+  }
+
+  .metric.primary strong {
+    font-size: clamp(2.28rem, 11.4vw, 3.22rem);
+  }
+
+  .metric strong {
+    font-size: 1.08rem;
+  }
+
+  .amount-label {
+    padding: 8px 14px 8px;
+  }
+
+  .amount-label.amount-active {
+    --amount-scale: 1.012;
+  }
+
+  .currency-mark {
+    font-size: 1.6rem;
+  }
+
+  .amount-label input {
+    font-size: clamp(1.9rem, 11vw, 3.1rem);
+  }
+
+  .date-label input {
+    padding-inline: 9px 7px;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
+  }
+
+  .note-label input {
+    padding-inline: 9px;
+    font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
+  }
+
+  .date-label,
+  .note-label {
+    grid-column: 1 / -1;
+  }
+
+  .split-mode-button {
+    height: 42px;
+    min-height: 42px;
+    padding: 0 5px;
+  }
+
+  .split-amount-row {
+    grid-template-columns: minmax(0, 52px) minmax(0, 1fr);
+  }
+
+  .mobile-submit-bar {
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 16px;
+    display: flex;
+    gap: 7px;
+    padding: 7px;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar {
+    left: auto; /* square circle is right-anchored + fixed-width now */
+  }
+
+  .mobile-submit-button {
+    min-height: 46px;
+    border-radius: var(--control-radius-large);
+    padding: 0 14px;
+    font-size: 0.92rem;
+    min-width: 116px;
+  }
+
+  .family-tag {
+    min-height: 46px;
+    font-size: 0.86rem;
+  }
+
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* iOS26 触感系统：按下＝玻璃压缩（即时 scale + wash 变色，~90ms 快速响应），
+     松开＝走各自基础过渡的弹簧/点灯回弹。压缩幅度按控件体量分档：
+     小胶囊 0.96 / 图标钮 0.90 / 中型钮 0.97 / 大钮 0.98 / 整行 0.99 */
+
+  /* 触屏上中和桌面 hover 位移（iOS 粘滞 hover 会残留在松开后） */
+  .family-tag:hover,
+  .selectable-category-chip:hover,
+  .primary-button:hover,
+  .ledger-item:hover {
+    transform: none;
+  }
+
+  /* 回弹兜底：这些控件基础规则缺 transform/box-shadow 过渡，补齐后松开才有弹性回弹；
+     transform/box-shadow 用过冲曲线（liquid-glass 松手回弹），其余属性保持原节奏 */
+  .inline-button,
+  .toast-action,
+  .member-stepper button,
+  .ledger-edit-button,
+  .ledger-delete-button,
+  .delete-button,
+  .chip-icon-button {
+    transition:
+      transform 320ms var(--lamp-bloom),
+      box-shadow 320ms var(--lamp-bloom),
+      opacity var(--motion-fast) var(--spring),
+      background-color var(--motion-fast) var(--spring);
+  }
+
+  .selectable-category-chip:active,
+  .family-tag:active {
+    background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
+    transform: scale(0.96);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+
+
+  /* inset 大铺满 box-shadow 作为“颜色填充”层：能盖住渐变底、可过渡、亮暗双模式都表现为加深 */
+  .ghost-button:active,
+  .secondary-button:active,
+  .split-mode-button:active,
+  .split-scope-toggle:active,
+  .inline-button:active,
+  .delete-button:active {
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.12);
+    transform: scale(0.97);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+  /* 图标小钮：目标区小，压缩幅度加大以确认命中 */
+  .chip-icon-button:active,
+  .member-stepper button:active,
+  .ledger-edit-button:active,
+  .ledger-delete-button:active,
+  .toast-action:active {
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.12);
+    transform: scale(0.90);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+  .primary-button:active,
+  .mobile-submit-button:active {
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.10);
+    transform: scale(0.98);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+  /* 账单列表项：按压填充家庭色 wash + 整行轻压 */
+  .ledger-item:active {
+    background-color: rgba(127, 160, 143, 0.16); /* color-mix 静态回退 */
+    background-color: color-mix(in srgb, var(--family-color) 14%, transparent);
+    transform: scale(0.99);
+    transition-duration: 120ms;
+    transition-timing-function: var(--lamp-quick);
+  }
+}
+

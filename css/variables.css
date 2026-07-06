@@ -75,8 +75,10 @@
   --muted: #5b625f;
   --line: rgba(22, 26, 30, 0.08);
   --line-dark: rgba(22, 26, 30, 0.12);
-  --green: #176c5f;
-  --green-dark: #0f5046;
+  /* 全局主题色（默认：陶土橙粉）。5 个预设见文件底部的 [data-theme] 覆盖块；
+     偏好存 localStorage("travel-ledger-theme")，head 内联脚本早应用防闪烁。 */
+  --green: #9d5745;
+  --green-dark: #7a4033;
   --coral: #b74f38;
   --amber: #d9a441;
   --violet: #6554a8;
@@ -145,8 +147,8 @@
   /* 统一视觉语言：圆角、控件、色彩语义 token 集中管理。 */
   --brand-primary: var(--green);
   --brand-primary-strong: var(--green-dark);
-  --brand-primary-soft: rgba(23, 108, 95, 0.12);
-  --brand-primary-wash: rgba(23, 108, 95, 0.07);
+  --brand-primary-soft: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+  --brand-primary-wash: color-mix(in srgb, var(--brand-primary) 7%, transparent);
   --brand-accent: var(--amber);
   --brand-danger: var(--coral);
   --control-surface: rgba(255, 255, 255, 0.68);
@@ -197,7 +199,7 @@
   --family-focus-motion: 713ms;
   --number-swap-motion: 980ms;
   /* 统一 focus-visible 光环：强调绿低透明 */
-  --focus-ring: 0 0 0 4px rgba(23, 108, 95, 0.20);
+  --focus-ring: 0 0 0 4px color-mix(in srgb, var(--brand-primary) 20%, transparent);
   /* 阴影三档：从现有强度归纳；玻璃/发光/focus 光环等语义阴影不走 token */
   --shadow-sm: 0 10px 26px rgba(22, 26, 30, 0.06);
   --shadow-md: 0 14px 44px rgba(22, 26, 30, 0.08);
@@ -244,3 +246,11 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: var(--font-number-features);
 }
+
+/* ── 全局主题色预设（亮色值；暗色对应见 dark.css）──
+   与 app.js THEME_PRESETS 同步。clay 即 :root 基值，给块以便显式选择。 */
+:root[data-theme="clay"]   { --green: #9d5745; --green-dark: #7a4033; }
+:root[data-theme="pine"]   { --green: #176c5f; --green-dark: #0f5046; }
+:root[data-theme="harbor"] { --green: #4a6b91; --green-dark: #385378; }
+:root[data-theme="lotus"]  { --green: #7d5c88; --green-dark: #61436c; }
+:root[data-theme="malt"]   { --green: #87683f; --green-dark: #674e2d; }

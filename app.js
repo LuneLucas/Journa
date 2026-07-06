@@ -43,6 +43,16 @@ const defaultFamilyVisuals = {
   "family-b": deriveFamilyVisual("#849fcd"),
   "family-c": deriveFamilyVisual("#c88f8d"),
 };
+/* 全局主题色预设：色值真身在 CSS（variables.css/dark.css 的 [data-theme] 块），
+   这里只存 id/名称/亮色 swatch 供设置面板渲染。偏好设备级存 localStorage。 */
+const THEME_STORAGE_KEY = "travel-ledger-theme";
+const THEME_PRESETS = [
+  { id: "clay", name: "陶土橙粉", color: "#9d5745" },
+  { id: "pine", name: "墨松绿", color: "#176c5f" },
+  { id: "harbor", name: "雾港蓝", color: "#4a6b91" },
+  { id: "lotus", name: "藕荷紫", color: "#7d5c88" },
+  { id: "malt", name: "茶麦棕", color: "#87683f" },
+];
 const familyPalettePresets = [
   {
     id: "morning-map",
@@ -184,6 +194,7 @@ const elements = {
   splitCustomAmounts: document.querySelector("#splitCustomAmounts"),
   settingsCategoryChips: document.querySelector("#settingsCategoryChips"),
   settingsFamilyList: document.querySelector("#settingsFamilyList"),
+  settingsThemeList: document.querySelector("#settingsThemeList"),
   settingsPaletteList: document.querySelector("#settingsPaletteList"),
   settingsFamilyColorList: document.querySelector("#settingsFamilyColorList"),
   ledgerNameForm: document.querySelector("#ledgerNameForm"),
@@ -1694,6 +1705,103 @@ function updateCategoryEdgeFades() {
   el.classList.toggle("can-fade-end", el.scrollLeft < maxScroll - threshold);
 }
 
+// 类别横滑到头的橡皮筋回弹：原生滚动触底后继续拖动/滚，用阻尼位移把整条类别带
+// “拉出”一点，松手（或滚轮停）后平滑弹回。刻意收敛：位移小、阻力大、无过冲，
+// 只是“到头了”的物理暗示，不做吸睛动效。触摸与触控板都支持。
+function setupCategoryOverscroll(el) {
+  if (!el) return;
+  const LIMIT = 22; // 最大拉出距离（渐近上限）
+  const RESIST = 190; // 阻尼系数：越大越“沉”
+  const maxScroll = () => el.scrollWidth - el.clientWidth;
+  const atStart = () => el.scrollLeft <= 0;
+  const atEnd = () => el.scrollLeft >= maxScroll() - 0.5;
+  // 累积越界量 raw → 渐近阻尼位移：拉得越多，增量越小，永不超过 LIMIT
+  const damp = (r) => Math.sign(r) * LIMIT * (1 - 1 / (Math.abs(r) / RESIST + 1));
+
+  let raw = 0; // 当前累积的越界拖动量（未阻尼，带正负）
+  let settle = null; // 松手回弹动画
+
+  const paint = () => {
+    el.style.transform = raw ? `translateX(${damp(raw).toFixed(2)}px)` : "";
+  };
+  const cancelSettle = () => {
+    if (settle) { settle.cancel(); settle = null; }
+  };
+  const springBack = () => {
+    if (!raw) return;
+    const from = damp(raw);
+    raw = 0;
+    el.style.transform = "";
+    if (prefersReducedMotion()) { el.style.willChange = ""; return; }
+    el.style.willChange = "transform";
+    settle = el.animate(
+      [{ transform: `translateX(${from.toFixed(2)}px)` }, { transform: "translateX(0)" }],
+      { duration: 260, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)" }
+    );
+    settle.onfinish = settle.oncancel = () => {
+      el.style.willChange = "";
+      settle = null;
+    };
+  };
+
+  // ── 触摸拖动 ──
+  let lastX = 0;
+  let dragging = false;
+  el.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    cancelSettle();
+    paint();
+    lastX = e.touches[0].clientX;
+    dragging = true;
+  }, { passive: true });
+
+  el.addEventListener("touchmove", (e) => {
+    if (!dragging || e.touches.length !== 1 || prefersReducedMotion()) return;
+    const x = e.touches[0].clientX;
+    const dx = x - lastX;
+    lastX = x;
+    if (raw > 0) { // 正从起点方向拉伸
+      raw = Math.max(0, raw + dx);
+      if (raw) e.preventDefault();
+      paint();
+    } else if (raw < 0) { // 正从末端方向拉伸
+      raw = Math.min(0, raw + dx);
+      if (raw) e.preventDefault();
+      paint();
+    } else if (atStart() && dx > 0) {
+      raw = dx; e.preventDefault(); paint();
+    } else if (atEnd() && dx < 0) {
+      raw = dx; e.preventDefault(); paint();
+    }
+  }, { passive: false });
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    springBack();
+  };
+  el.addEventListener("touchend", endDrag, { passive: true });
+  el.addEventListener("touchcancel", endDrag, { passive: true });
+
+  // ── 触控板/滚轮（横向）──
+  let wheelTimer = 0;
+  el.addEventListener("wheel", (e) => {
+    if (prefersReducedMotion()) return;
+    const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : 0;
+    if (!dx) return;
+    const beyondStart = dx < 0 && atStart();
+    const beyondEnd = dx > 0 && atEnd();
+    if (raw === 0 && !beyondStart && !beyondEnd) return; // 常规滚动，放行
+    e.preventDefault();
+    cancelSettle();
+    const next = raw - dx; // 位移方向与滚动相反
+    raw = raw > 0 ? Math.max(0, next) : raw < 0 ? Math.min(0, next) : next;
+    paint();
+    window.clearTimeout(wheelTimer);
+    wheelTimer = window.setTimeout(springBack, 110);
+  }, { passive: false });
+}
+
 function getRecentCategories(limit = 3) {
   const categories = [];
   const sortedExpenses = [...state.expenses].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
@@ -1955,7 +2063,29 @@ function renderSettings() {
   `;
 }
 
+function getActiveThemeId() {
+  const current = document.documentElement.dataset.theme;
+  return THEME_PRESETS.some((preset) => preset.id === current) ? current : THEME_PRESETS[0].id;
+}
+
+function renderThemePresetList() {
+  if (!elements.settingsThemeList) return;
+  const activeThemeId = getActiveThemeId();
+  elements.settingsThemeList.innerHTML = THEME_PRESETS
+    .map((preset) => {
+      const isSelected = preset.id === activeThemeId;
+      return `
+        <button class="theme-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-theme-id="${escapeHtml(preset.id)}" aria-checked="${isSelected}">
+          <span class="family-color-choice${isSelected ? " is-selected" : ""}" style="${familyVisualSwatchStyle({ color: preset.color })}" aria-hidden="true"></span>
+          <small>${escapeHtml(preset.name)}</small>
+        </button>
+      `;
+    })
+    .join("");
+}
+
 function renderPersonalizationSettings() {
+  renderThemePresetList();
   if (!elements.settingsPaletteList || !elements.settingsFamilyColorList) return;
   const detailsOpen = Boolean(elements.settingsFamilyColorList.querySelector(".family-color-details")?.open);
   syncFamilyVisualRows();
@@ -2777,6 +2907,25 @@ function handleNewCategoryKeydown(event) {
 function handleSettingsCategorySubmit(event) {
   event.preventDefault();
   addCategoryFromInput(elements.settingsNewCategoryInput);
+}
+
+function handleSettingsThemeClick(event) {
+  const button = event.target.closest("[data-theme-id]");
+  if (!button) return;
+
+  const preset = THEME_PRESETS.find((item) => item.id === button.dataset.themeId);
+  if (!preset || preset.id === getActiveThemeId()) return;
+
+  document.documentElement.dataset.theme = preset.id;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, preset.id);
+  } catch (error) {
+    /* 私密模式等场景存不了就只在本次会话生效 */
+  }
+  /* 未选家庭时提交条/切换条的兜底色跟随新主题 */
+  applySubmitButtonTheme();
+  renderThemePresetList();
+  showToast({ message: `主题色已换成「${preset.name}」` });
 }
 
 function handleSettingsPaletteClick(event) {
@@ -4081,9 +4230,11 @@ function applySelectedFamilyTheme() {
 
 function applySubmitButtonTheme() {
   const style = state.selectedPayerId ? getFamilyVisual(state.selectedPayerId) : null;
-  const color = style?.color || "#176c5f";
-  const text = style?.text || "#176c5f";
-  const wash = style?.wash || "rgba(23, 108, 95, 0.14)";
+  /* 未选家庭时回落到当前全局主题色（读计算值，跟随设置里的主题切换与暗色模式） */
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--green").trim() || "#9d5745";
+  const color = style?.color || accent;
+  const text = style?.text || accent;
+  const wash = style?.wash || colorWithAlpha(accent, 0.14);
   const glow = colorWithAlpha(color, state.selectedPayerId ? 0.58 : 0.42);
   [elements.expenseForm, elements.mobileSubmitBar, elements.mobilePanelSwitch].forEach((element) => {
     element.style.setProperty("--submit-color", color);
@@ -4494,6 +4645,7 @@ elements.categoryForm.addEventListener("click", (event) => {
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
 elements.categoryChips.addEventListener("click", handleCategorySelection);
 elements.categoryChips.addEventListener("scroll", scheduleCategoryEdgeFades, { passive: true });
+setupCategoryOverscroll(elements.categoryChips);
 window.addEventListener("resize", scheduleCategoryEdgeFades);
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
@@ -4513,6 +4665,7 @@ elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryC
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.settingsFamilyList.addEventListener("click", handleFamilyMemberStep);
+elements.settingsThemeList?.addEventListener("click", handleSettingsThemeClick);
 elements.settingsPaletteList.addEventListener("click", handleSettingsPaletteClick);
 elements.settingsFamilyColorList.addEventListener("click", handleSettingsFamilyColorClick);
 elements.familyRoster.addEventListener("click", handleFamilySelection);
