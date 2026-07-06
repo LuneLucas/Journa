@@ -87,12 +87,14 @@ $$;
 drop function if exists public.update_travel_ledger_settings(text, text[], jsonb);
 drop function if exists public.update_travel_ledger_settings(text, text[], jsonb, text);
 drop function if exists public.update_travel_ledger_settings(text, text[], jsonb, text, timestamptz);
+drop function if exists public.update_travel_ledger_settings(text, text[], jsonb, text, timestamptz, jsonb);
 create function public.update_travel_ledger_settings(
   p_share_token text,
   p_categories text[],
   p_family_members jsonb,
   p_name text,
-  p_updated_at timestamptz default null
+  p_updated_at timestamptz,
+  p_families jsonb
 )
 returns jsonb
 language plpgsql
@@ -107,6 +109,7 @@ begin
     name = coalesce(nullif(trim(p_name), ''), name),
     categories = p_categories,
     family_members = p_family_members,
+    families = coalesce(p_families, families),
     updated_at = coalesce(p_updated_at, now())
   where share_token = p_share_token and (p_updated_at is null or updated_at < p_updated_at)
   returning * into ledger_row;
@@ -125,6 +128,28 @@ $$;
 create function public.update_travel_ledger_settings(
   p_share_token text,
   p_categories text[],
+  p_family_members jsonb,
+  p_name text,
+  p_updated_at timestamptz default null
+)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select public.update_travel_ledger_settings(
+    p_share_token,
+    p_categories,
+    p_family_members,
+    p_name,
+    p_updated_at,
+    null::jsonb
+  );
+$$;
+
+create function public.update_travel_ledger_settings(
+  p_share_token text,
+  p_categories text[],
   p_family_members jsonb
 )
 returns jsonb
@@ -137,7 +162,8 @@ as $$
     p_categories,
     p_family_members,
     null::text,
-    null::timestamptz
+    null::timestamptz,
+    null::jsonb
   );
 $$;
 
@@ -352,6 +378,7 @@ grant execute on function public.create_travel_ledger() to anon, authenticated;
 grant execute on function public.get_travel_ledger(text) to anon, authenticated;
 grant execute on function public.update_travel_ledger_settings(text, text[], jsonb) to anon, authenticated;
 grant execute on function public.update_travel_ledger_settings(text, text[], jsonb, text, timestamptz) to anon, authenticated;
+grant execute on function public.update_travel_ledger_settings(text, text[], jsonb, text, timestamptz, jsonb) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb) to anon, authenticated;
 grant execute on function public.save_travel_expense(text, uuid, numeric, text, text, text, date, text, text[], jsonb, jsonb, jsonb, boolean, timestamptz) to anon, authenticated;

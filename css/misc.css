@@ -1210,6 +1210,225 @@ label,
   font-weight: var(--fw-bold);
 }
 
+.personalization-panel {
+  gap: 14px;
+}
+
+.settings-palette-list {
+  display: grid;
+  gap: 10px;
+}
+
+.palette-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 15%, var(--control-border));
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.38);
+  padding: 10px 12px;
+  color: var(--ink);
+  text-align: left;
+  transition:
+    border-color var(--motion-fast) var(--spring),
+    background-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring),
+    transform var(--press-motion) var(--spring);
+}
+
+.palette-card:hover {
+  border-color: color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 28%, var(--control-border-hover));
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.palette-card:active {
+  transform: scale(0.992);
+}
+
+.palette-card.is-active {
+  border-color: color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 44%, var(--control-border-active));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 10%, transparent), rgba(255, 255, 255, 0.54)),
+    rgba(255, 255, 255, 0.46);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 14%, transparent),
+    0 12px 30px -22px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 46%, transparent);
+}
+
+.palette-card-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.palette-card-copy strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: var(--fw-bold);
+}
+
+.palette-card-copy small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: var(--fw-bold);
+  line-height: 1.35;
+}
+
+.palette-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.palette-swatch,
+.family-color-current,
+.family-color-choice {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--swatch-gradient) 78%, white), var(--swatch-color));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.56),
+    0 0 12px -5px color-mix(in srgb, var(--swatch-color) 62%, transparent);
+}
+
+.palette-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+}
+
+.palette-swatch.is-primary {
+  width: 22px;
+  height: 22px;
+}
+
+.settings-family-color-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.family-color-details {
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 10%, var(--control-border));
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.28);
+  overflow: clip;
+}
+
+.family-color-details summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 10px 12px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: var(--fw-bold);
+  list-style: none;
+}
+
+.family-color-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.family-color-details summary::after {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, white), rgba(255, 255, 255, 0.66));
+  color: color-mix(in srgb, var(--brand-primary) 68%, var(--ink));
+  content: "+";
+  display: grid;
+  place-items: center;
+  font-size: 0.88rem;
+  line-height: 1;
+  transition: transform var(--motion-fast) var(--spring);
+}
+
+.family-color-details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.family-color-details summary small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: var(--fw-bold);
+}
+
+.family-color-detail-body {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--brand-primary) 8%, var(--control-border));
+  padding: 10px;
+}
+
+.family-color-row {
+  display: grid;
+  gap: 9px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--family-color) 7%, rgba(255, 255, 255, 0.36));
+  padding: 10px 12px;
+}
+
+.family-color-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--family-text);
+  font-size: 0.86rem;
+  font-weight: var(--fw-bold);
+}
+
+.family-color-current {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+}
+
+.family-color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.family-color-choice {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  border: 1px solid color-mix(in srgb, var(--swatch-color) 44%, rgba(22, 26, 30, 0.12));
+  border-radius: var(--radius-pill);
+  padding: 0;
+  transition:
+    border-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring),
+    transform var(--press-motion) var(--spring);
+}
+
+.family-color-choice::after {
+  position: absolute;
+  inset: -5px;
+  content: "";
+}
+
+.family-color-choice:hover {
+  transform: translateY(-1px);
+}
+
+.family-color-choice.is-selected {
+  border-color: color-mix(in srgb, var(--swatch-color) 76%, white);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 0 0 3px color-mix(in srgb, var(--swatch-color) 16%, transparent),
+    0 0 24px -9px color-mix(in srgb, var(--swatch-color) 72%, transparent);
+}
+
 .settings-action-stack {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2228,28 +2447,55 @@ label,
    * iOS26 liquid-glass segment slide: the pill accelerates off, stretches like
    * liquid mid-flight, overshoots the target, then rebounds/settles. Driven by a
    * direction class (added in JS) so the keyframes retrigger on every switch.
-   */
-  /*
-   * One continuous non-linear curve governs the whole slide: it accelerates off,
-   * overshoots the target, then eases back to settle — no per-segment speed jumps.
-   * The overshoot lives in the curve (y > 1), not in keyframe stops.
+   *
+   * The physics now lives in the keyframe stops (translate + squash/stretch +
+   * overshoot/rebound), so the easing is plain — a bouncy easing here would
+   * double the overshoot. transform-origin sits on the LEADING edge of travel so
+   * the horizontal stretch reads as the pill leaning into its run.
    */
   .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator {
-    animation: mps-indicator-forward var(--spring-glide-motion) var(--spring-glide) both;
+    transform-origin: right center;
+    animation: mps-indicator-forward var(--spring-glide-motion) linear both;
   }
 
   .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
-    animation: mps-indicator-backward var(--spring-glide-motion) var(--spring-glide) both;
+    transform-origin: left center;
+    animation: mps-indicator-backward var(--spring-glide-motion) linear both;
   }
 
   @keyframes mps-indicator-forward {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(calc(100% + 4px)); }
+    0%   { transform: translateX(0)                          scaleX(1)     scaleY(1); }
+    28%  { transform: translateX(calc((100% + 4px) * 0.43))  scaleX(1.16)  scaleY(1.025); }
+    62%  { transform: translateX(calc((100% + 4px) * 1.035)) scaleX(1.065) scaleY(1.012); }
+    84%  { transform: translateX(calc((100% + 4px) * 0.992)) scaleX(0.99)  scaleY(0.995); }
+    100% { transform: translateX(calc(100% + 4px))           scaleX(1)     scaleY(1); }
   }
 
   @keyframes mps-indicator-backward {
-    0% { transform: translateX(calc(100% + 4px)); }
-    100% { transform: translateX(0); }
+    0%   { transform: translateX(calc(100% + 4px))            scaleX(1)     scaleY(1); }
+    28%  { transform: translateX(calc((100% + 4px) * 0.57))   scaleX(1.16)  scaleY(1.025); }
+    62%  { transform: translateX(calc((100% + 4px) * -0.035)) scaleX(1.065) scaleY(1.012); }
+    84%  { transform: translateX(calc((100% + 4px) * 0.008))  scaleX(0.99)  scaleY(0.995); }
+    100% { transform: translateX(0)                           scaleX(1)     scaleY(1); }
+  }
+
+  /*
+   * The incoming tab's label pops as the pill lands (delayed to meet the slide's
+   * overshoot), so the switch reads as one coordinated impulse rather than a pill
+   * moving under static text. Direction class semantics: forward → data is new,
+   * backward → entry is new.
+   */
+  .mobile-panel-switch.is-indicator-forward #mobileDataTab,
+  .mobile-panel-switch.is-indicator-backward #mobileEntryTab {
+    animation: mps-tab-pop 320ms cubic-bezier(0.26, 1.6, 0.44, 1) both;
+    animation-delay: 260ms;
+  }
+
+  @keyframes mps-tab-pop {
+    0%   { transform: scale(0.955); }
+    58%  { transform: scale(1.045); }
+    86%  { transform: scale(0.992); }
+    100% { transform: scale(1); }
   }
 
   .mobile-panel-tab:focus-visible {
@@ -2287,17 +2533,22 @@ label,
   .app-view.is-mobile-panel-switching-out .entry-panel,
   .app-view.is-mobile-panel-switching-out .ledger-section,
   .app-view.is-mobile-panel-switching-out .insights-panel {
-    animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 150ms) cubic-bezier(0.35, 0, 0.65, 1) both;
+    animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 120ms) cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
   .app-view.is-mobile-panel-switching-in .entry-panel,
   .app-view.is-mobile-panel-switching-in .ledger-section,
   .app-view.is-mobile-panel-switching-in .insights-panel {
-    animation: mobile-panel-fade-in var(--mobile-panel-in-motion, 280ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: mobile-panel-fade-in var(--mobile-panel-in-motion, 500ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   body.mobile-panel-data .mobile-submit-bar {
-    left: calc(100% - 74px);
+    /* Explicit square, right-anchored (release the left edge) so the pill radius
+       renders as a TRUE circle instead of a 62x64 oval. box-sizing: border-box,
+       so 62 includes the 1px border on every side. */
+    left: auto;
+    width: 62px;
+    height: 62px;
     padding: 0;
     gap: 0;
     border-radius: var(--radius-pill);
@@ -2313,13 +2564,15 @@ label,
 
   body.mobile-panel-data .mobile-submit-bar.submit-themed {
     background:
-      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 60%, var(--submit-color)) 0%, transparent 40%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%),
-      color-mix(in srgb, var(--submit-color) 35%, rgba(255, 255, 255, 0.35));
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 82%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 12%, rgba(255, 255, 255, 0.54));
     background:
-      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.88 0.08 h / 0.5) 0%, transparent 40%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%),
-      oklch(from var(--submit-color) 0.65 c h / 0.45);
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.94 0.035 h / 0.24) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.78 0.04 h / 0.12) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.86 0.035 h / 0.18);
     /*
      * Two concentric 0-offset rings, both brightened with white, instead of the
      * old single muted-alpha ring plus a downward-offset duplicate — the offset
@@ -2327,11 +2580,16 @@ label,
      * it. A small neutral (uncolored) shadow still grounds the circle.
      */
     box-shadow:
-      inset 0 1px 3px color-mix(in srgb, white 70%, var(--submit-color)),
-      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 40%, rgba(22, 26, 30, 0.06)),
-      0 0 18px 3px color-mix(in srgb, white 45%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 58px 16px color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      inset 0 1px 3px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 16%, rgba(22, 26, 30, 0.05)),
+      0 0 12px 0 color-mix(in srgb, white 64%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 4px color-mix(in srgb, white 48%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
       0 8px 20px -8px rgba(22, 26, 30, 0.10);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar::before {
+    opacity: var(--bar-aura-collapsed-opacity, 0.30);
+    transform: scale(0.68);
   }
 
   body.mobile-panel-data .mobile-submit-summary {
@@ -2343,8 +2601,8 @@ label,
   }
 
   body.mobile-panel-data .mobile-submit-button {
-    min-height: 62px;
-    height: 62px;
+    min-height: 0;
+    height: 100%;
     min-width: 0;
     width: 100%;
     padding: 0;
@@ -2366,17 +2624,28 @@ label,
   body.mobile-panel-data .mobile-submit-button::after {
     opacity: 1;
     transform: scale(1) rotate(0deg);
-    /* Light mode data pill: keep the plus as a flat, non-themed ink color.
+    /* Light mode data pill: use the selected family's dark theme color.
        The full background reset prevents the primary-button shine gradient from
        leaking through the mask and making the plus look smudged. */
-    background: #34443c;
+    background: none;
+    background-color: var(--submit-text, color-mix(in srgb, var(--submit-color, var(--green)) 70%, #1f2a25));
   }
 
   /* ── bar morph animations: non-linear staggered keyframes ── */
 
   .mobile-submit-bar.is-flip-morphing,
   .mobile-submit-bar.is-flip-morphing .mobile-submit-button {
-    transition: none !important;
+    /* Geometry (left/width/height/padding/border-radius) is deliberately NOT
+       listed, so it snaps to the end state instantly — the WAAPI transform owns
+       the visible motion. The FILL colour is also NOT transitioned: it snaps to
+       the final themed circle colour on the first frame and holds, so only the
+       SHAPE animates — no separate 300ms colour-fade reading as its own process.
+       (Flight fill == resting fill, so the snap-back at settle is a no-op.) Only
+       the edge glow is present during the same flight instead of arriving as a
+       second colour pass. */
+    transition:
+      border-color 240ms ease,
+      color 240ms ease !important;
     animation: none !important;
     transform-origin: 0 0 !important;
     will-change: transform;
@@ -2384,6 +2653,54 @@ label,
 
   .mobile-submit-bar.is-flip-morphing {
     contain: layout style;
+    /* The 6-layer glass shadow shears badly when the bar is scaled to ~0.17x
+       width. Collapse it to a single soft grounding shadow for the flight; the
+       full shadow blooms back via the base transition when the class is removed
+       at settle. */
+    box-shadow:
+      0 10px 30px -10px rgba(22, 26, 30, 0.18),
+      0 0 26px -12px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent) !important;
+  }
+
+  /* Collapse uses the resting circle glow exactly. Any separate flight shadow
+     blooms after the spring lands, which reads as late colouring. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data {
+    box-shadow:
+      inset 0 1px 3px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 16%, rgba(22, 26, 30, 0.05)),
+      0 0 12px 0 color-mix(in srgb, white 64%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 4px color-mix(in srgb, white 48%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -8px rgba(22, 26, 30, 0.10) !important;
+  }
+
+  /* Expand (circle → pill): mirror the resting pill glow's 4-layer structure with
+     tight (large-negative-spread) rings so the themed halo is already present
+     during flight and eases open at settle — no end-of-expand colour bloom. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 0 84px -40px var(--submit-glow),
+      0 0 36px -26px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 16px 44px -18px rgba(22, 26, 30, 0.18) !important;
+  }
+
+  @keyframes mobile-plus-morph-reveal {
+    0% {
+      opacity: 0;
+      transform: scale(0.48) rotate(-58deg);
+    }
+    36% {
+      opacity: 0.28;
+      transform: scale(0.68) rotate(-30deg);
+    }
+    72% {
+      opacity: 0.88;
+      transform: scale(0.98) rotate(-5deg);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
   }
 
   .mobile-submit-bar.is-flip-morphing .mobile-submit-summary {
@@ -2392,12 +2709,23 @@ label,
   }
 
   .mobile-submit-bar.is-flip-morphing::before {
-    transition: none !important;
-    will-change: opacity, transform;
+    /* Kill the aura keyframes (they run on their own 320-360ms clock, drifting
+       off the spring-driven shell) and simply fade the blurred glow out during
+       flight — a blur(14px) layer squashed 6x looks wrong. It re-blooms from the
+       base rule once the class is removed. */
+    animation: none !important;
+    opacity: 0 !important;
+    transition: opacity 180ms ease !important;
+    will-change: opacity;
   }
 
-  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data,
-  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data::before {
+    opacity: var(--bar-aura-collapsed-opacity, 0.30) !important;
+    transform: scale(0.68) !important;
+    transition: none !important;
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 32%),
       radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.24), transparent 45%),
@@ -2411,12 +2739,63 @@ label,
       0 16px 44px rgba(22, 26, 30, 0.14);
   }
 
+  /* Themed collapse: wear the FINAL (lightened) circle fill for the whole flight,
+     identical to the resting .submit-themed background above, so the tint is done
+     by the time the flip class drops at settle — no end-of-animation colour pop. */
+  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 82%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 12%, rgba(255, 255, 255, 0.54));
+    background:
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.94 0.035 h / 0.24) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.78 0.04 h / 0.12) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.86 0.035 h / 0.18);
+    box-shadow:
+      inset 0 1px 3px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 4px color-mix(in srgb, var(--submit-color) 16%, rgba(22, 26, 30, 0.05)),
+      0 0 12px 0 color-mix(in srgb, white 64%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 34px 4px color-mix(in srgb, white 48%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 8px 20px -8px rgba(22, 26, 30, 0.10);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"].is-bar-morphing-to-entry,
+  .mobile-submit-bar[data-state="needs-input"].is-flip-morphing.is-bar-morphing-to-entry {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 16%, rgba(255, 255, 255, 0.62));
+    background:
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.42), transparent 44%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.28)),
+      rgba(247, 249, 248, 0.24);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.68),
+      0 0 34px -18px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
+      0 18px 52px rgba(22, 26, 30, 0.09) !important;
+  }
+
   .mobile-submit-bar.is-bar-morphing-to-data::before {
-    animation: bar-aura-collapse 360ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: bar-aura-collapse 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry::before {
-    animation: bar-aura-expand 320ms 80ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: bar-aura-expand 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+  }
+
+  /* Themed halo that fades in as the bar collapses into the circle. Sits just
+     BEHIND the bar so the glow reads as emanating from the forming button.
+     Fixed-position (outside the scaled bar) so it never shears. */
+  .bar-morph-glow {
+    position: fixed;
+    z-index: calc(var(--z-mobile-submit) - 1);
+    pointer-events: none;
+    border-radius: var(--radius-pill);
+    transform-origin: center;
+    will-change: opacity, transform;
+    background:
+      radial-gradient(circle, color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))) 0%, transparent 66%);
+    filter: blur(16px);
   }
 
   .bar-summary-ghost {
@@ -2441,37 +2820,34 @@ label,
 
   @keyframes bar-aura-collapse {
     0% { opacity: var(--bar-aura-opacity, 0.78); transform: scale(1); }
-    48% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.68); transform: scale(0.86); }
+    58% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.72); transform: scale(0.82); }
     100% { opacity: var(--bar-aura-collapsed-opacity, 0.30); transform: scale(0.68); }
   }
 
   @keyframes bar-aura-expand {
     0% { opacity: var(--bar-aura-collapsed-opacity, 0.30); transform: scale(0.70); }
-    62% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.88); transform: scale(1.03); }
+    66% { opacity: calc(var(--bar-aura-opacity, 0.78) * 0.88); transform: scale(1.02); }
     100% { opacity: var(--bar-aura-opacity, 0.78); transform: scale(1); }
   }
 
   /* Morphing TO data (bar collapses to pill button):
      - bar border-radius races ahead to pill early
      - button label fades first, icon appears delayed
-     - Elastic character = ONE volume-conserving squash on scaleX/scaleY (single
-       excursion, returns monotonically to rest → exactly one rebound). The
-       geometry (left/width, below) settles monotonically with NO overshoot, so
-       it can't add a second bounce that compounds with this one. */
+     - WAAPI owns the visible geometry in modern browsers; this fallback squash
+       stays subtle so it never creates a second rebound. */
   .mobile-submit-bar.is-bar-morphing-to-data {
     /* Right edge anchored (right: 12px) and bar sits on the bottom margin, so
        pivot the squash at right-bottom: it grows upward when it gets taller
        rather than pushing off the bottom of the screen. */
     transform-origin: right bottom;
     will-change: transform;
-    /* Fluid and premium custom ease-out curve */
-    animation: bar-collapse-squash 580ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: bar-collapse-squash 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
     /* Collapse-only geometry easing: fluid and elegant */
     transition-timing-function:
-      cubic-bezier(0.3, 0.9, 0.15, 1),
-      cubic-bezier(0.3, 0.9, 0.15, 1),
-      cubic-bezier(0.3, 0.9, 0.15, 1),
-      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
       ease;
   }
 
@@ -2479,29 +2855,29 @@ label,
     /* Same elegant geometry easing for the button. Order matches its base
        transition: min-width, height, padding, border-radius, opacity. */
     transition-timing-function:
-      cubic-bezier(0.3, 0.9, 0.15, 1),
-      cubic-bezier(0.3, 0.9, 0.15, 1),
-      cubic-bezier(0.3, 0.9, 0.15, 1),
-      cubic-bezier(0.3, 0.9, 0.15, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
+      cubic-bezier(0.22, 0.74, 0.24, 1),
       ease;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-summary {
-    animation: summary-collapse 180ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: summary-collapse 170ms cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button::after {
-    animation: icon-appear 220ms 90ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: mobile-plus-morph-reveal 360ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   /* Morphing TO entry (pill button expands back to bar):
      - KEEP pill radius during expand so no square corners appear mid-animation
-     - bar stretch-bounces via scaleX in the other direction
+     - fallback stretch is continuous, with no maximum-stretch plateau
      - summary text fades in delayed after bar has mostly expanded */
   .mobile-submit-bar.is-bar-morphing-to-entry {
     transform-origin: right bottom;
     will-change: transform;
-    animation: bar-expand-stretch 580ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: bar-expand-stretch 460ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
     /* Keep the outer glass shell pill-shaped throughout expand and final state. */
     border-radius: var(--radius-pill) !important;
   }
@@ -2512,43 +2888,30 @@ label,
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-summary {
-    animation: summary-expand 240ms 80ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: summary-expand 240ms 90ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button .button-label {
-    animation: label-appear 200ms 80ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: label-appear 210ms 90ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-button::after {
-    animation: icon-dismiss 150ms cubic-bezier(0.3, 0.9, 0.15, 1) both;
+    animation: icon-dismiss 150ms cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
-  /* Collapse: one strong horizontal squash, then relax to rest (single rebound).
-     Volume is conserved — squeezing narrower (scaleX < 1) makes it taller
-     (scaleY = 1/scaleX): 0.82 * 1.22 ≈ 1.0. */
+  /* Fallback-only shape accents. Keep them small; FLIP is the real motion. */
   @keyframes bar-collapse-squash {
-    0%   { transform: scaleX(1)    scaleY(1); }
-    40%  { transform: scaleX(0.82) scaleY(1.22); }
-    100% { transform: scaleX(1)    scaleY(1); }
+    0%   { transform: translateY(0) scaleX(1)     scaleY(1); }
+    48%  { transform: translateY(-5px) scaleX(0.955) scaleY(1.047); }
+    84%  { transform: translateY(1.4px) scaleX(0.992) scaleY(1.008); }
+    100% { transform: translateY(0) scaleX(1)     scaleY(1); }
   }
 
-  /* Expand: one stronger horizontal stretch, then relax to rest (single rebound).
-     Volume is conserved — stretching wider (scaleX > 1) makes it shorter
-     (scaleY = 1/scaleX): 1.24 * 0.806 ≈ 1.0. */
   @keyframes bar-expand-stretch {
-    0%   { transform: scaleX(1)    scaleY(1);     border-radius: var(--radius-pill); }
-    /* Reach max stretch at 26%, then HOLD it flat until 42% — a visible pause at
-       maximum horizontal stretch (both keyframes identical → true plateau,
-       volume still conserved: 1.24 * 0.806 ≈ 1.0). */
-    26%  { transform: scaleX(1.24) scaleY(0.806); border-radius: var(--radius-pill); }
-    42%  {
-      transform: scaleX(1.24) scaleY(0.806); border-radius: var(--radius-pill);
-      /* Recovery (42%→100%, ~440ms) leaves the plateau with near-zero velocity
-         (P1 y≈0) and eases back gently. Both control-point Y in [0,1] → strictly
-         monotonic, no reverse-wobble overshoot. */
-      animation-timing-function: cubic-bezier(0.4, 0, 0.5, 1);
-    }
-    100% { transform: scaleX(1)    scaleY(1);     border-radius: var(--radius-pill); }
+    0%   { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
+    46%  { transform: translateY(-5px) scaleX(1.045) scaleY(0.957); border-radius: var(--radius-pill); }
+    84%  { transform: translateY(1.4px) scaleX(1.008) scaleY(0.992); border-radius: var(--radius-pill); }
+    100% { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
   }
 
   /* Summary text collapses: fast fade + slide left */
@@ -2566,8 +2929,8 @@ label,
 
   /* Plus icon springs into view with rotation + overshoot scale */
   @keyframes icon-appear {
-    0%   { opacity: 0; transform: scale(0.3) rotate(-120deg); }
-    65%  { opacity: 1; transform: scale(1) rotate(0deg); }
+    0%   { opacity: 0; transform: scale(0.48) rotate(-58deg); }
+    70%  { opacity: 0.9; transform: scale(0.98) rotate(-4deg); }
     100% { opacity: 1; transform: scale(1) rotate(0deg); }
   }
 
@@ -2602,17 +2965,27 @@ label,
 
     to {
       opacity: 0;
-      transform: scale(0.985) translate(var(--switch-out-x), 3px);
+      transform: scale(0.986) translate(var(--switch-out-x), 3px);
     }
   }
 
   @keyframes mobile-panel-fade-in {
-    from {
+    0% {
       opacity: 0;
-      transform: scale(0.985) translate(var(--switch-in-x), 3px);
+      transform: scale(0.986) translate(var(--switch-in-x), 4px);
     }
 
-    to {
+    64% {
+      opacity: 1;
+      transform: scale(1.002) translate(calc(var(--switch-in-x) * -0.08), -1px);
+    }
+
+    86% {
+      opacity: 1;
+      transform: scale(0.999) translate(0, 0.6px);
+    }
+
+    100% {
       opacity: 1;
       transform: scale(1) translate(0, 0);
     }
@@ -2918,6 +3291,10 @@ label,
       padding 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
       gap 500ms cubic-bezier(0.3, 0.9, 0.15, 1),
       border-radius 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      background-color 320ms ease,
+      background-image 320ms ease,
+      border-color 320ms ease,
+      box-shadow 320ms ease,
       opacity 220ms ease;
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
@@ -2990,12 +3367,15 @@ label,
   }
 
   .mobile-submit-bar[data-state="needs-input"] {
-    border-color: rgba(255, 255, 255, 0.58);
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 16%, rgba(255, 255, 255, 0.62));
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.30)),
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 13%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 16% 0%, rgba(255, 255, 255, 0.42), transparent 44%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.28)),
       rgba(247, 249, 248, 0.24);
     box-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.68),
+      0 0 34px -18px color-mix(in srgb, var(--submit-color, var(--green)) 46%, transparent),
       0 18px 52px rgba(22, 26, 30, 0.09);
   }
 
@@ -3056,6 +3436,10 @@ label,
       height 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
       padding 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
       border-radius 580ms cubic-bezier(0.3, 0.9, 0.15, 1),
+      background-color 320ms ease,
+      background-image 320ms ease,
+      border-color 320ms ease,
+      box-shadow 320ms ease,
       opacity 220ms ease;
   }
 
@@ -3078,13 +3462,17 @@ label,
     filter: none;
     width: 28px;
     height: 28px;
-    background: #fff;
+    background: none;
+    background-color: #fff;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.5' stroke='white' fill='none' stroke-linecap='round'%3E%3Cpath d='M12 5v14m-7-7h14'/%3E%3C/svg%3E") center/contain no-repeat;
     opacity: 0;
     z-index: 2;
     transform: scale(0.4) rotate(-90deg);
-    transition: opacity 0.3s ease, transform 0.4s var(--spring-overshoot);
+    transition:
+      opacity 0.3s ease,
+      transform 0.4s var(--spring-overshoot),
+      background-color 260ms cubic-bezier(0.3, 0.9, 0.15, 1);
   }
 
   .mobile-submit-button::before {
@@ -3099,25 +3487,30 @@ label,
       radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 2%, rgba(255, 255, 255, 0.10)), transparent 58%);
   }
 
-  /* 信息未填齐：淡白引导态，仍然可点击 */
+  /* 信息未填齐：淡白引导态，仍然可点击。玻璃胶囊：半透明磨砂 + 胶囊形。 */
   .mobile-submit-button.is-blocked {
-    border-color: rgba(255, 255, 255, 0.76);
+    border-radius: var(--radius-pill);
+    border-color: rgba(255, 255, 255, 0.55);
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.64)),
-      rgba(255, 255, 255, 0.60);
-    color: color-mix(in srgb, var(--ink) 84%, var(--muted));
+      linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16) 60%),
+      rgba(255, 255, 255, 0.12);
+    color: color-mix(in srgb, var(--ink) 82%, var(--muted));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.78),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.38),
-      0 10px 30px rgba(22, 26, 30, 0.08);
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.30),
+      inset 0 -6px 14px rgba(255, 255, 255, 0.10),
+      0 8px 24px -6px rgba(22, 26, 30, 0.12);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
+    -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
     cursor: pointer;
   }
 
   .mobile-submit-button.is-blocked::before {
-    opacity: 0.18;
+    opacity: 0.28;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 68%);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 66%),
+      radial-gradient(ellipse at 50% -20%, rgba(255, 255, 255, 0.4), transparent 60%);
   }
 
   .ledger-item {
@@ -3456,7 +3849,7 @@ label,
   }
 
   body.mobile-panel-data .mobile-submit-bar {
-    left: calc(100% - 70px);
+    left: auto; /* square circle is right-anchored + fixed-width now */
   }
 
   .mobile-submit-button {
@@ -3559,7 +3952,7 @@ label,
   }
 
   body.mobile-panel-data .mobile-submit-bar {
-    left: calc(100% - 69px);
+    left: auto; /* square circle is right-anchored + fixed-width now */
   }
 
   .mobile-submit-button {
@@ -3708,6 +4101,61 @@ label,
       linear-gradient(180deg, rgba(24, 24, 26, 0.99) 0%, rgba(17, 17, 17, 0.99) 52%, rgba(20, 20, 22, 0.99) 100%);
   }
 
+  .palette-card {
+    border-color: var(--dark-hairline);
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .palette-card:hover {
+    border-color: color-mix(in srgb, var(--palette-accent, var(--green)) 26%, var(--dark-hairline-strong));
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .palette-card.is-active {
+    border-color: color-mix(in srgb, var(--palette-accent, var(--green)) 38%, var(--dark-hairline-strong));
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--green)) 11%, transparent), rgba(255, 255, 255, 0.045)),
+      rgba(255, 255, 255, 0.04);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--green)) 14%, transparent),
+      0 0 34px -22px color-mix(in srgb, var(--palette-accent, var(--green)) 46%, transparent);
+  }
+
+  .palette-card-copy small {
+    color: rgba(230, 235, 232, 0.62);
+  }
+
+  .family-color-row {
+    background: color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.045));
+  }
+
+  .family-color-details {
+    border-color: var(--dark-hairline);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .family-color-details summary {
+    color: rgba(240, 244, 241, 0.88);
+  }
+
+  .family-color-details summary::after {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--green) 16%, rgba(255, 255, 255, 0.10)), rgba(255, 255, 255, 0.06));
+    color: color-mix(in srgb, var(--green) 38%, white);
+  }
+
+  .family-color-details summary small {
+    color: rgba(230, 235, 232, 0.58);
+  }
+
+  .family-color-detail-body {
+    border-top-color: var(--dark-hairline);
+  }
+
+  .family-color-choice {
+    border-color: color-mix(in srgb, var(--swatch-color) 42%, rgba(255, 255, 255, 0.12));
+  }
+
   /* 抽屉与确认框的白色渐变改暗面 */
   .settings-drawer,
   .ledger-management-drawer {
@@ -3840,31 +4288,35 @@ label,
 
   body.mobile-panel-data .mobile-submit-bar::before {
     background:
-      radial-gradient(ellipse at 70% 56%, color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent), transparent 56%),
-      radial-gradient(ellipse at 30% 18%, rgba(232, 236, 233, 0.12), transparent 44%);
-    opacity: 0.68;
+      radial-gradient(ellipse at 70% 56%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent), transparent 58%),
+      radial-gradient(ellipse at 30% 18%, rgba(232, 236, 233, 0.08), transparent 46%);
+    opacity: 0.16;
+    transform: scale(0.68);
   }
 
   body.mobile-panel-data .mobile-submit-button::after {
     /* The dark glass pill already carries the family color. Keep the plus as a
-       pale, color-tinted highlight so it stays readable over every family hue. */
+       theme-dark mark, lightly lifted so it stays readable over the dark glass. */
     width: 30px;
     height: 30px;
-    background: color-mix(in srgb, white 86%, var(--submit-color, var(--green)) 14%);
+    background: none;
+    background-color: color-mix(in srgb, var(--submit-text, var(--submit-color, var(--green))) 58%, white);
     filter:
-      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.52))
-      drop-shadow(0 0 7px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent));
+      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.44))
+      drop-shadow(0 0 4px color-mix(in srgb, var(--submit-color, var(--green)) 26%, transparent));
   }
 
   body.mobile-panel-data .mobile-submit-bar.submit-themed {
     background:
-      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 50%, var(--submit-color)) 0%, transparent 40%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%),
-      color-mix(in srgb, var(--submit-color) 35%, rgba(24, 24, 26, 0.5));
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 68%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 14%, rgba(24, 24, 26, 0.5));
     background:
-      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.75 0.08 h / 0.4) 0%, transparent 40%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%),
-      oklch(from var(--submit-color) 0.45 c h / 0.4);
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.74 0.035 h / 0.22) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.50 0.04 h / 0.10) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.46 0.045 h / 0.18);
     /* Same two-ring 0-offset glow as the light theme (see note there) — this
        variant previously had ONLY the downward-offset shadow layer with no
        ambient ring at all, so it read as pure drop-shadow with no light source.
@@ -3872,16 +4324,15 @@ label,
        values do on light, so this halo is noticeably tighter (smaller blur+
        spread, lower alpha) than the light-theme version above. */
     box-shadow:
-      inset 0 1px 3px color-mix(in srgb, white 68%, var(--submit-color)),
-      inset 0 -1px 4px rgba(0, 0, 0, 0.3),
-      0 0 14px 2px color-mix(in srgb, white 32%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 34px 7px color-mix(in srgb, white 12%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 64px -12px color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
+      inset 0 1px 3px color-mix(in srgb, white 58%, var(--submit-color)),
+      inset 0 -1px 4px rgba(0, 0, 0, 0.32),
+      0 0 12px 0 color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 24px 2px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 44px -18px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28);
   }
 
-  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data,
-  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+  body.mobile-panel-data .mobile-submit-bar.is-bar-morphing-to-data {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 34%),
       radial-gradient(120% 140% at 18% 0%, rgba(255, 255, 255, 0.10), transparent 46%),
@@ -3893,6 +4344,41 @@ label,
       inset 0 -6px 14px rgba(0, 0, 0, 0.18),
       0 0 26px -10px color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
       0 16px 44px rgba(0, 0, 0, 0.36);
+  }
+
+  /* Dark themed collapse: same lightened circle fill as the resting state, worn
+     for the whole flight so the tint lands with the geometry, not after it. */
+  body.mobile-panel-data .mobile-submit-bar.submit-themed.is-bar-morphing-to-data {
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, white 68%, var(--submit-color)) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, color-mix(in srgb, var(--submit-color) 10%, transparent), transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
+      color-mix(in srgb, var(--submit-color) 14%, rgba(24, 24, 26, 0.5));
+    background:
+      radial-gradient(circle at 30% 20%, oklch(from var(--submit-color) 0.74 0.035 h / 0.22) 0%, transparent 44%),
+      radial-gradient(circle at 70% 82%, oklch(from var(--submit-color) 0.50 0.04 h / 0.10) 0%, transparent 58%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 54%),
+      oklch(from var(--submit-color) 0.46 0.045 h / 0.18);
+    box-shadow:
+      inset 0 1px 3px color-mix(in srgb, white 58%, var(--submit-color)),
+      inset 0 -1px 4px rgba(0, 0, 0, 0.32),
+      0 0 12px 0 color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 24px 2px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 44px -18px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 8px 20px -6px rgba(0, 0, 0, 0.28);
+  }
+
+  /* Dark collapse glow: 6-layer structure matching the dark resting circle glow
+     (tight negative-spread rings during the scaled flight) so the box-shadow
+     interpolates and eases open at settle instead of popping. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data {
+    box-shadow:
+      inset 0 1px 3px color-mix(in srgb, white 58%, var(--submit-color)),
+      inset 0 -1px 4px rgba(0, 0, 0, 0.32),
+      0 0 12px 0 color-mix(in srgb, white 20%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 24px 2px color-mix(in srgb, white 8%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
+      0 0 44px -18px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 8px 20px -6px rgba(0, 0, 0, 0.28) !important;
   }
 
   .toast {
@@ -4427,6 +4913,19 @@ label,
       0 18px 50px rgba(0, 0, 0, 0.28);
   }
 
+  .operator-confirm-button {
+    --submit-text: #d3e3e6;
+    --submit-glow: rgba(148, 177, 184, 0.12);
+    border-color: rgba(199, 219, 224, 0.16);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.065)),
+      rgba(94, 119, 126, 0.18);
+    color: var(--submit-text);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 12px 30px rgba(0, 0, 0, 0.22);
+  }
+
   /* 玻璃高光层去掉白色成分，避免暗底上发亮 */
   .primary-button::before {
     background:
@@ -4435,6 +4934,12 @@ label,
         color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent) 52%,
         color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent)),
       linear-gradient(180deg, var(--dark-highlight), transparent 58%);
+  }
+
+  .operator-confirm-button::before {
+    background:
+      linear-gradient(135deg, rgba(176, 206, 212, 0.12), rgba(255, 255, 255, 0.03)),
+      radial-gradient(ellipse at 50% -30%, rgba(255, 255, 255, 0.16), transparent 62%);
   }
 
   /* 账本管理卡片：当前账本高亮 + 三格统计白底转暗 */
@@ -4506,13 +5011,30 @@ label,
   }
 
   .mobile-submit-bar[data-state="needs-input"] {
-    border-color: rgba(232, 236, 233, 0.16);
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(232, 236, 233, 0.14));
     background:
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 16% 0%, rgba(232, 236, 233, 0.14), transparent 44%),
       linear-gradient(135deg, rgba(232, 236, 233, 0.12), rgba(232, 236, 233, 0.05)),
       rgba(20, 24, 22, 0.52);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 30px -20px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
       0 22px 62px rgba(0, 0, 0, 0.30);
+  }
+
+  .mobile-submit-bar[data-state="needs-input"].is-bar-morphing-to-entry,
+  .mobile-submit-bar[data-state="needs-input"].is-flip-morphing.is-bar-morphing-to-entry {
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(232, 236, 233, 0.14));
+    background:
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 16% 0%, rgba(232, 236, 233, 0.14), transparent 44%),
+      linear-gradient(135deg, rgba(232, 236, 233, 0.12), rgba(232, 236, 233, 0.05)),
+      rgba(20, 24, 22, 0.52);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 30px -20px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 22px 62px rgba(0, 0, 0, 0.30) !important;
   }
 
   .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {

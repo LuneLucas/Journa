@@ -15,9 +15,9 @@ const MOTION_DELAYS = {
   categoryActivate: 760,
   choiceRelease: 460,
   splitSwitch: 260,
-  mobilePanelOut: 150,
-  mobilePanelIn: 280,
-  mobilePanelIndicator: 680,
+  mobilePanelOut: 120,
+  mobilePanelIn: 500,
+  mobilePanelIndicator: 620,
   barMorph: 620,
   addCelebrate: 1560,
   totalAbsorb: 1320,
@@ -27,18 +27,71 @@ const MOTION_DELAYS = {
   toast: 2600,
   toastWithAction: 5200,
 };
-const SPRING_BAR_COLLAPSE = { stiffness: 220, damping: 20, mass: 1 };
-const SPRING_BAR_EXPAND = { stiffness: 220, damping: 18, mass: 1 };
+/* Bottom bar FLIP springs: underdamped (ζ≈0.59/0.58) so the shape lands with one
+   clearly visible elastic rebound rather than easing flatly into place. */
+const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
+const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
+const BAR_ARC_LIFT_PX = 5;
+const BAR_ARC_REBOUND_PX = 1.4;
 const defaultFamilies = [
   { id: "family-a", name: "乐家" },
   { id: "family-b", name: "祺家" },
   { id: "family-c", name: "旦家" },
 ];
-const familyVisuals = {
-  "family-a": { color: "#90ad9d", gradient: "#bddbc8", text: "#557965", soft: "rgba(144, 173, 157, 0.60)", wash: "rgba(144, 173, 157, 0.16)" },
-  "family-b": { color: "#9dafc9", gradient: "#cbd9ef", text: "#61769a", soft: "rgba(157, 175, 201, 0.60)", wash: "rgba(157, 175, 201, 0.16)" },
-  "family-c": { color: "#d4abab", gradient: "#f2cfce", text: "#956868", soft: "rgba(212, 171, 171, 0.58)", wash: "rgba(212, 171, 171, 0.15)" },
+const defaultFamilyVisuals = {
+  "family-a": deriveFamilyVisual("#7eab98"),
+  "family-b": deriveFamilyVisual("#849fcd"),
+  "family-c": deriveFamilyVisual("#c88f8d"),
 };
+const familyPalettePresets = [
+  {
+    id: "morning-map",
+    name: "清晨地图",
+    description: "绿、蓝、珊瑚，清楚但柔和",
+    colors: [
+      { color: "#7eab98" },
+      { color: "#849fcd" },
+      { color: "#c88f8d" },
+      { color: "#b9a064" },
+      { color: "#9b8aba" },
+    ],
+  },
+  {
+    id: "seaside-ledger",
+    name: "海边账本",
+    description: "青、靛蓝、陶橙，识别更轻快",
+    colors: [
+      { color: "#78a5a5" },
+      { color: "#8799cf" },
+      { color: "#c89573" },
+      { color: "#969764" },
+      { color: "#a27a96" },
+    ],
+  },
+  {
+    id: "garden-receipt",
+    name: "花园票据",
+    description: "草绿、湖蓝、玫瑰，温柔偏鲜明",
+    colors: [
+      { color: "#88a978" },
+      { color: "#789fc0" },
+      { color: "#c88898" },
+      { color: "#ad915f" },
+      { color: "#9286ba" },
+    ],
+  },
+];
+const presetFamilyVisuals = familyPalettePresets.map((palette) => palette.colors).flat();
+const familyColorChoices = [
+  { color: "#7eab98" },
+  { color: "#849fcd" },
+  { color: "#c88f8d" },
+  { color: "#b9a064" },
+  { color: "#9b8aba" },
+  { color: "#78a5a5" },
+  { color: "#c89573" },
+  { color: "#a27a96" },
+];
 const defaultCategories = ["交通", "住宿", "餐饮", "门票", "购物", "其他"];
 // 空状态插画：复用 favicon 的三个交叠圆母题（三家庭色，低饱和）
 const emptyStateArt = `<svg class="empty-state-art" viewBox="0 0 96 64" aria-hidden="true" focusable="false"><circle cx="38" cy="26" r="17" fill="#bddbc8" opacity="0.6"/><circle cx="58" cy="25" r="17" fill="#cbd9ef" opacity="0.6"/><circle cx="48" cy="39" r="17" fill="#f2cfce" opacity="0.55"/></svg>`;
@@ -131,6 +184,8 @@ const elements = {
   splitCustomAmounts: document.querySelector("#splitCustomAmounts"),
   settingsCategoryChips: document.querySelector("#settingsCategoryChips"),
   settingsFamilyList: document.querySelector("#settingsFamilyList"),
+  settingsPaletteList: document.querySelector("#settingsPaletteList"),
+  settingsFamilyColorList: document.querySelector("#settingsFamilyColorList"),
   ledgerNameForm: document.querySelector("#ledgerNameForm"),
   currentLedgerNameInput: document.querySelector("#currentLedgerNameInput"),
   saveLedgerNameButton: document.querySelector("#saveLedgerNameButton"),
@@ -197,6 +252,7 @@ let mobilePanelIndicatorTimer = 0;
 let barMorphTimer = 0;
 let ledgerMorphTimer = 0;
 let barFlipAnimations = [];
+let barFlipRunId = 0;
 let editReturnState = null;
 let editFormSnapshot = null;
 let totalAmountText = "";
@@ -266,11 +322,14 @@ function normalizeLedger(raw = {}, fallbackName = "旅行账本") {
   const expenses = Array.isArray(raw.expenses) ? raw.expenses.filter(isValidExpense).map(normalizeExpense) : [];
   const savedCategories = Array.isArray(raw.categories) ? raw.categories : defaultCategories;
   const categories = normalizeCategories([...savedCategories, ...expenses.map((expense) => expense.category)]);
+  const families = normalizeFamilies(raw.families || defaultFamilies);
+  const familyVisuals = normalizeFamilyVisuals(raw.familyVisuals, families);
 
   return {
     id: typeof raw.id === "string" && raw.id ? raw.id : createId("ledger"),
     name: normalizeLedgerName(raw.name, fallbackName),
-    families: defaultFamilies.map((family) => ({ ...family })),
+    families: families.map((family) => ({ ...family, visual: familyVisuals[family.id] })),
+    familyVisuals,
     familyMembers: normalizeFamilyMembers(raw.familyMembers),
     categories,
     expenses,
@@ -290,7 +349,8 @@ function createEmptyLedger(name) {
   return {
     id: createId("ledger"),
     name: normalizeLedgerName(name, "旅行账本"),
-    families: defaultFamilies.map((family) => ({ ...family })),
+    families: normalizeFamilies(defaultFamilies),
+    familyVisuals: normalizeFamilyVisuals(),
     familyMembers: normalizeFamilyMembers(),
     categories: [...defaultCategories],
     expenses: [],
@@ -355,7 +415,77 @@ function replaceActiveLedger(nextLedger) {
 }
 
 function normalizeFamilies(families) {
-  return defaultFamilies.map((family) => ({ ...family }));
+  const source = Array.isArray(families) ? families : [];
+  const visualsById = Object.fromEntries(source.map((family) => [family?.id, family?.visual]).filter(([id]) => typeof id === "string"));
+  return defaultFamilies.map((family) => {
+    const visual = normalizeFamilyVisual(visualsById[family.id] || defaultFamilyVisuals[family.id]);
+    return { ...family, visual };
+  });
+}
+
+function normalizeFamilyVisuals(visuals = {}, families = defaultFamilies) {
+  const source = visuals && typeof visuals === "object" && !Array.isArray(visuals) ? visuals : {};
+  const familyVisualsFromRows = Object.fromEntries(
+    (Array.isArray(families) ? families : [])
+      .map((family) => [family?.id, family?.visual])
+      .filter(([id, visual]) => typeof id === "string" && visual && typeof visual === "object"),
+  );
+
+  return Object.fromEntries(
+    defaultFamilies.map((family, index) => {
+      const visual = source[family.id] || familyVisualsFromRows[family.id] || defaultFamilyVisuals[family.id] || presetFamilyVisuals[index % presetFamilyVisuals.length];
+      return [family.id, normalizeFamilyVisual(visual)];
+    }),
+  );
+}
+
+function normalizeFamilyVisual(visual = {}) {
+  const fallback = defaultFamilyVisuals["family-a"];
+  const color = normalizeHexColor(visual.color, fallback.color);
+  const derived = deriveFamilyVisual(color);
+  return {
+    color,
+    gradient: normalizeHexColor(visual.gradient, derived.gradient),
+    text: normalizeHexColor(visual.text, derived.text),
+    soft: normalizeCssColor(visual.soft, derived.soft),
+    wash: normalizeCssColor(visual.wash, derived.wash),
+  };
+}
+
+function deriveFamilyVisual(baseColor) {
+  const color = normalizeHexColor(baseColor, "#7eab98");
+  return {
+    color,
+    gradient: mixHexColors(color, "#ffffff", 0.42),
+    text: mixHexColors(color, "#000000", 0.50),
+    soft: colorWithAlpha(color, 0.60),
+    wash: colorWithAlpha(color, 0.16),
+  };
+}
+
+function normalizeHexColor(value, fallback) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : fallback;
+}
+
+function normalizeCssColor(value, fallback) {
+  const color = String(value || "").trim();
+  return color ? color : fallback;
+}
+
+function syncFamilyVisualRows() {
+  const visuals = normalizeFamilyVisuals(state.familyVisuals, state.families);
+  state.familyVisuals = visuals;
+  state.families = normalizeFamilies(state.families).map((family) => ({ ...family, visual: visuals[family.id] }));
+}
+
+function serializeFamiliesForCloud() {
+  syncFamilyVisualRows();
+  return state.families.map((family) => ({
+    id: family.id,
+    name: family.name,
+    visual: state.familyVisuals[family.id],
+  }));
 }
 
 function normalizeFamilyMembers(memberCounts = {}) {
@@ -542,10 +672,13 @@ function normalizeRemotePayload(payload) {
   const expenses = Array.isArray(payload?.expenses) ? payload.expenses : [];
   const categories = Array.isArray(ledger.categories) ? ledger.categories : defaultCategories;
   const familyMembers = ledger.family_members && typeof ledger.family_members === "object" ? ledger.family_members : {};
+  const families = normalizeFamilies(ledger.families || defaultFamilies);
+  const familyVisuals = normalizeFamilyVisuals(ledger.family_visuals || ledger.familyVisuals, families);
 
   return {
     name: normalizeRemoteLedgerName(ledger.name),
-    families: normalizeFamilies(ledger.families || defaultFamilies),
+    families: families.map((family) => ({ ...family, visual: familyVisuals[family.id] })),
+    familyVisuals,
     familyMembers: normalizeFamilyMembers(familyMembers),
     categories: normalizeCategories([...categories, ...expenses.map((expense) => expense.category)]),
     updatedAt: ledger.updated_at || new Date().toISOString(),
@@ -597,6 +730,7 @@ async function pullCloudLedger({ announce = false } = {}) {
     if (state.updatedAt && remote.updatedAt < state.updatedAt) {
       remote.name = state.name;
       remote.families = state.families;
+      remote.familyVisuals = state.familyVisuals;
       remote.familyMembers = state.familyMembers;
       remote.categories = state.categories;
       remote.updatedAt = state.updatedAt;
@@ -736,6 +870,7 @@ function queueCloudSettingsSync() {
 
 async function syncCloudSettingsNow() {
   if (!isCloudLedgerActive()) return;
+  syncFamilyVisualRows();
   const basePayload = {
     p_share_token: cloudState.shareToken,
     p_categories: state.categories,
@@ -746,18 +881,27 @@ async function syncCloudSettingsNow() {
     ...basePayload,
     p_name: state.name,
   };
+  const visualPayload = {
+    ...namePayload,
+    p_families: serializeFamiliesForCloud(),
+  };
 
   try {
-    await supabaseRpc("update_travel_ledger_settings", namePayload);
+    await supabaseRpc("update_travel_ledger_settings", visualPayload);
   } catch (error) {
     if (!isSettingsRpcCompatibilityError(error)) throw error;
-    await supabaseRpc("update_travel_ledger_settings", basePayload);
+    try {
+      await supabaseRpc("update_travel_ledger_settings", namePayload);
+    } catch (fallbackError) {
+      if (!isSettingsRpcCompatibilityError(fallbackError)) throw fallbackError;
+      await supabaseRpc("update_travel_ledger_settings", basePayload);
+    }
   }
 }
 
 function isSettingsRpcCompatibilityError(error) {
   const message = String(error?.message || error || "");
-  return message.includes("p_name") || message.includes("schema cache") || message.includes("PGRST202");
+  return message.includes("p_name") || message.includes("p_families") || message.includes("schema cache") || message.includes("PGRST202");
 }
 
 async function syncCloudExpense(expense) {
@@ -925,7 +1069,7 @@ function getFamilyName(familyId) {
 }
 
 function getFamilyVisual(familyId) {
-  return familyVisuals[familyId] || familyVisuals[defaultFamilies[0].id];
+  return state?.familyVisuals?.[familyId] || state?.families?.find((family) => family.id === familyId)?.visual || defaultFamilyVisuals[familyId] || defaultFamilyVisuals[defaultFamilies[0].id];
 }
 
 function getCategoryVisual(category) {
@@ -1124,7 +1268,6 @@ function render(options = {}) {
 function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
   const w0 = Math.sqrt(stiffness / mass);
   const zeta = damping / (2 * Math.sqrt(stiffness * mass));
-  const wd = w0 * Math.sqrt(1 - zeta * zeta);
   const settle = Math.log(1 / epsilon) / (zeta * w0);
   const duration = Math.min(900, Math.max(250, settle * 1000));
   const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
@@ -1132,7 +1275,12 @@ function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
 
   for (let i = 0; i <= count; i++) {
     const t = (settle * i) / count;
-    values.push(1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)));
+    if (zeta < 1) {
+      const wd = w0 * Math.sqrt(1 - zeta * zeta);
+      values.push(1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)));
+    } else {
+      values.push(1 - Math.exp(-w0 * t));
+    }
   }
 
   values[count] = 1;
@@ -1140,8 +1288,10 @@ function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
 }
 
 function cancelBarFlip() {
+  barFlipRunId += 1;
   barFlipAnimations.forEach((animation) => animation.cancel());
   barFlipAnimations = [];
+  document.querySelectorAll(".bar-morph-glow").forEach((node) => node.remove());
 }
 
 function clearBarMorphState() {
@@ -1165,16 +1315,77 @@ function spawnSummaryGhost(rect) {
   }, 400);
 }
 
+/*
+ * A soft themed halo that lives OUTSIDE the transformed bar (fixed-position, not
+ * a child), so the FLIP's non-uniform scale never shears it. On collapse it
+ * ramps up as the shape becomes a circle — the button "lights up" as it forms —
+ * and finishes with the FLIP, so it reads as part of the same colour/shape
+ * morph instead of a second glow pass after landing. On expand it eases away as
+ * the pill stretches open.
+ */
+function spawnBarMorphGlow(rect, toData, duration) {
+  if (!rect.width || !rect.height) return null;
+
+  document.querySelectorAll(".bar-morph-glow").forEach((node) => node.remove());
+  const glow = document.createElement("span");
+  glow.className = "bar-morph-glow";
+  glow.style.left = `${rect.left}px`;
+  glow.style.top = `${rect.top}px`;
+  glow.style.width = `${rect.width}px`;
+  glow.style.height = `${rect.height}px`;
+  document.body.appendChild(glow);
+
+  let frames;
+  let total;
+  if (toData) {
+    total = duration;
+    frames = [
+      { offset: 0, opacity: 0, transform: "scale(0.68)" },
+      { offset: 0.24, opacity: 0.12, transform: "scale(0.86)" },
+      { offset: 0.58, opacity: 0.28, transform: "scale(1.05)" },
+      { offset: 0.82, opacity: 0.34, transform: "scale(1.14)" },
+      { offset: 1, opacity: 0, transform: "scale(1.30)" },
+    ];
+  } else {
+    total = Math.round(duration * 0.8);
+    frames = [
+      { offset: 0, opacity: 1, transform: "scale(1)" },
+      { offset: 1, opacity: 0, transform: "scale(1.12)" },
+    ];
+  }
+
+  const animation = glow.animate(frames, {
+    duration: total,
+    easing: toData ? "cubic-bezier(0.4, 0, 0.2, 1)" : "cubic-bezier(0.4, 0, 0.7, 1)",
+    fill: "forwards",
+  });
+  const cleanup = () => glow.remove();
+  animation.onfinish = cleanup;
+  animation.oncancel = cleanup;
+  window.setTimeout(() => {
+    if (glow.isConnected) glow.remove();
+  }, total + 150);
+  return animation;
+}
+
+function barArcLift(offset) {
+  const lift = -BAR_ARC_LIFT_PX * Math.sin(Math.PI * offset);
+  const landing = offset < 0.68 ? 0 : Math.sin(((offset - 0.68) / 0.32) * Math.PI);
+  return lift + BAR_ARC_REBOUND_PX * landing;
+}
+
 function animateBarFlip(nextPanel) {
   const bar = elements.mobileSubmitBar;
   const button = elements.mobileSubmitButton;
   const summary = elements.mobileSubmitSummary;
   const toData = nextPanel === "data";
+  const flipRunId = barFlipRunId + 1;
   const firstBar = bar.getBoundingClientRect();
   const firstButton = button.getBoundingClientRect();
   const firstSummary = summary.getBoundingClientRect();
 
   cancelBarFlip();
+  barFlipRunId = flipRunId;
   bar.classList.add("is-flip-morphing");
   bar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
   void bar.offsetWidth;
@@ -1205,7 +1416,8 @@ function animateBarFlip(nextPanel) {
     const scaleY = height / lastBar.height;
     const translateX = x - lastBar.left;
     const translateY = y - lastBar.top;
-    barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})` });
+    const arcLift = barArcLift(offset);
+    barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
 
     const buttonWidth = firstButton.width + (lastButton.width - firstButton.width) * progress;
     const buttonHeight = firstButton.height + (lastButton.height - firstButton.height) * progress;
@@ -1219,9 +1431,13 @@ function animateBarFlip(nextPanel) {
   });
 
   const options = { duration, easing: "linear", fill: "none", composite: "replace" };
+  const animationStart = performance.now();
   const barAnimation = bar.animate(barFrames, options);
   const buttonAnimation = button.animate(buttonFrames, options);
   barFlipAnimations = [barAnimation, buttonAnimation];
+
+  const glowAnimation = spawnBarMorphGlow(toData ? lastBar : firstBar, toData, duration);
+  if (glowAnimation) barFlipAnimations.push(glowAnimation);
 
   if (toData) {
     spawnSummaryGhost(firstSummary);
@@ -1235,11 +1451,20 @@ function animateBarFlip(nextPanel) {
     ));
   }
 
-  barAnimation.onfinish = () => {
-    if (!barFlipAnimations.includes(barAnimation)) return;
+  const cleanupFlip = () => {
+    if (barFlipRunId !== flipRunId || !barFlipAnimations.includes(barAnimation)) return;
     clearBarMorphState();
     barFlipAnimations = [];
   };
+  barAnimation.onfinish = () => {
+    const remaining = duration - (performance.now() - animationStart);
+    if (remaining > 40) {
+      window.setTimeout(cleanupFlip, remaining);
+    } else {
+      cleanupFlip();
+    }
+  };
+  window.setTimeout(cleanupFlip, duration + 80);
 }
 
 function setMobilePanel(panel, options = {}) {
@@ -1684,6 +1909,7 @@ function renderSettings() {
       `,
     )
     .join("");
+  renderPersonalizationSettings();
 
   elements.settingsCategoryChips.innerHTML = state.categories
     .map((category, index) => {
@@ -1692,10 +1918,10 @@ function renderSettings() {
       const status = isUsed ? "使用中" : isDefault ? "预设" : "可删除";
       const removeButton = isUsed
         ? ""
-        : `<button class="chip-icon-button chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}">×</button>`;
+        : `<button class="chip-icon-button chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}"><svg class="svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
       const moveControls = `
-        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" aria-label="上移 ${escapeHtml(category)}" ${index === 0 ? "disabled" : ""}>↑</button>
-        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="1" aria-label="下移 ${escapeHtml(category)}" ${index === state.categories.length - 1 ? "disabled" : ""}>↓</button>
+        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" aria-label="上移 ${escapeHtml(category)}" ${index === 0 ? "disabled" : ""}><svg class="svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
+        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="1" aria-label="下移 ${escapeHtml(category)}" ${index === state.categories.length - 1 ? "disabled" : ""}><svg class="svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
       `;
 
       return `
@@ -1727,6 +1953,101 @@ function renderSettings() {
       <strong>${state.categories.length}</strong>
     </div>
   `;
+}
+
+function renderPersonalizationSettings() {
+  if (!elements.settingsPaletteList || !elements.settingsFamilyColorList) return;
+  const detailsOpen = Boolean(elements.settingsFamilyColorList.querySelector(".family-color-details")?.open);
+  syncFamilyVisualRows();
+  const activePaletteId = getMatchedPaletteId();
+  const presetColors = getFamilyColorChoices();
+
+  elements.settingsPaletteList.innerHTML = familyPalettePresets
+    .map((palette) => {
+      const isActive = palette.id === activePaletteId;
+      const primarySwatches = palette.colors.slice(0, state.families.length);
+      const extraSwatches = palette.colors.slice(state.families.length);
+      return `
+        <button class="palette-card${isActive ? " is-active" : ""}" type="button" data-palette-id="${escapeHtml(palette.id)}" style="${paletteCardStyle(palette)}" aria-pressed="${isActive}">
+          <span class="palette-card-copy">
+            <strong>${escapeHtml(palette.name)}</strong>
+            <small>${escapeHtml(palette.description)}</small>
+          </span>
+          <span class="palette-swatch-row" aria-hidden="true">
+            ${primarySwatches.map((visual) => `<span class="palette-swatch is-primary" style="${familyVisualSwatchStyle(visual)}"></span>`).join("")}
+            ${extraSwatches.map((visual) => `<span class="palette-swatch is-extra" style="${familyVisualSwatchStyle(visual)}"></span>`).join("")}
+          </span>
+        </button>
+      `;
+    })
+    .join("");
+
+  const customStatus = activePaletteId ? "当前跟随套装" : "当前为自定义组合";
+  const familyRows = state.families
+    .map((family) => {
+      const activeVisual = getFamilyVisual(family.id);
+      return `
+        <div class="family-color-row" style="${familyStyle(family.id)}">
+          <div class="family-color-label">
+            <span class="family-color-current" style="${familyVisualSwatchStyle(activeVisual)}" aria-hidden="true"></span>
+            <span>${escapeHtml(family.name)}</span>
+          </div>
+          <div class="family-color-options" aria-label="${escapeHtml(family.name)}主题色">
+            ${presetColors
+              .map((visual, index) => {
+                const isSelected = activeVisual.color === visual.color;
+                return `
+                  <button class="family-color-choice${isSelected ? " is-selected" : ""}" type="button" data-family-color="${escapeHtml(family.id)}" data-color-index="${index}" style="${familyVisualSwatchStyle(visual)}" aria-label="将${escapeHtml(family.name)}设为${visual.color}" aria-pressed="${isSelected}"></button>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  elements.settingsFamilyColorList.innerHTML = `
+    <details class="family-color-details"${detailsOpen ? " open" : ""}>
+      <summary>
+        <span>逐家微调</span>
+        <small>${customStatus}</small>
+      </summary>
+      <div class="family-color-detail-body">
+        ${familyRows}
+      </div>
+    </details>
+  `;
+}
+
+function getMatchedPaletteId() {
+  return familyPalettePresets.find((palette) => paletteMatchesCurrentFamilies(palette))?.id || "";
+}
+
+function paletteMatchesCurrentFamilies(palette) {
+  return state.families.every((family, index) => {
+    const expected = normalizeFamilyVisual(palette.colors[index % palette.colors.length]);
+    return getFamilyVisual(family.id).color === expected.color;
+  });
+}
+
+function getFamilyColorChoices() {
+  const seen = new Set();
+  return familyColorChoices.map(normalizeFamilyVisual).filter((visual) => {
+    if (seen.has(visual.color)) return false;
+    seen.add(visual.color);
+    return true;
+  });
+}
+
+function paletteCardStyle(palette) {
+  const accent = normalizeFamilyVisual(palette.colors[0]);
+  return `--palette-accent: ${accent.color}; --palette-accent-text: ${accent.text};`;
+}
+
+function familyVisualSwatchStyle(visual) {
+  const normalized = normalizeFamilyVisual(visual);
+  return `--swatch-color: ${normalized.color}; --swatch-gradient: ${normalized.gradient}; --swatch-text: ${normalized.text};`;
 }
 
 function renderCurrentLedgerSummary(summary) {
@@ -2458,6 +2779,40 @@ function handleSettingsCategorySubmit(event) {
   addCategoryFromInput(elements.settingsNewCategoryInput);
 }
 
+function handleSettingsPaletteClick(event) {
+  const button = event.target.closest("[data-palette-id]");
+  if (!button) return;
+
+  const palette = familyPalettePresets.find((item) => item.id === button.dataset.paletteId);
+  if (!palette) return;
+
+  state.familyVisuals = Object.fromEntries(
+    state.families.map((family, index) => [family.id, normalizeFamilyVisual(palette.colors[index % palette.colors.length])]),
+  );
+  syncFamilyVisualRows();
+  render({ animateFinancialChanges: true });
+  queueCloudSettingsSync();
+  showToast({ message: `已套用「${palette.name}」` });
+}
+
+function handleSettingsFamilyColorClick(event) {
+  const button = event.target.closest("[data-family-color]");
+  if (!button) return;
+
+  const familyId = normalizePayerId(button.dataset.familyColor);
+  const visual = getFamilyColorChoices()[Number(button.dataset.colorIndex)];
+  if (!familyId || !visual) return;
+
+  state.familyVisuals = {
+    ...normalizeFamilyVisuals(state.familyVisuals, state.families),
+    [familyId]: normalizeFamilyVisual(visual),
+  };
+  syncFamilyVisualRows();
+  render({ animateFinancialChanges: true });
+  queueCloudSettingsSync();
+  showToast({ message: `已更新${getFamilyName(familyId)}颜色` });
+}
+
 function addCategoryFromInput(input) {
   const category = input.value.trim();
   if (!category) return;
@@ -3024,6 +3379,8 @@ function createLedgerWithOptions({ name, inheritSettings = true }) {
   const ledger = createEmptyLedger(name);
   if (inheritSettings) {
     ledger.familyMembers = normalizeFamilyMembers(state.familyMembers);
+    ledger.familyVisuals = normalizeFamilyVisuals(state.familyVisuals, state.families);
+    ledger.families = normalizeFamilies(state.families).map((family) => ({ ...family, visual: ledger.familyVisuals[family.id] }));
     ledger.categories = normalizeCategories(state.categories);
     ledger.activeCategory = normalizeCategorySelection(state.activeCategory, ledger.categories);
   }
@@ -4156,6 +4513,8 @@ elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryC
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.settingsFamilyList.addEventListener("click", handleFamilyMemberStep);
+elements.settingsPaletteList.addEventListener("click", handleSettingsPaletteClick);
+elements.settingsFamilyColorList.addEventListener("click", handleSettingsFamilyColorClick);
 elements.familyRoster.addEventListener("click", handleFamilySelection);
 elements.ledgerList.addEventListener("click", handleLedgerClick);
 elements.ledgerList.addEventListener("keydown", handleLedgerKeydown);

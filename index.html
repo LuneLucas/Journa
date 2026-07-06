@@ -16,16 +16,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，更新这里的 v 值。 -->
-    <link rel="stylesheet" href="./css/variables.css">
-    <link rel="stylesheet" href="./css/base.css">
-    <link rel="stylesheet" href="./css/layout.css">
-    <link rel="stylesheet" href="./css/components/buttons.css">
-    <link rel="stylesheet" href="./css/components/forms.css">
-    <link rel="stylesheet" href="./css/components/lists.css">
-    <link rel="stylesheet" href="./css/components/modals.css">
-    <link rel="stylesheet" href="./css/components/toast.css">
-    <link rel="stylesheet" href="./css/animations.css">
-    <link rel="stylesheet" href="./css/misc.css">
+    <link rel="stylesheet" href="./css/variables.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/base.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/layout.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/components/forms.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/components/lists.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/components/modals.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/components/toast.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/animations.css?v=bar-motion-20260706">
+    <link rel="stylesheet" href="./css/misc.css?v=bar-motion-20260706">
     <script>
       // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
       // browsers don't expose the SF Symbols font to web content — even Safari
@@ -221,6 +221,16 @@
               </form>
             </section>
 
+            <section class="settings-panel personalization-panel">
+              <div class="settings-panel-title">
+                <h3>个性化</h3>
+                <span class="readonly-badge">家庭主题色</span>
+              </div>
+              <p class="settings-note">选择一套家庭主题色；需要时可单独微调某个家庭。</p>
+              <div id="settingsPaletteList" class="settings-palette-list" aria-label="预设调色板"></div>
+              <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="逐家调整主题色"></div>
+            </section>
+
             <section class="settings-panel">
               <div class="settings-panel-title">
                 <h3>家庭与规则</h3>
@@ -355,7 +365,7 @@
           <form id="operatorModalForm" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
             <input id="operatorModalInput" type="text" required maxlength="20" placeholder="您的姓名，例如：小明" />
             <div class="confirm-actions" style="margin-top: 4px;">
-              <button class="primary-button" type="submit" style="width: 100%; justify-content: center; height: var(--control-height); border-radius: var(--control-radius);">确认</button>
+              <button class="primary-button operator-confirm-button" type="submit"><span class="button-label">确认</span></button>
             </div>
           </form>
         </div>
@@ -365,6 +375,6 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，更新这里的 v 值。 -->
-    <script src="./app.js?v=mobile-bar-expand-rebound-20260706"></script>
+    <script src="./app.js?v=bar-motion-20260706"></script>
   </body>
 </html>
