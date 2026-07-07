@@ -393,7 +393,32 @@ function normalizeTimestamp(value) {
 }
 
 function getActiveLedger() {
-  const ledger = appState.ledgers.find((item) => item.id === appState.activeLedgerId) || appState.ledgers[0];
+  const shareTokenInUrl = getLedgerTokenFromLocation();
+  
+  let ledger;
+  if (shareTokenInUrl) {
+    ledger = appState.ledgers.find((item) => item.cloudShareToken === shareTokenInUrl);
+  }
+  
+  if (!ledger) {
+    const lastActive = appState.ledgers.find((item) => item.id === appState.activeLedgerId);
+    if (lastActive && (shareTokenInUrl || !lastActive.cloudShareToken)) {
+      ledger = lastActive;
+    }
+  }
+  
+  if (!ledger) {
+    if (!shareTokenInUrl) {
+      ledger = appState.ledgers.find((item) => !item.cloudShareToken);
+      if (!ledger) {
+        ledger = createEmptyLedger("旅行账本");
+        appState.ledgers.push(ledger);
+      }
+    } else {
+      ledger = appState.ledgers[0];
+    }
+  }
+
   appState.activeLedgerId = ledger.id;
   return ledger;
 }
