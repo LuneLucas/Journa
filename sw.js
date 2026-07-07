@@ -1,5 +1,5 @@
-const CACHE_VERSION = "ios-pwa-polish-20260707";
-const CACHE_NAME = `ledger-cache-${CACHE_VERSION}`;
+const APP_VERSION = "journa-allround-polish-20260707";
+const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -44,6 +44,22 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  const shouldPreferNetwork = request.mode === "navigate" || ["script", "style", "worker"].includes(request.destination);
+
+  if (shouldPreferNetwork) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {

@@ -1,9 +1,11 @@
 const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
+const APP_VERSION = "journa-allround-polish-20260707";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 const PUBLIC_APP_URL = "https://lunelucas.github.io/Journa/";
+document.documentElement.dataset.appVersion = APP_VERSION;
 const MOTION_DELAYS = {
   ledgerSettle: 1783,
   ledgerClearBase: 580,
@@ -289,6 +291,7 @@ let syncLampTimer = 0;
 let cloudReady = false;
 let pendingSettingsSync = 0;
 let confirmResolve = null;
+let confirmCloseTimer = 0;
 let settingsReturnFocus = null;
 let ledgerManagementReturnFocus = null;
 let confirmReturnFocus = null;
@@ -759,6 +762,22 @@ function isCloudLedgerActive() {
   return isCloudConfigured() && Boolean(cloudState.shareToken);
 }
 
+function getSyncSummary() {
+  if (!isCloudConfigured()) {
+    return { state: "local", label: "本地账本", detail: "未启用云同步", pending: 0, failed: 0 };
+  }
+  if (!isCloudLedgerActive()) {
+    return { state: "local-ready", label: "本地账本", detail: "可创建云账本", pending: 0, failed: 0 };
+  }
+  const pending = state.expenses.filter((expense) => normalizeExpenseSyncState(expense.syncState) === "pending").length;
+  const failed = state.expenses.filter((expense) => normalizeExpenseSyncState(expense.syncState) === "failed").length;
+  if (cloudBusy) return { state: "syncing", label: "云账本同步中", detail: "正在保存或拉取最新数据", pending, failed };
+  if (failed) return { state: "failed", label: "同步失败待重试", detail: `${failed} 笔账单稍后会自动重试`, pending, failed };
+  if (pending) return { state: "pending", label: "待同步", detail: `${pending} 笔账单等待网络恢复`, pending, failed };
+  const pulledAt = cloudState.lastPulledAt ? `上次同步 ${formatUpdatedAt(cloudState.lastPulledAt)}` : "云端已启用";
+  return { state: "synced", label: "云账本已同步", detail: pulledAt, pending, failed };
+}
+
 async function supabaseRpc(functionName, payload = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
     method: "POST",
@@ -961,7 +980,7 @@ async function copyShareLink() {
   setLedgerTokenHash(url, cloudState.shareToken);
   await navigator.clipboard.writeText(url.toString());
   const isLocalUrl = ["localhost", "127.0.0.1", ""].includes(url.hostname);
-  showToast({ message: isLocalUrl ? "已复制本机测试链接，发布后再发给家人" : "邀请链接已复制" });
+  showToast({ message: isLocalUrl ? "已复制本机测试链接，请不要直接发给家人" : "邀请链接已复制，可发给家人一起记账" });
 }
 
 function getShareUrl() {
@@ -1112,18 +1131,21 @@ function updateCloudControls(forcedStatus = "") {
   const configured = isCloudConfigured();
   const active = isCloudLedgerActive();
   const syncing = active && cloudBusy && !forcedStatus;
+  const syncSummary = getSyncSummary();
   elements.syncStatus.classList.toggle("is-cloud", active && !forcedStatus);
   elements.syncStatus.classList.toggle("is-error", Boolean(forcedStatus));
+  elements.syncStatus.classList.toggle("is-pending", !forcedStatus && syncSummary.state === "pending");
+  elements.syncStatus.classList.toggle("is-failed", !forcedStatus && syncSummary.state === "failed");
   elements.syncStatus.classList.toggle("is-syncing", syncing);
   if (syncStatusWasSyncing && !syncing && active && !forcedStatus) playSyncLampIgnite();
   syncStatusWasSyncing = syncing;
-  elements.syncStatus.textContent = forcedStatus || (active ? (cloudBusy ? "云账本同步中" : "云账本") : configured ? "本地账本" : "本地账本");
+  elements.syncStatus.textContent = forcedStatus || syncSummary.label;
   elements.createCloudLedgerButton.hidden = active;
   elements.createCloudLedgerButton.disabled = cloudBusy;
   elements.copyShareLinkButton.hidden = !active;
   elements.copyShareLinkButton.disabled = cloudBusy;
   if (elements.storageModeLabel) {
-    elements.storageModeLabel.textContent = active ? "Supabase 云端" : "当前浏览器";
+    elements.storageModeLabel.textContent = active ? syncSummary.label : configured ? "当前浏览器" : "当前浏览器";
   }
 }
 
@@ -1468,9 +1490,10 @@ function spawnBarMorphGlow(rect, toData, duration) {
     total = duration;
     frames = [
       { offset: 0, opacity: 0, transform: "scale(0.68)" },
-      { offset: 0.24, opacity: 0.12, transform: "scale(0.86)" },
-      { offset: 0.58, opacity: 0.28, transform: "scale(1.05)" },
-      { offset: 0.82, opacity: 0.34, transform: "scale(1.14)" },
+      { offset: 0.24, opacity: 0.10, transform: "scale(0.86)" },
+      { offset: 0.58, opacity: 0.24, transform: "scale(1.05)" },
+      { offset: 0.78, opacity: 0.18, transform: "scale(1.12)" },
+      { offset: 0.92, opacity: 0, transform: "scale(1.22)" },
       { offset: 1, opacity: 0, transform: "scale(1.30)" },
     ];
   } else {
@@ -2114,6 +2137,7 @@ function updateAmountFieldForSplitMode() {
 function renderSettings() {
   const summary = calculateSummary();
   const usedCategories = new Set(state.expenses.map((expense) => expense.category));
+  const syncSummary = getSyncSummary();
   elements.currentLedgerNameInput.value = state.name;
   elements.settingsOperatorInput.value = localStorage.getItem("travel-ledger-operator-name") || "";
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
@@ -2175,6 +2199,14 @@ function renderSettings() {
     <div class="settings-data-item">
       <span>类别数量</span>
       <strong>${state.categories.length}</strong>
+    </div>
+    <div class="settings-data-item is-${escapeHtml(syncSummary.state)}">
+      <span>同步状态</span>
+      <strong>${escapeHtml(syncSummary.label)}</strong>
+    </div>
+    <div class="settings-data-item">
+      <span>数据位置</span>
+      <strong>${escapeHtml(syncSummary.detail)}</strong>
     </div>
   `;
 }
@@ -2307,14 +2339,15 @@ function familyVisualSwatchStyle(visual) {
 }
 
 function renderCurrentLedgerSummary(summary) {
-  const status = state.cloudShareToken ? "云账本" : "本地账本";
+  const syncSummary = getSyncSummary();
+  const status = state.cloudShareToken ? syncSummary.label : "本地账本";
   return `
     <div class="current-ledger-card">
       <div>
         <span>${escapeHtml(status)}</span>
         <strong>${escapeHtml(state.name)}</strong>
       </div>
-      <small>${state.expenses.length} 笔 · ${formatMoney(summary.totalCents)} · ${summary.totalMembers} 人</small>
+      <small>${state.expenses.length} 笔 · ${formatMoney(summary.totalCents)} · ${summary.totalMembers} 人 · ${escapeHtml(syncSummary.detail)}</small>
     </div>
   `;
 }
@@ -2452,8 +2485,19 @@ function playInitialTotalReveal(targetText) {
   elements.totalAmount.classList.add("is-scrambling");
   elements.totalAmount.textContent = targetChars[0] || "";
 
+  let scrambleFrameCount = 0;
+
   const renderFrame = (now) => {
     const elapsed = Math.max(0, now - startedAt);
+    const isFinalFrame = elapsed >= duration || totalRevealTargetText !== targetText;
+
+    /* 隔帧跳过：字符切换本身有节奏间隔，30fps 更新肉眼不可辨，减半 textContent 重排开销 */
+    scrambleFrameCount += 1;
+    if (!isFinalFrame && scrambleFrameCount % 2 !== 0) {
+      totalRevealFrameId = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
     const visibleLength = Math.min(targetChars.length, Math.max(1, Math.floor(elapsed / growEvery) + 1));
     const nextText = targetChars
       .slice(0, visibleLength)
@@ -2471,7 +2515,7 @@ function playInitialTotalReveal(targetText) {
 
     elements.totalAmount.textContent = nextText;
 
-    if (elapsed < duration && totalRevealTargetText === targetText) {
+    if (!isFinalFrame) {
       totalRevealFrameId = window.requestAnimationFrame(renderFrame);
       return;
     }
@@ -4006,6 +4050,9 @@ function closeLedgerManager() {
 
 function showConfirmDialog({ eyebrow = "请确认", title, message, confirmLabel = "确认", danger = false }) {
   if (confirmResolve) closeConfirmDialog(false);
+  /* 若上一个对话框仍在退场动画中，立即复位以复用视图 */
+  window.clearTimeout(confirmCloseTimer);
+  elements.confirmView.classList.remove("is-closing");
   confirmReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   elements.confirmEyebrow.textContent = eyebrow;
@@ -4023,14 +4070,24 @@ function showConfirmDialog({ eyebrow = "请确认", title, message, confirmLabel
 }
 
 function closeConfirmDialog(result = false) {
-  if (elements.confirmView.hidden) return;
-  elements.confirmView.hidden = true;
+  if (elements.confirmView.hidden || elements.confirmView.classList.contains("is-closing")) return;
   document.body.classList.remove("confirm-open");
   restoreFocus(confirmReturnFocus);
   confirmReturnFocus = null;
   const resolve = confirmResolve;
   confirmResolve = null;
   resolve?.(result);
+
+  /* 结果已即时回调，视图延迟隐藏走退场动画；减少动态偏好时直接隐藏 */
+  if (prefersReducedMotion()) {
+    elements.confirmView.hidden = true;
+    return;
+  }
+  elements.confirmView.classList.add("is-closing");
+  confirmCloseTimer = window.setTimeout(() => {
+    elements.confirmView.classList.remove("is-closing");
+    elements.confirmView.hidden = true;
+  }, getCssDurationMs("--motion-fast", 401) + 60);
 }
 
 function restoreFocus(element) {
@@ -4056,9 +4113,18 @@ function showOperatorModal() {
 }
 
 function closeOperatorModal() {
-  if (!elements.operatorModalView) return;
-  elements.operatorModalView.hidden = true;
+  const view = elements.operatorModalView;
+  if (!view || view.hidden || view.classList.contains("is-closing")) return;
   document.body.classList.remove("confirm-open");
+  if (prefersReducedMotion()) {
+    view.hidden = true;
+    return;
+  }
+  view.classList.add("is-closing");
+  window.setTimeout(() => {
+    view.classList.remove("is-closing");
+    view.hidden = true;
+  }, getCssDurationMs("--motion-fast", 401) + 60);
 }
 
 function handleOperatorModalSubmit(event) {
@@ -4249,7 +4315,7 @@ function buildSoftGradientStops(segments) {
     ];
   }
 
-  const stops = [`${colorWithAlpha(getFamilyVisual(segments[0].family.id).gradient, 0.54)} 0%`];
+  const stops = [`${colorWithAlpha(getFamilyVisual(segments[0].family.id).gradient, 0.46)} 0%`];
 
   for (let index = 0; index < segments.length - 1; index += 1) {
     const current = segments[index];
@@ -4257,20 +4323,20 @@ function buildSoftGradientStops(segments) {
     const currentColor = getFamilyVisual(current.family.id).gradient;
     const nextColor = getFamilyVisual(next.family.id).gradient;
     const boundary = current.end;
-    const softWidth = Math.min(14, Math.max(6, Math.min(current.end - current.start, next.end - next.start) * 0.34));
+    const softWidth = Math.min(24, Math.max(12, Math.min(current.end - current.start, next.end - next.start) * 0.46));
     const left = Math.max(current.start, boundary - softWidth);
     const right = Math.min(next.end, boundary + softWidth);
     const mixed = mixHexColors(currentColor, nextColor, 0.5);
 
     stops.push(
-      `${colorWithAlpha(currentColor, 0.54)} ${formatPercent(left)}`,
-      `${colorWithAlpha(mixed, 0.58)} ${formatPercent(boundary)}`,
-      `${colorWithAlpha(nextColor, 0.54)} ${formatPercent(right)}`,
+      `${colorWithAlpha(currentColor, 0.44)} ${formatPercent(left)}`,
+      `${colorWithAlpha(mixed, 0.50)} ${formatPercent(boundary)}`,
+      `${colorWithAlpha(nextColor, 0.44)} ${formatPercent(right)}`,
     );
   }
 
   const finalColor = getFamilyVisual(segments[segments.length - 1].family.id).gradient;
-  stops.push(`${colorWithAlpha(finalColor, 0.48)} 100%`);
+  stops.push(`${colorWithAlpha(finalColor, 0.40)} 100%`);
   return stops;
 }
 
@@ -4279,8 +4345,8 @@ function buildGradientAura(segments) {
     .map((segment, index) => {
       const center = segment.start + (segment.end - segment.start) / 2;
       const y = index % 2 === 0 ? 16 : 52;
-      const color = colorWithAlpha(getFamilyVisual(segment.family.id).gradient, 0.32);
-      return `radial-gradient(circle at ${formatPercent(center)} ${y}%, ${color}, transparent 48%)`;
+      const color = colorWithAlpha(getFamilyVisual(segment.family.id).gradient, 0.24);
+      return `radial-gradient(ellipse at ${formatPercent(center)} ${y}%, ${color}, transparent 58%)`;
     })
     .join(", ");
 }
@@ -4621,6 +4687,20 @@ function hasUnsavedEditChanges() {
   return JSON.stringify(captureExpenseFormSnapshot()) !== JSON.stringify(editFormSnapshot);
 }
 
+/* 退场：先播 toast-exit 再移除节点；减少动态偏好或节点已在离场时直接清空 */
+function dismissToast() {
+  const toast = elements.toastHost.querySelector(".toast");
+  if (!toast || prefersReducedMotion()) {
+    elements.toastHost.innerHTML = "";
+    return;
+  }
+  if (toast.classList.contains("is-leaving")) return;
+  toast.classList.add("is-leaving");
+  window.setTimeout(() => {
+    if (toast.isConnected) toast.remove();
+  }, 340);
+}
+
 function showToast({ message, actionLabel = "", onAction = null }) {
   window.clearTimeout(toastTimer);
   elements.toastHost.innerHTML = `
@@ -4635,14 +4715,14 @@ function showToast({ message, actionLabel = "", onAction = null }) {
     "click",
     () => {
       window.clearTimeout(toastTimer);
-      elements.toastHost.innerHTML = "";
+      dismissToast();
       onAction?.();
     },
     { once: true },
   );
 
   toastTimer = window.setTimeout(() => {
-    elements.toastHost.innerHTML = "";
+    dismissToast();
   }, actionLabel ? MOTION_DELAYS.toastWithAction : MOTION_DELAYS.toast);
 }
 
@@ -5044,51 +5124,49 @@ function spawnButtonParticles(btn, visual, themedGlow) {
   }
 }
 
+/* 滚动折叠通用逻辑：RAF 节流 + 滞回阈值，避免临界点抖动闪烁。
+   scrollTarget 提供 scrollTop 的来源；window 场景传 window 本身（读 window.scrollY）。 */
+function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThreshold }) {
+  if (!scrollTarget || !collapseEl) return;
+  let collapsed = false;
+  let scrollFrame = 0;
+  const readScrollTop = () =>
+    scrollTarget === window ? window.scrollY : scrollTarget.scrollTop;
+  const sync = () => {
+    scrollFrame = 0;
+    const shouldCollapse = collapsed ? readScrollTop() > offThreshold : readScrollTop() > onThreshold;
+    if (shouldCollapse === collapsed) return;
+    collapsed = shouldCollapse;
+    collapseEl.classList.toggle("is-collapsed", collapsed);
+  };
+  const schedule = () => {
+    if (scrollFrame) return;
+    scrollFrame = window.requestAnimationFrame(sync);
+  };
+  scrollTarget.addEventListener("scroll", schedule, { passive: true });
+  sync();
+}
+
 function setupScrollCollapse() {
   // 主页面头部滚动监听
-  const syncScroll = () => {
-    const header = document.querySelector(".app-header");
-    if (!header) return;
-    if (window.scrollY > 40) {
-      header.classList.add("is-collapsed");
-    } else {
-      header.classList.remove("is-collapsed");
-    }
-  };
-  window.addEventListener("scroll", syncScroll, { passive: true });
-  syncScroll();
+  attachCollapseOnScroll(window, document.querySelector(".app-header"), {
+    onThreshold: 56,
+    offThreshold: 24
+  });
 
   // 设置侧边栏滚动监听
   const settingsDrawer = document.querySelector(".settings-drawer");
-  if (settingsDrawer) {
-    const syncSettingsScroll = () => {
-      const hero = settingsDrawer.querySelector(".settings-hero");
-      if (!hero) return;
-      if (settingsDrawer.scrollTop > 30) {
-        hero.classList.add("is-collapsed");
-      } else {
-        hero.classList.remove("is-collapsed");
-      }
-    };
-    settingsDrawer.addEventListener("scroll", syncSettingsScroll, { passive: true });
-    syncSettingsScroll();
-  }
+  attachCollapseOnScroll(settingsDrawer, settingsDrawer?.querySelector(".settings-hero"), {
+    onThreshold: 30,
+    offThreshold: 30
+  });
 
   // 账本管理侧边栏滚动监听
   const ledgerDrawer = document.querySelector(".ledger-management-drawer");
-  if (ledgerDrawer) {
-    const syncLedgerScroll = () => {
-      const hero = ledgerDrawer.querySelector(".ledger-management-hero");
-      if (!hero) return;
-      if (ledgerDrawer.scrollTop > 30) {
-        hero.classList.add("is-collapsed");
-      } else {
-        hero.classList.remove("is-collapsed");
-      }
-    };
-    ledgerDrawer.addEventListener("scroll", syncLedgerScroll, { passive: true });
-    syncLedgerScroll();
-  }
+  attachCollapseOnScroll(ledgerDrawer, ledgerDrawer?.querySelector(".ledger-management-hero"), {
+    onThreshold: 30,
+    offThreshold: 30
+  });
 }
 
 function setupStandaloneMode() {

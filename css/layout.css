@@ -31,7 +31,6 @@
   transition:
     border-radius var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring);
-  will-change: height;
 }
 
 .entry-panel.is-resizing {

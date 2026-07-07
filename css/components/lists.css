@@ -31,7 +31,7 @@
     color-mix(in srgb, var(--family-color) 5%, transparent);
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
   padding: 0 16px;
-  font-size: 0.84rem;
+  font-size: var(--label-md);
   font-weight: var(--fw-bold);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.28),
@@ -99,12 +99,10 @@
 
 .family-tag.is-activating {
   animation: choice-select-pop var(--selection-motion) var(--settle) both;
-  will-change: transform, filter;
 }
 
 .family-tag.is-deactivating {
   animation: choice-release-soft var(--selection-release-motion) var(--settle) both;
-  will-change: transform, filter;
 }
 
 .family-tag.is-activating::before {
@@ -178,7 +176,7 @@
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62)),
     color-mix(in srgb, var(--family-color) 7%, rgba(255, 255, 255, 0.68));
-  padding: 8px 9px 8px 12px;
+  padding: 8px 12px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.46),
     0 10px 28px rgba(22, 26, 30, 0.06);
@@ -267,6 +265,11 @@
 .ledger-item:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.84);
+}
+
+.ledger-item:active {
+  transform: scale(0.98);
+  transition-duration: var(--press-motion);
 }
 
 .ledger-item:focus-visible {

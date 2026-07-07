@@ -75,6 +75,7 @@
   --glass-border: rgba(255, 255, 255, 0.4);
   --glass-border-strong: rgba(255, 255, 255, 0.6);
   --glass-shadow: 0 8px 32px 0 rgba(22, 26, 30, 0.08);
+  --glass-blur-strong: blur(20px) saturate(190%);
 
   --surface: var(--glass-bg);
   --surface-strong: var(--glass-bg-strong);
@@ -96,6 +97,8 @@
   --family-text: #557965;
   --family-soft: rgba(127, 160, 143, 0.64);
   --family-wash: rgba(127, 160, 143, 0.18);
+  /* 家庭标签未选中态文字色：亮/暗主题共用同一组关键帧，仅此基准色随主题覆盖 */
+  --family-label-rest: color-mix(in srgb, var(--family-text) 58%, var(--muted));
   --selected-family-color: rgba(0, 0, 0, 0);
   --selected-family-text: var(--ink);
   --selected-family-soft: rgba(0, 0, 0, 0);
@@ -103,23 +106,23 @@
   --selected-family-glow: rgba(0, 0, 0, 0);
   --total-gradient: linear-gradient(
     135deg,
-    rgba(169, 206, 181, 0.56) 0%,
-    rgba(169, 206, 181, 0.56) 33.33%,
-    rgba(185, 201, 230, 0.56) 33.33%,
-    rgba(185, 201, 230, 0.56) 66.66%,
-    rgba(239, 194, 191, 0.54) 66.66%,
-    rgba(239, 194, 191, 0.54) 100%
+    rgba(169, 206, 181, 0.48) 0%,
+    rgba(169, 206, 181, 0.48) 33.33%,
+    rgba(185, 201, 230, 0.48) 33.33%,
+    rgba(185, 201, 230, 0.48) 66.66%,
+    rgba(239, 194, 191, 0.46) 66.66%,
+    rgba(239, 194, 191, 0.46) 100%
   );
   --total-aura:
-    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.40), transparent 30%),
-    radial-gradient(circle at 22% 28%, rgba(169, 206, 181, 0.34), transparent 44%),
-    radial-gradient(circle at 56% 4%, rgba(185, 201, 230, 0.32), transparent 48%),
-    radial-gradient(circle at 88% 42%, rgba(239, 194, 191, 0.32), transparent 50%);
-  --total-glow-left: rgba(169, 206, 181, 0.42);
-  --total-glow-right: rgba(239, 194, 191, 0.42);
-  --total-edge-left: rgba(169, 206, 181, 0.36);
-  --total-edge-right: rgba(239, 194, 191, 0.36);
-  --total-edge-soft: rgba(204, 197, 181, 0.22);
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.34), transparent 30%),
+    radial-gradient(circle at 22% 28%, rgba(169, 206, 181, 0.29), transparent 44%),
+    radial-gradient(circle at 56% 4%, rgba(185, 201, 230, 0.27), transparent 48%),
+    radial-gradient(circle at 88% 42%, rgba(239, 194, 191, 0.27), transparent 50%);
+  --total-glow-left: rgba(169, 206, 181, 0.36);
+  --total-glow-right: rgba(239, 194, 191, 0.36);
+  --total-edge-left: rgba(169, 206, 181, 0.31);
+  --total-edge-right: rgba(239, 194, 191, 0.31);
+  --total-edge-soft: rgba(204, 197, 181, 0.19);
   --total-text-color: rgba(37, 48, 45, 0.86);
   --total-label-color: rgba(37, 48, 45, 0.72); /* 对比度 ≥ 4.5:1 */
   --category-bg: #e5e2d8;
@@ -128,23 +131,26 @@
   --category-gradient: #d5cfbd;
   --category-summary-gradient: linear-gradient(
     135deg,
-    rgba(185, 216, 204, 0.52) 0%,
-    rgba(185, 216, 204, 0.52) 33.33%,
-    rgba(193, 205, 226, 0.52) 33.33%,
-    rgba(193, 205, 226, 0.52) 66.66%,
-    rgba(230, 199, 170, 0.48) 66.66%,
-    rgba(230, 199, 170, 0.48) 100%
+    rgba(185, 216, 204, 0.44) 0%,
+    rgba(185, 216, 204, 0.44) 33.33%,
+    rgba(193, 205, 226, 0.44) 33.33%,
+    rgba(193, 205, 226, 0.44) 66.66%,
+    rgba(230, 199, 170, 0.38) 66.66%,
+    rgba(230, 199, 170, 0.38) 100%
   );
   --category-summary-aura:
-    radial-gradient(circle at 16% 18%, rgba(185, 216, 204, 0.30), transparent 42%),
-    radial-gradient(circle at 52% 8%, rgba(193, 205, 226, 0.30), transparent 44%),
-    radial-gradient(circle at 86% 42%, rgba(230, 199, 170, 0.30), transparent 46%);
-  --category-glow-left: rgba(185, 216, 204, 0.46);
-  --category-glow-right: rgba(230, 199, 170, 0.46);
+    radial-gradient(circle at 16% 18%, rgba(185, 216, 204, 0.25), transparent 42%),
+    radial-gradient(circle at 52% 8%, rgba(193, 205, 226, 0.25), transparent 44%),
+    radial-gradient(circle at 86% 42%, rgba(230, 199, 170, 0.24), transparent 46%);
+  --category-glow-left: rgba(185, 216, 204, 0.39);
+  --category-glow-right: rgba(230, 199, 170, 0.39);
   /* 金额字号三级阶梯 */
   --num-lg: clamp(2.45rem, 6vw, 4.6rem);   /* 总支出主数字（保留英雄字号，断点精调见媒体查询） */
   --num-md: clamp(1.15rem, 3vw, 1.42rem);  /* 列表/平账金额 */
   --num-sm: 0.95rem;                        /* 次要数字 */
+  /* 标签字号两档：小号用于 eyebrow/辅助说明，中号统一 chip/label/metric span（原 0.84rem 并入） */
+  --label-sm: 0.82rem;
+  --label-md: 0.86rem;
   --font-body:
     system-ui,
     "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -178,6 +184,7 @@
   --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-pill: 999px;
+  --radius-hero: 34px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
   --control-height: 46px;
   --control-radius: var(--radius-lg);
   --control-radius-compact: var(--radius-md);
@@ -203,6 +210,8 @@
   /* liquid-glass 节奏曲线：quick=光快速聚拢；bloom=y>1 单段过冲再回稳（用于亮度与光晕） */
   --lamp-quick: cubic-bezier(0.20, 0.70, 0.30, 1);
   --lamp-bloom: cubic-bezier(0.26, 1.85, 0.44, 1);
+  /* 标题类柔和缓出：h1 折叠缩放等一次性位移动画共用 */
+  --ease-out-soft: cubic-bezier(0.20, 0.70, 0.24, 1);
   /* 触屏按压响应时长：按下即时压缩，松开走各自基础过渡回弹 */
   --press-motion: 90ms;
   --amount-motion: 580ms;
@@ -214,6 +223,12 @@
   --shadow-sm: 0 10px 26px rgba(22, 26, 30, 0.06);
   --shadow-md: 0 14px 44px rgba(22, 26, 30, 0.08);
   --shadow-lg: 0 24px 80px rgba(22, 26, 30, 0.12);
+  /* 阴影合成件：磨砂高光两档 + 常用卡片/英雄阴影组合 */
+  --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --inset-highlight-strong: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --shadow-chip: var(--inset-highlight), 0 8px 22px rgba(22, 26, 30, 0.07);
+  --shadow-card-lift: 0 12px 34px rgba(22, 26, 30, 0.08);
+  --shadow-hero: 0 34px 92px rgba(22, 26, 30, 0.14);
   /* 字重语义：正文继承系统默认，强调只用这三档 */
   --fw-bold: 700;
   --fw-heavy: 800;

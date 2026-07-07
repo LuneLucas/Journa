@@ -117,6 +117,17 @@
   animation: settings-drawer-exit var(--motion) var(--settle) both;
 }
 
+/* 确认对话框退场：与两个抽屉一致的 is-closing 流程（JS 延迟置 hidden） */
+.confirm-view.is-closing .confirm-backdrop {
+  animation: settings-backdrop-exit var(--motion-fast) var(--settle) both;
+  pointer-events: none;
+}
+
+.confirm-view.is-closing .confirm-dialog {
+  animation: confirm-dialog-exit var(--motion-fast) var(--settle) both;
+  pointer-events: none;
+}
+
 body.settings-open,
 body.ledger-management-open {
   overflow: hidden;
