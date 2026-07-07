@@ -52,6 +52,31 @@
   initial-value: rgba(0, 0, 0, 0);
 }
 
+/* 同步状态灯：注册为 <color> 使灯色/辉光/过曝核在状态切换时可插值渐变 */
+@property --status-dot {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f0c96f;
+}
+
+@property --status-dot-glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(218, 164, 65, 0.64);
+}
+
+@property --status-dot-core {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.8);
+}
+
+@property --status-dot-bloom {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0);
+}
+
 /* 类别横滚两侧渐隐宽度：注册为 <length> 才能被 transition 平滑淡入淡出 */
 @property --cat-fade-l {
   syntax: "<length>";
@@ -178,14 +203,14 @@
   --button-secondary-text: var(--brand-primary-strong);
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
-  /* 圆角阶梯：12px 基准递增；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  /* 圆角阶梯：移动端为主，整体加大更顺滑；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
+  --radius-sm: 23px;
+  --radius-md: 30px;
+  --radius-lg: 37px;
+  --radius-xl: 47px;
   --radius-pill: 999px;
-  --radius-hero: 34px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
-  --control-height: 46px;
+  --radius-hero: 56px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
+  --control-height: 60px;
   --control-radius: var(--radius-lg);
   --control-radius-compact: var(--radius-md);
   --control-radius-large: var(--radius-lg);
@@ -223,9 +248,12 @@
   --shadow-sm: 0 10px 26px rgba(22, 26, 30, 0.06);
   --shadow-md: 0 14px 44px rgba(22, 26, 30, 0.08);
   --shadow-lg: 0 24px 80px rgba(22, 26, 30, 0.12);
-  /* 阴影合成件：磨砂高光两档 + 常用卡片/英雄阴影组合 */
-  --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.62);
-  --inset-highlight-strong: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  /* 阴影合成件：磨砂高光两档 + 常用卡片/英雄阴影组合（1px 模糊让边光柔和，不是刻线） */
+  --inset-highlight: inset 0 1px 1px rgba(255, 255, 255, 0.52);
+  --inset-highlight-strong: inset 0 1px 1px rgba(255, 255, 255, 0.66);
+  /* 自然玻璃边光对：顶部亮边(微模糊) + 底部接触暗边，组合使用替代不透明硬白线 */
+  --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.50);
+  --edge-shade: inset 0 -1px 1px rgba(22, 26, 30, 0.05);
   --shadow-chip: var(--inset-highlight), 0 8px 22px rgba(22, 26, 30, 0.07);
   --shadow-card-lift: 0 12px 34px rgba(22, 26, 30, 0.08);
   --shadow-hero: 0 34px 92px rgba(22, 26, 30, 0.14);
@@ -250,6 +278,70 @@
       1.04, 1.089, 1.1075, 1.1046, 1.0888, 1.0671, 1.0447, 1.0248, 1.0091,
       0.9982, 0.9916, 0.9887, 0.9884, 0.9897, 0.9919, 0.9944, 0.9967, 0.9985,
       0.9999, 1);
+  }
+}
+
+/* ── 连续曲率圆角（iOS 式顺滑圆角）──
+   Chrome 139+ 支持 corner-shape；iOS Safari 未支持时整块跳过，回退普通圆弧，零回归。
+   squircle 同半径下视觉更"紧"，圆角阶梯同步放大 12~15% 补偿。
+   结构：全局开 squircle，再把所有胶囊(--radius-pill)与正圆(50%)显式豁免回 round——
+   胶囊+squircle 端帽会变方，且提交按钮/提交栏参与 pill 形变动画必须保持圆弧。 */
+@supports (corner-shape: squircle) {
+  :root {
+    --radius-sm: 26px;
+    --radius-md: 34px;
+    --radius-lg: 42px;
+    --radius-xl: 53px;
+    --radius-hero: 63px;
+  }
+
+  *,
+  *::before,
+  *::after {
+    corner-shape: squircle;
+  }
+
+  :is(
+    .icon-button, .chip-icon-button, .chip, .category-pill,
+    .family-tag, .split-family-chip, .toast, .amount-auto-badge,
+    .family-color-choice, .family-color-current,
+    .ledger-filter-summary, .ledger-sync-badge, .ledger-token,
+    .readonly-badge, .palette-swatch, .settlement-flow, .sync-status,
+    .mobile-panel-switch, .mobile-panel-tab, .mobile-panel-indicator,
+    .mobile-submit-bar, .mobile-submit-button, .bar-morph-glow
+  ),
+  :is(
+    .icon-button, .chip-icon-button, .chip, .category-pill,
+    .family-tag, .split-family-chip, .toast, .amount-auto-badge,
+    .family-color-choice, .family-color-current,
+    .ledger-filter-summary, .ledger-sync-badge, .ledger-token,
+    .readonly-badge, .palette-swatch, .settlement-flow, .sync-status,
+    .mobile-panel-switch, .mobile-panel-tab, .mobile-panel-indicator,
+    .mobile-submit-bar, .mobile-submit-button, .bar-morph-glow
+  )::before,
+  :is(
+    .icon-button, .chip-icon-button, .chip, .category-pill,
+    .family-tag, .split-family-chip, .toast, .amount-auto-badge,
+    .family-color-choice, .family-color-current,
+    .ledger-filter-summary, .ledger-sync-badge, .ledger-token,
+    .readonly-badge, .palette-swatch, .settlement-flow, .sync-status,
+    .mobile-panel-switch, .mobile-panel-tab, .mobile-panel-indicator,
+    .mobile-submit-bar, .mobile-submit-button, .bar-morph-glow
+  )::after,
+  .ledger-controls select,
+  .family-color-details summary::after,
+  .settings-actions-details summary::after,
+  .family-row > span::before,
+  .ledger-day-group::before,
+  .ledger-day-heading::before,
+  .ledger-sync-state::before,
+  .metric.primary::before,
+  .metric.primary::after,
+  .category-summary-block::before,
+  .category-summary-block::after,
+  .ledger-item::before,
+  .ledger-item::after {
+    corner-shape: round;
   }
 }
 

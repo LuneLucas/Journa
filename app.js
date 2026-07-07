@@ -143,6 +143,7 @@ const elements = {
   settingsView: document.querySelector("#settingsView"),
   currentLedgerTitle: document.querySelector("#currentLedgerTitle"),
   syncStatus: document.querySelector("#syncStatus"),
+  syncStatusLabel: document.querySelector("#syncStatusLabel"),
   createCloudLedgerButton: document.querySelector("#createCloudLedgerButton"),
   copyShareLinkButton: document.querySelector("#copyShareLinkButton"),
   openSettingsButton: document.querySelector("#openSettingsButton"),
@@ -288,6 +289,10 @@ const bootHadLocalData = (() => {
 let cloudBusy = false;
 let syncStatusWasSyncing = false;
 let syncLampTimer = 0;
+/* 同步中至少展示时长：快速同步不足此时长时挂起收尾渲染，避免状态“闪一下” */
+const SYNC_MIN_VISIBLE_MS = 800;
+let syncShownAt = 0;
+let syncHoldTimer = 0;
 let cloudReady = false;
 let pendingSettingsSync = 0;
 let confirmResolve = null;
@@ -1128,6 +1133,39 @@ async function clearCloudLedger() {
 }
 
 function updateCloudControls(forcedStatus = "") {
+  const syncing = isCloudLedgerActive() && cloudBusy && !forcedStatus;
+  if (forcedStatus) {
+    /* 错误态直出：不参与最短展示，并取消挂起的收尾渲染以免稍后覆盖错误提示 */
+    window.clearTimeout(syncHoldTimer);
+    syncHoldTimer = 0;
+    renderCloudControls(forcedStatus);
+    return;
+  }
+  if (syncing) {
+    window.clearTimeout(syncHoldTimer);
+    syncHoldTimer = 0;
+    /* 仅在真正的进入边沿记时；hold 期间再次开始同步不重置，灯持续亮 */
+    if (!syncStatusWasSyncing) syncShownAt = Date.now();
+    renderCloudControls("");
+    return;
+  }
+  if (syncStatusWasSyncing && !prefersReducedMotion()) {
+    const remain = SYNC_MIN_VISIBLE_MS - (Date.now() - syncShownAt);
+    if (remain > 0) {
+      window.clearTimeout(syncHoldTimer);
+      syncHoldTimer = window.setTimeout(() => {
+        syncHoldTimer = 0;
+        renderCloudControls("");
+      }, remain);
+      return;
+    }
+  }
+  window.clearTimeout(syncHoldTimer);
+  syncHoldTimer = 0;
+  renderCloudControls("");
+}
+
+function renderCloudControls(forcedStatus = "") {
   const configured = isCloudConfigured();
   const active = isCloudLedgerActive();
   const syncing = active && cloudBusy && !forcedStatus;
@@ -1139,7 +1177,15 @@ function updateCloudControls(forcedStatus = "") {
   elements.syncStatus.classList.toggle("is-syncing", syncing);
   if (syncStatusWasSyncing && !syncing && active && !forcedStatus) playSyncLampIgnite();
   syncStatusWasSyncing = syncing;
-  elements.syncStatus.textContent = forcedStatus || syncSummary.label;
+  const nextLabel = forcedStatus || syncSummary.label;
+  if (elements.syncStatusLabel.textContent !== nextLabel) {
+    elements.syncStatusLabel.textContent = nextLabel;
+    if (!prefersReducedMotion()) {
+      elements.syncStatusLabel.classList.remove("is-label-swap");
+      void elements.syncStatusLabel.offsetWidth;
+      elements.syncStatusLabel.classList.add("is-label-swap");
+    }
+  }
   elements.createCloudLedgerButton.hidden = active;
   elements.createCloudLedgerButton.disabled = cloudBusy;
   elements.copyShareLinkButton.hidden = !active;

@@ -346,7 +346,7 @@
     padding: 4px;
     box-shadow:
       var(--inset-highlight-strong),
-      inset 0 -1px 0 rgba(22, 26, 30, 0.08),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 28px -16px color-mix(in srgb, var(--submit-color, var(--green)) 68%, transparent),
       0 14px 38px rgba(22, 26, 30, 0.10);
     backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
@@ -367,20 +367,20 @@
     background:
       linear-gradient(110deg, rgba(255, 255, 255, 0.72), transparent 26%),
       radial-gradient(ellipse at 50% -42%, rgba(255, 255, 255, 0.78), transparent 50%);
-    filter: blur(1px);
-    opacity: 0.68;
+    filter: blur(2px);
+    opacity: 0.52;
   }
 
   .mobile-panel-switch::after {
     z-index: 2;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.16) 44%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(22, 26, 30, 0.10)));
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.64), rgba(255, 255, 255, 0.16) 44%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(22, 26, 30, 0.10)));
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
-    opacity: 0.92;
+    opacity: 0.85;
   }
 
   .mobile-panel-tab {
@@ -420,10 +420,11 @@
     border-radius: var(--radius-pill);
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.72));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 0 1px 1px rgba(255, 255, 255, 0.65),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.04),
       0 2px 8px -2px rgba(22, 26, 30, 0.12),
       0 4px 16px -4px rgba(22, 26, 30, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     transform-origin: center;
     /* resting fallback (keyboard/no-anim); real switches use the keyframes below */
     transition: transform var(--spring-glide-motion) var(--spring-glide);
@@ -1039,9 +1040,9 @@
   }
 
   .family-tag {
-    min-height: 42px;
+    min-height: 58px;
     justify-content: center;
-    padding: 0 8px;
+    padding: 8px 10px;
     font-size: 0.9rem;
     line-height: 1.1;
     white-space: nowrap;
@@ -1064,14 +1065,22 @@
     font-size: 0.62rem;
   }
 
+  /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
   .amount-label {
-    padding: 10px 17px 9px;
+    padding: 18px 22px 15px;
     border-radius: var(--radius-xl);
   }
 
   .amount-label.amount-active {
-    border-radius: 29px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
+    border-radius: 48px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
     --amount-scale: 1.014;
+  }
+
+  /* squircle 模式下圆角阶梯整体放大，该字面量需配对补偿，否则放大态反而比 rest 态(53px)更钝 */
+  @supports (corner-shape: squircle) {
+    .amount-label.amount-active {
+      border-radius: 55px;
+    }
   }
 
   .currency-mark {
@@ -1122,7 +1131,10 @@
     font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
     font-weight: var(--fw-bold);
     line-height: 1.2;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
+    /* 凹陷输入场：顶部轻微暗边(凹面受光)+底缘微亮，比顶白线更符合光照逻辑 */
+    box-shadow:
+      inset 0 1px 2px rgba(22, 26, 30, 0.05),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.45);
   }
 
   .date-label input {
@@ -1327,9 +1339,9 @@
       rgba(247, 249, 248, 0.06);
     padding: 9px;
     box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.75),
+      inset 0 1px 1px rgba(255, 255, 255, 0.55),
       inset 0 0 0 0.5px rgba(255, 255, 255, 0.30),
-      inset 0 -8px 18px rgba(255, 255, 255, 0.14),
+      inset 0 -8px 18px rgba(255, 255, 255, 0.10),
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 54px -22px color-mix(in srgb, var(--submit-color, var(--green)) 76%, transparent),
       0 24px 72px rgba(22, 26, 30, 0.16);
@@ -1701,24 +1713,24 @@
     min-height: 36px;
     padding-inline: 12px;
     font-size: 0.8rem;
-    max-height: 36px;
-    overflow: hidden;
     transition:
       opacity var(--motion-fast) var(--settle),
       transform var(--motion-fast) var(--settle),
-      max-height var(--motion-fast) var(--settle),
-      margin var(--motion-fast) var(--settle),
-      padding var(--motion-fast) var(--settle),
-      border-width var(--motion-fast) var(--settle);
+      color var(--motion) var(--settle),
+      border-color var(--motion) var(--settle),
+      --status-dot var(--motion) var(--settle),
+      --status-dot-glow var(--motion) var(--settle),
+      --status-dot-core var(--motion) var(--settle),
+      --status-dot-bloom var(--motion) var(--settle);
   }
 
   /* 折叠态下让徽章让位（设置按钮保持可达），避免与下方吸顶的记账/数据切换条重叠 */
+  .app-header.is-collapsed .header-actions {
+    justify-content: flex-end;
+  }
+
   .app-header.is-collapsed .sync-status {
-    opacity: 0;
-    max-height: 0;
-    padding-inline: 0;
-    border-width: 0;
-    transform: translateY(-6px) scale(0.9);
+    display: none;
     pointer-events: none;
   }
 
@@ -2007,7 +2019,7 @@
   }
 
   .family-tag {
-    min-height: 46px;
+    min-height: 60px;
     font-size: var(--label-md);
   }
 

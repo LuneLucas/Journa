@@ -100,6 +100,9 @@ body::before {
 .sync-status {
   --status-dot: #f0c96f;
   --status-dot-glow: rgba(218, 164, 65, 0.64);
+  /* 本地账本（默认态）同样过曝：热白核 + 暖白 bloom，两种灯都要像真的亮着 */
+  --status-dot-core: #ffffff;
+  --status-dot-bloom: rgba(255, 244, 224, 0.7);
   position: relative;
   overflow: hidden;
   min-height: 38px;
@@ -122,7 +125,13 @@ body::before {
     0 8px 22px rgba(22, 26, 30, 0.07);
   transition:
     opacity var(--motion-fast) var(--settle),
-    transform var(--motion-fast) var(--settle);
+    transform var(--motion-fast) var(--settle),
+    color var(--motion) var(--settle),
+    border-color var(--motion) var(--settle),
+    --status-dot var(--motion) var(--settle),
+    --status-dot-glow var(--motion) var(--settle),
+    --status-dot-core var(--motion) var(--settle),
+    --status-dot-bloom var(--motion) var(--settle);
 }
 
 .sync-status::before {
@@ -132,13 +141,15 @@ body::before {
   height: 10px;
   border-radius: var(--radius-pill);
   background:
-    radial-gradient(circle at 45% 45%, #ffffff 0%, rgba(255, 255, 255, 0.8) 20%, transparent 60%),
+    radial-gradient(circle at 45% 45%, #ffffff 0%, var(--status-dot-core) 20%, transparent 60%),
     var(--status-dot);
   box-shadow:
     inset 0 0 2px 1px rgba(255, 255, 255, 0.9),
     0 0 6px color-mix(in srgb, var(--status-dot-glow) 90%, transparent),
     0 0 14px 1px color-mix(in srgb, var(--status-dot-glow) 48%, transparent),
-    12px 0 20px 2px color-mix(in srgb, var(--status-dot-glow) 16%, transparent); /* 柔和版右打灯 */
+    12px 0 20px 2px color-mix(in srgb, var(--status-dot-glow) 16%, transparent), /* 柔和版右打灯 */
+    0 0 4px 1px var(--status-dot-bloom); /* 过曝白 bloom，仅 is-cloud 稳态点亮 */
+  transition: filter var(--motion) var(--settle); /* 动画摘除后亮度平滑接入稳态 */
   z-index: 1;
   content: "";
 }
@@ -150,6 +161,9 @@ body::before {
 .sync-status.is-cloud {
   --status-dot: #c7e7ff;
   --status-dot-glow: rgba(115, 182, 236, 0.78);
+  /* 过曝灯芯：热白核 + 白 bloom，让静息态更像一盏亮着的灯 */
+  --status-dot-core: #ffffff;
+  --status-dot-bloom: rgba(255, 255, 255, 0.85);
   color: #3d6788;
   background:
     linear-gradient(135deg, rgba(240, 248, 255, 0.82), rgba(221, 238, 250, 0.58)),
@@ -168,6 +182,8 @@ body::before {
 .sync-status.is-pending {
   --status-dot: #f5d27a;
   --status-dot-glow: rgba(218, 164, 65, 0.66);
+  --status-dot-core: rgba(255, 255, 255, 0.8);
+  --status-dot-bloom: rgba(255, 255, 255, 0);
   color: color-mix(in srgb, var(--amber) 72%, var(--ink));
   background:
     linear-gradient(135deg, rgba(255, 248, 225, 0.82), rgba(246, 228, 174, 0.50)),
@@ -178,9 +194,22 @@ body::before {
 .sync-status.is-failed {
   --status-dot: #ffc7b8;
   --status-dot-glow: rgba(224, 95, 64, 0.62);
+  --status-dot-core: rgba(255, 255, 255, 0.8);
+  --status-dot-bloom: rgba(255, 255, 255, 0);
   color: var(--coral);
   background: rgba(255, 237, 230, 0.74);
   border-color: rgba(183, 79, 56, 0.18);
+}
+
+/* 过曝稳态微提亮（本地/云账本两种"常亮"态都要）；:not(.is-syncing) 让呼吸/过冲动画自己掌管 filter */
+.sync-status.is-cloud:not(.is-syncing)::before,
+.sync-status:not(.is-cloud):not(.is-error):not(.is-pending):not(.is-failed):not(.is-syncing)::before {
+  filter: brightness(1.06);
+}
+
+/* 状态文案切换时的轻微淡入（文字在内层 span，灯点不随动） */
+.sync-status .sync-status-label.is-label-swap {
+  animation: sync-label-swap 0.24s var(--settle) both;
 }
 
 /* 同步中：指示灯保持呼吸闪烁（不再叠加旋转加载环，避免与灯错位） */
@@ -472,8 +501,9 @@ label,
   min-height: 128px;
   overflow: hidden;
   overflow: clip;
-  gap: 0px;
-  padding: 10px 18px;
+  gap: 4px;
+  /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
+  padding: 18px 22px 16px;
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
   border-radius: var(--radius-xl);
   background:
@@ -1838,12 +1868,7 @@ label,
   font-weight: var(--fw-bold);
 }
 
-.row-item {
-  align-items: start;
-}
-
 .row-item strong {
-  padding-top: 1px;
   color: color-mix(in srgb, var(--family-text, var(--ink)) 82%, var(--ink));
   font-weight: var(--fw-bold);
   white-space: nowrap;

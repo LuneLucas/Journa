@@ -19,22 +19,30 @@
   gap: 7px;
 }
 
+/* 胶囊两端为全圆弧，视觉左边界比同一水平位置的文字/直角矩形"缩进"，
+   给首个胶囊一点光学外补偿，使其与上方图例文字、下方圆角矩形左边线对齐；
+   只加在首个子项而非容器上，避免影响网格列宽或其余胶囊的位置。 */
+.family-roster > .family-tag:first-child {
+  margin-left: -5px;
+}
+
 .family-tag {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  min-height: 44px;
+  min-height: 58px;
   border: 1px solid color-mix(in srgb, var(--family-color) 18%, rgba(22, 26, 30, 0.10));
   border-radius: var(--radius-pill);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.50)),
     color-mix(in srgb, var(--family-color) 5%, transparent);
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
-  padding: 0 16px;
+  padding: 9px 16px;
   font-size: var(--label-md);
   font-weight: var(--fw-bold);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.20),
+    inset 0 1px 1px rgba(255, 255, 255, 0.32),
     var(--shadow-sm),
     0 0 32px -12px transparent;
   transition:

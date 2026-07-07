@@ -10,6 +10,7 @@
   color: color-mix(in srgb, var(--family-text) 70%, black);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28), /* 与基态第二层同位，保持 box-shadow 过渡可插值 */
     0 8px 20px -12px var(--family-soft),
     0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
   transform: none;

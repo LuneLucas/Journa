@@ -268,10 +268,10 @@ input[type="number"]::-webkit-inner-spin-button {
   border-color: color-mix(in srgb, var(--submit-color, var(--brand-primary)) 30%, rgba(255, 255, 255, 0.64));
   border-radius: var(--control-radius-large);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.20)),
     color-mix(in srgb, var(--submit-color, var(--green)) 32%, rgba(255, 255, 255, 0.48));
   color: var(--submit-text, var(--green-dark));
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
   transform-origin: center;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
@@ -324,7 +324,8 @@ input[type="number"]::-webkit-inner-spin-button {
     rgba(238, 247, 248, 0.72);
   color: var(--submit-text);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    inset 0 1px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -1px 1px rgba(58, 83, 91, 0.05),
     0 10px 28px rgba(58, 83, 91, 0.10);
 }
 
@@ -337,8 +338,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .operator-confirm-button::before {
   background:
     linear-gradient(135deg, rgba(153, 190, 198, 0.18), rgba(255, 255, 255, 0.08)),
-    radial-gradient(ellipse at 50% -30%, rgba(255, 255, 255, 0.74), transparent 62%);
-  opacity: 0.72;
+    radial-gradient(ellipse at 50% -30%, rgba(255, 255, 255, 0.52), transparent 62%);
+  opacity: 0.60;
 }
 
 .operator-confirm-button::after {
@@ -352,14 +353,14 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: inherit;
   background: rgba(23, 108, 95, 0.18); /* 老 WebView 不支持 color-mix 时的静态回退 */
   background:
-    radial-gradient(circle 90px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.35), transparent 85%),
+    radial-gradient(circle 120px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.22), transparent 85%),
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--submit-color, var(--green)) 58%, transparent),
       color-mix(in srgb, var(--submit-color, var(--green)) 44%, transparent) 52%,
       color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent)
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 64%),
     radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 22%, white), transparent 58%);
   content: "";
   opacity: 1;
@@ -375,12 +376,12 @@ input[type="number"]::-webkit-inner-spin-button {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.18) 18%,
-    rgba(255, 255, 255, 0.62) 48%,
-    rgba(255, 255, 255, 0.16) 78%,
+    rgba(255, 255, 255, 0.12) 18%,
+    rgba(255, 255, 255, 0.42) 48%,
+    rgba(255, 255, 255, 0.10) 78%,
     transparent
   );
-  filter: blur(3px);
+  filter: blur(5px);
   content: "";
   opacity: 0;
   transform: rotate(18deg) translateX(-30%);
@@ -446,13 +447,13 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--button-secondary-bg);
   color: var(--button-secondary-text);
   white-space: nowrap;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), var(--shadow-sm);
+  box-shadow: var(--edge-light), var(--edge-shade), var(--shadow-sm);
 }
 
 .secondary-button:hover {
   border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--control-border-hover));
   background: var(--button-secondary-bg-hover);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), var(--shadow-md);
+  box-shadow: var(--edge-light), var(--edge-shade), var(--shadow-md);
   transform: translateY(-1px);
 }
 

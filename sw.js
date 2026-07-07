@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-allround-polish-20260707";
+const APP_VERSION = "journa-chunky-controls-v3-20260707";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",

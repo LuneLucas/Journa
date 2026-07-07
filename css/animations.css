@@ -40,6 +40,19 @@
   }
 }
 
+/* 同步状态文案切换：轻微上浮淡入（见 misc.css .sync-status-label.is-label-swap） */
+@keyframes sync-label-swap {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes amount-input-soft-pop {
   0% {
     transform: scale(var(--input-scale, 1));
