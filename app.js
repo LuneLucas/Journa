@@ -274,6 +274,15 @@ let totalRevealFrameId = 0;
 let totalRevealTargetText = "";
 let amountLabelScrollFrameId = 0;
 let cloudState = loadCloudState();
+/* 启动瞬间本地是否有数据：Safari ITP 可能清掉 localStorage，
+   为空且 IndexedDB 里还留有云凭据备份时走自动恢复（见 bootstrap）。 */
+const bootHadLocalData = (() => {
+  try {
+    return Boolean(localStorage.getItem(STORAGE_KEY));
+  } catch (error) {
+    return true;
+  }
+})();
 let cloudBusy = false;
 let syncStatusWasSyncing = false;
 let syncLampTimer = 0;
@@ -674,6 +683,72 @@ function saveCloudState() {
   state.cloudShareToken = cloudState.shareToken;
   localStorage.removeItem(CLOUD_STATE_KEY);
   saveState();
+  mirrorCloudBackup();
+}
+
+/* ---------- IndexedDB 云凭据备份 ----------
+   localStorage 可能被 Safari ITP 清掉；把当前账本的云 shareToken
+   镜像到 IndexedDB（清理策略更宽松），本地数据丢失时能自动从云端拉回。 */
+const IDB_BACKUP_DB = "travel-ledger-backup";
+const IDB_BACKUP_STORE = "kv";
+
+function idbBackupStore(mode) {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error("no idb"));
+    const request = indexedDB.open(IDB_BACKUP_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(IDB_BACKUP_STORE);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(IDB_BACKUP_STORE, mode);
+      tx.oncomplete = () => db.close();
+      tx.onabort = () => db.close();
+      resolve(tx.objectStore(IDB_BACKUP_STORE));
+    };
+  });
+}
+
+async function idbBackupGet(key) {
+  const store = await idbBackupStore("readonly");
+  return new Promise((resolve, reject) => {
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbBackupSet(key, value) {
+  const store = await idbBackupStore("readwrite");
+  store.put(value, key);
+}
+
+function mirrorCloudBackup() {
+  const payload = cloudState.shareToken
+    ? { shareToken: cloudState.shareToken, ledgerName: state.name, savedAt: new Date().toISOString() }
+    : null;
+  idbBackupSet("cloud-credentials", payload).catch(() => {
+    /* 私密模式等场景 IndexedDB 不可用，跳过备份 */
+  });
+}
+
+async function restoreLedgerFromCloudBackup() {
+  if (bootHadLocalData) return false;
+  if (!isCloudConfigured() || cloudState.shareToken) return false;
+  let backup = null;
+  try {
+    backup = await idbBackupGet("cloud-credentials");
+  } catch (error) {
+    return false;
+  }
+  if (!backup?.shareToken) return false;
+  cloudState.shareToken = backup.shareToken;
+  const restored = await pullCloudLedger();
+  if (restored) {
+    showToast({ message: "本地数据被浏览器清理，已从云端恢复账本" });
+  } else {
+    cloudState.shareToken = "";
+  }
+  return restored;
 }
 
 function isCloudConfigured() {
@@ -817,9 +892,15 @@ async function pullCloudLedger({ announce = false } = {}) {
   }
 }
 
+let lastLifecycleRefreshAt = 0;
+
 async function refreshCloudLedgerFromLifecycle() {
   if (!isCloudLedgerActive()) return;
   if (navigator.onLine === false) return;
+  /* visibilitychange/online/pageshow 都会触发，30 秒内只拉一次 */
+  const now = Date.now();
+  if (now - lastLifecycleRefreshAt < 30_000) return;
+  lastLifecycleRefreshAt = now;
   const synced = await syncPendingCloudExpenses({ silent: true });
   if (!synced) {
     showToast({ message: "还有账单未同步，先不覆盖本地账本" });
@@ -1282,24 +1363,33 @@ function calculateSettlements(balances) {
 
 function render(options = {}) {
   const { animateFinancialChanges = false } = options;
-  renderCurrentLedgerLabel();
-  updateClearLedgerButton();
-  updateCloudControls();
-  renderFormOptions();
-  renderFamilyRoster();
-  renderCategories();
-  renderSplitScope();
-  renderLedgerFilters();
-  renderSummary({ animateFinancialChanges });
-  renderLedger({ animateFinancialChanges });
-  renderSettings();
-  renderEditState();
-  renderMobilePanelState();
-  renderMobileSubmitBar();
-  applySelectedFamilyTheme();
-  applySubmitButtonTheme();
-  updateAmountMotionState();
-  saveState();
+
+  const performUpdate = () => {
+    renderCurrentLedgerLabel();
+    updateClearLedgerButton();
+    updateCloudControls();
+    renderFormOptions();
+    renderFamilyRoster();
+    renderCategories();
+    renderSplitScope();
+    renderLedgerFilters();
+    renderSummary({ animateFinancialChanges });
+    renderLedger({ animateFinancialChanges });
+    renderSettings();
+    renderEditState();
+    renderMobilePanelState();
+    renderMobileSubmitBar();
+    applySelectedFamilyTheme();
+    applySubmitButtonTheme();
+    updateAmountMotionState();
+    saveState();
+  };
+
+  if (document.startViewTransition && animateFinancialChanges) {
+    document.startViewTransition(performUpdate);
+  } else {
+    performUpdate();
+  }
 }
 
 function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
@@ -2094,6 +2184,16 @@ function getActiveThemeId() {
   return THEME_PRESETS.some((preset) => preset.id === current) ? current : THEME_PRESETS[0].id;
 }
 
+/* 让 Safari 状态栏/工具栏 tint 跟随应用内主题预设：
+   把与当前明暗模式匹配的 theme-color meta 更新为主题实际背景色（--bg）。 */
+function syncThemeColorMeta() {
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  if (!bg) return;
+  const isDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  const meta = document.querySelector(`meta[name="theme-color"][media*="${isDark ? "dark" : "light"}"]`);
+  meta?.setAttribute("content", bg);
+}
+
 function renderThemePresetList() {
   if (!elements.settingsThemeList) return;
   const activeThemeId = getActiveThemeId();
@@ -2567,8 +2667,11 @@ function renderLedgerItem(expense) {
     }
   }
 
+  const transitionStyle = expense.id === lastAddedExpenseId ? "view-transition-name: expense-new" : "";
+  const combinedStyle = [familyStyle(expense.payerId), transitionStyle].filter(Boolean).join(";");
+
   return `
-    <article class="${itemClass}" style="${familyStyle(expense.payerId)}" data-expense-id="${escapeHtml(expense.id)}" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
+    <article class="${itemClass}" style="${combinedStyle}" data-expense-id="${escapeHtml(expense.id)}" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
       <div class="ledger-main">
         <div class="ledger-title">
           <span class="ledger-family">${escapeHtml(getFamilyName(expense.payerId))}</span>
@@ -2965,6 +3068,7 @@ function handleSettingsThemeClick(event) {
   }
   /* 未选家庭时提交条/切换条的兜底色跟随新主题 */
   applySubmitButtonTheme();
+  syncThemeColorMeta();
   renderThemePresetList();
   showToast({ message: `主题色已换成「${preset.name}」` });
 }
@@ -3472,6 +3576,9 @@ function deleteExpense(expenseId, item) {
 
   if (expandedExpenseId === expenseId) expandedExpenseId = "";
   item?.classList.add("is-removing");
+  if (item) {
+    item.style.viewTransitionName = "expense-removing";
+  }
   const button = item?.querySelector("[data-delete-id]");
   if (button) button.disabled = true;
 
@@ -4804,6 +4911,14 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshCloudLedgerFromLifecycle();
 });
 window.addEventListener("online", refreshCloudLedgerFromLifecycle);
+/* iOS Safari 从 bfcache（往返缓存）恢复页面时不触发 visibilitychange，补一条 */
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) refreshCloudLedgerFromLifecycle();
+});
+/* 系统深浅模式切换时，重算 theme-color meta（下一帧再读，等样式重算完成） */
+window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+  requestAnimationFrame(syncThemeColorMeta);
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
     if (!elements.confirmView.hidden) {
@@ -4929,10 +5044,88 @@ function spawnButtonParticles(btn, visual, themedGlow) {
   }
 }
 
+function setupScrollCollapse() {
+  // 主页面头部滚动监听
+  const syncScroll = () => {
+    const header = document.querySelector(".app-header");
+    if (!header) return;
+    if (window.scrollY > 40) {
+      header.classList.add("is-collapsed");
+    } else {
+      header.classList.remove("is-collapsed");
+    }
+  };
+  window.addEventListener("scroll", syncScroll, { passive: true });
+  syncScroll();
+
+  // 设置侧边栏滚动监听
+  const settingsDrawer = document.querySelector(".settings-drawer");
+  if (settingsDrawer) {
+    const syncSettingsScroll = () => {
+      const hero = settingsDrawer.querySelector(".settings-hero");
+      if (!hero) return;
+      if (settingsDrawer.scrollTop > 30) {
+        hero.classList.add("is-collapsed");
+      } else {
+        hero.classList.remove("is-collapsed");
+      }
+    };
+    settingsDrawer.addEventListener("scroll", syncSettingsScroll, { passive: true });
+    syncSettingsScroll();
+  }
+
+  // 账本管理侧边栏滚动监听
+  const ledgerDrawer = document.querySelector(".ledger-management-drawer");
+  if (ledgerDrawer) {
+    const syncLedgerScroll = () => {
+      const hero = ledgerDrawer.querySelector(".ledger-management-hero");
+      if (!hero) return;
+      if (ledgerDrawer.scrollTop > 30) {
+        hero.classList.add("is-collapsed");
+      } else {
+        hero.classList.remove("is-collapsed");
+      }
+    };
+    ledgerDrawer.addEventListener("scroll", syncLedgerScroll, { passive: true });
+    syncLedgerScroll();
+  }
+}
+
+function setupStandaloneMode() {
+  const isStandalone =
+    window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if (isStandalone) document.documentElement.classList.add("pwa-standalone");
+
+  /* iOS Safari 且未安装到主屏幕：在设置里给一条可关闭的安装提示 */
+  const hint = document.getElementById("addToHomeHint");
+  if (!hint) return;
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let dismissed = false;
+  try {
+    dismissed = localStorage.getItem("travel-ledger-a2hs-hint-dismissed") === "1";
+  } catch (error) {}
+  if (!isIOS || isStandalone || dismissed) return;
+  hint.hidden = false;
+  document.getElementById("dismissAddToHomeHint")?.addEventListener("click", () => {
+    hint.hidden = true;
+    try {
+      localStorage.setItem("travel-ledger-a2hs-hint-dismissed", "1");
+    } catch (error) {}
+  });
+}
+
 async function bootstrap() {
+  setupStandaloneMode();
+  syncThemeColorMeta();
+  /* 请求持久化存储：降低 Safari ITP 主动清空 localStorage/IndexedDB 的概率 */
+  navigator.storage?.persist?.().catch(() => {});
   setupSubmitButtonSpotlight();
+  setupScrollCollapse();
   render();
-  if (isCloudLedgerActive()) {
+  const restoredFromBackup = await restoreLedgerFromCloudBackup();
+  if (!restoredFromBackup && isCloudLedgerActive()) {
     await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
   }
   checkOperatorNamePrompt();

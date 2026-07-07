@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ios-zoom-fix-20260706";
+const CACHE_VERSION = "ios-pwa-polish-20260707";
 const CACHE_NAME = `ledger-cache-${CACHE_VERSION}`;
 const PRECACHE_URLS = [
   "./",
@@ -18,6 +18,10 @@ const PRECACHE_URLS = [
   "./css/dark.css",
   "./css/a11y.css",
   "./app.js",
+  "./icons/apple-touch-icon.png",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-512-maskable.png",
 ];
 
 self.addEventListener("install", (event) => {

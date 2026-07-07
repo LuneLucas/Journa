@@ -92,10 +92,11 @@
 .ledger-management-drawer {
   overflow: auto;
   height: 100dvh;
-  padding: 18px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.74)),
-    rgba(247, 249, 248, 0.95);
+  padding: 0 0 18px 0;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-left: 1px solid var(--glass-border);
   box-shadow: -24px 0 80px rgba(22, 26, 30, 0.17);
   animation: settings-drawer-enter var(--motion) var(--spring) both;
 }
@@ -128,9 +129,7 @@ body.ledger-management-open .mobile-submit-bar {
   transform: translateY(18px);
 }
 
-.settings-hero,
 .settings-panel,
-.ledger-management-hero,
 .ledger-management-tools,
 .ledger-manager-card {
   border: 1px solid var(--line);
@@ -141,27 +140,79 @@ body.ledger-management-open .mobile-submit-bar {
 
 .settings-hero,
 .ledger-management-hero {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-radius: var(--radius-xl);
-  margin-bottom: 18px;
-  padding: 24px;
+  margin: 0 0 18px 0;
+  padding: 16px 18px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(to bottom, var(--glass-bg) 65%, transparent 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  box-shadow: var(--shadow-sm);
+  transition: 
+    padding var(--motion-fast) var(--spring),
+    margin-bottom var(--motion-fast) var(--spring),
+    background var(--motion-fast) var(--spring);
 }
 
 .settings-hero h2,
 .ledger-management-hero h2 {
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1;
+  transition: font-size var(--motion-fast) var(--spring);
+}
+
+.settings-hero .eyebrow,
+.ledger-management-hero .eyebrow {
+  transition: 
+    opacity var(--motion-fast) var(--settle),
+    max-height var(--motion-fast) var(--settle),
+    margin var(--motion-fast) var(--settle),
+    transform var(--motion-fast) var(--settle);
+}
+
+/* 折叠状态样式 */
+.settings-hero.is-collapsed,
+.ledger-management-hero.is-collapsed {
+  padding-block: 8px 6px;
+  margin-bottom: 12px;
+  background: linear-gradient(to bottom, var(--glass-bg) 80%, transparent 100%);
+}
+
+.settings-hero.is-collapsed h2,
+.ledger-management-hero.is-collapsed h2 {
+  font-size: clamp(1.2rem, 4vw, 1.45rem);
+}
+
+.settings-hero.is-collapsed .eyebrow,
+.ledger-management-hero.is-collapsed .eyebrow {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
 }
 
 .ledger-management-tools {
   display: grid;
   gap: 12px;
   border-radius: var(--radius-xl);
+  margin-inline: 18px;
   margin-bottom: 14px;
   padding: 18px;
+}
+
+.ledger-manager-list {
+  margin-inline: 18px;
+  padding-bottom: 18px;
 }
 
 /* 老 WebView 不支持 backdrop-filter：玻璃层回退为实底 + 普通投影 */

@@ -68,17 +68,27 @@
 :root {
   color-scheme: light;
   --bg: #f7f9f8;
-  --surface: rgba(255, 255, 255, 0.88);
-  --surface-strong: rgba(255, 255, 255, 0.94);
-  --surface-soft: rgba(255, 255, 255, 0.74);
+  /* 毛玻璃反射与模糊定义 */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.82);
+  --glass-blur: blur(12px) saturate(180%);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-border-strong: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 32px 0 rgba(22, 26, 30, 0.08);
+
+  --surface: var(--glass-bg);
+  --surface-strong: var(--glass-bg-strong);
+  --surface-soft: rgba(255, 255, 255, 0.62);
   --ink: #202427;
   --muted: #5b625f;
   --line: rgba(22, 26, 30, 0.08);
   --line-dark: rgba(22, 26, 30, 0.12);
-  /* 全局主题色（默认：陶土橙粉）。5 个预设见文件底部的 [data-theme] 覆盖块；
-     偏好存 localStorage("travel-ledger-theme")，head 内联脚本早应用防闪烁。 */
-  --green: #9d5745;
-  --green-dark: #7a4033;
+  /* HSL 动态配色核心变量 (基准 clay) */
+  --theme-h: 12;
+  --theme-s: 44%;
+  --theme-l: 45%;
+  --green: hsl(var(--theme-h), var(--theme-s), var(--theme-l));
+  --green-dark: hsl(var(--theme-h), calc(var(--theme-s) - 5%), calc(var(--theme-l) - 10%));
   --coral: #b74f38;
   --amber: #d9a441;
   --violet: #6554a8;
@@ -249,8 +259,8 @@
 
 /* ── 全局主题色预设（亮色值；暗色对应见 dark.css）──
    与 app.js THEME_PRESETS 同步。clay 即 :root 基值，给块以便显式选择。 */
-:root[data-theme="clay"]   { --green: #9d5745; --green-dark: #7a4033; }
-:root[data-theme="pine"]   { --green: #176c5f; --green-dark: #0f5046; }
-:root[data-theme="harbor"] { --green: #4a6b91; --green-dark: #385378; }
-:root[data-theme="lotus"]  { --green: #7d5c88; --green-dark: #61436c; }
-:root[data-theme="malt"]   { --green: #87683f; --green-dark: #674e2d; }
+:root[data-theme="clay"]   { --theme-h: 12; --theme-s: 44%; --theme-l: 45%; }
+:root[data-theme="pine"]   { --theme-h: 171; --theme-s: 65%; --theme-l: 26%; }
+:root[data-theme="harbor"] { --theme-h: 212; --theme-s: 34%; --theme-l: 43%; }
+:root[data-theme="lotus"]  { --theme-h: 284; --theme-s: 21%; --theme-l: 45%; }
+:root[data-theme="malt"]   { --theme-h: 34; --theme-s: 37%; --theme-l: 39%; }

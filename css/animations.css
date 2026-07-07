@@ -932,3 +932,50 @@
   }
 }
 
+/* ── View Transitions API 动效 ── */
+::view-transition-group(root) {
+  animation-duration: var(--motion);
+  animation-timing-function: var(--spring);
+}
+
+#totalAmount {
+  view-transition-name: total-amount;
+}
+
+#paidByFamily {
+  view-transition-name: paid-by-family;
+}
+
+#categorySummaryBlock {
+  view-transition-name: category-summary;
+}
+
+#settlementList {
+  view-transition-name: settlement-list;
+}
+
+/* 新增和删除卡片的自定义视图过渡 */
+::view-transition-old(expense-new) {
+  animation: element-exit var(--motion-fast) var(--settle) forwards;
+}
+
+::view-transition-new(expense-new) {
+  animation: element-enter var(--motion) var(--spring) both;
+}
+
+::view-transition-old(expense-removing) {
+  animation: ledger-collapse var(--motion) var(--settle) forwards;
+}
+
+::view-transition-new(expense-removing) {
+  animation: none;
+}
+
+/* 数字微动刷新效果 */
+::view-transition-old(total-amount) {
+  animation: text-slide-out var(--motion-fast) var(--settle) forwards;
+}
+
+::view-transition-new(total-amount) {
+  animation: text-slide-in var(--motion) var(--spring) both;
+}

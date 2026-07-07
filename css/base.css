@@ -2,6 +2,30 @@
   box-sizing: border-box;
 }
 
+html {
+  /* iOS 横屏时不自动放大字号 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 控件快速连点时不触发 iOS 双击缩放 */
+button,
+input,
+select,
+textarea,
+[role="tab"],
+[role="radio"] {
+  touch-action: manipulation;
+}
+
+/* 按钮类控件长按不弹系统菜单、不误选中文字；输入框和账单内容不受影响 */
+button,
+[role="tab"] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 body {
   margin: 0;
   min-width: 320px;

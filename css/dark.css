@@ -3,15 +3,26 @@
   :root {
     color-scheme: dark;
     --bg: #121212;
-    --surface: rgba(28, 28, 30, 0.92);
-    --surface-strong: rgba(36, 36, 38, 0.96);
-    --surface-soft: rgba(22, 22, 24, 0.78);
+    /* 毛玻璃深色微调 */
+    --glass-bg: rgba(28, 28, 30, 0.68);
+    --glass-bg-strong: rgba(36, 36, 38, 0.78);
+    --glass-blur: blur(12px) saturate(180%);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-strong: rgba(255, 255, 255, 0.14);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+
+    --surface: var(--glass-bg);
+    --surface-strong: var(--glass-bg-strong);
+    --surface-soft: rgba(22, 22, 24, 0.58);
     --ink: #f0f0f0;
     --muted: #a1a1a6;
     --line: rgba(255, 255, 255, 0.10);
     --line-dark: rgba(255, 255, 255, 0.16);
-    --green: #d49a86;        /* 文字/边框语义提亮（陶土橙粉暗色对）；按钮填充由 JS 内联 --submit-color 提供，不受影响 */
-    --green-dark: #dfab98;   /* 数字/强调文字，降低饱和度与明度实现淡雅。各预设暗色对见下方 [data-theme] 块 */
+
+    /* HSL 调色在暗色模式下的自适应亮度与饱和度调优 */
+    --green: hsl(var(--theme-h), var(--theme-s), var(--theme-l));
+    --green-dark: hsl(var(--theme-h), calc(var(--theme-s) + 4%), calc(var(--theme-l) + 6%));
+
     --dark-panel: linear-gradient(145deg, rgba(36, 36, 38, 0.96), rgba(28, 28, 30, 0.92)), rgba(18, 18, 20, 0.96);
     --dark-card: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.03);
     --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.05);
@@ -35,12 +46,12 @@
     --total-label-color: rgba(230, 235, 232, 0.64);
   }
 
-  /* ── 全局主题色预设的暗色对（提亮版；亮色对见 variables.css 底部）── */
-  :root[data-theme="clay"]   { --green: #d49a86; --green-dark: #dfab98; }
-  :root[data-theme="pine"]   { --green: #52a38c; --green-dark: #5cb89f; }
-  :root[data-theme="harbor"] { --green: #92b1d6; --green-dark: #a2bede; }
-  :root[data-theme="lotus"]  { --green: #b99ac5; --green-dark: #c6aad0; }
-  :root[data-theme="malt"]   { --green: #c4a678; --green-dark: #d0b489; }
+  /* ── 全局主题色预设的暗色对（暗色模式自适应 HSL 对齐） ── */
+  :root[data-theme="clay"]   { --theme-s: 47%; --theme-l: 68%; }
+  :root[data-theme="pine"]   { --theme-s: 33%; --theme-l: 48%; }
+  :root[data-theme="harbor"] { --theme-s: 44%; --theme-l: 71%; }
+  :root[data-theme="lotus"]  { --theme-s: 28%; --theme-l: 69%; }
+  :root[data-theme="malt"]   { --theme-s: 41%; --theme-l: 62%; }
 
   /* body 底色渐变的白色层改暗色等价物（固定图层，见浅色 body::before 注释）。
      首层噪点必须保留：这里的渐变对比同样极低（7 个色阶跨半屏），且深色
@@ -113,7 +124,7 @@
   /* 抽屉与确认框的白色渐变改暗面 */
   .settings-drawer,
   .ledger-management-drawer {
-    background: var(--dark-panel);
+    background: var(--glass-bg);
   }
 
   .confirm-dialog {

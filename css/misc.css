@@ -30,11 +30,57 @@ body::before {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 22px;
+  padding: 16px 20px;
+  margin-inline: -20px;
+  background: linear-gradient(to bottom, var(--glass-bg) 65%, transparent 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  border-bottom: 1px solid var(--line);
+  transition: 
+    padding var(--motion-fast) var(--spring),
+    margin-bottom var(--motion-fast) var(--spring),
+    background var(--motion-fast) var(--spring);
+}
+
+.app-header h1 {
+  transition: font-size var(--motion-fast) var(--spring);
+}
+
+.app-header .eyebrow {
+  transition: 
+    opacity var(--motion-fast) var(--settle),
+    max-height var(--motion-fast) var(--settle),
+    margin var(--motion-fast) var(--settle),
+    transform var(--motion-fast) var(--settle);
+}
+
+/* 折叠状态样式 */
+.app-header.is-collapsed {
+  padding-block: 8px 6px;
+  margin-bottom: 12px;
+  background: linear-gradient(to bottom, var(--glass-bg) 80%, transparent 100%);
+}
+
+.app-header.is-collapsed h1 {
+  font-size: clamp(1.2rem, 4vw, 1.45rem);
+}
+
+.app-header.is-collapsed .eyebrow {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
 }
 
 .header-actions {
@@ -862,10 +908,11 @@ label,
 .settings-drawer {
   overflow: auto;
   height: 100dvh;
-  padding: 18px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
-    rgba(247, 249, 248, 0.94);
+  padding: 0 0 18px 0;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-left: 1px solid var(--glass-border);
   box-shadow: -24px 0 80px rgba(22, 26, 30, 0.16);
   animation: settings-drawer-enter var(--motion) var(--spring) both;
 }
@@ -875,6 +922,7 @@ label,
   grid-template-columns: 1fr;
   gap: 14px;
   align-items: start;
+  padding: 0 18px 18px;
 }
 
 .settings-panel {
@@ -914,6 +962,25 @@ label,
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.5;
+}
+
+/* iOS「添加到主屏幕」安装提示（可关闭） */
+.add-to-home-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.add-to-home-hint[hidden] {
+  display: none;
+}
+
+.add-to-home-hint span {
+  flex: 1;
 }
 
 .current-ledger-summary {

@@ -8,25 +8,54 @@
     <title>三家庭旅游记账</title>
     <meta name="theme-color" content="#f7f9f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#141816" media="(prefers-color-scheme: dark)" />
+    <!-- iOS 添加到主屏幕：图标、全屏模式、状态栏样式 -->
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="旅行账本" />
+    <!-- 账本满屏数字，别被 iOS 识别成电话号码 -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- iOS 主屏幕启动屏：按设备逻辑尺寸 + 倍率 + 深浅模式逐条匹配 -->
+    <link rel="apple-touch-startup-image" href="./icons/splash-750x1334-light.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-750x1334-dark.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-828x1792-light.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-828x1792-dark.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1125x2436-light.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1125x2436-dark.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1170x2532-light.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1170x2532-dark.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1179x2556-light.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1179x2556-dark.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1206x2622-light.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1206x2622-dark.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1242x2688-light.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1242x2688-dark.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1284x2778-light.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1284x2778-dark.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1290x2796-light.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1290x2796-dark.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1320x2868-light.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
+    <link rel="apple-touch-startup-image" href="./icons/splash-1320x2868-dark.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
     <meta property="og:title" content="三家庭旅游记账" />
     <meta property="og:description" content="三个家庭一起旅行的共享账本：记账、按人数分摊、平账建议。" />
     <meta property="og:type" content="website" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，更新这里的 v 值。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/base.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/layout.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/components/forms.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/components/lists.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/components/modals.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/components/toast.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/animations.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/misc.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/responsive.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/dark.css?v=global-theme-20260707">
-    <link rel="stylesheet" href="./css/a11y.css?v=global-theme-20260707">
+    <link rel="stylesheet" href="./css/variables.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/base.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/layout.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/components/forms.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/components/lists.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/components/modals.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/components/toast.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/animations.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/misc.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/responsive.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/dark.css?v=ios-pwa-polish-20260707">
+    <link rel="stylesheet" href="./css/a11y.css?v=ios-pwa-polish-20260707">
     <script>
       // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
       // browsers don't expose the SF Symbols font to web content — even Safari
@@ -205,6 +234,12 @@
           </div>
 
           <div class="settings-grid">
+            <div class="settings-note add-to-home-hint" id="addToHomeHint" hidden>
+              <span>用 Safari 分享菜单里的「添加到主屏幕」，可以全屏使用并离线打开账本。</span>
+              <button class="icon-button" id="dismissAddToHomeHint" type="button" aria-label="不再提示">
+                <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
             <section class="settings-panel">
               <div class="settings-panel-title">
                 <h3>当前账本</h3>
@@ -387,7 +422,7 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，更新这里的 v 值。 -->
-    <script src="./app.js?v=global-theme-20260707"></script>
+    <script src="./app.js?v=ios-pwa-polish-20260707"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
