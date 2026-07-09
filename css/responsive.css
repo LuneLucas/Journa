@@ -300,6 +300,12 @@
     gap: 8px;
   }
 
+  /* 网格布局下三个胶囊等分整行，桌面 flex 的首项 -5px 光学外补偿反而把
+     首个胶囊撑得比同排更宽、左缘凸出卡片边线，这里压回。 */
+  .family-roster > .family-tag:first-child {
+    margin-left: 0;
+  }
+
   .ledger-section .section-heading {
     display: grid;
     grid-template-columns: 1fr;
@@ -647,6 +653,7 @@
       color 240ms ease !important;
     animation: none !important;
     transform-origin: 0 0 !important;
+    will-change: transform;
   }
 
   .mobile-submit-bar.is-flip-morphing .mobile-submit-button::after,
@@ -690,17 +697,17 @@
   @keyframes mobile-plus-morph-reveal {
     0% {
       opacity: 0;
-      transform: scale(0.48) rotate(-58deg);
+      transform: scale(0.54) rotate(-50deg);
     }
-    30% {
-      opacity: 0.32;
-      transform: scale(0.68) rotate(-30deg);
+    70% {
+      opacity: 0;
+      transform: scale(0.66) rotate(-28deg);
     }
-    58% {
-      opacity: 0.94;
-      transform: scale(0.94) rotate(-8deg);
+    84% {
+      opacity: 0.82;
+      transform: scale(0.92) rotate(-8deg);
     }
-    72% {
+    94% {
       opacity: 1;
       transform: scale(0.98) rotate(-5deg);
     }
@@ -822,9 +829,11 @@
     pointer-events: none;
     border-radius: var(--radius-pill);
     transform-origin: center;
+    contain: strict;
+    will-change: opacity, transform;
     background:
       radial-gradient(circle, color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))) 0%, transparent 66%);
-    filter: blur(16px);
+    filter: blur(14px);
   }
 
   .bar-summary-ghost {
@@ -895,7 +904,7 @@
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button::after {
-    animation: mobile-plus-morph-reveal 360ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: mobile-plus-morph-reveal 560ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   /* Morphing TO entry (pill button expands back to bar):
@@ -929,15 +938,15 @@
   /* Fallback-only shape accents. Keep them small; FLIP is the real motion. */
   @keyframes bar-collapse-squash {
     0%   { transform: translateY(0) scaleX(1)     scaleY(1); }
-    48%  { transform: translateY(-5px) scaleX(0.955) scaleY(1.047); }
-    84%  { transform: translateY(1.4px) scaleX(0.992) scaleY(1.008); }
+    50%  { transform: translateY(-4.5px) scaleX(1.023) scaleY(0.984); }
+    84%  { transform: translateY(1.4px) scaleX(1.006) scaleY(0.995); }
     100% { transform: translateY(0) scaleX(1)     scaleY(1); }
   }
 
   @keyframes bar-expand-stretch {
     0%   { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
-    46%  { transform: translateY(-5px) scaleX(1.045) scaleY(0.957); border-radius: var(--radius-pill); }
-    84%  { transform: translateY(1.4px) scaleX(1.008) scaleY(0.992); border-radius: var(--radius-pill); }
+    48%  { transform: translateY(-4.5px) scaleX(1.025) scaleY(0.982); border-radius: var(--radius-pill); }
+    84%  { transform: translateY(1.4px) scaleX(1.006) scaleY(0.995); border-radius: var(--radius-pill); }
     100% { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
   }
 
@@ -1083,19 +1092,19 @@
 
   /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
   .amount-label {
-    padding: 18px 22px 15px;
+    padding: 15px 19px 14px;
     border-radius: var(--radius-xl);
   }
 
   .amount-label.amount-active {
-    border-radius: 48px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
+    border-radius: 41px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
     --amount-scale: 1.014;
   }
 
-  /* squircle 模式下圆角阶梯整体放大，该字面量需配对补偿，否则放大态反而比 rest 态(53px)更钝 */
+  /* squircle 模式下圆角阶梯整体放大，该字面量需配对补偿，否则放大态反而比 rest 态(45px)更钝 */
   @supports (corner-shape: squircle) {
     .amount-label.amount-active {
-      border-radius: 55px;
+      border-radius: 47px;
     }
   }
 
@@ -1971,8 +1980,9 @@
     font-size: 1.08rem;
   }
 
+  /* 圆角在超窄屏依旧很大，内边距不能缩回去，否则"金额"标题又贴回圆角弧线里 */
   .amount-label {
-    padding: 8px 14px 8px;
+    padding: 13px 16px 12px;
   }
 
   .amount-label.amount-active {

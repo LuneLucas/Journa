@@ -504,7 +504,7 @@ label,
   overflow: clip;
   gap: 4px;
   /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
-  padding: 18px 22px 16px;
+  padding: 15px 19px 14px;
   border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
   border-radius: var(--radius-xl);
   background:

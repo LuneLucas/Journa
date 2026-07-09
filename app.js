@@ -1,7 +1,7 @@
 const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
-const APP_VERSION = "journa-allround-polish-20260707";
+const APP_VERSION = "journa-bar-gel-morph-v6-20260709";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 const PUBLIC_APP_URL = "https://lunelucas.github.io/Journa/";
@@ -29,10 +29,8 @@ const MOTION_DELAYS = {
   toast: 2600,
   toastWithAction: 5200,
 };
-/* Bottom bar FLIP springs: underdamped (ζ≈0.59/0.58) so the shape lands with one
-   clearly visible elastic rebound rather than easing flatly into place. */
-const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
-const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
+const BAR_MORPH_COLLAPSE_MS = 600;
+const BAR_MORPH_EXPAND_MS = 580;
 const BAR_ARC_LIFT_PX = 5;
 const BAR_ARC_REBOUND_PX = 1.4;
 const defaultFamilies = [
@@ -1460,26 +1458,39 @@ function render(options = {}) {
   }
 }
 
-function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
-  const w0 = Math.sqrt(stiffness / mass);
-  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
-  const settle = Math.log(1 / epsilon) / (zeta * w0);
-  const duration = Math.min(900, Math.max(250, settle * 1000));
-  const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
-  const values = [];
+function clampUnit(value) {
+  return Math.min(1, Math.max(0, value));
+}
 
-  for (let i = 0; i <= count; i++) {
-    const t = (settle * i) / count;
-    if (zeta < 1) {
-      const wd = w0 * Math.sqrt(1 - zeta * zeta);
-      values.push(1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)));
-    } else {
-      values.push(1 - Math.exp(-w0 * t));
-    }
-  }
+function barMorphProgress(value) {
+  const t = 1 - clampUnit(value);
+  return 1 - t * t * t * t * t;
+}
 
-  values[count] = 1;
-  return { values, duration };
+function barCollapseProgress(value) {
+  const t = clampUnit(value);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+function morphSamples(duration) {
+  const count = Math.max(36, Math.min(72, Math.round(duration / 10)));
+  return Array.from({ length: count + 1 }, (_, index) => index / count);
+}
+
+function windowedSine(offset, start, end) {
+  const t = clampUnit((offset - start) / (end - start));
+  if (t <= 0 || t >= 1) return 0;
+  return Math.sin(Math.PI * t);
+}
+
+function barGelScales(offset, toData) {
+  const pulse = windowedSine(offset, toData ? 0.38 : 0.34, toData ? 0.90 : 0.88);
+  const xAmount = toData ? 0.034 : 0.027;
+  const yAmount = toData ? 0.024 : 0.019;
+  return {
+    x: 1 + pulse * xAmount,
+    y: 1 - pulse * yAmount,
+  };
 }
 
 function cancelBarFlip() {
@@ -1534,25 +1545,28 @@ function spawnBarMorphGlow(rect, toData, duration) {
   let total;
   if (toData) {
     total = duration;
-    frames = [
-      { offset: 0, opacity: 0, transform: "scale(0.68)" },
-      { offset: 0.24, opacity: 0.10, transform: "scale(0.86)" },
-      { offset: 0.58, opacity: 0.24, transform: "scale(1.05)" },
-      { offset: 0.78, opacity: 0.18, transform: "scale(1.12)" },
-      { offset: 0.92, opacity: 0, transform: "scale(1.22)" },
-      { offset: 1, opacity: 0, transform: "scale(1.30)" },
-    ];
+    frames = morphSamples(total).map((offset) => {
+      const bloom = windowedSine(offset, 0.68, 0.99);
+      const gel = barGelScales(offset, true);
+      const scale = 0.96 + barCollapseProgress(offset) * 0.20;
+      return {
+        offset,
+        opacity: 0.36 * bloom,
+        transform: `scale(${scale * gel.x}, ${scale * gel.y})`,
+      };
+    });
   } else {
-    total = Math.round(duration * 0.8);
-    frames = [
-      { offset: 0, opacity: 1, transform: "scale(1)" },
-      { offset: 1, opacity: 0, transform: "scale(1.12)" },
-    ];
+    total = Math.round(duration * 0.72);
+    frames = morphSamples(total).map((offset) => ({
+      offset,
+      opacity: 0.22 * (1 - barMorphProgress(offset)),
+      transform: `scale(${1 + barMorphProgress(offset) * 0.13})`,
+    }));
   }
 
   const animation = glow.animate(frames, {
     duration: total,
-    easing: toData ? "cubic-bezier(0.4, 0, 0.2, 1)" : "cubic-bezier(0.4, 0, 0.7, 1)",
+    easing: "linear",
     fill: "forwards",
   });
   const cleanup = () => glow.remove();
@@ -1596,24 +1610,35 @@ function animateBarFlip(nextPanel) {
     return;
   }
 
-  const { values, duration } = springSamples(toData ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND);
+  const duration = toData ? BAR_MORPH_COLLAPSE_MS : BAR_MORPH_EXPAND_MS;
+  const samples = morphSamples(duration);
   const relX = lastButton.left - lastBar.left;
   const relY = lastButton.top - lastBar.top;
   const barFrames = [];
   const buttonFrames = [];
 
-  values.forEach((progress, index) => {
-    const offset = index / (values.length - 1);
+  samples.forEach((offset) => {
+    const progress = toData ? barCollapseProgress(offset) : barMorphProgress(offset);
+    const gel = barGelScales(offset, toData);
     const width = firstBar.width + (lastBar.width - firstBar.width) * progress;
     const height = firstBar.height + (lastBar.height - firstBar.height) * progress;
     const x = firstBar.left + (lastBar.left - firstBar.left) * progress;
     const y = firstBar.top + (lastBar.top - firstBar.top) * progress;
-    const scaleX = width / lastBar.width;
-    const scaleY = height / lastBar.height;
-    const translateX = x - lastBar.left;
-    const translateY = y - lastBar.top;
+    const visualWidth = width * gel.x;
+    const visualHeight = height * gel.y;
+    const visualX = x + width - visualWidth;
+    const visualY = y + height - visualHeight;
+    const scaleX = visualWidth / lastBar.width;
+    const scaleY = visualHeight / lastBar.height;
+    const translateX = visualX - lastBar.left;
+    const translateY = visualY - lastBar.top;
     const arcLift = barArcLift(offset);
     barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
+
+    if (toData) {
+      buttonFrames.push({ offset, transform: "translate(0px, 0px) scale(1)" });
+      return;
+    }
 
     const buttonWidth = firstButton.width + (lastButton.width - firstButton.width) * progress;
     const buttonHeight = firstButton.height + (lastButton.height - firstButton.height) * progress;

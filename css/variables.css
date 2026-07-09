@@ -204,12 +204,12 @@
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
   /* 圆角阶梯：移动端为主，整体加大更顺滑；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
-  --radius-sm: 23px;
-  --radius-md: 30px;
-  --radius-lg: 37px;
-  --radius-xl: 47px;
+  --radius-sm: 19px;
+  --radius-md: 25px;
+  --radius-lg: 31px;
+  --radius-xl: 40px;
   --radius-pill: 999px;
-  --radius-hero: 56px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
+  --radius-hero: 48px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
   --control-height: 60px;
   --control-radius: var(--radius-lg);
   --control-radius-compact: var(--radius-md);
@@ -288,11 +288,11 @@
    胶囊+squircle 端帽会变方，且提交按钮/提交栏参与 pill 形变动画必须保持圆弧。 */
 @supports (corner-shape: squircle) {
   :root {
-    --radius-sm: 26px;
-    --radius-md: 34px;
-    --radius-lg: 42px;
-    --radius-xl: 53px;
-    --radius-hero: 63px;
+    --radius-sm: 22px;
+    --radius-md: 28px;
+    --radius-lg: 35px;
+    --radius-xl: 45px;
+    --radius-hero: 54px;
   }
 
   *,
