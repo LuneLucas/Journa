@@ -48,18 +48,13 @@ body::before {
   mask-image: linear-gradient(to bottom, black 52%, transparent 100%);
   border-bottom: 1px solid var(--line);
   transform: translateZ(0);
-  transition: 
-    padding var(--motion-fast) var(--spring),
-    margin-bottom var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--settle);
-  will-change: padding, margin-bottom;
+  transition: border-color 160ms ease;
 }
 
 .app-header h1 {
   transform: translateZ(0) scale(1);
   transform-origin: left bottom;
-  transition: transform 260ms var(--ease-out-soft);
-  will-change: transform;
+  transition: transform 160ms var(--ease-out-soft);
 }
 
 .app-header .eyebrow {
@@ -79,7 +74,7 @@ body::before {
 }
 
 .app-header.is-collapsed h1 {
-  transform: translate3d(0, 2px, 0) scale(var(--header-title-collapse-scale));
+  transform: translate3d(0, 1px, 0) scale(var(--header-title-collapse-scale));
 }
 
 .app-header.is-collapsed .eyebrow {
@@ -110,6 +105,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 9px;
+  appearance: none;
   border: 1px solid rgba(255, 255, 255, 0.74);
   border-radius: var(--radius-pill);
   padding: 0 14px;
@@ -117,9 +113,10 @@ body::before {
     linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.56)),
     rgba(255, 255, 255, 0.52);
   color: var(--muted);
+  font: inherit;
   font-size: var(--label-md);
   font-weight: var(--fw-bold);
-  cursor: default;
+  cursor: pointer;
   user-select: none;
   box-shadow:
     var(--inset-highlight),
@@ -133,6 +130,23 @@ body::before {
     --status-dot-glow var(--motion) var(--settle),
     --status-dot-core var(--motion) var(--settle),
     --status-dot-bloom var(--motion) var(--settle);
+}
+
+.sync-status[aria-disabled="true"] {
+  cursor: default;
+}
+
+.sync-status[aria-disabled="false"]:hover {
+  transform: translateY(-1px);
+}
+
+.sync-status[aria-disabled="false"]:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.sync-status:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--green) 46%, transparent);
+  outline-offset: 3px;
 }
 
 .sync-status::before {

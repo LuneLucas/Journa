@@ -933,6 +933,46 @@ async function refreshCloudLedgerFromLifecycle() {
   await pullCloudLedger();
 }
 
+async function handleManualCloudSync() {
+  if (!isCloudConfigured()) {
+    showToast({ message: "还需要填写 Supabase anon public key" });
+    return;
+  }
+  if (!isCloudLedgerActive()) {
+    showToast({ message: "先在设置里创建或加入云账本" });
+    return;
+  }
+  if (cloudBusy) return;
+  if (navigator.onLine === false) {
+    showToast({ message: "当前离线，恢复网络后再同步" });
+    return;
+  }
+
+  lastLifecycleRefreshAt = Date.now();
+  window.clearTimeout(pendingSettingsSync);
+  pendingSettingsSync = 0;
+  cloudBusy = true;
+  updateCloudControls();
+
+  let settingsSynced = true;
+  try {
+    await syncCloudSettingsNow();
+  } catch (error) {
+    settingsSynced = false;
+  }
+
+  const expensesSynced = await syncPendingCloudExpenses({ silent: false });
+  cloudBusy = false;
+  updateCloudControls();
+
+  if (!settingsSynced || !expensesSynced) {
+    showToast({ message: "还有内容未同步，先保留本地账本" });
+    return;
+  }
+
+  await pullCloudLedger({ announce: true });
+}
+
 async function createCloudLedger() {
   if (!isCloudConfigured()) {
     showToast({ message: "还需要填写 Supabase anon public key" });
@@ -1175,6 +1215,10 @@ function renderCloudControls(forcedStatus = "") {
   elements.syncStatus.classList.toggle("is-pending", !forcedStatus && syncSummary.state === "pending");
   elements.syncStatus.classList.toggle("is-failed", !forcedStatus && syncSummary.state === "failed");
   elements.syncStatus.classList.toggle("is-syncing", syncing);
+  elements.syncStatus.setAttribute("aria-disabled", String(!active || cloudBusy));
+  elements.syncStatus.setAttribute("aria-busy", String(syncing));
+  elements.syncStatus.setAttribute("title", syncSummary.detail);
+  elements.syncStatus.setAttribute("aria-label", active ? `同步云账本，${syncSummary.detail}` : syncSummary.detail);
   if (syncStatusWasSyncing && !syncing && active && !forcedStatus) playSyncLampIgnite();
   syncStatusWasSyncing = syncing;
   const nextLabel = forcedStatus || syncSummary.label;
@@ -4978,6 +5022,7 @@ elements.exportCsvButton.addEventListener("click", exportCsvBackup);
 elements.exportJsonButton.addEventListener("click", exportJsonBackup);
 elements.createCloudLedgerButton.addEventListener("click", createCloudLedger);
 elements.copyShareLinkButton.addEventListener("click", copyShareLink);
+elements.syncStatus.addEventListener("click", handleManualCloudSync);
 elements.openSettingsButton.addEventListener("click", openSettings);
 elements.closeSettingsButton.addEventListener("click", closeSettings);
 elements.settingsBackdrop.addEventListener("click", closeSettings);

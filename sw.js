@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-safe-area-v2-20260710";
+const APP_VERSION = "journa-cloud-pill-sync-v1-20260710";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",

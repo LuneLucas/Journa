@@ -98,6 +98,7 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
   --mobile-edge-start: max(14px, calc(var(--safe-area-left) + 12px));
   --mobile-edge-end: max(14px, calc(var(--safe-area-right) + 12px));
+  --mobile-shell-top: 20px;
   --mobile-header-top: calc(13px + var(--safe-area-top));
   --mobile-header-collapsed-top: calc(8px + var(--safe-area-top));
   --mobile-submit-bottom: calc(16px + var(--safe-area-bottom));
@@ -215,12 +216,12 @@
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
   /* 普通圆弧回退（Safari 等不支持 corner-shape）：轻微收紧，避免视觉过圆；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
-  --radius-sm: 17px;
-  --radius-md: 23px;
-  --radius-lg: 29px;
-  --radius-xl: 38px;
+  --radius-sm: 13px;
+  --radius-md: 19px;
+  --radius-lg: 25px;
+  --radius-xl: 34px;
   --radius-pill: 999px;
-  --radius-hero: 46px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
+  --radius-hero: 42px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
   --control-height: 60px;
   --control-radius: var(--radius-lg);
   --control-radius-compact: var(--radius-md);
@@ -275,6 +276,7 @@
   /* 浮层 z-index 总表：局部堆叠(0/1/2/-1)不入表 */
   --z-settings: 20;
   --z-ledger-management: 22;
+  --z-mobile-curtain: 24;
   --z-mobile-submit: 25;
   --z-confirm: 28;
   --z-toast: 30;
