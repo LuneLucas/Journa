@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-bar-gel-morph-v6-20260709";
+const APP_VERSION = "journa-safe-area-v2-20260710";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",

@@ -29,8 +29,10 @@ const MOTION_DELAYS = {
   toast: 2600,
   toastWithAction: 5200,
 };
-const BAR_MORPH_COLLAPSE_MS = 600;
-const BAR_MORPH_EXPAND_MS = 580;
+/* Bottom bar FLIP springs: underdamped (ζ≈0.59/0.58) so the shape lands with one
+   clearly visible elastic rebound rather than easing flatly into place. */
+const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
+const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
 const BAR_ARC_LIFT_PX = 5;
 const BAR_ARC_REBOUND_PX = 1.4;
 const defaultFamilies = [
@@ -1458,39 +1460,26 @@ function render(options = {}) {
   }
 }
 
-function clampUnit(value) {
-  return Math.min(1, Math.max(0, value));
-}
+function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
+  const w0 = Math.sqrt(stiffness / mass);
+  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  const settle = Math.log(1 / epsilon) / (zeta * w0);
+  const duration = Math.min(900, Math.max(250, settle * 1000));
+  const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
+  const values = [];
 
-function barMorphProgress(value) {
-  const t = 1 - clampUnit(value);
-  return 1 - t * t * t * t * t;
-}
+  for (let i = 0; i <= count; i++) {
+    const t = (settle * i) / count;
+    if (zeta < 1) {
+      const wd = w0 * Math.sqrt(1 - zeta * zeta);
+      values.push(1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)));
+    } else {
+      values.push(1 - Math.exp(-w0 * t));
+    }
+  }
 
-function barCollapseProgress(value) {
-  const t = clampUnit(value);
-  return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
-function morphSamples(duration) {
-  const count = Math.max(36, Math.min(72, Math.round(duration / 10)));
-  return Array.from({ length: count + 1 }, (_, index) => index / count);
-}
-
-function windowedSine(offset, start, end) {
-  const t = clampUnit((offset - start) / (end - start));
-  if (t <= 0 || t >= 1) return 0;
-  return Math.sin(Math.PI * t);
-}
-
-function barGelScales(offset, toData) {
-  const pulse = windowedSine(offset, toData ? 0.38 : 0.34, toData ? 0.90 : 0.88);
-  const xAmount = toData ? 0.034 : 0.027;
-  const yAmount = toData ? 0.024 : 0.019;
-  return {
-    x: 1 + pulse * xAmount,
-    y: 1 - pulse * yAmount,
-  };
+  values[count] = 1;
+  return { values, duration };
 }
 
 function cancelBarFlip() {
@@ -1545,28 +1534,25 @@ function spawnBarMorphGlow(rect, toData, duration) {
   let total;
   if (toData) {
     total = duration;
-    frames = morphSamples(total).map((offset) => {
-      const bloom = windowedSine(offset, 0.68, 0.99);
-      const gel = barGelScales(offset, true);
-      const scale = 0.96 + barCollapseProgress(offset) * 0.20;
-      return {
-        offset,
-        opacity: 0.36 * bloom,
-        transform: `scale(${scale * gel.x}, ${scale * gel.y})`,
-      };
-    });
+    frames = [
+      { offset: 0, opacity: 0, transform: "scale(0.68)" },
+      { offset: 0.24, opacity: 0.10, transform: "scale(0.86)" },
+      { offset: 0.58, opacity: 0.24, transform: "scale(1.05)" },
+      { offset: 0.78, opacity: 0.18, transform: "scale(1.12)" },
+      { offset: 0.92, opacity: 0, transform: "scale(1.22)" },
+      { offset: 1, opacity: 0, transform: "scale(1.30)" },
+    ];
   } else {
-    total = Math.round(duration * 0.72);
-    frames = morphSamples(total).map((offset) => ({
-      offset,
-      opacity: 0.22 * (1 - barMorphProgress(offset)),
-      transform: `scale(${1 + barMorphProgress(offset) * 0.13})`,
-    }));
+    total = Math.round(duration * 0.8);
+    frames = [
+      { offset: 0, opacity: 1, transform: "scale(1)" },
+      { offset: 1, opacity: 0, transform: "scale(1.12)" },
+    ];
   }
 
   const animation = glow.animate(frames, {
     duration: total,
-    easing: "linear",
+    easing: toData ? "cubic-bezier(0.4, 0, 0.2, 1)" : "cubic-bezier(0.4, 0, 0.7, 1)",
     fill: "forwards",
   });
   const cleanup = () => glow.remove();
@@ -1610,32 +1596,28 @@ function animateBarFlip(nextPanel) {
     return;
   }
 
-  const duration = toData ? BAR_MORPH_COLLAPSE_MS : BAR_MORPH_EXPAND_MS;
-  const samples = morphSamples(duration);
+  const { values, duration } = springSamples(toData ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND);
   const relX = lastButton.left - lastBar.left;
   const relY = lastButton.top - lastBar.top;
   const barFrames = [];
   const buttonFrames = [];
 
-  samples.forEach((offset) => {
-    const progress = toData ? barCollapseProgress(offset) : barMorphProgress(offset);
-    const gel = barGelScales(offset, toData);
+  values.forEach((progress, index) => {
+    const offset = index / (values.length - 1);
     const width = firstBar.width + (lastBar.width - firstBar.width) * progress;
     const height = firstBar.height + (lastBar.height - firstBar.height) * progress;
     const x = firstBar.left + (lastBar.left - firstBar.left) * progress;
     const y = firstBar.top + (lastBar.top - firstBar.top) * progress;
-    const visualWidth = width * gel.x;
-    const visualHeight = height * gel.y;
-    const visualX = x + width - visualWidth;
-    const visualY = y + height - visualHeight;
-    const scaleX = visualWidth / lastBar.width;
-    const scaleY = visualHeight / lastBar.height;
-    const translateX = visualX - lastBar.left;
-    const translateY = visualY - lastBar.top;
+    const scaleX = width / lastBar.width;
+    const scaleY = height / lastBar.height;
+    const translateX = x - lastBar.left;
+    const translateY = y - lastBar.top;
     const arcLift = barArcLift(offset);
     barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
 
     if (toData) {
+      // Collapse has one geometry carrier: the outer bar. Let the button ride
+      // that transform instead of taking a second, desynchronizable FLIP path.
       buttonFrames.push({ offset, transform: "translate(0px, 0px) scale(1)" });
       return;
     }
@@ -5265,8 +5247,58 @@ function setupStandaloneMode() {
   });
 }
 
+function setupSafeAreaMode() {
+  const root = document.documentElement;
+  const displayQueries = ["standalone", "fullscreen", "minimal-ui"].map((mode) =>
+    window.matchMedia?.(`(display-mode: ${mode})`)
+  );
+  const mobileQuery = window.matchMedia?.("(max-width: 820px), (pointer: coarse)");
+
+  const readSafeAreaInsets = () => {
+    const probe = document.createElement("div");
+    probe.style.cssText = [
+      "position: fixed",
+      "visibility: hidden",
+      "pointer-events: none",
+      "padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)",
+    ].join(";");
+    document.body.appendChild(probe);
+    const style = window.getComputedStyle(probe);
+    const insets = ["Top", "Right", "Bottom", "Left"].map((side) => Number.parseFloat(style[`padding${side}`]) || 0);
+    probe.remove();
+    return insets;
+  };
+
+  const sync = () => {
+    const isStandalone =
+      window.navigator.standalone === true || displayQueries[0]?.matches || displayQueries[2]?.matches;
+    const isFullscreen = Boolean(document.fullscreenElement) || displayQueries[1]?.matches || isStandalone;
+    const isMobile = mobileQuery?.matches ?? window.innerWidth <= 820;
+    const hasSafeArea = readSafeAreaInsets().some((inset) => inset > 0);
+    const viewport = window.visualViewport;
+    const viewportBottom = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+
+    root.classList.toggle("mobile-viewport", isMobile);
+    root.classList.toggle("mobile-fullscreen", isMobile && isFullscreen);
+    root.classList.toggle("safe-area-detected", hasSafeArea);
+    root.classList.toggle("viewport-bottom-occluded", viewportBottom > 1);
+    root.dataset.displayMode = isStandalone ? "standalone" : isFullscreen ? "fullscreen" : "browser";
+    root.style.setProperty("--visual-viewport-bottom", `${Math.round(viewportBottom)}px`);
+  };
+
+  sync();
+  displayQueries.forEach((query) => query?.addEventListener?.("change", sync));
+  mobileQuery?.addEventListener?.("change", sync);
+  window.visualViewport?.addEventListener("resize", sync);
+  window.visualViewport?.addEventListener("scroll", sync);
+  window.addEventListener("resize", sync);
+  window.addEventListener("orientationchange", sync);
+  document.addEventListener("fullscreenchange", sync);
+}
+
 async function bootstrap() {
   setupStandaloneMode();
+  setupSafeAreaMode();
   syncThemeColorMeta();
   /* 请求持久化存储：降低 Safari ITP 主动清空 localStorage/IndexedDB 的概率 */
   navigator.storage?.persist?.().catch(() => {});

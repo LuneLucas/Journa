@@ -1,6 +1,6 @@
 @media (max-width: 820px) {
   .toast-host {
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 84px);
+    bottom: calc(max(18px, var(--safe-area-bottom)) + 84px);
   }
 }
 
@@ -22,10 +22,16 @@
   display: none;
 }
 
+:root.viewport-bottom-occluded:not(.mobile-fullscreen) {
+  --mobile-submit-bottom: calc(16px + max(var(--safe-area-bottom), var(--visual-viewport-bottom)));
+}
+
 @media (max-width: 820px), (pointer: coarse) {
   .app-shell {
-    width: min(100% - 28px, 720px);
-    padding: 20px 0 calc(112px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: 720px;
+    margin-inline: var(--mobile-edge-start) var(--mobile-edge-end);
+    padding: 20px 0 calc(var(--mobile-scroll-bottom) + 4px);
   }
 
   body.mobile-panel-data .app-shell,
@@ -35,15 +41,67 @@
 
   .app-header {
     --header-title-collapse-scale: 0.54;
+    position: sticky;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     column-gap: 12px;
-    row-gap: 10px;
+    row-gap: 8px;
     width: 100%;
     margin-inline: 0;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
+    padding: var(--mobile-header-top) 14px 16px;
     box-sizing: border-box;
+    isolation: isolate;
+    overflow: visible;
+    border-bottom: 0;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+    box-shadow: none;
+  }
+
+  .app-header::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0 -14px -18px;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    background: linear-gradient(to bottom, var(--glass-bg) 0%, var(--glass-bg) 72%, color-mix(in srgb, var(--glass-bg) 64%, transparent) 86%, transparent 100%);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    backdrop-filter: blur(14px) saturate(170%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 74%, rgba(0, 0, 0, 0.82) 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 0%, black 74%, rgba(0, 0, 0, 0.82) 86%, transparent 100%);
+    box-shadow: var(--shadow-sm);
+    content: "";
+    pointer-events: none;
+  }
+
+  .app-header.is-collapsed {
+    row-gap: 7px;
+    margin-bottom: 10px;
+    padding-block: var(--mobile-header-collapsed-top) 12px;
+    border-color: transparent;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .app-header.is-collapsed::before {
+    inset: 0 -14px -16px;
+    border-bottom-color: color-mix(in srgb, var(--line) 56%, transparent);
+    background: linear-gradient(to bottom, var(--glass-bg) 0%, var(--glass-bg) 76%, color-mix(in srgb, var(--glass-bg) 58%, transparent) 88%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 78%, rgba(0, 0, 0, 0.78) 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 0%, black 78%, rgba(0, 0, 0, 0.78) 88%, transparent 100%);
+  }
+
+  .app-header > :first-child {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
   }
 
   .header-actions {
@@ -61,6 +119,10 @@
     grid-row: 1 / 3;
     align-self: center;
     justify-self: end;
+  }
+
+  .app-header.is-collapsed #openSettingsButton {
+    grid-row: 1;
   }
 
   h1 {
@@ -87,7 +149,7 @@
     margin: 0 0 12px 0;
     border-width: 0 0 1px;
     border-radius: 0;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+    padding: calc(12px + var(--safe-area-top)) 16px 14px;
     background: linear-gradient(to bottom, var(--glass-bg) 65%, transparent 100%);
     -webkit-backdrop-filter: var(--glass-blur-strong);
     backdrop-filter: var(--glass-blur-strong);
@@ -98,7 +160,7 @@
 
   .settings-hero.is-collapsed,
   .ledger-management-hero.is-collapsed {
-    padding-top: calc(6px + env(safe-area-inset-top));
+    padding-top: calc(6px + var(--safe-area-top));
     padding-bottom: 6px;
     margin-bottom: 8px;
     background: linear-gradient(to bottom, var(--glass-bg) 80%, transparent 100%);
@@ -347,10 +409,11 @@
   }
 
   .mobile-panel-switch {
-    order: 2;
-    position: sticky;
-    top: 8px;
-    z-index: 4;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    position: relative;
+    top: auto;
+    z-index: 1;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
@@ -368,9 +431,13 @@
       var(--inset-highlight-strong),
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 28px -16px color-mix(in srgb, var(--submit-color, var(--green)) 68%, transparent),
-      0 14px 38px rgba(22, 26, 30, 0.10);
-    backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
-    -webkit-backdrop-filter: blur(18px) saturate(190%) brightness(1.10);
+      0 8px 22px rgba(22, 26, 30, 0.08);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .app-header.is-collapsed .mobile-panel-switch {
+    grid-row: 2;
   }
 
   .mobile-panel-switch::before,
@@ -653,7 +720,6 @@
       color 240ms ease !important;
     animation: none !important;
     transform-origin: 0 0 !important;
-    will-change: transform;
   }
 
   .mobile-submit-bar.is-flip-morphing .mobile-submit-button::after,
@@ -697,17 +763,17 @@
   @keyframes mobile-plus-morph-reveal {
     0% {
       opacity: 0;
-      transform: scale(0.54) rotate(-50deg);
+      transform: scale(0.48) rotate(-58deg);
     }
-    70% {
-      opacity: 0;
-      transform: scale(0.66) rotate(-28deg);
+    30% {
+      opacity: 0.32;
+      transform: scale(0.68) rotate(-30deg);
     }
-    84% {
-      opacity: 0.82;
-      transform: scale(0.92) rotate(-8deg);
+    58% {
+      opacity: 0.94;
+      transform: scale(0.94) rotate(-8deg);
     }
-    94% {
+    72% {
       opacity: 1;
       transform: scale(0.98) rotate(-5deg);
     }
@@ -829,11 +895,9 @@
     pointer-events: none;
     border-radius: var(--radius-pill);
     transform-origin: center;
-    contain: strict;
-    will-change: opacity, transform;
     background:
       radial-gradient(circle, color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))) 0%, transparent 66%);
-    filter: blur(14px);
+    filter: blur(16px);
   }
 
   .bar-summary-ghost {
@@ -904,7 +968,7 @@
   }
 
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button::after {
-    animation: mobile-plus-morph-reveal 560ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: mobile-plus-morph-reveal 360ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   /* Morphing TO entry (pill button expands back to bar):
@@ -938,15 +1002,15 @@
   /* Fallback-only shape accents. Keep them small; FLIP is the real motion. */
   @keyframes bar-collapse-squash {
     0%   { transform: translateY(0) scaleX(1)     scaleY(1); }
-    50%  { transform: translateY(-4.5px) scaleX(1.023) scaleY(0.984); }
-    84%  { transform: translateY(1.4px) scaleX(1.006) scaleY(0.995); }
+    48%  { transform: translateY(-5px) scaleX(0.955) scaleY(1.047); }
+    84%  { transform: translateY(1.4px) scaleX(0.992) scaleY(1.008); }
     100% { transform: translateY(0) scaleX(1)     scaleY(1); }
   }
 
   @keyframes bar-expand-stretch {
     0%   { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
-    48%  { transform: translateY(-4.5px) scaleX(1.025) scaleY(0.982); border-radius: var(--radius-pill); }
-    84%  { transform: translateY(1.4px) scaleX(1.006) scaleY(0.995); border-radius: var(--radius-pill); }
+    46%  { transform: translateY(-5px) scaleX(1.045) scaleY(0.957); border-radius: var(--radius-pill); }
+    84%  { transform: translateY(1.4px) scaleX(1.008) scaleY(0.992); border-radius: var(--radius-pill); }
     100% { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
   }
 
@@ -1065,9 +1129,10 @@
   }
 
   .family-tag {
-    min-height: 50px;
+    width: 100%;
+    min-height: 46px;
     justify-content: center;
-    padding: 5px 10px;
+    padding: 4px 8px;
     font-size: 0.9rem;
     line-height: 1.1;
     white-space: nowrap;
@@ -1190,11 +1255,11 @@
   .selectable-category-chips {
     display: flex;
     flex-wrap: nowrap;
-    gap: 9px;
+    gap: 8px;
     overflow-x: auto;
     touch-action: pan-x;
-    margin: -12px -20px -14px;
-    padding: 16px 20px 24px;
+    margin: -24px -20px -14px;
+    padding: 28px 20px 24px;
     scroll-padding-inline: 20px;
     scrollbar-width: none;
     overscroll-behavior-x: contain; /* 横滚到头不带动页面 */
@@ -1232,7 +1297,7 @@
   .selectable-category-chip {
     flex: 0 0 auto;
     min-height: 42px;
-    padding-inline: 14px;
+    padding-inline: 12px;
     font-size: var(--label-md);
     line-height: 1.1;
   }
@@ -1328,8 +1393,9 @@
     --bar-aura-opacity: 0.78;
     --bar-aura-collapsed-opacity: 0.30;
     right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom));
-    left: 16px;
+    right: max(16px, calc(var(--safe-area-right) + 12px));
+    bottom: var(--mobile-submit-bottom);
+    left: max(16px, calc(var(--safe-area-left) + 12px));
     display: flex;
     gap: 12px;
     align-items: center;
@@ -1701,10 +1767,12 @@
 
 @media (max-width: 520px) {
   .app-shell {
-    width: min(100% - 28px, 520px);
+    width: auto;
+    max-width: 520px;
+    margin-inline: var(--mobile-edge-start) var(--mobile-edge-end);
     padding-top: 16px;
     /* 底部预留固定提交栏的高度，滚到底时内容不被盖住 */
-    padding-bottom: calc(108px + env(safe-area-inset-bottom));
+    padding-bottom: var(--mobile-scroll-bottom);
   }
 
   body.mobile-panel-data .app-shell,
@@ -1803,7 +1871,7 @@
 
   .settings-hero,
   .ledger-management-hero {
-    padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+    padding: calc(12px + var(--safe-area-top)) 16px 14px;
   }
 
   .settings-family,
@@ -1918,9 +1986,9 @@
   }
 
   .mobile-submit-bar {
-    right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom));
-    left: 16px;
+    right: max(16px, calc(var(--safe-area-right) + 12px));
+    bottom: var(--mobile-submit-bottom);
+    left: max(16px, calc(var(--safe-area-left) + 12px));
     border-radius: var(--radius-pill);
     display: flex;
     gap: 10px;
@@ -1969,7 +2037,9 @@
 
 @media (max-width: 380px) {
   .app-shell {
-    width: min(100% - 20px, 380px);
+    width: auto;
+    max-width: 380px;
+    margin-inline: max(10px, calc(var(--safe-area-left) + 10px)) max(10px, calc(var(--safe-area-right) + 10px));
   }
 
   .metric.primary strong {
@@ -2023,9 +2093,9 @@
   }
 
   .mobile-submit-bar {
-    right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom));
-    left: 16px;
+    right: max(16px, calc(var(--safe-area-right) + 10px));
+    bottom: var(--mobile-submit-bottom);
+    left: max(16px, calc(var(--safe-area-left) + 10px));
     display: flex;
     gap: 7px;
     padding: 7px;
@@ -2044,7 +2114,7 @@
   }
 
   .family-tag {
-    min-height: 54px;
+    min-height: 48px;
     font-size: var(--label-md);
   }
 

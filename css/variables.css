@@ -92,6 +92,17 @@
 
 :root {
   color-scheme: light;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --mobile-edge-start: max(14px, calc(var(--safe-area-left) + 12px));
+  --mobile-edge-end: max(14px, calc(var(--safe-area-right) + 12px));
+  --mobile-header-top: calc(13px + var(--safe-area-top));
+  --mobile-header-collapsed-top: calc(8px + var(--safe-area-top));
+  --mobile-submit-bottom: calc(16px + var(--safe-area-bottom));
+  --mobile-scroll-bottom: calc(108px + var(--safe-area-bottom));
+  --visual-viewport-bottom: 0px;
   --bg: #f7f9f8;
   /* 毛玻璃反射与模糊定义 */
   --glass-bg: rgba(255, 255, 255, 0.72);

@@ -2,7 +2,7 @@
   position: fixed;
   z-index: var(--z-toast);
   left: 50%;
-  bottom: max(18px, env(safe-area-inset-bottom));
+  bottom: max(18px, var(--safe-area-bottom));
   width: min(420px, calc(100% - 28px));
   transform: translateX(-50%);
   pointer-events: none;

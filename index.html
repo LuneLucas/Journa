@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/base.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-bar-gel-morph-v6-20260709">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-bar-gel-morph-v6-20260709">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/base.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-safe-area-v2-20260710">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-safe-area-v2-20260710">
     <script>
       // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
       // browsers don't expose the SF Symbols font to web content — even Safari
@@ -83,6 +83,11 @@
             <svg class="svg-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
+        <div class="mobile-panel-switch" id="mobilePanelSwitch" role="tablist" aria-label="手机端视图切换">
+          <div class="mobile-panel-indicator"></div>
+          <button class="mobile-panel-tab is-active" id="mobileEntryTab" type="button" role="tab" aria-selected="true" aria-controls="expenseForm" data-mobile-panel-target="entry">记账</button>
+          <button class="mobile-panel-tab" id="mobileDataTab" type="button" role="tab" aria-selected="false" aria-controls="ledgerList" data-mobile-panel-target="data">数据</button>
+        </div>
       </header>
 
       <div class="app-view" id="ledgerView" data-mobile-panel="entry">
@@ -100,12 +105,6 @@
             <strong id="expenseCount">0</strong>
           </div>
         </section>
-
-        <div class="mobile-panel-switch" id="mobilePanelSwitch" role="tablist" aria-label="手机端视图切换">
-          <div class="mobile-panel-indicator"></div>
-          <button class="mobile-panel-tab is-active" id="mobileEntryTab" type="button" role="tab" aria-selected="true" aria-controls="expenseForm" data-mobile-panel-target="entry">记账</button>
-          <button class="mobile-panel-tab" id="mobileDataTab" type="button" role="tab" aria-selected="false" aria-controls="ledgerList" data-mobile-panel-target="data">数据</button>
-        </div>
 
         <div class="workspace">
           <section class="entry-panel" aria-label="记一笔账">
@@ -428,7 +427,7 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <script src="./app.js?v=journa-bar-gel-morph-v6-20260709"></script>
+    <script src="./app.js?v=journa-safe-area-v2-20260710"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

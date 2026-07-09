@@ -30,14 +30,14 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  min-height: 52px;
+  min-height: 48px;
   border: 1px solid color-mix(in srgb, var(--family-color) 18%, rgba(22, 26, 30, 0.10));
   border-radius: var(--radius-pill);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.50)),
     color-mix(in srgb, var(--family-color) 5%, transparent);
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
-  padding: 6px 16px;
+  padding: 5px 14px;
   font-size: var(--label-md);
   font-weight: var(--fw-bold);
   box-shadow:
