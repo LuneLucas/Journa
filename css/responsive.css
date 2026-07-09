@@ -1056,9 +1056,9 @@
   }
 
   .family-tag {
-    min-height: 52px;
+    min-height: 50px;
     justify-content: center;
-    padding: 6px 10px;
+    padding: 5px 10px;
     font-size: 0.9rem;
     line-height: 1.1;
     white-space: nowrap;
@@ -2034,7 +2034,7 @@
   }
 
   .family-tag {
-    min-height: 56px;
+    min-height: 54px;
     font-size: var(--label-md);
   }
 
