@@ -214,13 +214,13 @@
   --button-secondary-text: var(--brand-primary-strong);
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
-  /* 圆角阶梯：移动端为主，整体加大更顺滑；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
-  --radius-sm: 19px;
-  --radius-md: 25px;
-  --radius-lg: 31px;
-  --radius-xl: 40px;
+  /* 普通圆弧回退（Safari 等不支持 corner-shape）：轻微收紧，避免视觉过圆；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
+  --radius-sm: 17px;
+  --radius-md: 23px;
+  --radius-lg: 29px;
+  --radius-xl: 38px;
   --radius-pill: 999px;
-  --radius-hero: 48px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
+  --radius-hero: 46px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
   --control-height: 60px;
   --control-radius: var(--radius-lg);
   --control-radius-compact: var(--radius-md);
