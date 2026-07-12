@@ -40,6 +40,25 @@
   }
 }
 
+/* 收起态灯到位点亮：冲亮冲大（光晕随 scale 一起放大），随后单段连续回落到收起稳态过曝。
+   只留一个峰值折点——中途再插高原会在衰减段制造速率突变，看起来像"阶跃"而非连续熄灭。 */
+@keyframes sync-lamp-dock-flash {
+  0% {
+    filter: brightness(1.14);
+    transform: scale(1);
+  }
+
+  26% {
+    filter: brightness(1.55);
+    transform: scale(1.24);
+  }
+
+  100% {
+    filter: brightness(1.14);
+    transform: scale(1);
+  }
+}
+
 /* 同步状态文案切换：轻微上浮淡入（见 misc.css .sync-status-label.is-label-swap） */
 @keyframes sync-label-swap {
   from {
@@ -1017,4 +1036,28 @@
 
 ::view-transition-new(total-amount) {
   animation: text-slide-in var(--motion) var(--spring) both;
+}
+
+/* 欢迎引导插画：三圆轻漂浮 + 云同步三点脉冲 */
+@keyframes welcome-orb-drift {
+  from {
+    translate: 0 -3px;
+  }
+
+  to {
+    translate: 0 3px;
+  }
+}
+
+@keyframes welcome-sync-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
 }

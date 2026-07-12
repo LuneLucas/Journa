@@ -184,6 +184,24 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
+  .amount-label.amount-themed {
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 30%, var(--dark-hairline-strong));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--green)) 22%, rgba(255, 255, 255, 0.06)),
+      0 22px 58px -30px var(--selected-family-glow),
+      0 12px 34px rgba(0, 0, 0, 0.24);
+  }
+
+  .amount-label.amount-active.amount-themed {
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 48%, var(--dark-hairline-strong));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--green)) 34%, rgba(255, 255, 255, 0.08)),
+      inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, rgba(255, 255, 255, 0.16)),
+      0 0 32px -14px var(--selected-family-glow),
+      0 22px 62px -30px var(--selected-family-glow),
+      var(--shadow-hero);
+  }
+
   .amount-label.amount-active input:disabled {
     -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
   }
@@ -227,12 +245,13 @@
   }
 
   .mobile-panel-indicator {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 12%, rgba(255, 255, 255, 0.18)), rgba(255, 255, 255, 0.08));
     box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.14),
+      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.16)),
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.06)),
       inset 0 -1px 1px rgba(0, 0, 0, 0.22),
-      0 4px 12px -2px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+      0 4px 14px -4px color-mix(in srgb, var(--submit-color, var(--green)) 28%, rgba(0, 0, 0, 0.3));
+    border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(255, 255, 255, 0.10));
   }
 
   /* 提交栏玻璃与摘要浅底转暗 */
@@ -1183,5 +1202,67 @@
   .sync-status.is-failed {
     --status-dot-core: rgba(255, 255, 255, 0.5);
     --status-dot-bloom: rgba(255, 255, 255, 0);
+  }
+
+  /* 欢迎引导浮层：白色渐变改暗面，同确认框 */
+  .welcome-dialog {
+    border-color: var(--dark-hairline);
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.08), transparent 46%),
+      radial-gradient(ellipse at 86% 6%, rgba(185, 201, 230, 0.07), transparent 44%),
+      var(--dark-panel);
+  }
+
+  .welcome-skip {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .welcome-skip:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .welcome-dot {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .welcome-dot.is-active {
+    background: var(--brand-primary);
+  }
+
+  .welcome-next-button {
+    --submit-text: color-mix(in srgb, var(--brand-primary) 30%, white);
+  }
+
+  /* 三圆插画在暗底用 screen 混合保持可见（同空状态插画） */
+  .welcome-orb {
+    mix-blend-mode: screen;
+    opacity: 0.66;
+  }
+
+  .welcome-family-dot,
+  .welcome-mini-chips span {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .welcome-family-dot.is-on.dot-a {
+    background: rgba(169, 206, 181, 0.24);
+    color: #b7d8c4;
+    box-shadow: inset 0 0 0 1px rgba(169, 206, 181, 0.34);
+  }
+
+  .welcome-mini-chips span.is-on {
+    background: color-mix(in srgb, var(--category-text) 26%, transparent);
+    color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  }
+
+  .welcome-settle-party.dot-b {
+    background: rgba(185, 201, 230, 0.24);
+    color: #c3d2ec;
+  }
+
+  .welcome-settle-party.dot-c {
+    background: rgba(239, 194, 191, 0.24);
+    color: #eec5c2;
   }
 }

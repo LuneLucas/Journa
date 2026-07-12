@@ -236,6 +236,8 @@
   --motion-fast: 401ms;
   --motion: 534ms;
   --motion-slow: 713ms;
+  --ledger-morph-motion: 280ms;
+  --ledger-morph-easing: cubic-bezier(0.2, 0.72, 0.24, 1);
   --selection-motion: 520ms;
   --selection-release-motion: 360ms;
   /* 灯泡点亮：慢启动缓动 + 较长升亮时长；熄灯走快速调暗。

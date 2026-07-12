@@ -577,9 +577,10 @@ label,
 }
 
 .amount-label.amount-themed {
+  border-color: color-mix(in srgb, var(--selected-family-color) 24%, rgba(255, 255, 255, 0.72));
   box-shadow:
-    inset 0 0 0 1px var(--selected-family-wash),
-    0 24px 64px -24px var(--selected-family-glow),
+    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 16%, rgba(255, 255, 255, 0.74)),
+    0 24px 64px -30px var(--selected-family-glow),
     0 12px 34px rgba(22, 26, 30, 0.08);
 }
 
@@ -672,11 +673,12 @@ label,
 }
 
 .amount-label.amount-active.amount-themed {
+  border-color: color-mix(in srgb, var(--selected-family-color) 42%, rgba(255, 255, 255, 0.76));
   box-shadow:
-    inset 0 0 0 1.5px color-mix(in srgb, var(--selected-family-color) 45%, transparent),
-    0 0 16px -2px var(--selected-family-glow),
-    0 0 54px -6px var(--selected-family-glow),
-    0 0 96px -10px var(--selected-family-glow),
+    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 32%, rgba(255, 255, 255, 0.64)),
+    inset 0 1px 0 color-mix(in srgb, var(--selected-family-color) 18%, white),
+    0 0 28px -12px var(--selected-family-glow),
+    0 20px 58px -28px var(--selected-family-glow),
     var(--shadow-hero);
 }
 
@@ -2113,14 +2115,14 @@ label,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   width: 0;
   min-width: 0;
   max-width: 0;
   color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
   font-size: 0.88rem;
   font-weight: var(--fw-heavy);
-  line-height: 1;
+  line-height: 1.12;
   opacity: 0;
   pointer-events: none;
   text-align: center;
@@ -2136,7 +2138,7 @@ label,
 }
 
 .ledger-date strong {
-  margin-top: 5px;
+  margin-top: 4px;
   font-size: 1.18rem;
   font-weight: var(--fw-black);
 }
@@ -2290,4 +2292,382 @@ label,
     color var(--motion-fast) var(--spring),
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring);
+}
+
+/* ── 欢迎引导浮层：与确认框同一玻璃语言，四步横滑卡片 ── */
+.welcome-view {
+  position: fixed;
+  z-index: var(--z-confirm);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.welcome-view[hidden] {
+  display: none;
+}
+
+.welcome-backdrop {
+  cursor: default;
+}
+
+.welcome-dialog {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(440px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.18), transparent 46%),
+    radial-gradient(ellipse at 86% 6%, rgba(185, 201, 230, 0.15), transparent 44%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
+    rgba(247, 249, 248, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 28px 90px rgba(22, 26, 30, 0.20);
+  animation: confirm-dialog-enter var(--motion) var(--spring) both;
+}
+
+.welcome-view.is-closing .welcome-backdrop {
+  animation: settings-backdrop-exit var(--motion-fast) var(--settle) both;
+  pointer-events: none;
+}
+
+.welcome-view.is-closing .welcome-dialog {
+  animation: confirm-dialog-exit var(--motion-fast) var(--settle) both;
+  pointer-events: none;
+}
+
+.welcome-skip {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(22, 26, 30, 0.06);
+  color: var(--muted);
+  padding: 7px 14px;
+  font-size: var(--label-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--settle),
+    color var(--motion-fast) var(--settle);
+}
+
+.welcome-skip:hover {
+  background: rgba(22, 26, 30, 0.10);
+  color: var(--ink);
+}
+
+.welcome-skip[hidden] {
+  display: none;
+}
+
+.welcome-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  outline: none;
+}
+
+.welcome-track::-webkit-scrollbar {
+  display: none;
+}
+
+.welcome-slide {
+  display: grid;
+  flex: 0 0 100%;
+  gap: 8px;
+  justify-items: center;
+  align-content: start;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 48px 28px 4px;
+  text-align: center;
+}
+
+.welcome-slide h2,
+.welcome-slide h3 {
+  font-size: 1.55rem;
+  line-height: 1.15;
+}
+
+.welcome-eyebrow {
+  margin-bottom: 0;
+  color: var(--brand-primary);
+}
+
+.welcome-copy {
+  max-width: 32ch;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: var(--fw-bold);
+  line-height: 1.6;
+}
+
+.welcome-art {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 138px;
+  margin-bottom: 8px;
+}
+
+/* 第 1 步插画：三圆母题（同 favicon 与空状态插画），轻微呼吸漂浮 */
+.welcome-orbs {
+  position: relative;
+  width: 158px;
+  height: 116px;
+}
+
+.welcome-orb {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+
+.welcome-orb.orb-a {
+  top: 0;
+  left: 10px;
+  background: rgba(169, 206, 181, 0.82);
+}
+
+.welcome-orb.orb-b {
+  top: 0;
+  right: 10px;
+  background: rgba(185, 201, 230, 0.82);
+}
+
+.welcome-orb.orb-c {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 194, 191, 0.78);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-orb {
+    animation: welcome-orb-drift 5200ms ease-in-out infinite alternate;
+  }
+
+  .welcome-orb.orb-b {
+    animation-delay: -1700ms;
+  }
+
+  .welcome-orb.orb-c {
+    animation-delay: -3400ms;
+  }
+}
+
+/* 第 2 步插画：迷你记账卡 */
+.welcome-mini-card {
+  display: grid;
+  gap: 10px;
+  width: min(238px, 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--control-surface-strong);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-chip);
+  text-align: left;
+}
+
+.welcome-mini-families,
+.welcome-mini-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.welcome-family-dot,
+.welcome-mini-chips span {
+  border-radius: var(--radius-pill);
+  background: rgba(22, 26, 30, 0.05);
+  color: var(--muted);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+
+.welcome-family-dot.is-on.dot-a {
+  background: rgba(169, 206, 181, 0.55);
+  color: #48705c;
+  box-shadow: inset 0 0 0 1px rgba(85, 121, 101, 0.32);
+}
+
+.welcome-mini-chips span.is-on {
+  background: var(--category-bg);
+  color: var(--category-text);
+  box-shadow: inset 0 0 0 1px var(--category-border);
+}
+
+.welcome-mini-amount {
+  color: var(--ink);
+  font-family: var(--font-number);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem;
+  font-weight: var(--fw-heavy);
+  line-height: 1;
+}
+
+/* 第 3 步插画：平账建议一行 */
+.welcome-mini-settle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--control-surface-strong);
+  padding: 12px 18px;
+  box-shadow: var(--shadow-chip);
+}
+
+.welcome-settle-party {
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+
+.welcome-settle-party.dot-b {
+  background: rgba(185, 201, 230, 0.55);
+  color: #4c6288;
+}
+
+.welcome-settle-party.dot-c {
+  background: rgba(239, 194, 191, 0.55);
+  color: #96524d;
+}
+
+.welcome-settle-arrow {
+  color: var(--muted);
+  font-weight: var(--fw-heavy);
+}
+
+.welcome-settle-amount {
+  color: var(--ink);
+  font-family: var(--font-number);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.02rem;
+  font-weight: var(--fw-heavy);
+}
+
+/* 第 4 步插画：邀请链接 + 三点同步脉冲 */
+.welcome-cloud-art {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.welcome-mini-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--control-surface-strong);
+  color: var(--muted);
+  padding: 10px 18px;
+  box-shadow: var(--shadow-chip);
+  font-family: var(--font-number);
+  font-size: 0.8rem;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+
+.welcome-mini-link svg {
+  flex: none;
+  color: var(--brand-primary);
+}
+
+.welcome-sync-dots {
+  display: flex;
+  gap: 10px;
+}
+
+.welcome-sync-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.welcome-sync-dots .dot-a { background: #a9ceb5; }
+.welcome-sync-dots .dot-b { background: #b9c9e6; }
+.welcome-sync-dots .dot-c { background: #efc2bf; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-sync-dots span {
+    animation: welcome-sync-pulse 1800ms ease-in-out infinite;
+  }
+
+  .welcome-sync-dots .dot-b { animation-delay: 220ms; }
+  .welcome-sync-dots .dot-c { animation-delay: 440ms; }
+}
+
+.welcome-footer {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  padding: 18px 28px 24px;
+}
+
+.welcome-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.welcome-dot {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(22, 26, 30, 0.16);
+  padding: 0;
+  cursor: pointer;
+  transition:
+    width var(--motion-fast) var(--spring),
+    background var(--motion-fast) var(--settle);
+}
+
+.welcome-dot.is-active {
+  width: 24px;
+  background: var(--brand-primary);
+}
+
+.welcome-next-button {
+  /* --submit-text 注册初值为透明（提交按钮由 JS 按家庭注入），这里必须显式给值 */
+  --submit-color: var(--brand-primary);
+  --submit-text: var(--brand-primary-strong);
+  --submit-glow: color-mix(in srgb, var(--brand-primary) 42%, transparent);
+  width: 100%;
+}
+
+/* 胶囊与正圆形欢迎组件在 squircle 全局下豁免回圆弧（端帽/圆会变方） */
+@supports (corner-shape: squircle) {
+  .welcome-skip,
+  .welcome-dot,
+  .welcome-orb,
+  .welcome-sync-dots span,
+  .welcome-family-dot,
+  .welcome-mini-chips span,
+  .welcome-mini-settle,
+  .welcome-settle-party,
+  .welcome-mini-link {
+    corner-shape: round;
+  }
+}
+
+/* 自绘滚动动画期间关闭吸附，避免逐帧被拉回吸附点 */
+.welcome-track.is-animating {
+  scroll-snap-type: none;
 }

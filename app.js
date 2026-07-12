@@ -1,7 +1,7 @@
 const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
-const APP_VERSION = "journa-bar-gel-morph-v6-20260709";
+const APP_VERSION = "journa-bar-lateral-rebound-v10-20260711";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 const PUBLIC_APP_URL = "https://lunelucas.github.io/Journa/";
@@ -18,7 +18,7 @@ const MOTION_DELAYS = {
   choiceRelease: 460,
   splitSwitch: 260,
   mobilePanelOut: 120,
-  mobilePanelIn: 500,
+  mobilePanelIn: 340,
   mobilePanelIndicator: 620,
   barMorph: 620,
   addCelebrate: 1560,
@@ -35,6 +35,8 @@ const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
 const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
 const BAR_ARC_LIFT_PX = 5;
 const BAR_ARC_REBOUND_PX = 1.4;
+const BAR_COLLAPSE_REBOUND_X_PX = 3.2;
+const BAR_EXPAND_REBOUND_X_PX = -2.4;
 const defaultFamilies = [
   { id: "family-a", name: "乐家" },
   { id: "family-b", name: "祺家" },
@@ -209,6 +211,18 @@ const elements = {
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
   operatorModalInput: document.querySelector("#operatorModalInput"),
+  welcomeView: document.querySelector("#welcomeView"),
+  welcomeTrack: document.querySelector("#welcomeTrack"),
+  welcomeDots: document.querySelector("#welcomeDots"),
+  welcomeSkipButton: document.querySelector("#welcomeSkipButton"),
+  welcomeNextButton: document.querySelector("#welcomeNextButton"),
+  welcomeNextLabel: document.querySelector("#welcomeNextLabel"),
+  welcomeHeroEyebrow: document.querySelector("#welcomeHeroEyebrow"),
+  welcomeTitle: document.querySelector("#welcomeTitle"),
+  welcomeHeroCopy: document.querySelector("#welcomeHeroCopy"),
+  welcomeCloudTitle: document.querySelector("#welcomeCloudTitle"),
+  welcomeCloudCopy: document.querySelector("#welcomeCloudCopy"),
+  openWelcomeButton: document.querySelector("#openWelcomeButton"),
   currentLedgerSummary: document.querySelector("#currentLedgerSummary"),
   ledgerManagerList: document.querySelector("#ledgerManagerList"),
   settingsDataSummary: document.querySelector("#settingsDataSummary"),
@@ -265,7 +279,7 @@ let ledgerSwitchTimer = 0;
 let mobilePanelSwitchTimer = 0;
 let mobilePanelIndicatorTimer = 0;
 let barMorphTimer = 0;
-let ledgerMorphTimer = 0;
+let ledgerMorphRunId = 0;
 let barFlipAnimations = [];
 let barFlipRunId = 0;
 let editReturnState = null;
@@ -289,6 +303,7 @@ const bootHadLocalData = (() => {
 let cloudBusy = false;
 let syncStatusWasSyncing = false;
 let syncLampTimer = 0;
+let syncLampDockFlashTimer = 0;
 /* 同步中至少展示时长：快速同步不足此时长时挂起收尾渲染，避免状态“闪一下” */
 const SYNC_MIN_VISIBLE_MS = 800;
 let syncShownAt = 0;
@@ -1614,6 +1629,12 @@ function barArcLift(offset) {
   return lift + BAR_ARC_REBOUND_PX * landing;
 }
 
+function barHorizontalRebound(offset, toData) {
+  if (offset < 0.68) return 0;
+  const landing = Math.sin(((offset - 0.68) / 0.32) * Math.PI);
+  return (toData ? BAR_COLLAPSE_REBOUND_X_PX : BAR_EXPAND_REBOUND_X_PX) * landing;
+}
+
 function animateBarFlip(nextPanel) {
   const bar = elements.mobileSubmitBar;
   const button = elements.mobileSubmitButton;
@@ -1657,7 +1678,8 @@ function animateBarFlip(nextPanel) {
     const translateX = x - lastBar.left;
     const translateY = y - lastBar.top;
     const arcLift = barArcLift(offset);
-    barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
+    const horizontalRebound = barHorizontalRebound(offset, toData);
+    barFrames.push({ offset, transform: `translate(${translateX + horizontalRebound}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
 
     if (toData) {
       // Collapse has one geometry carrier: the outer bar. Let the button ride
@@ -1777,11 +1799,18 @@ function setMobilePanel(panel, options = {}) {
   }
 
   const scrollToPanel = () => {
-    if (!options.scroll) return;
-    const target = nextPanel === "data" ? elements.ledgerSection : elements.entryPanel;
-    window.requestAnimationFrame(() => {
-      target?.scrollIntoView({ block: "start", behavior: options.behavior || "smooth" });
-    });
+    /* 动画切换时入场面板此刻还在 opacity 0，瞬时归位不可见；
+       若用平滑滚动会和入场动画叠成两种运动，也躲不开面板换 display 后的高度跳变 */
+    const behavior = shouldAnimatePanel ? "instant" : options.behavior || "smooth";
+    if (options.scroll) {
+      const target = nextPanel === "data" ? elements.ledgerSection : elements.entryPanel;
+      window.requestAnimationFrame(() => {
+        target?.scrollIntoView({ block: "start", behavior });
+      });
+    } else if (shouldAnimatePanel && window.scrollY > 0) {
+      /* 同步执行：display 换面板后同一任务内归零，中间不会渲染出被钳位的一帧 */
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   };
 
   const commitPanel = () => {
@@ -1837,6 +1866,8 @@ function handleMobilePanelSwitchKeydown(event) {
 
 function renderCurrentLedgerLabel() {
   elements.currentLedgerTitle.textContent = state.name;
+  /* 收起态切换账本后，灯要跟着新标题的右缘走（展开态函数内部直接返回） */
+  updateSyncLampDock();
 }
 
 function renderFormOptions() {
@@ -2741,7 +2772,12 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   const enterClass = animateFinancialChanges ? " is-entering" : "";
 
   if (!state.expenses.length) {
-    elements.ledgerList.innerHTML = renderLedgerEmptyState("还没有账单", "记下第一笔，开始这次旅行。", enterClass);
+    elements.ledgerList.innerHTML = renderLedgerEmptyState(
+      "还没有账单",
+      `<br><small>记下第一笔，开始这次旅行。</small><br><button class="secondary-button compact-button empty-state-action" type="button" data-goto-entry>去记一笔</button>`,
+      enterClass,
+      { suffixIsHtml: true },
+    );
     return;
   }
 
@@ -2790,12 +2826,19 @@ function renderLedgerItem(expense) {
   const syncBadge = syncState ? `<span class="ledger-sync-badge">${escapeHtml(formatExpenseSyncBadge(syncState))}</span>` : "";
   const syncLine = syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : "";
   const expandCue = isExpanded ? `<span class="ledger-expand-cue" aria-hidden="true">收起</span>` : "";
+  const createdName = expense.createdBy?.name || expense.createdBy;
+  const updatedName = expense.updatedBy?.name || expense.updatedBy;
+  const operatorLabel = updatedName && updatedName !== createdName
+    ? `最近编辑：${updatedName}`
+    : createdName
+      ? `记录：${createdName}`
+      : "";
+  const operatorHtml = operatorLabel
+    ? `<small class="ledger-operator" title="${escapeHtml(operatorLabel)}">${escapeHtml(operatorLabel)}</small>`
+    : "";
 
   let metaHtml = "";
   if (isExpanded) {
-    const createdName = expense.createdBy?.name || expense.createdBy;
-    const updatedName = expense.updatedBy?.name || expense.updatedBy;
-    
     let metaItems = "";
     if (createdName) {
       metaItems += `<span>✍️ 创建: ${escapeHtml(createdName)}</span>`;
@@ -2820,6 +2863,7 @@ function renderLedgerItem(expense) {
           ${syncBadge}
         </div>
         <p class="ledger-note">${escapeHtml(expense.note || "无备注")}</p>
+        ${operatorHtml}
         <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
         ${syncLine}
         ${metaHtml}
@@ -3555,6 +3599,11 @@ function handleLedgerClick(event) {
     return;
   }
 
+  if (event.target.closest("[data-goto-entry]")) {
+    setMobilePanel("entry", { animate: true, scroll: true });
+    return;
+  }
+
   const editButton = event.target.closest("[data-edit-id]");
   if (editButton) {
     requestStartEditExpense(editButton.dataset.editId);
@@ -3595,7 +3644,7 @@ function expandLedgerItem(expenseId) {
   const transitionItems = getLedgerTransitionItems(items, expenseId);
   const flipRects = captureLedgerTransitionRects(transitionItems);
   expandedExpenseId = expenseId;
-  items.forEach((item) => {
+  transitionItems.forEach((item) => {
     const isExpanded = item.dataset.expenseId === expenseId;
     item.classList.toggle("is-expanded", isExpanded);
     item.setAttribute("aria-expanded", String(isExpanded));
@@ -3610,7 +3659,7 @@ function collapseLedgerItem(expenseId) {
   const transitionItems = getLedgerTransitionItems(items, expenseId);
   const flipRects = captureLedgerTransitionRects(transitionItems);
   expandedExpenseId = "";
-  items.forEach((item) => {
+  transitionItems.forEach((item) => {
     item.classList.remove("is-expanded");
     item.setAttribute("aria-expanded", "false");
     item.setAttribute("aria-label", "展开这笔账单");
@@ -3626,7 +3675,7 @@ function getLedgerTransitionItems(items, nextExpenseId) {
 function captureLedgerTransitionRects(items) {
   if (prefersReducedMotion()) return new Map();
   const rects = new Map();
-  const selectors = [".ledger-main", ".ledger-family", ".category-pill", ".ledger-note", ".ledger-amount", ".ledger-date", ".ledger-edit-button", ".delete-button"];
+  const selectors = [".ledger-main", ".ledger-amount"];
   items.forEach((item) => {
     // 卡片自身也入表：高度变化由 play 阶段按实测值做动画
     rects.set(item, item.getBoundingClientRect());
@@ -3640,50 +3689,61 @@ function captureLedgerTransitionRects(items) {
 
 function playLedgerTransitionRects(rects) {
   if (!rects.size || prefersReducedMotion() || typeof Element.prototype.animate !== "function") return;
-  const duration = getCssDurationMs("--motion", 534);
-  const easing = getComputedStyle(document.documentElement).getPropertyValue("--settle").trim() || "cubic-bezier(0.16, 0.9, 0.14, 1)";
+  const duration = getCssDurationMs("--ledger-morph-motion", 280);
+  const easing = getComputedStyle(document.documentElement).getPropertyValue("--ledger-morph-easing").trim() || "cubic-bezier(0.2, 0.72, 0.24, 1)";
   const animations = [];
-  const settleLedgerMorph = () => {
-    window.clearTimeout(ledgerMorphTimer);
-    ledgerMorphTimer = window.setTimeout(() => {
-      elements.ledgerList?.classList.remove("is-morphing-ledger-items");
-    }, duration + 34);
-  };
+  const runId = ++ledgerMorphRunId;
 
   elements.ledgerList?.classList.add("is-morphing-ledger-items");
-  settleLedgerMorph();
 
-  // 先取消上一轮高度动画（fill: both 会夹住高度），保证下面量到真实终点
+  // 保留 capture 阶段量到的当前视觉高度，再释放上一轮动画以读取新状态的自然终点。
   rects.forEach((fromRect, element) => {
     if (element.classList?.contains("ledger-item")) {
       element._heightAnimation?.cancel();
       element._heightAnimation = null;
+      element.style.height = "";
+      element.style.minHeight = "";
+      element.style.maxHeight = "";
     }
   });
 
+  // 终点矩形先一次性读完再写起点样式：读写交错会让每个元素都触发一次强制回流。
+  const toRects = new Map();
   rects.forEach((fromRect, element) => {
     if (!element.isConnected) return;
-    const toRect = element.getBoundingClientRect();
+    toRects.set(element, element.getBoundingClientRect());
+  });
 
-    // 卡片自身：按前后实测高度过渡（min/max 同步夹紧，兼容各断点的尺寸差异）
+  toRects.forEach((toRect, element) => {
+    const fromRect = rects.get(element);
+
+    // 卡片自身只动画 height；min/max 仅在动画期间解除，不参与逐帧插值。
     if (element.classList.contains("ledger-item")) {
       if (Math.abs(fromRect.height - toRect.height) < 1) return;
+      element.style.height = `${fromRect.height}px`;
+      element.style.minHeight = "0";
+      element.style.maxHeight = "none";
       const animation = element.animate(
         [
-          { minHeight: `${fromRect.height}px`, maxHeight: `${fromRect.height}px` },
-          { minHeight: `${toRect.height}px`, maxHeight: `${toRect.height}px` },
+          { height: `${fromRect.height}px` },
+          { height: `${toRect.height}px` },
         ],
-        { duration, easing, fill: "both" },
+        { duration, easing, fill: "forwards" },
       );
       element._heightAnimation = animation;
       animations.push(animation);
-      animation.addEventListener(
-        "finish",
+      animation.finished.then(
         () => {
+          if (element._heightAnimation !== animation) return;
+          // 先让内联 height 落在终点，再原子化释放动画与尺寸约束。
+          element.style.height = `${toRect.height}px`;
           animation.cancel();
-          if (element._heightAnimation === animation) element._heightAnimation = null;
+          element.style.height = "";
+          element.style.minHeight = "";
+          element.style.maxHeight = "";
+          element._heightAnimation = null;
         },
-        { once: true },
+        () => {},
       );
       return;
     }
@@ -3703,12 +3763,18 @@ function playLedgerTransitionRects(rects) {
       { duration, easing, fill: "both" },
     );
     animations.push(animation);
-    animation.addEventListener("finish", () => animation.cancel(), { once: true });
+    animation.finished.then(() => animation.cancel(), () => {});
   });
 
-  if (animations.length) {
-    Promise.allSettled(animations.map((animation) => animation.finished)).then(settleLedgerMorph);
+  if (!animations.length) {
+    if (runId === ledgerMorphRunId) elements.ledgerList?.classList.remove("is-morphing-ledger-items");
+    return;
   }
+
+  Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
+    if (runId !== ledgerMorphRunId) return;
+    elements.ledgerList?.classList.remove("is-morphing-ledger-items");
+  });
 }
 
 function deleteExpense(expenseId, item) {
@@ -4197,6 +4263,11 @@ function checkOperatorNamePrompt() {
   if (!isCloudLedgerActive()) return;
   const savedName = localStorage.getItem("travel-ledger-operator-name");
   if (!savedName) {
+    /* 欢迎引导打开中：先看完引导，关闭时再弹名字设置，避免两层浮层叠加 */
+    if (isWelcomeOpen()) {
+      welcomePendingOperatorPrompt = true;
+      return;
+    }
     showOperatorModal();
   }
 }
@@ -4247,6 +4318,175 @@ function handleSettingsOperatorSubmit(event) {
 
   localStorage.setItem("travel-ledger-operator-name", name);
   showToast({ message: `保存成功，您的名字已设置为“${name}”` });
+}
+
+/* ── 欢迎引导浮层 ──
+   首次打开自动弹出（localStorage 标记），设置里的「使用指南」可随时重看。
+   通过邀请链接进来的人首屏改为“你已加入共享账本”，不重复推销云账本。 */
+const WELCOME_SEEN_KEY = "travel-ledger-welcome-seen";
+let welcomeSlideIndex = 0;
+let welcomePendingOperatorPrompt = false;
+let welcomeCloseTimer = 0;
+let welcomeReturnFocus = null;
+let welcomeScrollAnimation = 0;
+
+function isWelcomeOpen() {
+  return Boolean(elements.welcomeView && !elements.welcomeView.hidden);
+}
+
+function maybeShowWelcome() {
+  let seen = false;
+  try {
+    seen = localStorage.getItem(WELCOME_SEEN_KEY) === "1";
+  } catch (error) {}
+  if (seen) return;
+  openWelcome({ invitedArrival: Boolean(getLedgerTokenFromLocation()) });
+}
+
+function openWelcome({ invitedArrival = false } = {}) {
+  const view = elements.welcomeView;
+  if (!view) return;
+  window.clearTimeout(welcomeCloseTimer);
+  view.classList.remove("is-closing");
+  welcomeReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+  elements.welcomeHeroEyebrow.textContent = invitedArrival ? "邀请已生效" : "欢迎使用";
+  elements.welcomeTitle.textContent = invitedArrival ? "你已加入共享账本" : "三个家庭，一本账";
+  elements.welcomeHeroCopy.textContent = invitedArrival
+    ? "家人邀请你共同记账，新增和修改都会在三家之间实时同步。"
+    : "一起旅行的花销记在同一本账里，分摊和平账全部自动算好。";
+  const cloudActive = invitedArrival || isCloudLedgerActive();
+  elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : "邀请家人一起记";
+  elements.welcomeCloudCopy.textContent = cloudActive
+    ? "云账本已开启，账单自动同步；在「设置」里起个名字，账单会记下是谁记的。"
+    : "在「设置 → 云同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。";
+
+  view.hidden = false;
+  document.body.classList.add("confirm-open");
+  renderWelcomeDots();
+  setWelcomeSlide(0, { instant: true });
+  elements.welcomeNextButton.focus();
+}
+
+function closeWelcome({ goToEntry = false } = {}) {
+  const view = elements.welcomeView;
+  if (!view || view.hidden || view.classList.contains("is-closing")) return;
+  try {
+    localStorage.setItem(WELCOME_SEEN_KEY, "1");
+  } catch (error) {}
+  document.body.classList.remove("confirm-open");
+
+  const finish = () => {
+    view.classList.remove("is-closing");
+    view.hidden = true;
+  };
+  if (prefersReducedMotion()) {
+    finish();
+  } else {
+    view.classList.add("is-closing");
+    welcomeCloseTimer = window.setTimeout(finish, getCssDurationMs("--motion-fast", 401) + 60);
+  }
+
+  /* 云账本还没起名字的人：引导看完立刻接“设置一下名字吧” */
+  if (welcomePendingOperatorPrompt) {
+    welcomePendingOperatorPrompt = false;
+    welcomeReturnFocus = null;
+    showOperatorModal();
+    return;
+  }
+  restoreFocus(welcomeReturnFocus);
+  welcomeReturnFocus = null;
+  if (goToEntry) {
+    setMobilePanel("entry", { animate: true, scroll: true });
+  }
+}
+
+function getWelcomeSlides() {
+  return [...elements.welcomeTrack.querySelectorAll(".welcome-slide")];
+}
+
+function setWelcomeSlide(index, { instant = false } = {}) {
+  const slides = getWelcomeSlides();
+  welcomeSlideIndex = Math.max(0, Math.min(slides.length - 1, index));
+  const target = welcomeSlideIndex * elements.welcomeTrack.clientWidth;
+  if (instant || prefersReducedMotion()) {
+    cancelWelcomeScrollAnimation();
+    elements.welcomeTrack.scrollLeft = target;
+  } else {
+    animateWelcomeScroll(target);
+  }
+  syncWelcomeControls();
+}
+
+/* 原生 smooth scrollTo 在浮层内会被浏览器中途取消（卡在两页之间），
+   改用 rAF 自绘缓出动画；期间加 is-animating 关闭 scroll-snap 防逐帧吸附 */
+function animateWelcomeScroll(targetLeft) {
+  const track = elements.welcomeTrack;
+  cancelWelcomeScrollAnimation();
+  const startLeft = track.scrollLeft;
+  const distance = targetLeft - startLeft;
+  if (Math.abs(distance) < 1) {
+    track.scrollLeft = targetLeft;
+    return;
+  }
+  const duration = getCssDurationMs("--motion", 534);
+  const startTime = performance.now();
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  track.classList.add("is-animating");
+  const stepFrame = (now) => {
+    const progress = Math.min(1, (now - startTime) / duration);
+    track.scrollLeft = startLeft + distance * easeOut(progress);
+    if (progress < 1) {
+      welcomeScrollAnimation = window.requestAnimationFrame(stepFrame);
+    } else {
+      welcomeScrollAnimation = 0;
+      track.classList.remove("is-animating");
+    }
+  };
+  welcomeScrollAnimation = window.requestAnimationFrame(stepFrame);
+}
+
+function cancelWelcomeScrollAnimation() {
+  window.cancelAnimationFrame(welcomeScrollAnimation);
+  welcomeScrollAnimation = 0;
+  elements.welcomeTrack.classList.remove("is-animating");
+}
+
+function syncWelcomeControls() {
+  const isLast = welcomeSlideIndex === getWelcomeSlides().length - 1;
+  elements.welcomeNextLabel.textContent = isLast ? "开始记账" : "继续";
+  elements.welcomeSkipButton.hidden = isLast;
+  /* 只切 class 不重建节点：滚动中重写 innerHTML 会打断平滑滚动动画 */
+  [...elements.welcomeDots.children].forEach((dot, index) => {
+    dot.classList.toggle("is-active", index === welcomeSlideIndex);
+    dot.setAttribute("aria-selected", String(index === welcomeSlideIndex));
+  });
+}
+
+function renderWelcomeDots() {
+  const total = getWelcomeSlides().length;
+  elements.welcomeDots.innerHTML = Array.from(
+    { length: total },
+    (_, index) => `<button class="welcome-dot" type="button" role="tab" aria-selected="false" aria-label="第 ${index + 1} 步，共 ${total} 步" data-welcome-dot="${index}"></button>`,
+  ).join("");
+}
+
+function handleWelcomeTrackScroll() {
+  const width = elements.welcomeTrack.clientWidth;
+  if (!width) return;
+  const index = Math.round(elements.welcomeTrack.scrollLeft / width);
+  if (index !== welcomeSlideIndex) {
+    welcomeSlideIndex = Math.max(0, Math.min(getWelcomeSlides().length - 1, index));
+    syncWelcomeControls();
+  }
+}
+
+function handleWelcomeNext() {
+  if (welcomeSlideIndex >= getWelcomeSlides().length - 1) {
+    closeWelcome({ goToEntry: true });
+    return;
+  }
+  setWelcomeSlide(welcomeSlideIndex + 1);
 }
 
 function getFocusableElements(container) {
@@ -5010,6 +5250,25 @@ elements.settingsCategoryForm.addEventListener("submit", handleSettingsCategoryS
 elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryClick);
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
+elements.welcomeSkipButton.addEventListener("click", () => closeWelcome());
+elements.welcomeNextButton.addEventListener("click", handleWelcomeNext);
+elements.welcomeTrack.addEventListener("scroll", handleWelcomeTrackScroll, { passive: true });
+/* 用户上手滑动时让位：取消自绘滚动动画，交还给原生 scroll-snap */
+["touchstart", "wheel", "pointerdown"].forEach((type) => {
+  elements.welcomeTrack.addEventListener(type, cancelWelcomeScrollAnimation, { passive: true });
+});
+elements.welcomeDots.addEventListener("click", (event) => {
+  const dot = event.target.closest("[data-welcome-dot]");
+  if (dot) setWelcomeSlide(Number(dot.dataset.welcomeDot));
+});
+elements.openWelcomeButton.addEventListener("click", () => {
+  closeSettings();
+  openWelcome();
+});
+/* 横滑卡片按容器宽度定位，窗口尺寸变化时瞬时校正到当前页 */
+window.addEventListener("resize", () => {
+  if (isWelcomeOpen()) setWelcomeSlide(welcomeSlideIndex, { instant: true });
+});
 elements.settingsFamilyList.addEventListener("click", handleFamilyMemberStep);
 elements.settingsThemeList?.addEventListener("click", handleSettingsThemeClick);
 elements.settingsPaletteList.addEventListener("click", handleSettingsPaletteClick);
@@ -5103,6 +5362,10 @@ document.addEventListener("keydown", (event) => {
       trapFocus(event, elements.confirmView);
       return;
     }
+    if (!elements.welcomeView.hidden) {
+      trapFocus(event, elements.welcomeView);
+      return;
+    }
     if (!elements.ledgerManagementView.hidden) {
       trapFocus(event, elements.ledgerManagementView);
       return;
@@ -5116,6 +5379,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (!elements.confirmView.hidden) {
     closeConfirmDialog(false);
+    return;
+  }
+  if (!elements.welcomeView.hidden) {
+    closeWelcome();
     return;
   }
   if (!elements.ledgerManagementView.hidden) {
@@ -5224,7 +5491,7 @@ function spawnButtonParticles(btn, visual, themedGlow) {
 
 /* 滚动折叠通用逻辑：RAF 节流 + 滞回阈值，避免临界点抖动闪烁。
    scrollTarget 提供 scrollTop 的来源；window 场景传 window 本身（读 window.scrollY）。 */
-function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThreshold }) {
+function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThreshold, onChange }) {
   if (!scrollTarget || !collapseEl) return;
   let collapsed = false;
   let scrollFrame = 0;
@@ -5236,6 +5503,7 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
     if (shouldCollapse === collapsed) return;
     collapsed = shouldCollapse;
     collapseEl.classList.toggle("is-collapsed", collapsed);
+    onChange?.(collapsed);
   };
   const schedule = () => {
     if (scrollFrame) return;
@@ -5245,11 +5513,91 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
   sync();
 }
 
+/* 收起态指示灯停靠点：量出账本标题文字的右缘，把胶囊（此时壳已熔掉只剩灯）平移成「账本名 ●」。
+   h1 以 left/bottom 为原点做缩放过渡，收起触发瞬间量到的是过渡前的宽高，
+   需按 --header-title-collapse-scale 折算终值；胶囊原位用 offset*（不受 transform 影响）。 */
+function updateSyncLampDock() {
+  const header = document.querySelector(".app-header");
+  const capsule = elements.syncStatus;
+  const title = elements.currentLedgerTitle;
+  if (!header || !capsule || !title) return;
+  if (!header.classList.contains("is-collapsed")) return;
+  if (window.getComputedStyle(header).display !== "grid") return; // 仅移动端 grid 布局参与熔化
+
+  const headerRect = header.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(title);
+  const textRect = range.getBoundingClientRect(); // h1 是 block 占满列宽，量文字本身
+  range.detach();
+
+  const titleTransform = window.getComputedStyle(title).transform;
+  const currentScale = titleTransform === "none" ? 1 : new DOMMatrixReadOnly(titleTransform).a || 1;
+  const collapseScale =
+    Number.parseFloat(window.getComputedStyle(header).getPropertyValue("--header-title-collapse-scale")) || 1;
+
+  /* origin left bottom：左缘/底缘不动，宽高折算到收起终值 */
+  const finalTextWidth = (textRect.width / currentScale) * collapseScale;
+  const finalTextHeight = (textRect.height / currentScale) * collapseScale;
+  const finalTextRight = textRect.left + finalTextWidth;
+  const finalTextCenterY = textRect.bottom - finalTextHeight / 2;
+
+  /* 目标：灯芯离文字 10px；长标题时 clamp 到设置齿轮左侧 */
+  const lampHalf = 5;
+  let targetX = finalTextRight + 10 + lampHalf;
+  if (elements.openSettingsButton) {
+    targetX = Math.min(targetX, elements.openSettingsButton.getBoundingClientRect().left - 10 - lampHalf);
+  }
+
+  /* 收起态胶囊收成 padding 0 10px 的小圆，灯芯在盒内 x≈16（1px 边框 + 10px padding + 半径）；
+     竖直中心取同占 row 2 的切换条（尺寸不参与过渡，量到即终值），胶囊靠 align-items:center 与其同心 */
+  const panelSwitch = document.getElementById("mobilePanelSwitch");
+  const dotFinalX = headerRect.left + capsule.offsetLeft + 16;
+  const dotFinalY =
+    headerRect.top +
+    (panelSwitch
+      ? panelSwitch.offsetTop + panelSwitch.offsetHeight / 2
+      : capsule.offsetTop + capsule.offsetHeight / 2);
+
+  header.style.setProperty("--sync-dock-x", `${targetX - dotFinalX}px`);
+  header.style.setProperty("--sync-dock-y", `${finalTextCenterY - dotFinalY}px`);
+}
+
 function setupScrollCollapse() {
   // 主页面头部滚动监听
-  attachCollapseOnScroll(window, document.querySelector(".app-header"), {
+  const appHeader = document.querySelector(".app-header");
+  attachCollapseOnScroll(window, appHeader, {
     onThreshold: 56,
-    offThreshold: 24
+    offThreshold: 24,
+    /* 收起先算好停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算 */
+    onChange: (collapsed) => {
+      if (collapsed) updateSyncLampDock();
+    }
+  });
+
+  /* 收起态下窗口尺寸变化（旋屏/键盘）时重算停靠点（rAF 节流；展开态函数内部直接返回） */
+  let dockResizeFrame = 0;
+  window.addEventListener("resize", () => {
+    if (dockResizeFrame) return;
+    dockResizeFrame = window.requestAnimationFrame(() => {
+      dockResizeFrame = 0;
+      updateSyncLampDock();
+    });
+  });
+
+  /* 灯飞到位后一次性轻量点亮闪光；同步中让呼吸动画独占 filter，不叠加 */
+  elements.syncStatus?.addEventListener("transitionend", (event) => {
+    if (event.target !== elements.syncStatus || event.propertyName !== "transform") return;
+    if (!appHeader?.classList.contains("is-collapsed")) return;
+    if (elements.syncStatus.classList.contains("is-syncing") || prefersReducedMotion()) return;
+    window.clearTimeout(syncLampDockFlashTimer);
+    elements.syncStatus.classList.remove("is-dock-flash");
+    void elements.syncStatus.offsetWidth;
+    elements.syncStatus.classList.add("is-dock-flash");
+    /* 760ms > sync-lamp-dock-flash 720ms，播完摘类回到收起稳态过曝 */
+    syncLampDockFlashTimer = window.setTimeout(() => {
+      elements.syncStatus.classList.remove("is-dock-flash");
+      syncLampDockFlashTimer = 0;
+    }, 760);
   });
 
   // 设置侧边栏滚动监听
@@ -5350,6 +5698,7 @@ async function bootstrap() {
   setupSubmitButtonSpotlight();
   setupScrollCollapse();
   render();
+  maybeShowWelcome();
   const restoredFromBackup = await restoreLedgerFromCloudBackup();
   if (!restoredFromBackup && isCloudLedgerActive()) {
     await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });

@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/base.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-cloud-pill-sync-v1-20260710">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-cloud-pill-sync-v1-20260710">
+    <link rel="stylesheet" href="./css/variables.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/base.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/layout.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/components/forms.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/components/lists.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/components/modals.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/components/toast.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/animations.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/misc.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/responsive.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/dark.css?v=welcome-guide-v1-20260712">
+    <link rel="stylesheet" href="./css/a11y.css?v=welcome-guide-v1-20260712">
     <script>
       // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
       // browsers don't expose the SF Symbols font to web content — even Safari
@@ -345,6 +345,15 @@
                 </button>
               </details>
             </section>
+
+            <section class="settings-panel">
+              <h3>使用指南</h3>
+              <p class="settings-note">重温功能介绍：记账、自动平账与云账本邀请。</p>
+              <button class="secondary-button" id="openWelcomeButton" type="button">
+                <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                <span>查看使用指南</span>
+              </button>
+            </section>
           </div>
         </aside>
       </section>
@@ -423,11 +432,79 @@
         </div>
       </section>
 
+      <section class="welcome-view" id="welcomeView" hidden aria-labelledby="welcomeTitle" aria-modal="true" role="dialog">
+        <div class="confirm-backdrop welcome-backdrop" aria-label="背景"></div>
+        <div class="welcome-dialog" role="document">
+          <button class="welcome-skip" id="welcomeSkipButton" type="button">跳过</button>
+          <div class="welcome-track" id="welcomeTrack" tabindex="-1">
+            <article class="welcome-slide">
+              <div class="welcome-art" aria-hidden="true">
+                <div class="welcome-orbs">
+                  <span class="welcome-orb orb-a"></span>
+                  <span class="welcome-orb orb-b"></span>
+                  <span class="welcome-orb orb-c"></span>
+                </div>
+              </div>
+              <p class="eyebrow welcome-eyebrow" id="welcomeHeroEyebrow">欢迎使用</p>
+              <h2 id="welcomeTitle">三个家庭，一本账</h2>
+              <p class="welcome-copy" id="welcomeHeroCopy">一起旅行的花销记在同一本账里，分摊和平账全部自动算好。</p>
+            </article>
+            <article class="welcome-slide">
+              <div class="welcome-art" aria-hidden="true">
+                <div class="welcome-mini-card">
+                  <div class="welcome-mini-families">
+                    <span class="welcome-family-dot dot-a is-on">乐家</span>
+                    <span class="welcome-family-dot dot-b">祺家</span>
+                    <span class="welcome-family-dot dot-c">旦家</span>
+                  </div>
+                  <div class="welcome-mini-amount">¥ 268.00</div>
+                  <div class="welcome-mini-chips"><span class="is-on">餐饮</span><span>门票</span><span>交通</span></div>
+                </div>
+              </div>
+              <h3>记一笔，只要几秒</h3>
+              <p class="welcome-copy">选付款家庭、填金额和类别就能入账；每笔账还能单独调整分摊范围。</p>
+            </article>
+            <article class="welcome-slide">
+              <div class="welcome-art" aria-hidden="true">
+                <div class="welcome-mini-settle">
+                  <span class="welcome-settle-party dot-b">祺家</span>
+                  <span class="welcome-settle-arrow">→</span>
+                  <span class="welcome-settle-party dot-c">旦家</span>
+                  <strong class="welcome-settle-amount">¥86.50</strong>
+                </div>
+              </div>
+              <h3>平账建议自动生成</h3>
+              <p class="welcome-copy">总支出、各家应摊、谁给谁转多少钱，「统计和平账」里一目了然。</p>
+            </article>
+            <article class="welcome-slide">
+              <div class="welcome-art" aria-hidden="true">
+                <div class="welcome-cloud-art">
+                  <div class="welcome-mini-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    <span>…?ledger=一起旅行</span>
+                  </div>
+                  <div class="welcome-sync-dots"><span class="dot-a"></span><span class="dot-b"></span><span class="dot-c"></span></div>
+                </div>
+              </div>
+              <h3 id="welcomeCloudTitle">邀请家人一起记</h3>
+              <p class="welcome-copy" id="welcomeCloudCopy">在「设置 → 云同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。</p>
+            </article>
+          </div>
+          <div class="welcome-footer">
+            <div class="welcome-dots" id="welcomeDots" role="tablist" aria-label="引导步骤"></div>
+            <button class="primary-button welcome-next-button" id="welcomeNextButton" type="button">
+              <span class="button-glow-ring"></span>
+              <span class="button-label" id="welcomeNextLabel">继续</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="true"></div>
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <script src="./app.js?v=journa-cloud-pill-sync-v1-20260710"></script>
+    <script src="./app.js?v=welcome-guide-v1-20260712"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
