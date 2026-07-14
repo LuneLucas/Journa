@@ -606,7 +606,6 @@
     background: var(--dark-card-tinted);
   }
 
-  .settlement-block,
   .ledger-section {
     background:
       linear-gradient(145deg, rgba(36, 43, 40, 0.82), rgba(28, 34, 31, 0.62)),
@@ -614,6 +613,61 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
       var(--shadow-md);
+  }
+
+  .settlement-entry {
+    border-color: rgba(217, 164, 65, 0.22);
+    background:
+      linear-gradient(135deg, rgba(40, 46, 42, 0.82), rgba(28, 34, 31, 0.60)),
+      radial-gradient(ellipse at 100% 120%, rgba(217, 164, 65, 0.12), transparent 60%),
+      rgba(24, 29, 27, 0.68);
+  }
+
+  .settlement-entry-title {
+    color: #ecd9a8;
+  }
+
+  .settlement-entry-sub {
+    color: rgba(232, 236, 233, 0.60);
+  }
+
+  .settlement-entry-count {
+    background: rgba(217, 164, 65, 0.16);
+    color: #ecd9a8;
+  }
+
+  .settlement-panel h3 {
+    color: #ecd9a8;
+  }
+
+  .settlement-flow-map {
+    border-color: var(--dark-hairline);
+    background:
+      radial-gradient(ellipse at 50% 120%, rgba(217, 164, 65, 0.12), transparent 62%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .settlement-flow-map .flow-name {
+    fill: color-mix(in srgb, var(--family-text) 50%, white);
+  }
+
+  .settlement-flow-map .flow-sub,
+  .settlement-flow-map .flow-col-label {
+    fill: rgba(232, 236, 233, 0.58);
+  }
+
+  .settlement-flow-map .flow-amount {
+    fill: #f0aaa0;
+    stroke: rgba(20, 24, 22, 0.85);
+  }
+
+  .settlement-flow-map .flow-core {
+    stroke: rgba(255, 255, 255, 0.7);
+  }
+
+  .settlement-flow-map .flow-dot-core {
+    fill: rgba(255, 255, 255, 0.85);
   }
 
   .ledger-filter-summary {
@@ -644,7 +698,7 @@
   }
 
   .family-row small,
-  .settlement-party span,
+  .settlement-node-family span,
   .settlement-amount span,
   .ledger-note,
   .ledger-scope,
@@ -670,7 +724,16 @@
   }
 
   .settlement-overview strong {
+    color: rgba(246, 241, 229, 0.94);
+  }
+
+  .settlement-overview-kicker,
+  .settlement-overview strong b {
     color: #ecd9a8;
+  }
+
+  .settlement-overview small {
+    color: rgba(232, 236, 233, 0.62);
   }
 
   .settlement-item {
@@ -689,10 +752,25 @@
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 64%);
   }
 
-  .settlement-flow {
-    border-color: rgba(217, 164, 65, 0.24);
-    background: rgba(217, 164, 65, 0.12);
-    color: #ecd9a8;
+  .settlement-route-node {
+    border-color: color-mix(in srgb, var(--family-color) 26%, var(--dark-hairline));
+    background: linear-gradient(155deg, color-mix(in srgb, var(--family-color) 14%, rgba(24, 29, 27, 0.88)), color-mix(in srgb, var(--settlement-target-color) 13%, rgba(24, 29, 27, 0.84)));
+  }
+
+  .settlement-node-family span {
+    color: rgba(232, 236, 233, 0.60);
+  }
+
+  .settlement-node-from strong {
+    color: color-mix(in srgb, var(--family-text) 48%, white);
+  }
+
+  .settlement-node-to strong {
+    color: color-mix(in srgb, var(--settlement-target-text) 48%, white);
+  }
+
+  .settlement-route-watermark {
+    color: rgba(236, 217, 168, 0.15);
   }
 
   .settlement-amount {
@@ -701,6 +779,11 @@
 
   .settlement-amount strong {
     color: #f0aaa0;
+  }
+
+  .settlement-done-mark {
+    border-color: color-mix(in srgb, var(--green) 30%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--green) 16%, rgba(24, 29, 27, 0.9));
   }
 
   .ledger-day-group::before {

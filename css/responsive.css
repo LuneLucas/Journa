@@ -2093,9 +2093,27 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  .settlement-entry-sub {
+    font-size: 0.72rem;
+  }
+
+  /* viewBox 等比缩小后补偿字号：这些是 SVG 用户单位，窄屏下按约 0.8 的缩放放大回可读大小 */
+  .settlement-flow-map .flow-name {
+    font-size: 15px;
+  }
+
+  .settlement-flow-map .flow-sub,
+  .settlement-flow-map .flow-col-label {
+    font-size: 12px;
+  }
+
+  .settlement-flow-map .flow-amount {
+    font-size: 14.5px;
+  }
+
   .settlement-item {
-    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 11px;
     padding: 12px;
   }
 
@@ -2103,17 +2121,35 @@
     white-space: nowrap;
   }
 
-  .settlement-party strong {
-    font-size: 0.94rem;
+  .settlement-route-node {
+    width: 72px;
+    min-height: 90px;
+  }
+
+  .settlement-itinerary::before {
+    left: 48px;
+  }
+
+  .settlement-amount {
+    grid-column: 2;
+    justify-items: end;
+    min-width: 0;
+    border-top: 1px solid rgba(22, 26, 30, 0.09);
+    padding-top: 9px;
   }
 
   .settlement-amount strong {
-    font-size: 1.15rem;
+    max-width: 100%;
+    font-size: clamp(1.16rem, 6.4vw, 1.5rem);
   }
 
-  .settlement-flow {
-    width: 32px;
-    min-height: 32px;
+  .settlement-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .settlement-overview small {
+    margin-top: 2px;
+    white-space: normal;
   }
 }
 

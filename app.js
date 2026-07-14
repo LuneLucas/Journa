@@ -50,6 +50,7 @@ const defaultFamilyVisuals = {
 /* 全局主题色预设：色值真身在 CSS（variables.css/dark.css 的 [data-theme] 块），
    这里只存 id/名称/亮色 swatch 供设置面板渲染。偏好设备级存 localStorage。 */
 const THEME_STORAGE_KEY = "travel-ledger-theme";
+const MONEY_DECIMALS_STORAGE_KEY = "travel-ledger-show-money-decimals";
 const THEME_PRESETS = [
   { id: "clay", name: "陶土橙粉", color: "#9d5745" },
   { id: "pine", name: "墨松绿", color: "#176c5f" },
@@ -208,6 +209,7 @@ const elements = {
   saveLedgerNameButton: document.querySelector("#saveLedgerNameButton"),
   settingsOperatorForm: document.querySelector("#settingsOperatorForm"),
   settingsOperatorInput: document.querySelector("#settingsOperatorInput"),
+  settingsMoneyDecimalsInput: document.querySelector("#settingsMoneyDecimalsInput"),
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
   operatorModalInput: document.querySelector("#operatorModalInput"),
@@ -231,6 +233,11 @@ const elements = {
   categorySummaryBlock: document.querySelector("#categorySummaryBlock"),
   categorySummary: document.querySelector("#categorySummary"),
   settlementList: document.querySelector("#settlementList"),
+  settlementEntryButton: document.querySelector("#settlementEntryButton"),
+  settlementEntrySub: document.querySelector("#settlementEntrySub"),
+  settlementEntryCount: document.querySelector("#settlementEntryCount"),
+  settlementCountBadge: document.querySelector("#settlementCountBadge"),
+  settlementSettingsPanel: document.querySelector("#settlementSettingsPanel"),
   ledgerFamilyFilter: document.querySelector("#ledgerFamilyFilter"),
   ledgerCategoryFilter: document.querySelector("#ledgerCategoryFilter"),
   ledgerFilterSummary: document.querySelector("#ledgerFilterSummary"),
@@ -1268,20 +1275,17 @@ function playSyncLampIgnite() {
 }
 
 function formatMoney(cents) {
+  const showDecimals = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) !== "false";
   return new Intl.NumberFormat("zh-CN", {
     style: "currency",
     currency: "CNY",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: showDecimals ? 2 : 0,
+    maximumFractionDigits: showDecimals ? 2 : 0,
   }).format(cents / 100);
 }
 
 function formatLedgerMoney(cents) {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
+  return formatMoney(cents);
 }
 
 function expenseToCents(expense) {
@@ -2268,8 +2272,14 @@ function renderSettings() {
   const syncSummary = getSyncSummary();
   elements.currentLedgerNameInput.value = state.name;
   elements.settingsOperatorInput.value = localStorage.getItem("travel-ledger-operator-name") || "";
+  elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) !== "false";
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
+
+  // 每次打开设置都重建，让资金光流图重新入场（对应「旅行结束时打开看结算」的时刻）
+  elements.settlementList.innerHTML = buildSettlementHtml(summary, " is-entering");
+  elements.settlementCountBadge.textContent = summary.settlements.length ? `${summary.settlements.length} 笔转账` : "已两清";
+  elements.settlementCountBadge.classList.toggle("is-settled", summary.settlements.length === 0);
 
   elements.settingsFamilyList.innerHTML = state.families
     .map(
@@ -2720,21 +2730,147 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
         .join("")
     : `<div class="empty-state${enterClass}">${emptyStateArt}暂无类别支出<br><small>添加账单后按类别自动汇总。</small></div>`;
 
-  elements.settlementList.innerHTML = summary.settlements.length
-    ? `
-      <div class="settlement-overview${enterClass}">
-        <span>${escapeHtml(formatSettlementOverview(summary))}</span>
-        <strong>${summary.settlements.length} 笔转账完成平账</strong>
-      </div>
+  renderSettlementEntry(summary);
+}
+
+/* 数据页只保留一个入口摘要，完整的平账建议（资金光流图 + 转账卡）在设置抽屉里 */
+function renderSettlementEntry(summary) {
+  if (!elements.settlementEntryButton) return;
+  const count = summary.settlements.length;
+  elements.settlementEntrySub.textContent = count
+    ? "旅程收尾时查看"
+    : "所有家庭当前已两清";
+  elements.settlementEntryCount.textContent = count ? `待结算 ${count} 笔` : "已两清";
+  elements.settlementEntryButton.classList.toggle("is-settled", count === 0);
+}
+
+/* 平账建议内容（资金光流图 + 摘要 + 转账卡），供设置抽屉渲染 */
+function buildSettlementHtml(summary, enterClass = "") {
+  if (!summary.settlements.length) {
+    return `<div class="settlement-done${enterClass}">
+        <span class="settlement-done-mark" aria-hidden="true">✓</span>
+        <span class="settlement-done-kicker">平账建议</span>
+        <strong>当前已经两清</strong>
+        <small>各家已付金额已经覆盖应承担金额，这趟旅行无需再转账。</small>
+      </div>`;
+  }
+
+  return `
+    ${renderSettlementFlowMap(summary.settlements, enterClass)}
+    <div class="settlement-overview${enterClass}">
+      <span class="settlement-overview-kicker">旅程收尾</span>
+      <strong>只需 <b>${summary.settlements.length} 笔</b> 即可两清</strong>
+      <small>金额随账单实时重算</small>
+    </div>
+    <div class="settlement-itinerary" aria-label="转账明细">
       ${summary.settlements
         .map((settlement, index) => renderSettlementItem(settlement, index, enterClass))
         .join("")}
-    `
-    : `<div class="settlement-done${enterClass}">
-        ${emptyStateArt}
-        <strong>当前无需转账</strong>
-        <small>各家已付金额已经覆盖应承担金额。</small>
-      </div>`;
+    </div>
+  `;
+}
+
+/* 资金流向图：付款方在左、收款方在右，飘带粗细按金额缩放，颜色从付款家庭渐变到收款家庭。 */
+function renderSettlementFlowMap(settlements, enterClass) {
+  const outgoingByFamily = new Map();
+  const incomingByFamily = new Map();
+  for (const settlement of settlements) {
+    outgoingByFamily.set(settlement.fromFamilyId, (outgoingByFamily.get(settlement.fromFamilyId) || 0) + settlement.cents);
+    incomingByFamily.set(settlement.toFamilyId, (incomingByFamily.get(settlement.toFamilyId) || 0) + settlement.cents);
+  }
+
+  const debtors = state.families.filter((family) => outgoingByFamily.has(family.id));
+  const creditors = state.families.filter((family) => incomingByFamily.has(family.id));
+  const rows = Math.max(debtors.length, creditors.length);
+  const width = 420;
+  const leftX = 118;
+  const rightX = 302;
+  const rowGap = 66;
+  const topPad = 48;
+  const bottomPad = 40;
+  const height = topPad + bottomPad + (rows - 1) * rowGap;
+  const contentHeight = (rows - 1) * rowGap;
+  const columnY = (index, count) => topPad + (contentHeight - (count - 1) * rowGap) / 2 + index * rowGap;
+  const debtorY = new Map(debtors.map((family, index) => [family.id, columnY(index, debtors.length)]));
+  const creditorY = new Map(creditors.map((family, index) => [family.id, columnY(index, creditors.length)]));
+  const maxCents = Math.max(...settlements.map((settlement) => settlement.cents));
+
+  const gradientDefs = [];
+  const links = settlements
+    .map((settlement, index) => {
+      const fromVisual = getFamilyVisual(settlement.fromFamilyId);
+      const toVisual = getFamilyVisual(settlement.toFamilyId);
+      const y1 = debtorY.get(settlement.fromFamilyId);
+      const y2 = creditorY.get(settlement.toFamilyId);
+      const x1 = leftX + 12;
+      const x2 = rightX - 22;
+      const controlX1 = x1 + (x2 - x1) * 0.42;
+      const controlX2 = x1 + (x2 - x1) * 0.58;
+      const strokeWidth = 3.5 + 6.5 * (settlement.cents / maxCents);
+      const pathD = `M ${x1} ${y1} C ${controlX1} ${y1}, ${controlX2} ${y2}, ${x2} ${y2}`;
+      const gradientId = `settlementFlowGradient${index}`;
+      gradientDefs.push(
+        `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${fromVisual.color}"/><stop offset="1" stop-color="${toVisual.color}"/></linearGradient>`,
+      );
+
+      // 金额标签取在靠近收款方的一段：飘带在左侧同源打结，越接近收款方分得越开；多笔时再沿线错开
+      const t = settlements.length > 1 ? 0.56 + (0.24 * index) / (settlements.length - 1) : 0.6;
+      const bezier = (a, b, c, d) => (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
+      const labelX = bezier(x1, controlX1, controlX2, x2);
+      const labelY = bezier(y1, y1, y2, y2) - strokeWidth / 2 - 7;
+
+      // 光流分三层：模糊光晕铺底、渐变光带主体、亮芯提亮，再叠一道流动的光点
+      return `
+        <g class="flow-link" style="--flow-delay: ${index * 160}ms;">
+          <path class="flow-halo" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth + 7).toFixed(1)}" filter="url(#settlementGlow)"/>
+          <path class="flow-ribbon" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${strokeWidth.toFixed(1)}"/>
+          <path class="flow-core" d="${pathD}" pathLength="1" stroke-width="${Math.max(1.3, strokeWidth * 0.3).toFixed(1)}"/>
+          <path class="flow-spark" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth * 0.72).toFixed(1)}"/>
+          <circle class="flow-endpoint" cx="${x2}" cy="${y2}" r="${(strokeWidth * 0.42 + 1.6).toFixed(1)}" fill="${toVisual.color}" filter="url(#settlementGlow)"/>
+          <text class="flow-amount" x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle">${formatMoney(settlement.cents)}</text>
+        </g>
+      `;
+    })
+    .join("");
+
+  const renderNode = (family, y, side, cents) => `
+    <g class="flow-node" style="${familyStyle(family.id)} --flow-delay: ${(side === "from" ? debtors : creditors).findIndex((item) => item.id === family.id) * 90}ms;">
+      <circle class="flow-dot-halo" cx="${side === "from" ? leftX : rightX}" cy="${y}" r="9" filter="url(#settlementGlow)"/>
+      <circle class="flow-dot" cx="${side === "from" ? leftX : rightX}" cy="${y}" r="5"/>
+      <circle class="flow-dot-core" cx="${side === "from" ? leftX : rightX}" cy="${y}" r="2"/>
+      <text class="flow-name" x="${side === "from" ? leftX - 17 : rightX + 17}" y="${y - 2}" text-anchor="${side === "from" ? "end" : "start"}">${escapeHtml(truncateFlowLabel(family.name))}</text>
+      <text class="flow-sub" x="${side === "from" ? leftX - 17 : rightX + 17}" y="${y + 14}" text-anchor="${side === "from" ? "end" : "start"}">${side === "from" ? "待转" : "待收"} ${formatMoney(cents)}</text>
+    </g>
+  `;
+
+  const nodes = [
+    ...debtors.map((family) => renderNode(family, debtorY.get(family.id), "from", outgoingByFamily.get(family.id))),
+    ...creditors.map((family) => renderNode(family, creditorY.get(family.id), "to", incomingByFamily.get(family.id))),
+  ].join("");
+
+  const ariaLabel = `资金流向：${settlements.map((settlement) => `${settlement.from} 转给 ${settlement.to} ${formatMoney(settlement.cents)}`).join("；")}`;
+
+  return `
+    <div class="settlement-flow-map is-live${enterClass}" role="img" aria-label="${escapeHtml(ariaLabel)}">
+      <svg viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="settlementGlow" x="-40%" y="-120%" width="180%" height="340%">
+            <feGaussianBlur stdDeviation="3.4"/>
+          </filter>
+          ${gradientDefs.join("")}
+        </defs>
+        <text class="flow-col-label" x="${leftX}" y="21" text-anchor="middle">付款方</text>
+        <text class="flow-col-label" x="${rightX}" y="21" text-anchor="middle">收款方</text>
+        ${links}
+        ${nodes}
+      </svg>
+    </div>
+  `;
+}
+
+function truncateFlowLabel(value, max = 7) {
+  const chars = [...String(value)];
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : String(value);
 }
 
 function formatSettlementOverview(summary) {
@@ -2747,24 +2883,29 @@ function formatSettlementOverview(summary) {
 
 function renderSettlementItem(settlement, index, enterClass) {
   return `
-    <article class="settlement-item${enterClass}" style="${familyStyle(settlement.fromFamilyId)} --settlement-target-color: ${getFamilyVisual(settlement.toFamilyId).color}; --settlement-target-text: ${getFamilyVisual(settlement.toFamilyId).text}; --settlement-delay: ${index * MOTION_DELAYS.settlementStagger}ms;">
-      <div class="settlement-party settlement-from">
-        <span>付款</span>
-        <strong>${escapeHtml(settlement.from)}</strong>
-      </div>
-      <div class="settlement-flow" aria-hidden="true">
-        <span>→</span>
-      </div>
-      <div class="settlement-party settlement-to">
-        <span>收款</span>
-        <strong>${escapeHtml(settlement.to)}</strong>
+    <article class="settlement-item${enterClass}" aria-label="${escapeHtml(settlement.from)} 付款给 ${escapeHtml(settlement.to)} ${formatMoney(settlement.cents)}" style="${familyStyle(settlement.fromFamilyId)} --settlement-target-color: ${getFamilyVisual(settlement.toFamilyId).color}; --settlement-target-text: ${getFamilyVisual(settlement.toFamilyId).text}; --settlement-delay: ${index * MOTION_DELAYS.settlementStagger}ms;">
+      <div class="settlement-route-node">
+        <div class="settlement-node-family settlement-node-from">
+          <span>付款</span>
+          <strong>${escapeHtml(settlement.from)}</strong>
+        </div>
+        <span class="settlement-route-watermark" aria-hidden="true">↓</span>
+        <div class="settlement-node-family settlement-node-to">
+          <span>收款</span>
+          <strong>${escapeHtml(settlement.to)}</strong>
+        </div>
       </div>
       <div class="settlement-amount">
-        <span>转账金额</span>
+        <span>请转</span>
         <strong>${formatMoney(settlement.cents)}</strong>
       </div>
     </article>
   `;
+}
+
+function handleMoneyDecimalsChange() {
+  localStorage.setItem(MONEY_DECIMALS_STORAGE_KEY, String(elements.settingsMoneyDecimalsInput.checked));
+  render();
 }
 
 function renderLedger({ animateFinancialChanges = false } = {}) {
@@ -4162,6 +4303,14 @@ function openSettings() {
   });
 }
 
+/* 数据页的平账入口：打开设置并把平账面板滚动到视野中央 */
+function openSettlementInSettings() {
+  openSettings();
+  window.requestAnimationFrame(() => {
+    elements.settlementSettingsPanel?.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  });
+}
+
 function closeSettings() {
   closeDismissiblePanel({
     view: elements.settingsView,
@@ -5249,6 +5398,7 @@ elements.ledgerManagerList.addEventListener("click", handleLedgerManagerClick);
 elements.settingsCategoryForm.addEventListener("submit", handleSettingsCategorySubmit);
 elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryClick);
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
+elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.welcomeSkipButton.addEventListener("click", () => closeWelcome());
 elements.welcomeNextButton.addEventListener("click", handleWelcomeNext);
@@ -5283,6 +5433,7 @@ elements.createCloudLedgerButton.addEventListener("click", createCloudLedger);
 elements.copyShareLinkButton.addEventListener("click", copyShareLink);
 elements.syncStatus.addEventListener("click", handleManualCloudSync);
 elements.openSettingsButton.addEventListener("click", openSettings);
+elements.settlementEntryButton?.addEventListener("click", openSettlementInSettings);
 elements.closeSettingsButton.addEventListener("click", closeSettings);
 elements.settingsBackdrop.addEventListener("click", closeSettings);
 elements.confirmBackdrop.addEventListener("click", () => closeConfirmDialog(false));

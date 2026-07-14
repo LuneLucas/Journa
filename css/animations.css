@@ -1012,6 +1012,115 @@
   view-transition-name: settlement-list;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .settlement-item.is-entering .settlement-route-node {
+    animation: settlement-step-arrive 520ms var(--spring) both;
+    animation-delay: var(--settlement-delay, 0ms);
+  }
+
+  @keyframes settlement-step-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.9);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+/*
+ * ── 资金光流入场：节点亮起 → 光带描画 → 金额浮现 → 光点漂流 ──
+ * 光带只在设置抽屉里出现，抽屉关闭时整棵子树 display:none（不绘制、不耗电），
+ * 所以流动的光点用无限循环也只在打开设置的短暂时刻运行。
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes settlement-ribbon-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes settlement-flow-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes settlement-spark-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 0.92;
+    }
+  }
+
+  /* 一段亮光沿光带从付款方漂向收款方；周期与路径归一化长度相等，循环无缝衔接 */
+  @keyframes settlement-spark-travel {
+    from {
+      stroke-dashoffset: 1;
+    }
+
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .settlement-flow-map .flow-node,
+  .settlement-flow-map .flow-endpoint,
+  .settlement-flow-map .flow-amount {
+    opacity: 0;
+  }
+
+  .settlement-flow-map .flow-halo,
+  .settlement-flow-map .flow-ribbon,
+  .settlement-flow-map .flow-core {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .settlement-flow-map.is-live .flow-node {
+    animation: settlement-flow-fade 460ms var(--settle) both;
+    animation-delay: var(--flow-delay, 0ms);
+  }
+
+  .settlement-flow-map.is-live .flow-halo,
+  .settlement-flow-map.is-live .flow-ribbon,
+  .settlement-flow-map.is-live .flow-core {
+    animation: settlement-ribbon-draw 900ms var(--settle) both;
+    animation-delay: calc(var(--flow-delay, 0ms) + 150ms);
+  }
+
+  .settlement-flow-map.is-live .flow-amount {
+    animation: settlement-flow-fade 500ms var(--settle) both;
+    animation-delay: calc(var(--flow-delay, 0ms) + 640ms);
+  }
+
+  .settlement-flow-map.is-live .flow-endpoint {
+    animation: settlement-flow-fade 460ms var(--settle) both;
+    animation-delay: calc(var(--flow-delay, 0ms) + 780ms);
+  }
+
+  .settlement-flow-map.is-live .flow-spark {
+    animation:
+      settlement-spark-in 600ms var(--settle) both,
+      settlement-spark-travel 2.6s linear infinite;
+    animation-delay: calc(var(--flow-delay, 0ms) + 700ms);
+  }
+}
+
 /* 新增和删除卡片的自定义视图过渡 */
 ::view-transition-old(expense-new) {
   animation: element-exit var(--motion-fast) var(--settle) forwards;

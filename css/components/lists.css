@@ -138,8 +138,8 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr);
-  gap: 10px;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 14px;
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.58));
   border-radius: var(--radius-lg);
@@ -147,7 +147,7 @@
     radial-gradient(ellipse at 0% 20%, color-mix(in srgb, var(--family-color) 18%, transparent), transparent 48%),
     radial-gradient(ellipse at 100% 80%, color-mix(in srgb, var(--settlement-target-color) 18%, transparent), transparent 48%),
     rgba(255, 255, 255, 0.52);
-  padding: 14px;
+  padding: 15px 16px 15px 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
     0 14px 38px rgba(22, 26, 30, 0.08);
@@ -300,6 +300,9 @@
 
 .row-item.is-entering,
 .settlement-item.is-entering,
+.settlement-flow-map.is-entering,
+.settlement-overview.is-entering,
+.settlement-done.is-entering,
 .empty-state.is-entering,
 .ledger-day-group.is-entering {
   animation: element-enter var(--motion) var(--spring) both;
