@@ -7,8 +7,13 @@
     --glass-bg: rgba(28, 28, 30, 0.68);
     --glass-bg-strong: rgba(36, 36, 38, 0.78);
     --glass-blur: blur(12px) saturate(180%);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-border-strong: rgba(255, 255, 255, 0.14);
+    --border-divider: rgba(232, 236, 233, 0.075);
+    --border-surface: rgba(232, 236, 233, 0.10);
+    --border-control: rgba(232, 236, 233, 0.14);
+    --border-strong: rgba(232, 236, 233, 0.22);
+    --border-highlight: rgba(255, 255, 255, 0.10);
+    --glass-border: var(--border-surface);
+    --glass-border-strong: var(--border-strong);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 
     --surface: var(--glass-bg);
@@ -16,8 +21,8 @@
     --surface-soft: rgba(22, 22, 24, 0.58);
     --ink: #f0f0f0;
     --muted: #a1a1a6;
-    --line: rgba(255, 255, 255, 0.10);
-    --line-dark: rgba(255, 255, 255, 0.16);
+    --line: var(--border-divider);
+    --line-dark: var(--border-surface);
 
     /* HSL 调色在暗色模式下的自适应亮度与饱和度调优 */
     --green: hsl(var(--theme-h), var(--theme-s), var(--theme-l));
@@ -28,8 +33,8 @@
     --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.05);
     --dark-field: rgba(255, 255, 255, 0.08);
     --dark-field-strong: rgba(255, 255, 255, 0.10);
-    --dark-hairline: rgba(232, 236, 233, 0.10);
-    --dark-hairline-strong: rgba(232, 236, 233, 0.16);
+    --dark-hairline: var(--border-surface);
+    --dark-hairline-strong: var(--border-strong);
     --dark-highlight: rgba(255, 255, 255, 0.05);
     /* 暗色下玻璃边光收敛：顶亮压暗、底部接触暗边加深 */
     --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.12);
@@ -37,8 +42,8 @@
     --control-surface: var(--dark-field-strong);
     --control-surface-hover: rgba(255, 255, 255, 0.16);
     --control-surface-strong: rgba(255, 255, 255, 0.14);
-    --control-border: var(--dark-hairline);
-    --control-border-hover: var(--dark-hairline-strong);
+    --control-border: var(--border-control);
+    --control-border-hover: var(--border-strong);
     --button-secondary-bg: color-mix(in srgb, var(--green) 14%, rgba(255, 255, 255, 0.04));
     --button-secondary-bg-hover: color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.07));
     --button-secondary-text: color-mix(in srgb, var(--green) 46%, white);
@@ -171,7 +176,7 @@
     -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white);
     /* 亮灰输入底转暗，家庭色亮文字才能成立 */
     background: var(--dark-field-strong);
-    box-shadow: inset 0 0 0 1px var(--dark-hairline-strong);
+    box-shadow: inset 0 1px 0 var(--border-highlight);
   }
 
   .amount-label.amount-active input {
@@ -180,22 +185,20 @@
       linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.07)),
       color-mix(in srgb, var(--selected-family-color, var(--green)) 10%, rgba(20, 24, 22, 0.72));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--green)) 24%, var(--dark-hairline-strong)),
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
   .amount-label.amount-themed {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 30%, var(--dark-hairline-strong));
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 30%, var(--border-surface));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--green)) 22%, rgba(255, 255, 255, 0.06)),
+      inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--green)) 10%, var(--border-highlight)),
       0 22px 58px -30px var(--selected-family-glow),
       0 12px 34px rgba(0, 0, 0, 0.24);
   }
 
   .amount-label.amount-active.amount-themed {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 48%, var(--dark-hairline-strong));
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 48%, var(--border-control));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--green)) 34%, rgba(255, 255, 255, 0.08)),
       inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, rgba(255, 255, 255, 0.16)),
       0 0 32px -14px var(--selected-family-glow),
       0 22px 62px -30px var(--selected-family-glow),
@@ -211,7 +214,7 @@
   }
 
   .mobile-panel-switch {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 22%, var(--dark-hairline));
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, var(--border-surface));
     background:
       linear-gradient(135deg, rgba(232, 236, 233, 0.13), rgba(232, 236, 233, 0.03) 48%, rgba(232, 236, 233, 0.10)),
       radial-gradient(ellipse at 16% -36%, rgba(232, 236, 233, 0.24), transparent 55%),
@@ -232,8 +235,7 @@
   }
 
   .mobile-panel-switch::after {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06) 44%, color-mix(in srgb, var(--submit-color, var(--green)) 28%, rgba(0, 0, 0, 0.18)));
-    opacity: 0.88;
+    content: none;
   }
 
   .mobile-panel-tab {
@@ -248,10 +250,9 @@
     background: linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 12%, rgba(255, 255, 255, 0.18)), rgba(255, 255, 255, 0.08));
     box-shadow:
       inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.16)),
-      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.06)),
       inset 0 -1px 1px rgba(0, 0, 0, 0.22),
       0 4px 14px -4px color-mix(in srgb, var(--submit-color, var(--green)) 28%, rgba(0, 0, 0, 0.3));
-    border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(255, 255, 255, 0.10));
+    border: 0;
   }
 
   /* 提交栏玻璃与摘要浅底转暗 */
@@ -457,30 +458,30 @@
   }
 
   .sync-status {
-    border-color: var(--dark-hairline);
-    background: var(--dark-card);
-    box-shadow: inset 0 1px 0 var(--dark-highlight);
+    --capsule-border: var(--dark-hairline);
+    --capsule-bg: var(--dark-card);
+    --capsule-shadow: inset 0 1px 0 var(--dark-highlight);
   }
 
   .sync-status.is-pending {
     color: #efd58b;
-    background:
+    --capsule-bg:
       linear-gradient(135deg, rgba(240, 198, 104, 0.13), rgba(255, 255, 255, 0.04)),
       var(--dark-card);
-    border-color: rgba(240, 198, 104, 0.20);
+    --capsule-border: rgba(240, 198, 104, 0.20);
   }
 
   .sync-status.is-failed,
   .sync-status.is-error {
     color: #f0aa9a;
-    background:
+    --capsule-bg:
       linear-gradient(135deg, rgba(224, 95, 64, 0.14), rgba(255, 255, 255, 0.04)),
       var(--dark-card);
-    border-color: rgba(224, 95, 64, 0.22);
+    --capsule-border: rgba(224, 95, 64, 0.22);
   }
 
   .family-tag {
-    border-color: color-mix(in srgb, var(--family-color) 26%, rgba(255, 255, 255, 0.10));
+    border-color: color-mix(in srgb, var(--family-color) 26%, var(--border-control));
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
       color-mix(in srgb, var(--family-color) 10%, transparent);
@@ -494,7 +495,6 @@
 
   .family-tag.is-selected {
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
       0 12px 28px color-mix(in srgb, var(--family-color) 30%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
@@ -580,7 +580,7 @@
   .split-family-chip.is-selected {
     border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.24));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.18)),
+      inset 0 1px 1px rgba(255, 255, 255, 0.08),
       0 8px 20px -14px color-mix(in srgb, var(--family-color) 78%, transparent),
       0 0 30px -18px var(--family-soft);
   }
@@ -590,7 +590,7 @@
   }
 
   .amount-label {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 28%, rgba(255, 255, 255, 0.10));
+    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, var(--border-surface));
     background:
       linear-gradient(135deg, rgba(40, 47, 44, 0.90), rgba(30, 36, 33, 0.70)),
       rgba(24, 29, 27, 0.78);
@@ -652,14 +652,8 @@
     fill: color-mix(in srgb, var(--family-text) 50%, white);
   }
 
-  .settlement-flow-map .flow-sub,
   .settlement-flow-map .flow-col-label {
     fill: rgba(232, 236, 233, 0.58);
-  }
-
-  .settlement-flow-map .flow-amount {
-    fill: #f0aaa0;
-    stroke: rgba(20, 24, 22, 0.85);
   }
 
   .settlement-flow-map .flow-core {
@@ -698,7 +692,6 @@
   }
 
   .family-row small,
-  .settlement-node-family span,
   .settlement-amount span,
   .ledger-note,
   .ledger-scope,
@@ -715,70 +708,37 @@
     color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
   }
 
-  .settlement-overview {
-    border-color: rgba(217, 164, 65, 0.20);
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
-      rgba(217, 164, 65, 0.10);
-    color: rgba(232, 236, 233, 0.64);
-  }
-
-  .settlement-overview strong {
-    color: rgba(246, 241, 229, 0.94);
-  }
-
-  .settlement-overview-kicker,
-  .settlement-overview strong b {
-    color: #ecd9a8;
-  }
-
-  .settlement-overview small {
-    color: rgba(232, 236, 233, 0.62);
-  }
-
   .settlement-item {
-    border-color: color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline));
-    background:
-      radial-gradient(ellipse at 0% 20%, color-mix(in srgb, var(--family-color) 14%, transparent), transparent 48%),
-      radial-gradient(ellipse at 100% 80%, color-mix(in srgb, var(--settlement-target-color) 14%, transparent), transparent 48%),
-      linear-gradient(135deg, rgba(40, 47, 44, 0.70), rgba(24, 29, 27, 0.54)),
-      rgba(20, 24, 22, 0.50);
+    border-color: color-mix(in srgb, var(--family-color) 20%, var(--dark-hairline));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--family-color) 8%, rgba(36, 42, 39, 0.82)), color-mix(in srgb, var(--settlement-target-color) 8%, rgba(22, 27, 25, 0.76)));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 14px 38px rgba(0, 0, 0, 0.22);
-  }
-
-  .settlement-item::before {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 64%);
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 10px 26px rgba(0, 0, 0, 0.18);
   }
 
   .settlement-route-node {
-    border-color: color-mix(in srgb, var(--family-color) 26%, var(--dark-hairline));
-    background: linear-gradient(155deg, color-mix(in srgb, var(--family-color) 14%, rgba(24, 29, 27, 0.88)), color-mix(in srgb, var(--settlement-target-color) 13%, rgba(24, 29, 27, 0.84)));
-  }
-
-  .settlement-node-family span {
-    color: rgba(232, 236, 233, 0.60);
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .settlement-node-from strong {
-    color: color-mix(in srgb, var(--family-text) 48%, white);
+    color: color-mix(in srgb, var(--family-text) 52%, white);
   }
 
   .settlement-node-to strong {
-    color: color-mix(in srgb, var(--settlement-target-text) 48%, white);
+    color: color-mix(in srgb, var(--settlement-target-text) 52%, white);
   }
 
   .settlement-route-watermark {
-    color: rgba(236, 217, 168, 0.15);
-  }
-
-  .settlement-amount {
-    border-top-color: var(--dark-hairline);
+    color: color-mix(in srgb, var(--settlement-target-color) 54%, rgba(232, 236, 233, 0.62));
   }
 
   .settlement-amount strong {
-    color: #f0aaa0;
+    color: color-mix(in srgb, var(--coral) 80%, white);
+    text-shadow:
+      0 0 1px rgba(255, 255, 255, 0.16),
+      0 0 5px color-mix(in srgb, var(--coral) 9%, transparent);
   }
 
   .settlement-done-mark {
@@ -970,7 +930,7 @@
   }
 
   .split-mode-button {
-    border-color: var(--dark-hairline);
+    border-color: var(--border-control);
     background: var(--dark-highlight);
   }
 
@@ -989,10 +949,10 @@
   }
 
   .split-mode-button.is-selected {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 46%, transparent);
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 46%, var(--border-control));
     background: var(--dark-highlight);
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 22%, rgba(255, 255, 255, 0.05)),
+      inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 10%, var(--border-highlight)),
       0 0 30px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
       0 10px 28px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 52%, transparent);
   }
@@ -1011,18 +971,17 @@
   }
 
   .split-amount-row input {
-    border-color: var(--dark-hairline-strong);
+    border-color: var(--border-control);
     background: var(--dark-field);
     color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 16%, var(--dark-hairline-strong)),
+      inset 0 1px 0 var(--border-highlight),
       0 0 22px -16px color-mix(in srgb, var(--family-color) 64%, transparent);
   }
 
   .split-amount-row input:focus {
-    border-color: color-mix(in srgb, var(--family-color) 42%, var(--dark-hairline-strong));
+    border-color: color-mix(in srgb, var(--family-color) 42%, var(--border-control));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline-strong)),
       0 0 0 3px color-mix(in srgb, var(--family-color) 14%, transparent),
       0 0 32px -16px color-mix(in srgb, var(--family-color) 76%, transparent);
   }
@@ -1071,12 +1030,12 @@
 
   /* 主按钮静息态（账本"打开"等）白渐变底 + 亮边转暗，绿字保留 */
   .primary-button {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 42%, var(--dark-hairline));
+    border-color: transparent;
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 34%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.04)),
       color-mix(in srgb, var(--submit-color, var(--green)) 22%, var(--dark-highlight));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent),
+      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.12)),
       0 0 62px -16px var(--submit-glow, rgba(23, 108, 95, 0.52)),
       0 0 30px -10px color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
       0 18px 50px rgba(0, 0, 0, 0.28);
@@ -1322,21 +1281,23 @@
     opacity: 0.66;
   }
 
-  .welcome-family-dot,
-  .welcome-mini-chips span {
-    background: rgba(255, 255, 255, 0.08);
+  .welcome-split-mode {
+    border-color: var(--dark-hairline);
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  .welcome-family-dot.is-on.dot-a {
-    background: rgba(169, 206, 181, 0.24);
-    color: #b7d8c4;
-    box-shadow: inset 0 0 0 1px rgba(169, 206, 181, 0.34);
+  .welcome-split-mode.is-default {
+    border-color: color-mix(in srgb, var(--brand-primary) 38%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--brand-primary) 13%, rgba(255, 255, 255, 0.05));
   }
 
-  .welcome-mini-chips span.is-on {
-    background: color-mix(in srgb, var(--category-text) 26%, transparent);
-    color: color-mix(in srgb, var(--category-text, var(--ink)) 45%, white);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  .welcome-split-mark {
+    background: color-mix(in srgb, var(--brand-primary) 22%, rgba(255, 255, 255, 0.08));
+  }
+
+  .welcome-split-mode.is-custom .welcome-split-mark {
+    background: color-mix(in srgb, #c88f8d 24%, rgba(255, 255, 255, 0.08));
+    color: #efc2bf;
   }
 
   .welcome-settle-party.dot-b {

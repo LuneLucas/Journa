@@ -145,7 +145,7 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 3px;
   height: 58px;
   min-height: 58px;
-  border: 1px solid rgba(22, 26, 30, 0.10);
+  border: var(--stroke-width) solid var(--control-border);
   border-radius: var(--split-control-radius);
   background: rgba(255, 255, 255, 0.50);
   color: var(--muted);
@@ -196,10 +196,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .split-mode-button.is-selected {
-  border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 34%, rgba(22, 26, 30, 0.10));
+  border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 34%, var(--border-control));
   background: rgba(255, 255, 255, 0.50);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 12%, rgba(255, 255, 255, 0.58)),
+    inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 10%, var(--border-highlight)),
     0 0 26px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
     0 10px 26px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 48%, transparent);
   /* 点灯方向：慢启动坡道，光晕略滞后 */
@@ -248,7 +248,7 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-content: center;
   gap: 6px;
   min-height: var(--control-height);
-  border: 1px solid var(--control-border);
+  border: var(--stroke-width) solid var(--control-border);
   border-radius: var(--control-radius);
   padding: 0 var(--control-padding-x);
   font-weight: var(--fw-bold);
@@ -265,7 +265,7 @@ input[type="number"]::-webkit-inner-spin-button {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border-color: color-mix(in srgb, var(--submit-color, var(--brand-primary)) 30%, rgba(255, 255, 255, 0.64));
+  border-color: transparent;
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.20)),
@@ -274,7 +274,7 @@ input[type="number"]::-webkit-inner-spin-button {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
   transform-origin: center;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent),
+    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, white),
     0 0 58px -16px var(--submit-glow, rgba(23, 108, 95, 0.46)),
     0 0 26px -9px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
     0 18px 50px rgba(22, 26, 30, 0.10);
@@ -288,7 +288,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .primary-button:hover {
   transform: translateY(-1px);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 34%, transparent),
+    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 22%, white),
     0 0 70px -16px var(--submit-glow, rgba(23, 108, 95, 0.50)),
     0 0 32px -9px color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent),
     0 22px 58px rgba(22, 26, 30, 0.12);
@@ -297,7 +297,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .primary-button:active {
   transform: scale(0.95) translateY(2px) !important;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--green)) 36%, transparent),
+    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 16%, white),
     inset 0 2px 6px rgba(0, 0, 0, 0.16),
     0 0 40px -18px var(--submit-glow, rgba(23, 108, 95, 0.35)),
     0 6px 18px rgba(22, 26, 30, 0.06) !important;

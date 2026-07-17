@@ -1,7 +1,8 @@
 const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
-const APP_VERSION = "journa-bar-lateral-rebound-v10-20260711";
+const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
+const APP_VERSION = "journa-settlement-watermark-v4-20260717";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 const PUBLIC_APP_URL = "https://lunelucas.github.io/Journa/";
@@ -33,6 +34,7 @@ const MOTION_DELAYS = {
    clearly visible elastic rebound rather than easing flatly into place. */
 const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
 const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
+const SPRING_LANDING_TAIL_MS = 64;
 const BAR_ARC_LIFT_PX = 5;
 const BAR_ARC_REBOUND_PX = 1.4;
 const BAR_COLLAPSE_REBOUND_X_PX = 3.2;
@@ -208,11 +210,11 @@ const elements = {
   currentLedgerNameInput: document.querySelector("#currentLedgerNameInput"),
   saveLedgerNameButton: document.querySelector("#saveLedgerNameButton"),
   settingsOperatorForm: document.querySelector("#settingsOperatorForm"),
-  settingsOperatorInput: document.querySelector("#settingsOperatorInput"),
+  settingsOperatorFamilyList: document.querySelector("#settingsOperatorFamilyList"),
   settingsMoneyDecimalsInput: document.querySelector("#settingsMoneyDecimalsInput"),
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
-  operatorModalInput: document.querySelector("#operatorModalInput"),
+  operatorModalFamilyList: document.querySelector("#operatorModalFamilyList"),
   welcomeView: document.querySelector("#welcomeView"),
   welcomeTrack: document.querySelector("#welcomeTrack"),
   welcomeDots: document.querySelector("#welcomeDots"),
@@ -224,6 +226,8 @@ const elements = {
   welcomeHeroCopy: document.querySelector("#welcomeHeroCopy"),
   welcomeCloudTitle: document.querySelector("#welcomeCloudTitle"),
   welcomeCloudCopy: document.querySelector("#welcomeCloudCopy"),
+  welcomeIdentityFamilyList: document.querySelector("#welcomeIdentityFamilyList"),
+  welcomeIdentityHint: document.querySelector("#welcomeIdentityHint"),
   openWelcomeButton: document.querySelector("#openWelcomeButton"),
   currentLedgerSummary: document.querySelector("#currentLedgerSummary"),
   ledgerManagerList: document.querySelector("#ledgerManagerList"),
@@ -628,7 +632,9 @@ function normalizeCategoryFilter(category, categories) {
 function normalizeOperator(val) {
   if (!val) return null;
   if (typeof val === "object") {
+    const familyId = normalizePayerId(val.familyId);
     const name = String(val.name || "").trim();
+    if (familyId) return { familyId };
     return name ? { name } : null;
   }
   const name = String(val).trim();
@@ -1011,7 +1017,7 @@ async function createCloudLedger() {
     updateLedgerUrl();
     await syncAllLocalDataToCloud();
     await pullCloudLedger({ announce: true });
-    checkOperatorNamePrompt();
+    checkOperatorFamilyPrompt();
   } catch (error) {
     showToast({ message: "创建云账本失败，请确认 SQL 已执行" });
   } finally {
@@ -1528,20 +1534,54 @@ function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
   const zeta = damping / (2 * Math.sqrt(stiffness * mass));
   const settle = Math.log(1 / epsilon) / (zeta * w0);
   const duration = Math.min(900, Math.max(250, settle * 1000));
+  const landingTail = Math.min(SPRING_LANDING_TAIL_MS, duration * 0.18);
+  const landingStart = duration - landingTail;
   const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
   const values = [];
 
-  for (let i = 0; i <= count; i++) {
-    const t = (settle * i) / count;
+  const springStateAt = (time) => {
     if (zeta < 1) {
       const wd = w0 * Math.sqrt(1 - zeta * zeta);
-      values.push(1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t)));
-    } else {
-      values.push(1 - Math.exp(-w0 * t));
+      const envelope = Math.exp(-zeta * w0 * time);
+      const angle = wd * time;
+      const position = 1 - envelope * (Math.cos(angle) + ((zeta * w0) / wd) * Math.sin(angle));
+      const velocity = envelope * (w0 * w0 / wd) * Math.sin(angle);
+      return { position, velocity };
     }
+
+    const envelope = Math.exp(-w0 * time);
+    return {
+      position: 1 - envelope,
+      velocity: w0 * envelope,
+    };
+  };
+
+  const landingStateAt = (time, startState) => {
+    const tailSeconds = landingTail / 1000;
+    const u = Math.min(1, Math.max(0, (time - landingStart) / landingTail));
+    if (u >= 1) return 1;
+
+    // Cubic Hermite interpolation preserves the spring's position and velocity
+    // at the handoff, then eases both displacement and velocity to zero at rest.
+    const u2 = u * u;
+    const u3 = u2 * u;
+    const h00 = 2 * u3 - 3 * u2 + 1;
+    const h10 = u3 - 2 * u2 + u;
+    const h01 = -2 * u3 + 3 * u2;
+    return h00 * startState.position
+      + h10 * tailSeconds * startState.velocity
+      + h01;
+  };
+
+  const landingStartState = springStateAt(landingStart / 1000);
+
+  for (let i = 0; i <= count; i++) {
+    const time = (duration * i) / count;
+    values.push(time < landingStart
+      ? springStateAt(time / 1000).position
+      : landingStateAt(time, landingStartState));
   }
 
-  values[count] = 1;
   return { values, duration };
 }
 
@@ -1627,15 +1667,19 @@ function spawnBarMorphGlow(rect, toData, duration) {
   return animation;
 }
 
+function smoothBump(value) {
+  const u = Math.min(1, Math.max(0, value));
+  return 64 * u ** 3 * (1 - u) ** 3;
+}
+
 function barArcLift(offset) {
-  const lift = -BAR_ARC_LIFT_PX * Math.sin(Math.PI * offset);
-  const landing = offset < 0.68 ? 0 : Math.sin(((offset - 0.68) / 0.32) * Math.PI);
-  return lift + BAR_ARC_REBOUND_PX * landing;
+  const arc = smoothBump(offset);
+  const landing = smoothBump((offset - 0.68) / 0.32);
+  return -BAR_ARC_LIFT_PX * arc + BAR_ARC_REBOUND_PX * landing;
 }
 
 function barHorizontalRebound(offset, toData) {
-  if (offset < 0.68) return 0;
-  const landing = Math.sin(((offset - 0.68) / 0.32) * Math.PI);
+  const landing = smoothBump((offset - 0.68) / 0.32);
   return (toData ? BAR_COLLAPSE_REBOUND_X_PX : BAR_EXPAND_REBOUND_X_PX) * landing;
 }
 
@@ -1703,8 +1747,7 @@ function animateBarFlip(nextPanel) {
     buttonFrames.push({ offset, transform: `translate(${childTranslateX}px, ${childTranslateY}px) scale(${childScaleX}, ${childScaleY})` });
   });
 
-  const options = { duration, easing: "linear", fill: "none", composite: "replace" };
-  const animationStart = performance.now();
+  const options = { duration, easing: "linear", fill: "forwards", composite: "replace" };
   const barAnimation = bar.animate(barFrames, options);
   const buttonAnimation = button.animate(buttonFrames, options);
   barFlipAnimations = [barAnimation, buttonAnimation];
@@ -1724,19 +1767,18 @@ function animateBarFlip(nextPanel) {
     ));
   }
 
+  let cleanupQueued = false;
   const cleanupFlip = () => {
     if (barFlipRunId !== flipRunId || !barFlipAnimations.includes(barAnimation)) return;
-    clearBarMorphState();
-    barFlipAnimations = [];
+    if (cleanupQueued) return;
+    cleanupQueued = true;
+    window.requestAnimationFrame(() => {
+      if (barFlipRunId !== flipRunId || !barFlipAnimations.includes(barAnimation)) return;
+      clearBarMorphState();
+      barFlipAnimations = [];
+    });
   };
-  barAnimation.onfinish = () => {
-    const remaining = duration - (performance.now() - animationStart);
-    if (remaining > 40) {
-      window.setTimeout(cleanupFlip, remaining);
-    } else {
-      cleanupFlip();
-    }
-  };
+  barAnimation.onfinish = cleanupFlip;
   window.setTimeout(cleanupFlip, duration + 80);
 }
 
@@ -1920,6 +1962,47 @@ function renderFamilyChoiceButton(family, { dataName, extraClass = "", selected 
       <span>${escapeHtml(family.name)}</span>
     </button>
   `;
+}
+
+function getOperatorFamilyId() {
+  return normalizePayerId(localStorage.getItem(OPERATOR_FAMILY_STORAGE_KEY));
+}
+
+function getSelectedOperatorFamilyId(container) {
+  return normalizePayerId(container?.querySelector("[data-operator-family-id].is-selected")?.dataset.operatorFamilyId);
+}
+
+function renderOperatorFamilyChoices(container, selectedFamilyId = getOperatorFamilyId()) {
+  if (!container) return;
+  container.innerHTML = state.families
+    .map((family) => renderFamilyChoiceButton(family, {
+      dataName: "data-operator-family-id",
+      extraClass: "operator-family-choice",
+      singleSelect: true,
+      selected: family.id === selectedFamilyId,
+    }))
+    .join("");
+}
+
+function selectOperatorFamilyChoice(container, familyId) {
+  const normalizedFamilyId = normalizePayerId(familyId);
+  if (!container || !normalizedFamilyId) return;
+  container.querySelectorAll("[data-operator-family-id]").forEach((button) => {
+    const selected = button.dataset.operatorFamilyId === normalizedFamilyId;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+}
+
+function handleOperatorFamilyChoice(event) {
+  const button = event.target.closest("[data-operator-family-id]");
+  if (!button) return;
+  selectOperatorFamilyChoice(event.currentTarget, button.dataset.operatorFamilyId);
+  if (event.currentTarget === elements.welcomeIdentityFamilyList) {
+    localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, button.dataset.operatorFamilyId);
+    renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, button.dataset.operatorFamilyId);
+    syncWelcomeControls();
+  }
 }
 
 function renderFamilyRoster() {
@@ -2271,7 +2354,7 @@ function renderSettings() {
   const usedCategories = new Set(state.expenses.map((expense) => expense.category));
   const syncSummary = getSyncSummary();
   elements.currentLedgerNameInput.value = state.name;
-  elements.settingsOperatorInput.value = localStorage.getItem("travel-ledger-operator-name") || "";
+  renderOperatorFamilyChoices(elements.settingsOperatorFamilyList);
   elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) !== "false";
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
@@ -2744,7 +2827,7 @@ function renderSettlementEntry(summary) {
   elements.settlementEntryButton.classList.toggle("is-settled", count === 0);
 }
 
-/* 平账建议内容（资金光流图 + 摘要 + 转账卡），供设置抽屉渲染 */
+/* 平账建议内容（资金光流图 + 转账卡），供设置抽屉渲染 */
 function buildSettlementHtml(summary, enterClass = "") {
   if (!summary.settlements.length) {
     return `<div class="settlement-done${enterClass}">
@@ -2757,11 +2840,6 @@ function buildSettlementHtml(summary, enterClass = "") {
 
   return `
     ${renderSettlementFlowMap(summary.settlements, enterClass)}
-    <div class="settlement-overview${enterClass}">
-      <span class="settlement-overview-kicker">旅程收尾</span>
-      <strong>只需 <b>${summary.settlements.length} 笔</b> 即可两清</strong>
-      <small>金额随账单实时重算</small>
-    </div>
     <div class="settlement-itinerary" aria-label="转账明细">
       ${summary.settlements
         .map((settlement, index) => renderSettlementItem(settlement, index, enterClass))
@@ -2770,24 +2848,20 @@ function buildSettlementHtml(summary, enterClass = "") {
   `;
 }
 
-/* 资金流向图：付款方在左、收款方在右，飘带粗细按金额缩放，颜色从付款家庭渐变到收款家庭。 */
+/* 资金流向图：付款方在左、收款方在右，飘带粗细按金额缩放，颜色从付款家庭渐变到收款家庭。
+   只承担视觉直觉（谁流向谁、大致比例），具体金额一律看下方转账卡，图里不再标数字。 */
 function renderSettlementFlowMap(settlements, enterClass) {
-  const outgoingByFamily = new Map();
-  const incomingByFamily = new Map();
-  for (const settlement of settlements) {
-    outgoingByFamily.set(settlement.fromFamilyId, (outgoingByFamily.get(settlement.fromFamilyId) || 0) + settlement.cents);
-    incomingByFamily.set(settlement.toFamilyId, (incomingByFamily.get(settlement.toFamilyId) || 0) + settlement.cents);
-  }
-
-  const debtors = state.families.filter((family) => outgoingByFamily.has(family.id));
-  const creditors = state.families.filter((family) => incomingByFamily.has(family.id));
+  const debtorIds = new Set(settlements.map((settlement) => settlement.fromFamilyId));
+  const creditorIds = new Set(settlements.map((settlement) => settlement.toFamilyId));
+  const debtors = state.families.filter((family) => debtorIds.has(family.id));
+  const creditors = state.families.filter((family) => creditorIds.has(family.id));
   const rows = Math.max(debtors.length, creditors.length);
   const width = 420;
-  const leftX = 118;
-  const rightX = 302;
-  const rowGap = 66;
-  const topPad = 48;
-  const bottomPad = 40;
+  const leftX = 124;
+  const rightX = 296;
+  const rowGap = 56;
+  const topPad = 46;
+  const bottomPad = 34;
   const height = topPad + bottomPad + (rows - 1) * rowGap;
   const contentHeight = (rows - 1) * rowGap;
   const columnY = (index, count) => topPad + (contentHeight - (count - 1) * rowGap) / 2 + index * rowGap;
@@ -2813,12 +2887,6 @@ function renderSettlementFlowMap(settlements, enterClass) {
         `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${fromVisual.color}"/><stop offset="1" stop-color="${toVisual.color}"/></linearGradient>`,
       );
 
-      // 金额标签取在靠近收款方的一段：飘带在左侧同源打结，越接近收款方分得越开；多笔时再沿线错开
-      const t = settlements.length > 1 ? 0.56 + (0.24 * index) / (settlements.length - 1) : 0.6;
-      const bezier = (a, b, c, d) => (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
-      const labelX = bezier(x1, controlX1, controlX2, x2);
-      const labelY = bezier(y1, y1, y2, y2) - strokeWidth / 2 - 7;
-
       // 光流分三层：模糊光晕铺底、渐变光带主体、亮芯提亮，再叠一道流动的光点
       return `
         <g class="flow-link" style="--flow-delay: ${index * 160}ms;">
@@ -2827,25 +2895,23 @@ function renderSettlementFlowMap(settlements, enterClass) {
           <path class="flow-core" d="${pathD}" pathLength="1" stroke-width="${Math.max(1.3, strokeWidth * 0.3).toFixed(1)}"/>
           <path class="flow-spark" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth * 0.72).toFixed(1)}"/>
           <circle class="flow-endpoint" cx="${x2}" cy="${y2}" r="${(strokeWidth * 0.42 + 1.6).toFixed(1)}" fill="${toVisual.color}" filter="url(#settlementGlow)"/>
-          <text class="flow-amount" x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle">${formatMoney(settlement.cents)}</text>
         </g>
       `;
     })
     .join("");
 
-  const renderNode = (family, y, side, cents) => `
+  const renderNode = (family, y, side) => `
     <g class="flow-node" style="${familyStyle(family.id)} --flow-delay: ${(side === "from" ? debtors : creditors).findIndex((item) => item.id === family.id) * 90}ms;">
       <circle class="flow-dot-halo" cx="${side === "from" ? leftX : rightX}" cy="${y}" r="9" filter="url(#settlementGlow)"/>
       <circle class="flow-dot" cx="${side === "from" ? leftX : rightX}" cy="${y}" r="5"/>
       <circle class="flow-dot-core" cx="${side === "from" ? leftX : rightX}" cy="${y}" r="2"/>
-      <text class="flow-name" x="${side === "from" ? leftX - 17 : rightX + 17}" y="${y - 2}" text-anchor="${side === "from" ? "end" : "start"}">${escapeHtml(truncateFlowLabel(family.name))}</text>
-      <text class="flow-sub" x="${side === "from" ? leftX - 17 : rightX + 17}" y="${y + 14}" text-anchor="${side === "from" ? "end" : "start"}">${side === "from" ? "待转" : "待收"} ${formatMoney(cents)}</text>
+      <text class="flow-name" x="${side === "from" ? leftX - 17 : rightX + 17}" y="${y + 5}" text-anchor="${side === "from" ? "end" : "start"}">${escapeHtml(truncateFlowLabel(family.name))}</text>
     </g>
   `;
 
   const nodes = [
-    ...debtors.map((family) => renderNode(family, debtorY.get(family.id), "from", outgoingByFamily.get(family.id))),
-    ...creditors.map((family) => renderNode(family, creditorY.get(family.id), "to", incomingByFamily.get(family.id))),
+    ...debtors.map((family) => renderNode(family, debtorY.get(family.id), "from")),
+    ...creditors.map((family) => renderNode(family, creditorY.get(family.id), "to")),
   ].join("");
 
   const ariaLabel = `资金流向：${settlements.map((settlement) => `${settlement.from} 转给 ${settlement.to} ${formatMoney(settlement.cents)}`).join("；")}`;
@@ -2859,8 +2925,6 @@ function renderSettlementFlowMap(settlements, enterClass) {
           </filter>
           ${gradientDefs.join("")}
         </defs>
-        <text class="flow-col-label" x="${leftX}" y="21" text-anchor="middle">付款方</text>
-        <text class="flow-col-label" x="${rightX}" y="21" text-anchor="middle">收款方</text>
         ${links}
         ${nodes}
       </svg>
@@ -2873,31 +2937,26 @@ function truncateFlowLabel(value, max = 7) {
   return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : String(value);
 }
 
-function formatSettlementOverview(summary) {
-  if (summary.scopedExpenseCount > 0) {
-    return `已按每笔账的分摊范围计算，${summary.scopedExpenseCount} 笔不是全员分摊`;
-  }
-
-  return `按 ${summary.totalMembers} 人分摊，每人承担 ${formatMoney(summary.shareCents)}`;
-}
-
+/* GitHub 节点卡的克制精修版：左侧明确付款与收款关系，右侧突出实际转账金额。 */
 function renderSettlementItem(settlement, index, enterClass) {
+  const formattedAmount = formatMoney(settlement.cents);
+  const amountClass = formattedAmount.length >= 11 ? " is-long" : "";
+  const amountMarkup = formattedAmount.startsWith("¥")
+    ? `<span class="settlement-currency" aria-hidden="true">¥</span>${escapeHtml(formattedAmount.slice(1))}`
+    : escapeHtml(formattedAmount);
   return `
-    <article class="settlement-item${enterClass}" aria-label="${escapeHtml(settlement.from)} 付款给 ${escapeHtml(settlement.to)} ${formatMoney(settlement.cents)}" style="${familyStyle(settlement.fromFamilyId)} --settlement-target-color: ${getFamilyVisual(settlement.toFamilyId).color}; --settlement-target-text: ${getFamilyVisual(settlement.toFamilyId).text}; --settlement-delay: ${index * MOTION_DELAYS.settlementStagger}ms;">
+    <article class="settlement-item${enterClass}" aria-label="${escapeHtml(settlement.from)} 付款给 ${escapeHtml(settlement.to)} ${formattedAmount}" style="${familyStyle(settlement.fromFamilyId)} --settlement-target-color: ${getFamilyVisual(settlement.toFamilyId).color}; --settlement-target-text: ${getFamilyVisual(settlement.toFamilyId).text}; --settlement-delay: ${index * MOTION_DELAYS.settlementStagger}ms;">
       <div class="settlement-route-node">
         <div class="settlement-node-family settlement-node-from">
-          <span>付款</span>
           <strong>${escapeHtml(settlement.from)}</strong>
         </div>
-        <span class="settlement-route-watermark" aria-hidden="true">↓</span>
+        <span class="settlement-route-watermark" aria-hidden="true">→</span>
         <div class="settlement-node-family settlement-node-to">
-          <span>收款</span>
           <strong>${escapeHtml(settlement.to)}</strong>
         </div>
       </div>
       <div class="settlement-amount">
-        <span>请转</span>
-        <strong>${formatMoney(settlement.cents)}</strong>
+        <strong${amountClass ? ` class="${amountClass.trim()}"` : ""}>${amountMarkup}</strong>
       </div>
     </article>
   `;
@@ -2967,12 +3026,14 @@ function renderLedgerItem(expense) {
   const syncBadge = syncState ? `<span class="ledger-sync-badge">${escapeHtml(formatExpenseSyncBadge(syncState))}</span>` : "";
   const syncLine = syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : "";
   const expandCue = isExpanded ? `<span class="ledger-expand-cue" aria-hidden="true">收起</span>` : "";
-  const createdName = expense.createdBy?.name || expense.createdBy;
-  const updatedName = expense.updatedBy?.name || expense.updatedBy;
-  const operatorLabel = updatedName && updatedName !== createdName
-    ? `最近编辑：${updatedName}`
-    : createdName
-      ? `记录：${createdName}`
+  const createdFamilyId = normalizePayerId(expense.createdBy?.familyId);
+  const updatedFamilyId = normalizePayerId(expense.updatedBy?.familyId);
+  const createdFamilyName = createdFamilyId ? getFamilyName(createdFamilyId) : "";
+  const updatedFamilyName = updatedFamilyId ? getFamilyName(updatedFamilyId) : "";
+  const operatorLabel = updatedFamilyId && updatedFamilyId !== createdFamilyId
+    ? `最近由 ${updatedFamilyName} 编辑`
+    : createdFamilyId
+      ? `由 ${createdFamilyName} 记下`
       : "";
   const operatorHtml = operatorLabel
     ? `<small class="ledger-operator" title="${escapeHtml(operatorLabel)}">${escapeHtml(operatorLabel)}</small>`
@@ -2981,11 +3042,11 @@ function renderLedgerItem(expense) {
   let metaHtml = "";
   if (isExpanded) {
     let metaItems = "";
-    if (createdName) {
-      metaItems += `<span>✍️ 创建: ${escapeHtml(createdName)}</span>`;
+    if (createdFamilyId) {
+      metaItems += `<span>✍️ 创建：${escapeHtml(createdFamilyName)}</span>`;
     }
-    if (updatedName && updatedName !== createdName) {
-      metaItems += `<span>✏️ 更新: ${escapeHtml(updatedName)}</span>`;
+    if (updatedFamilyId && updatedFamilyId !== createdFamilyId) {
+      metaItems += `<span>✏️ 更新：${escapeHtml(updatedFamilyName)}</span>`;
     }
     if (metaItems) {
       metaHtml = `<div class="ledger-meta-info">${metaItems}</div>`;
@@ -3254,6 +3315,12 @@ function handleExpenseSubmit(event) {
   elements.formError.textContent = "";
   elements.payerError.textContent = "";
 
+  if (isCloudLedgerActive() && !getOperatorFamilyId()) {
+    showOperatorModal();
+    showToast({ message: "请先选择你所属的家庭，再继续记账" });
+    return;
+  }
+
   const wasEditing = Boolean(editingExpenseId);
   const splitDetails = getSplitDetailsForSubmit();
   const amount = splitDetails.amount;
@@ -3294,7 +3361,8 @@ function handleExpenseSubmit(event) {
   }
 
   const expenseId = editingExpenseId || crypto.randomUUID();
-  const operatorName = localStorage.getItem("travel-ledger-operator-name") || getFamilyName(payerId);
+  const operatorFamilyId = getOperatorFamilyId();
+  const operator = operatorFamilyId ? { familyId: operatorFamilyId } : null;
   const originalExpense = wasEditing ? state.expenses.find((item) => item.id === editingExpenseId) : null;
 
   const savedExpense = {
@@ -3307,8 +3375,8 @@ function handleExpenseSubmit(event) {
     splitMode: splitDetails.splitMode,
     splitFamilyIds: splitDetails.splitFamilyIds,
     splitAmounts: splitDetails.splitAmounts,
-    createdBy: wasEditing ? (originalExpense?.createdBy || { name: operatorName }) : { name: operatorName },
-    updatedBy: wasEditing ? { name: operatorName } : null,
+    createdBy: wasEditing ? (originalExpense?.createdBy || operator) : operator,
+    updatedBy: wasEditing ? operator : null,
     syncState: isCloudLedgerActive() ? "pending" : "synced",
     isDeleted: false,
     updatedAt: new Date().toISOString(),
@@ -4060,7 +4128,7 @@ function switchLedger(ledgerId, { announce = true } = {}) {
   render({ animateFinancialChanges: true });
   markLedgerSwitching();
   if (announce) showToast({ message: `已切换到“${state.name}”` });
-  checkOperatorNamePrompt();
+  checkOperatorFamilyPrompt();
 }
 
 function renameCurrentLedger() {
@@ -4225,7 +4293,7 @@ function joinCloudLedger(shareToken) {
   appState.ledgers.push(ledger);
   switchLedger(ledger.id, { announce: false });
   pullCloudLedger({ announce: true }).then(() => {
-    checkOperatorNamePrompt();
+    checkOperatorFamilyPrompt();
   });
 }
 
@@ -4408,13 +4476,12 @@ function restoreFocus(element) {
   }
 }
 
-function checkOperatorNamePrompt() {
+function checkOperatorFamilyPrompt() {
   if (!isCloudLedgerActive()) return;
-  const savedName = localStorage.getItem("travel-ledger-operator-name");
-  if (!savedName) {
-    /* 欢迎引导打开中：先看完引导，关闭时再弹名字设置，避免两层浮层叠加 */
+  if (!getOperatorFamilyId()) {
+    /* 欢迎引导打开中：身份页负责完成选择，避免两层浮层叠加 */
     if (isWelcomeOpen()) {
-      welcomePendingOperatorPrompt = true;
+      welcomePendingFamilyPrompt = true;
       return;
     }
     showOperatorModal();
@@ -4425,8 +4492,8 @@ function showOperatorModal() {
   if (!elements.operatorModalView) return;
   elements.operatorModalView.hidden = false;
   document.body.classList.add("confirm-open");
-  elements.operatorModalInput.value = "";
-  elements.operatorModalInput.focus();
+  renderOperatorFamilyChoices(elements.operatorModalFamilyList);
+  elements.operatorModalFamilyList.querySelector("button")?.focus();
 }
 
 function closeOperatorModal() {
@@ -4446,27 +4513,31 @@ function closeOperatorModal() {
 
 function handleOperatorModalSubmit(event) {
   event.preventDefault();
-  const name = elements.operatorModalInput.value.trim();
-  if (!name) return;
-
-  localStorage.setItem("travel-ledger-operator-name", name);
-  if (elements.settingsOperatorInput) {
-    elements.settingsOperatorInput.value = name;
+  const familyId = getSelectedOperatorFamilyId(elements.operatorModalFamilyList);
+  if (!familyId) {
+    showToast({ message: "还差一步：请选择一个家庭" });
+    elements.operatorModalFamilyList.querySelector("button")?.focus();
+    return;
   }
+
+  localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
+  renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, familyId);
+  renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList, familyId);
   closeOperatorModal();
-  showToast({ message: `欢迎你，${name}！已设置您的操作者身份` });
+  showToast({ message: `已记住，你来自「${getFamilyName(familyId)}」` });
 }
 
 function handleSettingsOperatorSubmit(event) {
   event.preventDefault();
-  const name = elements.settingsOperatorInput.value.trim();
-  if (!name) {
-    showToast({ message: "请输入有效的姓名" });
+  const familyId = getSelectedOperatorFamilyId(elements.settingsOperatorFamilyList);
+  if (!familyId) {
+    showToast({ message: "还差一步：请选择一个家庭" });
     return;
   }
 
-  localStorage.setItem("travel-ledger-operator-name", name);
-  showToast({ message: `保存成功，您的名字已设置为“${name}”` });
+  localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
+  renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList, familyId);
+  showToast({ message: `已保存，接下来将以「${getFamilyName(familyId)}」记录` });
 }
 
 /* ── 欢迎引导浮层 ──
@@ -4474,13 +4545,17 @@ function handleSettingsOperatorSubmit(event) {
    通过邀请链接进来的人首屏改为“你已加入共享账本”，不重复推销云账本。 */
 const WELCOME_SEEN_KEY = "travel-ledger-welcome-seen";
 let welcomeSlideIndex = 0;
-let welcomePendingOperatorPrompt = false;
+let welcomePendingFamilyPrompt = false;
 let welcomeCloseTimer = 0;
 let welcomeReturnFocus = null;
 let welcomeScrollAnimation = 0;
 
 function isWelcomeOpen() {
   return Boolean(elements.welcomeView && !elements.welcomeView.hidden);
+}
+
+function welcomeRequiresFamily() {
+  return isCloudLedgerActive() || Boolean(getLedgerTokenFromLocation());
 }
 
 function maybeShowWelcome() {
@@ -4503,12 +4578,16 @@ function openWelcome({ invitedArrival = false } = {}) {
   elements.welcomeTitle.textContent = invitedArrival ? "你已加入共享账本" : "三个家庭，一本账";
   elements.welcomeHeroCopy.textContent = invitedArrival
     ? "家人邀请你共同记账，新增和修改都会在三家之间实时同步。"
-    : "一起旅行的花销记在同一本账里，分摊和平账全部自动算好。";
+    : "默认按各家人数分摊，也能为单笔账指定家庭或金额，最后自动算出平账建议。";
   const cloudActive = invitedArrival || isCloudLedgerActive();
   elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : "邀请家人一起记";
   elements.welcomeCloudCopy.textContent = cloudActive
-    ? "云账本已开启，账单自动同步；在「设置」里起个名字，账单会记下是谁记的。"
+    ? "云账本已开启，账单会自动同步；再选好家庭，每次编辑也都有迹可循。"
     : "在「设置 → 云同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。";
+  renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList);
+  elements.welcomeIdentityHint.textContent = cloudActive
+    ? "选好后，账单会自动记下由哪一家创建或更新，之后对账也更清楚。"
+    : "本地账本可以稍后再选；开启云同步后，请先完成家庭选择。";
 
   view.hidden = false;
   document.body.classList.add("confirm-open");
@@ -4520,6 +4599,11 @@ function openWelcome({ invitedArrival = false } = {}) {
 function closeWelcome({ goToEntry = false } = {}) {
   const view = elements.welcomeView;
   if (!view || view.hidden || view.classList.contains("is-closing")) return;
+  if (welcomeRequiresFamily() && !getOperatorFamilyId()) {
+    setWelcomeSlide(getWelcomeSlides().length - 1);
+    showToast({ message: "还差一步：选好家庭，就可以一起记账了" });
+    return;
+  }
   try {
     localStorage.setItem(WELCOME_SEEN_KEY, "1");
   } catch (error) {}
@@ -4536,13 +4620,8 @@ function closeWelcome({ goToEntry = false } = {}) {
     welcomeCloseTimer = window.setTimeout(finish, getCssDurationMs("--motion-fast", 401) + 60);
   }
 
-  /* 云账本还没起名字的人：引导看完立刻接“设置一下名字吧” */
-  if (welcomePendingOperatorPrompt) {
-    welcomePendingOperatorPrompt = false;
-    welcomeReturnFocus = null;
-    showOperatorModal();
-    return;
-  }
+  /* 身份已在引导末页完成；清掉启动阶段留下的补选标记。 */
+  welcomePendingFamilyPrompt = false;
   restoreFocus(welcomeReturnFocus);
   welcomeReturnFocus = null;
   if (goToEntry) {
@@ -4603,8 +4682,12 @@ function cancelWelcomeScrollAnimation() {
 
 function syncWelcomeControls() {
   const isLast = welcomeSlideIndex === getWelcomeSlides().length - 1;
+  const selectedFamilyId = getSelectedOperatorFamilyId(elements.welcomeIdentityFamilyList) || getOperatorFamilyId();
+  const identityMissing = isLast && welcomeRequiresFamily() && !selectedFamilyId;
   elements.welcomeNextLabel.textContent = isLast ? "开始记账" : "继续";
   elements.welcomeSkipButton.hidden = isLast;
+  elements.welcomeNextButton.disabled = identityMissing;
+  elements.welcomeNextButton.setAttribute("aria-disabled", String(identityMissing));
   /* 只切 class 不重建节点：滚动中重写 innerHTML 会打断平滑滚动动画 */
   [...elements.welcomeDots.children].forEach((dot, index) => {
     dot.classList.toggle("is-active", index === welcomeSlideIndex);
@@ -4632,10 +4715,27 @@ function handleWelcomeTrackScroll() {
 
 function handleWelcomeNext() {
   if (welcomeSlideIndex >= getWelcomeSlides().length - 1) {
+    const familyId = getSelectedOperatorFamilyId(elements.welcomeIdentityFamilyList);
+    if (familyId) {
+      localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
+      renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, familyId);
+    }
+    if (welcomeRequiresFamily() && !getOperatorFamilyId()) {
+      showToast({ message: "还差一步：请选择一个家庭" });
+      return;
+    }
     closeWelcome({ goToEntry: true });
     return;
   }
   setWelcomeSlide(welcomeSlideIndex + 1);
+}
+
+function handleWelcomeSkip() {
+  if (welcomeRequiresFamily() && !getOperatorFamilyId()) {
+    setWelcomeSlide(getWelcomeSlides().length - 1);
+    return;
+  }
+  closeWelcome();
 }
 
 function getFocusableElements(container) {
@@ -5264,7 +5364,7 @@ function triggerSubmitCelebrate(payerId) {
   }, MOTION_DELAYS.addCelebrate);
 }
 
-// 落账拍：令牌从金额框飞入新生成的账单卡片，落定时卡片接住脉冲 + 总额绽放 + 移动端震动。
+// 落账拍：令牌从金额框飞入新生成的账单卡片，落定时卡片接住脉冲 + 总额绽放。
 function landAddCeremony(payerId, amount, expenseId, startRect) {
   const visual = getFamilyVisual(payerId);
   const card = elements.ledgerList?.querySelector(`[data-expense-id="${cssEscapeId(expenseId)}"]`);
@@ -5279,7 +5379,6 @@ function landAddCeremony(payerId, amount, expenseId, startRect) {
   flyLedgerTokenToCard(visual, amount, startRect, cardRect, () => {
     pulseLedgerCatch(card);
     triggerTotalBloomEffect(visual);
-    triggerHapticFeedback();
   });
 }
 
@@ -5346,13 +5445,6 @@ function triggerTotalBloomEffect(visual) {
   }, MOTION_DELAYS.totalAbsorb);
 }
 
-function triggerHapticFeedback() {
-  if (prefersReducedMotion()) return;
-  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
-  // 轻双击手感，呼应“接住/落定”，不做长震。
-  navigator.vibrate([14, 30, 14]);
-}
-
 function cssEscapeId(value) {
   if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
   return String(value).replace(/["\\\]]/g, "\\$&");
@@ -5398,9 +5490,12 @@ elements.ledgerManagerList.addEventListener("click", handleLedgerManagerClick);
 elements.settingsCategoryForm.addEventListener("submit", handleSettingsCategorySubmit);
 elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryClick);
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
+elements.settingsOperatorFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
-elements.welcomeSkipButton.addEventListener("click", () => closeWelcome());
+elements.operatorModalFamilyList.addEventListener("click", handleOperatorFamilyChoice);
+elements.welcomeIdentityFamilyList.addEventListener("click", handleOperatorFamilyChoice);
+elements.welcomeSkipButton.addEventListener("click", handleWelcomeSkip);
 elements.welcomeNextButton.addEventListener("click", handleWelcomeNext);
 elements.welcomeTrack.addEventListener("scroll", handleWelcomeTrackScroll, { passive: true });
 /* 用户上手滑动时让位：取消自绘滚动动画，交还给原生 scroll-snap */
@@ -5509,6 +5604,10 @@ window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
+    if (!elements.operatorModalView.hidden) {
+      trapFocus(event, elements.operatorModalView);
+      return;
+    }
     if (!elements.confirmView.hidden) {
       trapFocus(event, elements.confirmView);
       return;
@@ -5528,6 +5627,7 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (event.key !== "Escape") return;
+  if (!elements.operatorModalView.hidden) return;
   if (!elements.confirmView.hidden) {
     closeConfirmDialog(false);
     return;
@@ -5642,7 +5742,7 @@ function spawnButtonParticles(btn, visual, themedGlow) {
 
 /* 滚动折叠通用逻辑：RAF 节流 + 滞回阈值，避免临界点抖动闪烁。
    scrollTarget 提供 scrollTop 的来源；window 场景传 window 本身（读 window.scrollY）。 */
-function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThreshold, onChange }) {
+function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThreshold, onBeforeChange, onChange }) {
   if (!scrollTarget || !collapseEl) return;
   let collapsed = false;
   let scrollFrame = 0;
@@ -5652,6 +5752,7 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
     scrollFrame = 0;
     const shouldCollapse = collapsed ? readScrollTop() > offThreshold : readScrollTop() > onThreshold;
     if (shouldCollapse === collapsed) return;
+    onBeforeChange?.(shouldCollapse);
     collapsed = shouldCollapse;
     collapseEl.classList.toggle("is-collapsed", collapsed);
     onChange?.(collapsed);
@@ -5662,6 +5763,29 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
   };
   scrollTarget.addEventListener("scroll", schedule, { passive: true });
   sync();
+}
+
+/* 收起头部时 mobile-panel-switch 会从 grid 第 3 行移到第 2 行。
+   先量出旧位置，再让它从旧位置 FLIP 到新位置，避免胶囊熔化时切换条吃到一次瞬移。 */
+function settleMobilePanelSwitchLayout(panelSwitch, beforeRect) {
+  if (prefersReducedMotion() || !panelSwitch || !beforeRect || typeof panelSwitch.animate !== "function") return;
+  panelSwitch.getAnimations?.().forEach((animation) => animation.cancel());
+  const afterRect = panelSwitch.getBoundingClientRect();
+  const deltaY = beforeRect.top - afterRect.top;
+  if (Math.abs(deltaY) < 0.5) return;
+
+  const animation = panelSwitch.animate(
+    [
+      { transform: `translate3d(0, ${deltaY}px, 0)` },
+      { transform: "translate3d(0, 0, 0)" },
+    ],
+    {
+      duration: 220,
+      easing: "cubic-bezier(0.22, 0.74, 0.24, 1)",
+      fill: "none",
+    }
+  );
+  animation.onfinish = () => animation.cancel();
 }
 
 /* 收起态指示灯停靠点：量出账本标题文字的右缘，把胶囊（此时壳已熔掉只剩灯）平移成「账本名 ●」。
@@ -5699,7 +5823,8 @@ function updateSyncLampDock() {
     targetX = Math.min(targetX, elements.openSettingsButton.getBoundingClientRect().left - 10 - lampHalf);
   }
 
-  /* 收起态胶囊收成 padding 0 10px 的小圆，灯芯在盒内 x≈16（1px 边框 + 10px padding + 半径）；
+  /* 收起态胶囊收成 padding 0 11px 的小圆（边框在壳层不占位），灯芯在盒内 x≈16（11px padding + 半径）；
+     布局收缩延迟到淡出后才落地，但此处算的是终值坐标，与延迟无关；
      竖直中心取同占 row 2 的切换条（尺寸不参与过渡，量到即终值），胶囊靠 align-items:center 与其同心 */
   const panelSwitch = document.getElementById("mobilePanelSwitch");
   const dotFinalX = headerRect.left + capsule.offsetLeft + 16;
@@ -5716,11 +5841,19 @@ function updateSyncLampDock() {
 function setupScrollCollapse() {
   // 主页面头部滚动监听
   const appHeader = document.querySelector(".app-header");
+  const mobilePanelSwitch = document.getElementById("mobilePanelSwitch");
+  let mobilePanelSwitchBeforeRect = null;
   attachCollapseOnScroll(window, appHeader, {
     onThreshold: 56,
     offThreshold: 24,
+    onBeforeChange: () => {
+      if (!mobilePanelSwitch || window.getComputedStyle(appHeader).display !== "grid") return;
+      mobilePanelSwitchBeforeRect = mobilePanelSwitch.getBoundingClientRect();
+    },
     /* 收起先算好停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算 */
     onChange: (collapsed) => {
+      settleMobilePanelSwitchLayout(mobilePanelSwitch, mobilePanelSwitchBeforeRect);
+      mobilePanelSwitchBeforeRect = null;
       if (collapsed) updateSyncLampDock();
     }
   });
@@ -5854,7 +5987,7 @@ async function bootstrap() {
   if (!restoredFromBackup && isCloudLedgerActive()) {
     await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
   }
-  checkOperatorNamePrompt();
+  checkOperatorFamilyPrompt();
   revealInitialTotalAmount();
 }
 

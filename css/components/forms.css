@@ -5,11 +5,10 @@
 }
 
 .family-tag.is-selected {
-  border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
+  border-color: color-mix(in srgb, var(--family-color) 56%, var(--border-highlight));
   /* 深色家庭标签坐在浅色填充上，对比 ≥ 5.3:1 */
   color: color-mix(in srgb, var(--family-text) 70%, black);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
     inset 0 1px 1px rgba(255, 255, 255, 0.28), /* 与基态第二层同位，保持 box-shadow 过渡可插值 */
     0 8px 20px -12px var(--family-soft),
     0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
@@ -65,7 +64,7 @@ select {
   font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
   min-height: var(--control-height);
   width: 100%;
-  border: 1px solid var(--control-border);
+  border: var(--stroke-width) solid var(--control-border);
   border-radius: var(--control-radius);
   background: var(--control-surface);
   color: var(--ink);
@@ -159,7 +158,7 @@ input[type="date"]:focus {
   border: 0;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.56);
-  box-shadow: inset 0 0 0 1px rgba(22, 26, 30, 0.10);
+  box-shadow: inset 0 1px 0 var(--border-highlight);
   color: var(--selected-family-text);
   font-size: clamp(1.8rem, 5.2vw, 3.4rem);
   font-weight: var(--fw-bold);
@@ -191,9 +190,9 @@ input[type="date"]:focus {
 }
 
 .split-family-chip.is-selected {
-  border-color: color-mix(in srgb, var(--family-color) 56%, rgba(255, 255, 255, 0.80));
+  border-color: color-mix(in srgb, var(--family-color) 56%, var(--border-highlight));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 20%, rgba(255, 255, 255, 0.70)),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
     0 8px 20px -12px var(--family-soft),
     0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
 }
@@ -205,7 +204,7 @@ input[type="date"]:focus {
 .split-amount-row input {
   width: 100%;
   min-height: 46px;
-  border-color: color-mix(in srgb, var(--family-color) 18%, rgba(22, 26, 30, 0.12));
+  border-color: color-mix(in srgb, var(--family-color) 18%, var(--border-control));
   border-radius: var(--split-control-radius);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.56)),
@@ -215,7 +214,7 @@ input[type="date"]:focus {
   font-weight: var(--fw-heavy);
   line-height: 1.15;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.68)),
+    inset 0 1px 0 var(--border-highlight),
     0 0 18px -14px var(--family-soft);
   transition:
     border-color var(--motion-fast) var(--spring),
@@ -224,9 +223,8 @@ input[type="date"]:focus {
 }
 
 .split-amount-row input:focus {
-  border-color: color-mix(in srgb, var(--family-color) 42%, rgba(22, 26, 30, 0.12));
+  border-color: color-mix(in srgb, var(--family-color) 42%, var(--border-control));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 18%, rgba(255, 255, 255, 0.80)),
     0 0 0 3px color-mix(in srgb, var(--family-color) 13%, transparent),
     0 0 30px -16px var(--family-soft);
 }
@@ -274,7 +272,7 @@ input[type="date"]:focus {
   z-index: 0;
   border-radius: inherit;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--category-gradient) 28%, rgba(255, 255, 255, 0.76)),
+    inset 0 1px 1px color-mix(in srgb, var(--category-gradient) 12%, var(--border-highlight)),
     0 10px 24px -11px color-mix(in srgb, var(--category-gradient) 86%, transparent),
     0 0 42px -14px color-mix(in srgb, var(--category-gradient) 90%, transparent);
   content: "";

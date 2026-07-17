@@ -1014,14 +1014,14 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .settlement-item.is-entering .settlement-route-node {
-    animation: settlement-step-arrive 520ms var(--spring) both;
+    animation: settlement-step-arrive 480ms var(--spring) both;
     animation-delay: var(--settlement-delay, 0ms);
   }
 
   @keyframes settlement-step-arrive {
     from {
       opacity: 0;
-      transform: translateY(-8px) scale(0.9);
+      transform: translateY(-6px) scale(0.94);
     }
 
     to {
@@ -1079,8 +1079,7 @@
   }
 
   .settlement-flow-map .flow-node,
-  .settlement-flow-map .flow-endpoint,
-  .settlement-flow-map .flow-amount {
+  .settlement-flow-map .flow-endpoint {
     opacity: 0;
   }
 
@@ -1101,11 +1100,6 @@
   .settlement-flow-map.is-live .flow-core {
     animation: settlement-ribbon-draw 900ms var(--settle) both;
     animation-delay: calc(var(--flow-delay, 0ms) + 150ms);
-  }
-
-  .settlement-flow-map.is-live .flow-amount {
-    animation: settlement-flow-fade 500ms var(--settle) both;
-    animation-delay: calc(var(--flow-delay, 0ms) + 640ms);
   }
 
   .settlement-flow-map.is-live .flow-endpoint {

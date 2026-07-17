@@ -143,7 +143,7 @@ body.ledger-management-open .mobile-submit-bar {
 .settings-panel,
 .ledger-management-tools,
 .ledger-manager-card {
-  border: 1px solid var(--line);
+  border: var(--stroke-width) solid var(--border-surface);
   /* 抽屉内面板坐在近实底抽屉上，玻璃不可见，改实底（--surface）省性能 */
   background: var(--surface);
   box-shadow: var(--shadow-md);
@@ -161,7 +161,7 @@ body.ledger-management-open .mobile-submit-bar {
   margin: 0 0 18px 0;
   padding: 16px 18px;
   border-radius: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--stroke-width) solid var(--border-divider);
   background: linear-gradient(to bottom, var(--glass-bg) 65%, transparent 100%);
   -webkit-backdrop-filter: blur(20px) saturate(190%);
   backdrop-filter: blur(20px) saturate(190%);

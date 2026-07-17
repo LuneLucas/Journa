@@ -103,14 +103,28 @@
   --mobile-header-collapsed-top: calc(8px + var(--safe-area-top));
   --mobile-submit-bottom: calc(16px + var(--safe-area-bottom));
   --mobile-scroll-bottom: calc(108px + var(--safe-area-bottom));
+  /* 数据页提交栏收成 62px 圆形「+」按钮：底部预留 = 按钮离底偏移 + 按钮直径 + 一点呼吸间距，
+     跟着 --mobile-submit-bottom 走，按钮挪位/让位键盘时预留量自动同步，不再是脱节的固定像素。 */
+  --mobile-data-scroll-bottom: calc(var(--mobile-submit-bottom) + 62px + 18px);
   --visual-viewport-bottom: 0px;
   --bg: #f7f9f8;
   /* 毛玻璃反射与模糊定义 */
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-bg-strong: rgba(255, 255, 255, 0.82);
   --glass-blur: blur(12px) saturate(180%);
-  --glass-border: rgba(255, 255, 255, 0.4);
-  --glass-border-strong: rgba(255, 255, 255, 0.6);
+  /*
+   * 边框层级：所有常驻描边均为 1px。
+   * divider 只分隔同一容器中的内容；surface 只勾勒最外层容器；
+   * control 用于可交互控件；strong 只用于 hover/强调，聚焦另用 focus ring。
+   */
+  --stroke-width: 1px;
+  --border-divider: rgba(22, 26, 30, 0.065);
+  --border-surface: rgba(22, 26, 30, 0.09);
+  --border-control: rgba(22, 26, 30, 0.12);
+  --border-strong: rgba(22, 26, 30, 0.20);
+  --border-highlight: rgba(255, 255, 255, 0.46);
+  --glass-border: var(--border-surface);
+  --glass-border-strong: var(--border-strong);
   --glass-shadow: 0 8px 32px 0 rgba(22, 26, 30, 0.08);
   --glass-blur-strong: blur(20px) saturate(190%);
 
@@ -119,8 +133,8 @@
   --surface-soft: rgba(255, 255, 255, 0.62);
   --ink: #202427;
   --muted: #5b625f;
-  --line: rgba(22, 26, 30, 0.08);
-  --line-dark: rgba(22, 26, 30, 0.12);
+  --line: var(--border-divider);
+  --line-dark: var(--border-surface);
   /* HSL 动态配色核心变量 (基准 clay) */
   --theme-h: 12;
   --theme-s: 44%;
@@ -207,15 +221,15 @@
   --control-surface: rgba(255, 255, 255, 0.68);
   --control-surface-hover: rgba(255, 255, 255, 0.82);
   --control-surface-strong: rgba(255, 255, 255, 0.90);
-  --control-border: rgba(22, 26, 30, 0.10);
-  --control-border-hover: rgba(22, 26, 30, 0.18);
-  --control-border-active: color-mix(in srgb, var(--brand-primary) 34%, rgba(22, 26, 30, 0.10));
+  --control-border: var(--border-control);
+  --control-border-hover: var(--border-strong);
+  --control-border-active: color-mix(in srgb, var(--brand-primary) 34%, var(--border-control));
   --button-secondary-bg: color-mix(in srgb, var(--brand-primary) 10%, var(--control-surface));
   --button-secondary-bg-hover: color-mix(in srgb, var(--brand-primary) 15%, var(--control-surface-hover));
   --button-secondary-text: var(--brand-primary-strong);
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
-  /* 普通圆弧回退（Safari 等不支持 corner-shape）：轻微收紧，避免视觉过圆；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
+  /* 各浏览器统一使用普通圆弧，避免 Chrome 的实验性连续圆角产生偏方轮廓；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
   --radius-sm: 13px;
   --radius-md: 19px;
   --radius-lg: 25px;
@@ -293,70 +307,6 @@
       1.04, 1.089, 1.1075, 1.1046, 1.0888, 1.0671, 1.0447, 1.0248, 1.0091,
       0.9982, 0.9916, 0.9887, 0.9884, 0.9897, 0.9919, 0.9944, 0.9967, 0.9985,
       0.9999, 1);
-  }
-}
-
-/* ── 连续曲率圆角（iOS 式顺滑圆角）──
-   Chrome 139+ 支持 corner-shape；iOS Safari 未支持时整块跳过，回退普通圆弧，零回归。
-   squircle 同半径下视觉更"紧"，圆角阶梯同步放大 12~15% 补偿。
-   结构：全局开 squircle，再把所有胶囊(--radius-pill)与正圆(50%)显式豁免回 round——
-   胶囊+squircle 端帽会变方，且提交按钮/提交栏参与 pill 形变动画必须保持圆弧。 */
-@supports (corner-shape: squircle) {
-  :root {
-    --radius-sm: 22px;
-    --radius-md: 28px;
-    --radius-lg: 35px;
-    --radius-xl: 45px;
-    --radius-hero: 54px;
-  }
-
-  *,
-  *::before,
-  *::after {
-    corner-shape: squircle;
-  }
-
-  :is(
-    .icon-button, .chip-icon-button, .chip, .category-pill,
-    .family-tag, .split-family-chip, .toast, .amount-auto-badge,
-    .family-color-choice, .family-color-current,
-    .ledger-filter-summary, .ledger-sync-badge, .ledger-token,
-    .readonly-badge, .palette-swatch, .settlement-flow, .sync-status,
-    .mobile-panel-switch, .mobile-panel-tab, .mobile-panel-indicator,
-    .mobile-submit-bar, .mobile-submit-button, .bar-morph-glow
-  ),
-  :is(
-    .icon-button, .chip-icon-button, .chip, .category-pill,
-    .family-tag, .split-family-chip, .toast, .amount-auto-badge,
-    .family-color-choice, .family-color-current,
-    .ledger-filter-summary, .ledger-sync-badge, .ledger-token,
-    .readonly-badge, .palette-swatch, .settlement-flow, .sync-status,
-    .mobile-panel-switch, .mobile-panel-tab, .mobile-panel-indicator,
-    .mobile-submit-bar, .mobile-submit-button, .bar-morph-glow
-  )::before,
-  :is(
-    .icon-button, .chip-icon-button, .chip, .category-pill,
-    .family-tag, .split-family-chip, .toast, .amount-auto-badge,
-    .family-color-choice, .family-color-current,
-    .ledger-filter-summary, .ledger-sync-badge, .ledger-token,
-    .readonly-badge, .palette-swatch, .settlement-flow, .sync-status,
-    .mobile-panel-switch, .mobile-panel-tab, .mobile-panel-indicator,
-    .mobile-submit-bar, .mobile-submit-button, .bar-morph-glow
-  )::after,
-  .ledger-controls select,
-  .family-color-details summary::after,
-  .settings-actions-details summary::after,
-  .family-row > span::before,
-  .ledger-day-group::before,
-  .ledger-day-heading::before,
-  .ledger-sync-state::before,
-  .metric.primary::before,
-  .metric.primary::after,
-  .category-summary-block::before,
-  .category-summary-block::after,
-  .ledger-item::before,
-  .ledger-item::after {
-    corner-shape: round;
   }
 }
 

@@ -99,6 +99,15 @@ body::before {
   /* 本地账本（默认态）同样过曝：热白核 + 暖白 bloom，两种灯都要像真的亮着 */
   --status-dot-core: #ffffff;
   --status-dot-bloom: rgba(255, 244, 224, 0.7);
+  /* 壳的皮肤集中在变量上，由内层 .sync-status-shell 绘制——
+     移动端收起时壳整体 opacity 淡出即可，本体不再逐帧动布局/重绘属性 */
+  --capsule-border: rgba(255, 255, 255, 0.74);
+  --capsule-bg:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.56)),
+    rgba(255, 255, 255, 0.52);
+  --capsule-shadow:
+    var(--inset-highlight),
+    0 8px 22px rgba(22, 26, 30, 0.07);
   position: relative;
   overflow: hidden;
   min-height: 38px;
@@ -106,30 +115,44 @@ body::before {
   align-items: center;
   gap: 9px;
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.74);
+  border: 0;
   border-radius: var(--radius-pill);
-  padding: 0 14px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.56)),
-    rgba(255, 255, 255, 0.52);
+  padding: 0 15px; /* 原 1px 边框挪进壳里，用 padding 补齐使灯位不变 */
+  background: none;
   color: var(--muted);
   font: inherit;
   font-size: var(--label-md);
   font-weight: var(--fw-bold);
   cursor: pointer;
   user-select: none;
-  box-shadow:
-    var(--inset-highlight),
-    0 8px 22px rgba(22, 26, 30, 0.07);
   transition:
     opacity var(--motion-fast) var(--settle),
     transform var(--motion-fast) var(--settle),
     color var(--motion) var(--settle),
-    border-color var(--motion) var(--settle),
     --status-dot var(--motion) var(--settle),
     --status-dot-glow var(--motion) var(--settle),
     --status-dot-core var(--motion) var(--settle),
     --status-dot-bloom var(--motion) var(--settle);
+}
+
+/* 胶囊外壳：独立一层承载边框/底色/阴影，收起时可单独淡出（合成器友好） */
+.sync-status .sync-status-shell {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--capsule-border);
+  border-radius: var(--radius-pill);
+  background: var(--capsule-bg);
+  box-shadow: var(--capsule-shadow);
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--settle),
+    border-color var(--motion) var(--settle);
+}
+
+/* 壳是 positioned 元素，文字提一层压在壳上（灯 ::before 已有 z-index: 1） */
+.sync-status .sync-status-label {
+  position: relative;
+  z-index: 1;
 }
 
 .sync-status[aria-disabled="true"] {
@@ -180,18 +203,18 @@ body::before {
   --status-dot-core: #ffffff;
   --status-dot-bloom: rgba(255, 255, 255, 0.85);
   color: #3d6788;
-  background:
+  --capsule-bg:
     linear-gradient(135deg, rgba(240, 248, 255, 0.82), rgba(221, 238, 250, 0.58)),
     rgba(223, 239, 250, 0.58);
-  border-color: rgba(86, 151, 206, 0.22);
+  --capsule-border: rgba(86, 151, 206, 0.22);
 }
 
 .sync-status.is-error {
   --status-dot: #ffc7b8;
   --status-dot-glow: rgba(224, 95, 64, 0.62);
   color: var(--coral);
-  background: rgba(255, 237, 230, 0.74);
-  border-color: rgba(183, 79, 56, 0.18);
+  --capsule-bg: rgba(255, 237, 230, 0.74);
+  --capsule-border: rgba(183, 79, 56, 0.18);
 }
 
 .sync-status.is-pending {
@@ -200,10 +223,10 @@ body::before {
   --status-dot-core: rgba(255, 255, 255, 0.8);
   --status-dot-bloom: rgba(255, 255, 255, 0);
   color: color-mix(in srgb, var(--amber) 72%, var(--ink));
-  background:
+  --capsule-bg:
     linear-gradient(135deg, rgba(255, 248, 225, 0.82), rgba(246, 228, 174, 0.50)),
     rgba(255, 246, 218, 0.58);
-  border-color: rgba(186, 137, 39, 0.20);
+  --capsule-border: rgba(186, 137, 39, 0.20);
 }
 
 .sync-status.is-failed {
@@ -212,8 +235,8 @@ body::before {
   --status-dot-core: rgba(255, 255, 255, 0.8);
   --status-dot-bloom: rgba(255, 255, 255, 0);
   color: var(--coral);
-  background: rgba(255, 237, 230, 0.74);
-  border-color: rgba(183, 79, 56, 0.18);
+  --capsule-bg: rgba(255, 237, 230, 0.74);
+  --capsule-border: rgba(183, 79, 56, 0.18);
 }
 
 /* 过曝稳态微提亮（本地/云账本两种"常亮"态都要）；:not(.is-syncing) 让呼吸/过冲动画自己掌管 filter */
@@ -519,13 +542,13 @@ label,
   gap: 4px;
   /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
   padding: 15px 19px 14px;
-  border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 20%, rgba(255, 255, 255, 0.68));
+  border: var(--stroke-width) solid color-mix(in srgb, var(--submit-color, var(--green)) 18%, var(--border-surface));
   border-radius: var(--radius-xl);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.64)),
     rgba(255, 255, 255, 0.76);
   box-shadow:
-    inset 0 0 0 1px rgba(22, 26, 30, 0.06),
+    inset 0 1px 0 var(--border-highlight),
     0 24px 64px -24px transparent,
     0 18px 50px rgba(22, 26, 30, 0.10);
   contain: layout paint;
@@ -577,9 +600,9 @@ label,
 }
 
 .amount-label.amount-themed {
-  border-color: color-mix(in srgb, var(--selected-family-color) 24%, rgba(255, 255, 255, 0.72));
+  border-color: color-mix(in srgb, var(--selected-family-color) 24%, var(--border-surface));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 16%, rgba(255, 255, 255, 0.74)),
+    inset 0 1px 0 color-mix(in srgb, var(--selected-family-color) 12%, var(--border-highlight)),
     0 24px 64px -30px var(--selected-family-glow),
     0 12px 34px rgba(22, 26, 30, 0.08);
 }
@@ -665,7 +688,7 @@ label,
 .amount-label.amount-active {
   border-radius: var(--radius-hero); /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
   box-shadow:
-    inset 0 0 0 1px rgba(22, 26, 30, 0.08),
+    inset 0 1px 0 var(--border-highlight),
     var(--shadow-hero);
   --amount-scale: 1.018;
   margin-top: 10px;
@@ -673,9 +696,8 @@ label,
 }
 
 .amount-label.amount-active.amount-themed {
-  border-color: color-mix(in srgb, var(--selected-family-color) 42%, rgba(255, 255, 255, 0.76));
+  border-color: color-mix(in srgb, var(--selected-family-color) 42%, var(--border-control));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 32%, rgba(255, 255, 255, 0.64)),
     inset 0 1px 0 color-mix(in srgb, var(--selected-family-color) 18%, white),
     0 0 28px -12px var(--selected-family-glow),
     0 20px 58px -28px var(--selected-family-glow),
@@ -1000,6 +1022,20 @@ label,
   width: 100%;
 }
 
+.operator-family-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.operator-family-choice {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .operator-modal-actions {
   margin-top: 4px;
 }
@@ -1011,7 +1047,7 @@ label,
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-left: 1px solid var(--glass-border);
+  border-left: var(--stroke-width) solid var(--border-surface);
   box-shadow: -24px 0 80px rgba(22, 26, 30, 0.16);
   animation: settings-drawer-enter var(--motion) var(--spring) both;
 }
@@ -2011,15 +2047,8 @@ label,
 
 .settlement-flow-map .flow-name {
   fill: var(--family-text);
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: var(--fw-heavy);
-}
-
-.settlement-flow-map .flow-sub {
-  fill: var(--muted);
-  font-size: 10.5px;
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
 }
 
 .settlement-flow-map .flow-dot {
@@ -2066,17 +2095,6 @@ label,
 
 .settlement-flow-map .flow-endpoint {
   opacity: 0.85;
-}
-
-.settlement-flow-map .flow-amount {
-  fill: color-mix(in srgb, var(--coral) 84%, var(--ink));
-  font-size: 12.5px;
-  font-weight: var(--fw-heavy);
-  font-variant-numeric: tabular-nums;
-  paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.9);
-  stroke-width: 3.5px;
-  stroke-linejoin: round;
 }
 
 .stack-list,
@@ -2166,54 +2184,6 @@ label,
   color: color-mix(in srgb, var(--category-text) 88%, var(--ink));
 }
 
-.settlement-overview {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 12px;
-  overflow: hidden;
-  border: 1px solid rgba(217, 164, 65, 0.22);
-  border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(217, 164, 65, 0.22), transparent 48%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.28)),
-    rgba(217, 164, 65, 0.10);
-  color: var(--muted);
-  padding: 14px 16px;
-}
-
-.settlement-overview > * {
-  overflow-wrap: anywhere;
-}
-
-.settlement-overview-kicker {
-  grid-column: 1 / -1;
-  color: color-mix(in srgb, var(--amber) 68%, var(--ink));
-  font-size: 0.68rem;
-  font-weight: var(--fw-heavy);
-  letter-spacing: 0.12em;
-}
-
-.settlement-overview strong {
-  align-self: end;
-  color: var(--ink);
-  font-size: clamp(1.05rem, 3vw, 1.28rem);
-  line-height: 1.25;
-}
-
-.settlement-overview strong b {
-  color: var(--coral);
-  font-size: 1.12em;
-}
-
-.settlement-overview small {
-  align-self: end;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: var(--fw-bold);
-  white-space: nowrap;
-}
-
 .settlement-itinerary {
   position: relative;
   display: grid;
@@ -2221,72 +2191,69 @@ label,
 }
 
 .settlement-itinerary::before {
-  position: absolute;
-  z-index: 0;
-  top: 26px;
-  bottom: 26px;
-  left: 53px;
-  width: 1px;
-  background: linear-gradient(180deg, transparent, rgba(217, 164, 65, 0.42) 14%, rgba(217, 164, 65, 0.42) 86%, transparent);
-  content: "";
+  display: none;
 }
 
 .settlement-route-node {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: 1fr;
   align-items: center;
-  width: 78px;
-  min-height: 94px;
+  width: 96px;
+  min-height: 78px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--family-color) 22%, rgba(255, 255, 255, 0.7));
-  border-radius: 22px;
-  background:
-    linear-gradient(155deg, color-mix(in srgb, var(--family-color) 13%, rgba(255, 255, 255, 0.82)), color-mix(in srgb, var(--settlement-target-color) 12%, rgba(255, 255, 255, 0.74)));
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--family-color) 12%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .settlement-route-watermark {
-  position: absolute;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  align-self: center;
   z-index: 0;
-  left: 50%;
-  top: 50%;
-  color: color-mix(in srgb, var(--amber) 20%, transparent);
-  font-size: 3.8rem;
-  font-weight: 300;
+  color: color-mix(in srgb, var(--settlement-target-color) 48%, var(--muted));
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Symbol", sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
   line-height: 1;
-  transform: translate(-50%, -50%) scaleX(0.82);
+  opacity: 0.16;
   pointer-events: none;
 }
 
 .settlement-node-family {
   position: relative;
   z-index: 1;
-  display: grid;
-  gap: 0;
-  max-width: 68px;
-}
-
-.settlement-node-family span {
-  color: var(--muted);
-  font-size: 0.56rem;
-  font-weight: var(--fw-heavy);
-  letter-spacing: 0.08em;
+  display: block;
+  justify-self: center;
+  max-width: 100%;
+  min-width: 0;
+  text-align: center;
 }
 
 .settlement-node-family strong {
   overflow: hidden;
-  font-size: 0.86rem;
+  font-family: var(--font-body);
+  font-size: 1.22rem;
   font-weight: var(--fw-heavy);
+  letter-spacing: -0.02em;
+  line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
 }
 
 .settlement-node-from {
-  align-self: end;
-  justify-self: start;
-  padding: 0 0 7px 9px;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  padding: 0;
+  transform: translateY(-6px);
 }
 
 .settlement-node-from strong {
@@ -2294,10 +2261,11 @@ label,
 }
 
 .settlement-node-to {
-  align-self: start;
-  justify-self: end;
-  padding: 7px 9px 0 0;
-  text-align: right;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: center;
+  padding: 0;
+  transform: translateY(6px);
 }
 
 .settlement-node-to strong {
@@ -2308,24 +2276,41 @@ label,
   display: grid;
   justify-items: end;
   align-content: center;
-  gap: 1px;
+  gap: 4px;
   min-width: 0;
 }
 
 .settlement-amount span {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
   font-weight: var(--fw-heavy);
   letter-spacing: 0.08em;
 }
 
 .settlement-amount strong {
   color: var(--coral);
-  font-size: clamp(1.18rem, 4vw, 1.58rem);
-  font-weight: var(--fw-heavy);
+  font-size: clamp(1.48rem, 5vw, 1.84rem);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
+  line-height: 1;
   white-space: nowrap;
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 5px color-mix(in srgb, var(--coral) 10%, transparent);
+}
+
+.settlement-currency {
+  font-size: 0.72em;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.72;
+}
+
+.settlement-amount strong.is-long {
+  font-size: clamp(1.16rem, 4.2vw, 1.48rem);
+  letter-spacing: -0.045em;
 }
 
 .settlement-done {
@@ -2795,6 +2780,20 @@ label,
   margin-bottom: 8px;
 }
 
+.welcome-identity-art {
+  align-content: center;
+  min-height: 138px;
+  margin-bottom: 8px;
+}
+
+.welcome-family-choices {
+  width: min(340px, 100%);
+}
+
+.welcome-identity-slide .welcome-copy {
+  min-height: 3em;
+}
+
 /* 第 1 步插画：三圆母题（同 favicon 与空状态插画），轻微呼吸漂浮 */
 .welcome-orbs {
   position: relative;
@@ -2843,55 +2842,77 @@ label,
   }
 }
 
-/* 第 2 步插画：迷你记账卡 */
-.welcome-mini-card {
+/* 第 2 步插画：三种分摊方式，名称与真实记账控件保持一致 */
+.welcome-split-art {
+  min-height: 182px;
+}
+
+.welcome-split-modes {
   display: grid;
-  gap: 10px;
-  width: min(238px, 100%);
+  gap: 7px;
+  width: min(310px, 100%);
+}
+
+.welcome-split-mode {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--control-radius);
   background: var(--control-surface-strong);
-  padding: 14px 16px;
+  padding: 9px 12px;
   box-shadow: var(--shadow-chip);
   text-align: left;
 }
 
-.welcome-mini-families,
-.welcome-mini-chips {
-  display: flex;
-  gap: 6px;
+.welcome-split-mode.is-default {
+  border-color: color-mix(in srgb, var(--brand-primary) 30%, var(--line));
+  background: color-mix(in srgb, var(--brand-primary) 8%, var(--control-surface-strong));
 }
 
-.welcome-family-dot,
-.welcome-mini-chips span {
+.welcome-split-mark {
+  display: grid;
+  place-items: center;
+  min-height: 30px;
   border-radius: var(--radius-pill);
-  background: rgba(22, 26, 30, 0.05);
+  background: color-mix(in srgb, var(--brand-primary) 13%, var(--control-surface));
+  color: var(--brand-primary-strong);
+  font-family: var(--font-number);
+  font-size: 0.72rem;
+  font-weight: var(--fw-black);
+}
+
+.welcome-split-mode.is-custom .welcome-split-mark {
+  background: color-mix(in srgb, #c88f8d 18%, var(--control-surface));
+  color: color-mix(in srgb, #9f625f 76%, var(--ink));
+  font-size: 0.9rem;
+}
+
+.welcome-split-mode > span:last-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.welcome-split-mode strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: var(--fw-black);
+}
+
+.welcome-split-mode small {
+  overflow: hidden;
   color: var(--muted);
-  padding: 4px 10px;
   font-size: 0.72rem;
   font-weight: var(--fw-bold);
+  line-height: 1.35;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.welcome-family-dot.is-on.dot-a {
-  background: rgba(169, 206, 181, 0.55);
-  color: #48705c;
-  box-shadow: inset 0 0 0 1px rgba(85, 121, 101, 0.32);
-}
-
-.welcome-mini-chips span.is-on {
-  background: var(--category-bg);
-  color: var(--category-text);
-  box-shadow: inset 0 0 0 1px var(--category-border);
-}
-
-.welcome-mini-amount {
-  color: var(--ink);
-  font-family: var(--font-number);
-  font-variant-numeric: tabular-nums;
-  font-size: 1.5rem;
-  font-weight: var(--fw-heavy);
-  line-height: 1;
+.welcome-split-copy {
+  max-width: 36ch;
 }
 
 /* 第 3 步插画：平账建议一行 */
@@ -3025,21 +3046,6 @@ label,
   --submit-text: var(--brand-primary-strong);
   --submit-glow: color-mix(in srgb, var(--brand-primary) 42%, transparent);
   width: 100%;
-}
-
-/* 胶囊与正圆形欢迎组件在 squircle 全局下豁免回圆弧（端帽/圆会变方） */
-@supports (corner-shape: squircle) {
-  .welcome-skip,
-  .welcome-dot,
-  .welcome-orb,
-  .welcome-sync-dots span,
-  .welcome-family-dot,
-  .welcome-mini-chips span,
-  .welcome-mini-settle,
-  .welcome-settle-party,
-  .welcome-mini-link {
-    corner-shape: round;
-  }
 }
 
 /* 自绘滚动动画期间关闭吸附，避免逐帧被拉回吸附点 */

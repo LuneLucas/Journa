@@ -1,4 +1,4 @@
-const APP_VERSION = "settlement-route-decimals-v6-20260713";
+const APP_VERSION = "journa-settlement-watermark-v4-20260717";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",
