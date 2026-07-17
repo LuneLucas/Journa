@@ -28,12 +28,18 @@
 
 /* 独立全屏已经由系统状态栏提供顶部边界，避免页面壳层与头部再次叠加大块留白。 */
 :root.mobile-fullscreen {
-  --mobile-shell-top: 8px;
+  --mobile-shell-top: 0px;
   --mobile-header-top: calc(5px + var(--safe-area-top));
   --mobile-header-collapsed-top: calc(4px + var(--safe-area-top));
 }
 
 @media (max-width: 820px), (pointer: coarse) {
+  /* header 顶到屏幕最上方：玻璃 ::before 盖住刘海/状态栏，内容由
+     --mobile-header-top(=13px+safe-area-top) 推到刘海下方，原生全屏感。 */
+  :root {
+    --mobile-shell-top: 0px;
+  }
+
   /* 页面级左右滑动全部屏蔽：根滚动只保留纵向。clip 不产生新滚动容器（不影响
      sticky 头部），touch-action 限制页面手势为纵向平移 + 捏合缩放。类别横滑条
      与欢迎页轮播是各自的横向滚动容器，手势在容器内消化，不受这里影响。 */
@@ -48,19 +54,22 @@
     touch-action: pan-y pinch-zoom;
   }
 
-  /* 固定在内容与提交栏之间，让滚到底的内容自然退入底部安全区。 */
+  /* 固定在内容与提交栏之间，让滚到底的内容自然退入底部安全区。
+     幕布只覆盖安全区上方的滚动区（height: 124px、bottom: safe-area-bottom），
+     底部安全区留给 body::before 的彩色光晕透出，不再被纯 --bg 盖成黑边。 */
   body::after {
     position: fixed;
     z-index: var(--z-mobile-curtain);
     right: 0;
-    bottom: 0;
+    bottom: var(--safe-area-bottom);
     left: 0;
-    height: calc(124px + var(--safe-area-bottom));
+    height: 124px;
     background: linear-gradient(
       to bottom,
       transparent 0%,
       color-mix(in srgb, var(--bg) 62%, transparent) 54%,
-      var(--bg) 92%
+      var(--bg) 88%,
+      color-mix(in srgb, var(--bg) 55%, transparent) 100%
     );
     content: "";
     pointer-events: none;
@@ -1452,12 +1461,15 @@
     flex-wrap: nowrap;
     gap: 8px;
     overflow-x: auto;
-    touch-action: pan-x pan-y;
+    /* pan-x：横向手势在本容器消化，垂直手势自动让给页面（chips 是 nowrap，
+       自身没有纵向内容）。原 pan-x pan-y 等于让浏览器两个方向都接管，反而
+       进入「手势方向判定」阶段，iOS 触摸横滑启动会有一段被吃掉的涩感。 */
+    touch-action: pan-x;
     margin: 0;
     padding: 28px 20px 24px;
     scroll-padding-inline: 20px;
     scrollbar-width: none;
-    overscroll-behavior-x: contain; /* 横滚到头不带动页面 */
+    overscroll-behavior-x: contain; /* 横滚到头不带动页面；桌面浏览器原生橡皮筋由此接管 */
     -webkit-overflow-scrolling: touch;
     /* 提升为独立合成层：滚动时只偏移已光栅化的纹理，不再逐帧重绘每个芯片的
        多重 box-shadow，触控板惯性滑动更跟手。 */
@@ -1507,6 +1519,12 @@
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
+  }
+
+  /* 移动端：输入框在「圆形 + 按钮 + 表单」同一行内占满剩余宽度 */
+  .category-picker .inline-category-form input {
+    flex: 1 1 120px;
+    min-width: 0;
   }
 
   .split-scope-toggle {
@@ -1969,7 +1987,7 @@
     width: auto;
     max-width: 520px;
     margin-inline: var(--mobile-edge-start) var(--mobile-edge-end);
-    padding-top: 16px;
+    padding-top: 0px;
     /* 底部预留固定提交栏的高度，滚到底时内容不被盖住 */
     padding-bottom: var(--mobile-scroll-bottom);
   }

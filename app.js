@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-settlement-watermark-v6-20260717";
+const APP_VERSION = "journa-safari-fulledge-v1-20260718";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -189,6 +189,7 @@ const elements = {
   submitButton: document.querySelector("#submitButton"),
   submitButtonLabel: document.querySelector("#submitButtonLabel"),
   categoryForm: document.querySelector("#categoryForm"),
+  categoryAddFab: document.querySelector("#categoryAddFab"),
   newCategoryInput: document.querySelector("#newCategoryInput"),
   settingsCategoryForm: document.querySelector("#settingsCategoryForm"),
   settingsNewCategoryInput: document.querySelector("#settingsNewCategoryInput"),
@@ -215,6 +216,7 @@ const elements = {
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
   operatorModalFamilyList: document.querySelector("#operatorModalFamilyList"),
+  operatorModalBackdrop: document.querySelector("#operatorModalView .operator-modal-backdrop"),
   welcomeView: document.querySelector("#welcomeView"),
   welcomeTrack: document.querySelector("#welcomeTrack"),
   welcomeDots: document.querySelector("#welcomeDots"),
@@ -490,6 +492,9 @@ function normalizeLedger(raw = {}, fallbackName = "旅行账本") {
     cloudShareToken: typeof raw.cloudShareToken === "string" ? raw.cloudShareToken : "",
     createdAt: normalizeTimestamp(raw.createdAt),
     updatedAt: normalizeTimestamp(raw.updatedAt),
+    /* lastSyncedAt：上次成功与云端对齐设置的时间戳。LWW 据此判断「本地是否有未同步的设置改动」，
+       避免首次 join 云账本时本地空账本的 updatedAt=now 误判为「比远端新」从而覆盖远端真实设置。 */
+    lastSyncedAt: normalizeTimestamp(raw.lastSyncedAt),
   };
 }
 
@@ -511,6 +516,7 @@ function createEmptyLedger(name) {
     cloudShareToken: "",
     createdAt: now,
     updatedAt: now,
+    lastSyncedAt: "",
   };
 }
 
@@ -775,6 +781,18 @@ function getActiveExpenses(expenses = state.expenses) {
   return (Array.isArray(expenses) ? expenses : []).filter((expense) => !expense.isDeleted);
 }
 
+/* 墓碑垃圾回收：删除只置 isDeleted=true 从不移除，长期使用会撑爆 localStorage。
+   仅在账单「已同步到云端(synced)」且撤销 toast 窗口已过时真正移除，
+   这样本地撤销仍可用、离线未同步的删除也不丢。 */
+function gcDeletedExpenses() {
+  if (!state.expenses.length) return;
+  const before = state.expenses.length;
+  state.expenses = state.expenses.filter(
+    (expense) => !(expense.isDeleted && normalizeExpenseSyncState(expense.syncState) === "synced"),
+  );
+  if (state.expenses.length !== before) saveState();
+}
+
 function saveState() {
   state.updatedAt = new Date().toISOString();
   const index = appState.ledgers.findIndex((ledger) => ledger.id === state.id);
@@ -784,7 +802,13 @@ function saveState() {
     appState.ledgers.push(state);
   }
   appState.activeLedgerId = state.id;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  } catch (error) {
+    /* Safari 私密模式 / 配额超限 / ITP 清空后写回失败：吞掉异常并提示，
+       避免一次配额错误让整条事件处理链崩溃且用户无感知。 */
+    showToast({ message: "本地存储已满或不可用，建议导出备份后清理" });
+  }
 }
 
 function loadCloudState() {
@@ -1003,8 +1027,9 @@ async function pullCloudLedger({ announce = false } = {}) {
     cloudErrorLabel = "";
     const remote = normalizeRemotePayload(payload);
 
-    // LWW Merge for settings
-    if (state.updatedAt && remote.updatedAt < state.updatedAt) {
+    // LWW Merge for settings：仅当本地有「未同步的设置改动」(updatedAt > lastSyncedAt) 才保留本地设置。
+    //   首次 join 云账本时 lastSyncedAt 为空 → 不触发 → 用远端真实设置，避免本地空账本覆盖远端。
+    if (state.updatedAt && state.lastSyncedAt && state.updatedAt > state.lastSyncedAt && remote.updatedAt < state.updatedAt) {
       remote.name = state.name;
       remote.families = state.families;
       remote.familyVisuals = state.familyVisuals;
@@ -1039,8 +1064,11 @@ async function pullCloudLedger({ announce = false } = {}) {
     });
     cloudReady = true;
     cloudState.lastPulledAt = new Date().toISOString();
+    state.lastSyncedAt = cloudState.lastPulledAt;
     saveCloudState();
     render({ skipCloudSave: true, animateFinancialChanges: announce && hasPlayedInitialTotalReveal });
+    /* 远端墓碑已合并并对齐，清理本地已同步的墓碑释放存储（撤销窗口已过的删除条目）。 */
+    gcDeletedExpenses();
     if (announce) showToast({ message: "已同步云账本" });
     const unsyncedExpenses = state.expenses.filter((expense) => ["pending", "failed"].includes(normalizeExpenseSyncState(expense.syncState)));
     if (unsyncedExpenses.length) syncPendingCloudExpenses({ silent: true }).catch(() => {});
@@ -1184,7 +1212,12 @@ async function copyShareLink() {
     return;
   }
   setLedgerTokenHash(url, cloudState.shareToken);
-  await navigator.clipboard.writeText(url.toString());
+  try {
+    await navigator.clipboard.writeText(url.toString());
+  } catch {
+    showToast({ message: "复制失败，请手动复制地址栏链接" });
+    return;
+  }
   const isLocalUrl = ["localhost", "127.0.0.1", ""].includes(url.hostname);
   showToast({ message: isLocalUrl ? "已复制本机测试链接，请不要直接发给家人" : "邀请链接已复制，可发给家人一起记账" });
 }
@@ -1241,6 +1274,7 @@ async function syncCloudSettingsNow() {
       await supabaseRpc("update_travel_ledger_settings", basePayload);
     }
   }
+  state.lastSyncedAt = new Date().toISOString();
   notifyLedgerChanged();
 }
 
@@ -1506,7 +1540,7 @@ function calculateSummary() {
   let totalCents = 0;
   let scopedExpenseCount = 0;
 
-  for (const expense of state.expenses) {
+  for (const expense of getActiveExpenses()) {
     const cents = expenseToCents(expense);
     const expenseShares = calculateExpenseShares(expense);
     totalCents += cents;
@@ -2180,9 +2214,8 @@ function renderCategories() {
       `;
     })
     .join("");
-  // 末尾常驻「新增」胶囊：移动端点开就地输入，拉平桌面体验（移动端内联表单默认隐藏）。
-  const addChip = `<button class="category-add-chip" type="button" aria-label="新增类别"><span class="category-add-plus" aria-hidden="true">+</span><span>新增</span></button>`;
-  elements.categoryChips.innerHTML = chipMarkup + addChip;
+  // 末尾不再塞「新增」胶囊：新增入口移到 chips 下方独立的圆形 + 按钮（category-add-fab）。
+  elements.categoryChips.innerHTML = chipMarkup;
   scheduleCategoryEdgeFades();
 }
 
@@ -2224,12 +2257,15 @@ function renderRecentPeek() {
   host.querySelector(".recent-peek-all")?.addEventListener("click", openFullLedger, { once: false });
 }
 
-function handleCategoryAddReveal() {
+function toggleCategoryAdd() {
   const picker = elements.categoryChips.closest(".category-picker");
-  picker?.classList.add("is-adding");
-  const input = elements.newCategoryInput;
-  input?.focus();
-  input?.scrollIntoView({ block: "nearest" });
+  if (!picker) return;
+  const adding = picker.classList.toggle("is-adding");
+  elements.categoryAddFab?.setAttribute("aria-expanded", String(adding));
+  if (adding) {
+    elements.newCategoryInput?.focus();
+    elements.newCategoryInput?.scrollIntoView({ block: "nearest" });
+  }
 }
 
 function openFullLedger() {
@@ -2263,9 +2299,11 @@ function updateCategoryEdgeFades() {
   wrap.classList.toggle("can-fade-end", el.scrollLeft < maxScroll - threshold);
 }
 
-// 类别横滑到头的橡皮筋回弹：原生滚动触底后继续拖动/滚，用阻尼位移把整条类别带
-// “拉出”一点，松手（或滚轮停）后平滑弹回。刻意收敛：位移小、阻力大、无过冲，
-// 只是“到头了”的物理暗示，不做吸睛动效。触摸与触控板都支持。
+// 类别横滑到头的橡皮筋回弹：触摸拖到边后继续拖，用阻尼位移把整条类别带
+// “拉出”一点，松手后平滑弹回。刻意收敛：位移小、阻力大、无过冲，只是“到头了”
+// 的物理暗示，不做吸睛动效。仅触摸端手写；桌面（触控板/滚轮）交给浏览器
+// overscroll-behavior-x: contain 的原生橡皮筋——避免 wheel listener passive:false
+// 阻塞合成器滚动导致跟手性下降。
 function setupCategoryOverscroll(el) {
   if (!el) return;
   const LIMIT = 22; // 最大拉出距离（渐近上限）
@@ -2279,8 +2317,11 @@ function setupCategoryOverscroll(el) {
   let raw = 0; // 当前累积的越界拖动量（未阻尼，带正负）
   let settle = null; // 松手回弹动画
 
+  // paint / springBack 的 transform 始终带 translateZ(0)，避免行内 transform
+  // 覆盖 CSS 的合成层提升（translateZ(0)），导致越界拉伸和回弹动画期间元素
+  // 掉出合成层、每帧主线程重绘。
   const paint = () => {
-    el.style.transform = raw ? `translateX(${damp(raw).toFixed(2)}px)` : "";
+    el.style.transform = raw ? `translateZ(0) translateX(${damp(raw).toFixed(2)}px)` : "";
   };
   const cancelSettle = () => {
     if (settle) { settle.cancel(); settle = null; }
@@ -2293,7 +2334,7 @@ function setupCategoryOverscroll(el) {
     if (prefersReducedMotion()) { el.style.willChange = ""; return; }
     el.style.willChange = "transform";
     settle = el.animate(
-      [{ transform: `translateX(${from.toFixed(2)}px)` }, { transform: "translateX(0)" }],
+      [{ transform: `translateZ(0) translateX(${from.toFixed(2)}px)` }, { transform: "translateZ(0) translateX(0)" }],
       { duration: 260, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)" }
     );
     settle.onfinish = settle.oncancel = () => {
@@ -2340,24 +2381,6 @@ function setupCategoryOverscroll(el) {
   };
   el.addEventListener("touchend", endDrag, { passive: true });
   el.addEventListener("touchcancel", endDrag, { passive: true });
-
-  // ── 触控板/滚轮（横向）──
-  let wheelTimer = 0;
-  el.addEventListener("wheel", (e) => {
-    if (prefersReducedMotion()) return;
-    const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : 0;
-    if (!dx) return;
-    const beyondStart = dx < 0 && atStart();
-    const beyondEnd = dx > 0 && atEnd();
-    if (raw === 0 && !beyondStart && !beyondEnd) return; // 常规滚动，放行
-    e.preventDefault();
-    cancelSettle();
-    const next = raw - dx; // 位移方向与滚动相反
-    raw = raw > 0 ? Math.max(0, next) : raw < 0 ? Math.min(0, next) : next;
-    paint();
-    window.clearTimeout(wheelTimer);
-    wheelTimer = window.setTimeout(springBack, 110);
-  }, { passive: false });
 }
 
 function getRecentCategories(limit = 3) {
@@ -3622,7 +3645,7 @@ function handleExpenseSubmit(event) {
     return;
   }
 
-  const expenseId = editingExpenseId || crypto.randomUUID();
+  const expenseId = editingExpenseId || createId("expense");
   const operatorFamilyId = getOperatorFamilyId();
   const operator = operatorFamilyId ? { familyId: operatorFamilyId } : null;
   const originalExpense = wasEditing ? state.expenses.find((item) => item.id === editingExpenseId) : null;
@@ -3777,6 +3800,7 @@ function addCategoryFromInput(input) {
   // 移动端：收起内联新增表单，回到类别横滑；并把新类别滚入可视区。
   const picker = elements.categoryChips.closest(".category-picker");
   picker?.classList.remove("is-adding");
+  elements.categoryAddFab?.setAttribute("aria-expanded", "false");
   render();
   elements.categoryChips.querySelectorAll(".selectable-category-chip").forEach((chip) => {
     if (chip.dataset.category === category) {
@@ -3790,10 +3814,6 @@ function addCategoryFromInput(input) {
 }
 
 function handleCategorySelection(event) {
-  if (event.target.closest(".category-add-chip")) {
-    handleCategoryAddReveal();
-    return;
-  }
   const button = event.target.closest("[data-category]");
   if (!button) return;
 
@@ -4305,6 +4325,8 @@ function deleteExpense(expenseId, item) {
         syncCloudExpenseWithState(expenseId, { silent: true }).catch(() => {});
       },
     });
+    /* 撤销 toast 显示 toastWithAction(5.2s)，过期 + 缓冲后清理已同步的墓碑，释放存储。 */
+    window.setTimeout(gcDeletedExpenses, MOTION_DELAYS.toastWithAction + 500);
   }, delay);
 }
 
@@ -4359,6 +4381,7 @@ async function handleClearLedger() {
           });
         },
       });
+      window.setTimeout(gcDeletedExpenses, MOTION_DELAYS.toastWithAction + 500);
     },
     items.length ? Math.min(MOTION_DELAYS.ledgerClearMax, MOTION_DELAYS.ledgerClearBase + items.length * MOTION_DELAYS.ledgerClearStagger) : 0,
   );
@@ -4459,7 +4482,12 @@ async function copyLedgerShareLink(ledgerId) {
   }
 
   setLedgerTokenHash(url, ledger.cloudShareToken);
-  await navigator.clipboard.writeText(url.toString());
+  try {
+    await navigator.clipboard.writeText(url.toString());
+  } catch {
+    showToast({ message: "复制失败，请手动复制地址栏链接" });
+    return;
+  }
   showToast({ message: "邀请链接已复制" });
 }
 
@@ -4578,11 +4606,28 @@ function joinCloudLedger(shareToken) {
     return;
   }
 
+  const previousLedgerId = appState.activeLedgerId;
   const ledger = createEmptyLedger("云账本");
   ledger.cloudShareToken = shareToken;
   appState.ledgers.push(ledger);
   switchLedger(ledger.id, { announce: false });
-  pullCloudLedger({ announce: true }).then(() => {
+  pullCloudLedger({ announce: true }).then((ok) => {
+    if (!ok) {
+      /* 拉取失败（链接失效/网络断）：回滚已 push 的空账本，切回之前的账本。
+         否则账本管理里会残留名叫"云账本"的空条目，且失效 token 会被生命周期反复重试拉取。 */
+      const idx = appState.ledgers.findIndex((item) => item.id === ledger.id);
+      if (idx >= 0) appState.ledgers.splice(idx, 1);
+      const prev = appState.ledgers.find((item) => item.id === previousLedgerId);
+      if (prev) {
+        state = prev;
+        appState.activeLedgerId = prev.id;
+        cloudState.shareToken = prev.cloudShareToken || "";
+        updateLedgerUrl();
+        render();
+      }
+      saveState();
+      return;
+    }
     checkOperatorFamilyPrompt();
   });
 }
@@ -4664,9 +4709,20 @@ function openSettings() {
 /* 数据页的平账入口：打开设置并把平账面板滚动到视野中央 */
 function openSettlementInSettings() {
   openSettings();
-  window.requestAnimationFrame(() => {
-    elements.settlementSettingsPanel?.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  });
+  // 等抽屉滑入动画结束后再滚动定位：原先仅延迟一帧，滚动与抽屉进入动画撞车，
+  // 容器几何未稳定导致 smooth 滚动瞬移，用户感受不到「打开 → 定位」的过渡。
+  const enterMs = prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 80;
+  window.setTimeout(() => {
+    const panel = elements.settlementSettingsPanel;
+    if (!panel) return;
+    panel.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    // 滚动启动的同时给面板一个柔和的琥珀色脉冲，强化「从平账入口定位到此」的反馈
+    if (!prefersReducedMotion()) {
+      panel.classList.remove("is-spotlit");
+      void panel.offsetWidth; // 重置动画，允许连续触发
+      panel.classList.add("is-spotlit");
+    }
+  }, enterMs);
 }
 
 function closeSettings() {
@@ -4780,6 +4836,7 @@ function checkOperatorFamilyPrompt() {
 
 function showOperatorModal() {
   if (!elements.operatorModalView) return;
+  operatorModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   elements.operatorModalView.hidden = false;
   document.body.classList.add("confirm-open");
   renderOperatorFamilyChoices(elements.operatorModalFamilyList);
@@ -4790,14 +4847,20 @@ function closeOperatorModal() {
   const view = elements.operatorModalView;
   if (!view || view.hidden || view.classList.contains("is-closing")) return;
   document.body.classList.remove("confirm-open");
+  const restoreOperatorFocus = () => {
+    restoreFocus(operatorModalReturnFocus);
+    operatorModalReturnFocus = null;
+  };
   if (prefersReducedMotion()) {
     view.hidden = true;
+    restoreOperatorFocus();
     return;
   }
   view.classList.add("is-closing");
   window.setTimeout(() => {
     view.classList.remove("is-closing");
     view.hidden = true;
+    restoreOperatorFocus();
   }, getCssDurationMs("--motion-fast", 401) + 60);
 }
 
@@ -4838,6 +4901,7 @@ let welcomeSlideIndex = 0;
 let welcomePendingFamilyPrompt = false;
 let welcomeCloseTimer = 0;
 let welcomeReturnFocus = null;
+let operatorModalReturnFocus = null;
 let welcomeScrollAnimation = 0;
 
 function isWelcomeOpen() {
@@ -4867,7 +4931,7 @@ function openWelcome({ invitedArrival = false } = {}) {
   elements.welcomeHeroEyebrow.textContent = invitedArrival ? "邀请已生效" : "欢迎使用";
   elements.welcomeTitle.textContent = invitedArrival ? "你已加入共享账本" : "三个家庭，一本账";
   elements.welcomeHeroCopy.textContent = invitedArrival
-    ? "家人邀请你共同记账，新增和修改都会在三家之间实时同步。"
+    ? "家人邀请你共同记账，三家实时同步；账单一多，也会自动算出平账建议。"
     : "默认按各家人数分摊，也能为单笔账指定家庭或金额，最后自动算出平账建议。";
   const cloudActive = invitedArrival || isCloudLedgerActive();
   elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : "邀请家人一起记";
@@ -5761,6 +5825,7 @@ elements.categoryForm.addEventListener("click", (event) => {
 });
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
 elements.categoryChips.addEventListener("click", handleCategorySelection);
+elements.categoryAddFab?.addEventListener("click", toggleCategoryAdd);
 elements.categoryChips.addEventListener("scroll", scheduleCategoryEdgeFades, { passive: true });
 setupCategoryOverscroll(elements.categoryChips);
 window.addEventListener("resize", scheduleCategoryEdgeFades);
@@ -5784,6 +5849,9 @@ elements.settingsOperatorFamilyList.addEventListener("click", handleOperatorFami
 elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.operatorModalFamilyList.addEventListener("click", handleOperatorFamilyChoice);
+/* Operator modal 背景 点击可关闭：原实现无关闭路径，用户被强制选家庭才能退出。
+   关闭后下次操作（如提交账单）会再次提示选择家庭，不影响云账本强制身份的产品约束。 */
+elements.operatorModalBackdrop?.addEventListener("click", closeOperatorModal);
 elements.welcomeIdentityFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 elements.welcomeSkipButton.addEventListener("click", handleWelcomeSkip);
 elements.welcomeNextButton.addEventListener("click", handleWelcomeNext);

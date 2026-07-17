@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-realtime-v1-20260718";
+const APP_VERSION = "journa-safari-fulledge-v1-20260718";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",
