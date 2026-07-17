@@ -4,3 +4,6 @@ TravelLedgerNative/DerivedData/
 .claude/
 .agents/
 .gemini/
+
+# WorkBuddy local agent state (never sync to remote)
+.workbuddy/

@@ -2,10 +2,9 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-settlement-watermark-v4-20260717";
+const APP_VERSION = "journa-settlement-watermark-v6-20260717";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
-const PUBLIC_APP_URL = "https://lunelucas.github.io/Journa/";
 document.documentElement.dataset.appVersion = APP_VERSION;
 const MOTION_DELAYS = {
   ledgerSettle: 1783,
@@ -14,6 +13,7 @@ const MOTION_DELAYS = {
   ledgerClearStagger: 63,
   settlementStagger: 58,
   categoryEnter: 1560,
+  categoryExit: 280,
   payerActivate: 760,
   categoryActivate: 760,
   choiceRelease: 460,
@@ -283,6 +283,9 @@ let deactivatingPayerId = "";
 let activatingCategory = "";
 let deactivatingCategory = "";
 let editingExpenseId = "";
+/* 指示灯停靠坐标在“展开/收起”切换、旋屏、账本改名时失效，先标脏，
+   下次滚动进 zone 时一次性重算（避免每帧强制重排）。 */
+let dockCoordsDirty = true;
 let toastTimer = 0;
 let settingsCloseTimer = 0;
 let ledgerManagementCloseTimer = 0;
@@ -312,6 +315,94 @@ const bootHadLocalData = (() => {
   }
 })();
 let cloudBusy = false;
+
+/* ── 实时协同：Supabase Realtime Broadcast ──
+   每个云账本占用一个频道 ledger:<share_token>。写入方保存成功后广播 changed，
+   其他同账本客户端收到后立即 pullCloudLedger()。生命周期拉取仍作兜底。
+   依赖全局 supabase（index.html 经 CDN 引入）；若未加载则全部静默降级，
+   不阻塞原有手动/生命周期同步。 */
+let realtimeClient = null;
+let realtimeChannel = null;
+let realtimePullTimer = null;
+let realtimeBroadcastTimer = null;
+let realtimeBroadcastPending = false;
+
+function getRealtimeClient() {
+  if (realtimeClient) return realtimeClient;
+  if (typeof supabase === "undefined" || !isCloudConfigured()) return null;
+  try {
+    realtimeClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      realtime: { params: { eventsPerSecond: 5 } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  } catch (error) {
+    realtimeClient = null;
+  }
+  return realtimeClient;
+}
+
+function subscribeLedgerRealtime(shareToken) {
+  const client = getRealtimeClient();
+  if (!client || !shareToken) return;
+  unsubscribeLedgerRealtime();
+  const channel = client.channel(`ledger:${shareToken}`, {
+    config: { broadcast: { self: false } },
+  });
+  channel.on("broadcast", { event: "changed" }, () => {
+    scheduleRealtimePull();
+  });
+  channel.subscribe();
+  realtimeChannel = channel;
+}
+
+function unsubscribeLedgerRealtime() {
+  if (realtimeChannel) {
+    try {
+      realtimeChannel.unsubscribe();
+    } catch (error) { /* 忽略 */ }
+    realtimeChannel = null;
+  }
+}
+
+function syncRealtimeSubscription() {
+  if (isCloudLedgerActive() && cloudState.shareToken) {
+    subscribeLedgerRealtime(cloudState.shareToken);
+  } else {
+    unsubscribeLedgerRealtime();
+  }
+}
+
+function broadcastLedgerChanged() {
+  if (!realtimeChannel) return;
+  try {
+    realtimeChannel.send({ type: "broadcast", event: "changed", payload: {} });
+  } catch (error) { /* 忽略 */ }
+}
+
+/* 合并短时间内的多次写入为一次广播，避免批量保存时刷屏 */
+function notifyLedgerChanged() {
+  if (cloudBusy) return; // 拉取/手动同步过程中的重试不二次广播，避免风暴
+  realtimeBroadcastPending = true;
+  if (realtimeBroadcastTimer) return;
+  realtimeBroadcastTimer = window.setTimeout(() => {
+    realtimeBroadcastTimer = null;
+    if (realtimeBroadcastPending) {
+      realtimeBroadcastPending = false;
+      broadcastLedgerChanged();
+    }
+  }, 400);
+}
+
+/* 收到他人广播后节流拉取一次，避免多人同时改动时雪崩 */
+function scheduleRealtimePull() {
+  if (realtimePullTimer) return;
+  realtimePullTimer = window.setTimeout(() => {
+    realtimePullTimer = null;
+    if (cloudBusy) return; // 正忙则交给下一次生命周期拉取兜底
+    if (isCloudLedgerActive()) pullCloudLedger().catch(() => {});
+  }, 600);
+}
+
 let syncStatusWasSyncing = false;
 let syncLampTimer = 0;
 let syncLampDockFlashTimer = 0;
@@ -1017,6 +1108,7 @@ async function createCloudLedger() {
     updateLedgerUrl();
     await syncAllLocalDataToCloud();
     await pullCloudLedger({ announce: true });
+    syncRealtimeSubscription();
     checkOperatorFamilyPrompt();
   } catch (error) {
     showToast({ message: "创建云账本失败，请确认 SQL 已执行" });
@@ -1057,7 +1149,8 @@ async function copyShareLink() {
 }
 
 function getShareUrl() {
-  if (PUBLIC_APP_URL) return new URL(PUBLIC_APP_URL);
+  // 邀请链接必须指向当前实际部署的地址，否则家人点开后会落到别处（甚至另一份旧代码）。
+  // 不再硬编码发布域名；本地 file: 协议无法分享，返回 null 让调用方提示先发布。
   if (window.location.protocol === "file:") return null;
   return new URL(window.location.href);
 }
@@ -1107,6 +1200,7 @@ async function syncCloudSettingsNow() {
       await supabaseRpc("update_travel_ledger_settings", basePayload);
     }
   }
+  notifyLedgerChanged();
 }
 
 function isSettingsRpcCompatibilityError(error) {
@@ -1142,6 +1236,7 @@ async function syncCloudExpense(expense) {
     if (!isSplitRpcCompatibilityError(error)) throw error;
     await supabaseRpc("save_travel_expense", basePayload);
   }
+  notifyLedgerChanged();
 }
 
 async function syncCloudExpenseWithState(expenseId, { silent = false } = {}) {
@@ -1193,11 +1288,13 @@ async function deleteCloudExpense(expenseId) {
     p_share_token: cloudState.shareToken,
     p_id: expenseId,
   });
+  notifyLedgerChanged();
 }
 
 async function clearCloudLedger() {
   if (!isCloudLedgerActive()) return;
   await supabaseRpc("clear_travel_ledger", { p_share_token: cloudState.shareToken });
+  notifyLedgerChanged();
 }
 
 function updateCloudControls(forcedStatus = "") {
@@ -1516,6 +1613,7 @@ function render(options = {}) {
     renderEditState();
     renderMobilePanelState();
     renderMobileSubmitBar();
+    renderRecentPeek();
     applySelectedFamilyTheme();
     applySubmitButtonTheme();
     updateAmountMotionState();
@@ -1887,6 +1985,7 @@ function setMobilePanel(panel, options = {}) {
 
 function renderMobilePanelState() {
   elements.ledgerView.dataset.mobilePanel = activeMobilePanel;
+  elements.mobilePanelSwitch?.setAttribute("data-active", activeMobilePanel);
   document.body.classList.toggle("mobile-panel-entry", activeMobilePanel === "entry");
   document.body.classList.toggle("mobile-panel-data", activeMobilePanel === "data");
   [
@@ -1912,8 +2011,10 @@ function handleMobilePanelSwitchKeydown(event) {
 
 function renderCurrentLedgerLabel() {
   elements.currentLedgerTitle.textContent = state.name;
-  /* 收起态切换账本后，灯要跟着新标题的右缘走（展开态函数内部直接返回） */
-  updateSyncLampDock();
+  /* 收起态切换账本后，灯要跟着新标题的右缘走；标题宽度变了，
+     展开态也要强制重算停靠终值（标脏，下次滚动进 zone 时落地）。 */
+  dockCoordsDirty = true;
+  updateSyncLampDock(true);
 }
 
 function renderFormOptions() {
@@ -2022,7 +2123,7 @@ function renderFamilyRoster() {
 
 function renderCategories() {
   const recentCategories = new Set(getRecentCategories(3));
-  elements.categoryChips.innerHTML = state.categories
+  const chipMarkup = state.categories
     .map((category) => {
       const isNew = category === lastAddedCategory;
       const selected = category === state.activeCategory;
@@ -2036,7 +2137,65 @@ function renderCategories() {
       `;
     })
     .join("");
+  // 末尾常驻「新增」胶囊：移动端点开就地输入，拉平桌面体验（移动端内联表单默认隐藏）。
+  const addChip = `<button class="category-add-chip" type="button" aria-label="新增类别"><span class="category-add-plus" aria-hidden="true">+</span><span>新增</span></button>`;
+  elements.categoryChips.innerHTML = chipMarkup + addChip;
   scheduleCategoryEdgeFades();
+}
+
+// 记账视图内的「最近记录」：提交后即时露出最近 1–2 笔，用户无需切到「数据」即可确认已保存。
+function renderRecentPeek() {
+  const host = document.getElementById("recentPeek");
+  if (!host) return;
+  const expenses = [...state.expenses]
+    .filter((expense) => !expense.isDeleted)
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return (b.updatedAt || "").localeCompare(a.updatedAt || "");
+    })
+    .slice(0, 2);
+  if (!expenses.length) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+  host.hidden = false;
+  host.innerHTML = `
+    <div class="recent-peek-head">
+      <span class="recent-peek-title">最近记录</span>
+      <button class="recent-peek-all" type="button">查看全部</button>
+    </div>
+    <ul class="recent-peek-list">
+      ${expenses
+        .map((expense) => {
+          const label = expense.note ? escapeHtml(expense.note) : formatCategoryLabel(expense.category);
+          return `
+        <li class="recent-peek-item">
+          <span class="category-pill">${categoryLabelHtml(expense.category)}</span>
+          <span class="recent-peek-note">${label}</span>
+          <span class="recent-peek-amount">${formatMoney(Math.round(Number(expense.amount) * 100))}</span>
+        </li>`;
+        })
+        .join("")}
+    </ul>`;
+  host.querySelector(".recent-peek-all")?.addEventListener("click", openFullLedger, { once: false });
+}
+
+function handleCategoryAddReveal() {
+  const picker = elements.categoryChips.closest(".category-picker");
+  picker?.classList.add("is-adding");
+  const input = elements.newCategoryInput;
+  input?.focus();
+  input?.scrollIntoView({ block: "nearest" });
+}
+
+function openFullLedger() {
+  const isMobile = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  if (isMobile) {
+    setMobilePanel("data", { animate: true });
+  } else {
+    elements.ledgerSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 let categoryFadeFrame = 0;
@@ -2049,14 +2208,16 @@ function scheduleCategoryEdgeFades() {
   });
 }
 
-// 按横滚位置切换两侧渐隐：只在该侧仍有内容可滚时显示（iOS 边缘行为）
+// 按横滚位置切换两侧渐隐：只在该侧仍有内容可滚时显示（iOS 边缘行为）。
+// can-fade-* 切到外层 .category-chips-fade（mask 挂在那里，而非滚动容器本身）。
 function updateCategoryEdgeFades() {
   const el = elements.categoryChips;
   if (!el) return;
+  const wrap = el.closest(".category-chips-fade") || el;
   const maxScroll = el.scrollWidth - el.clientWidth;
   const threshold = 2;
-  el.classList.toggle("can-fade-start", el.scrollLeft > threshold);
-  el.classList.toggle("can-fade-end", el.scrollLeft < maxScroll - threshold);
+  wrap.classList.toggle("can-fade-start", el.scrollLeft > threshold);
+  wrap.classList.toggle("can-fade-end", el.scrollLeft < maxScroll - threshold);
 }
 
 // 类别横滑到头的橡皮筋回弹：原生滚动触底后继续拖动/滚，用阻尼位移把整条类别带
@@ -2394,7 +2555,7 @@ function renderSettings() {
       `;
 
       return `
-        <span class="chip category-chip settings-category-chip" style="${categoryStyle(category)}">
+        <span class="chip category-chip settings-category-chip${category === lastAddedCategory ? " is-entering" : ""}" style="${categoryStyle(category)}">
           <span>${categoryLabelHtml(category)}</span>
           <small>${status}</small>
           ${moveControls}
@@ -2523,10 +2684,54 @@ function renderPersonalizationSettings() {
         <small>${customStatus}</small>
       </summary>
       <div class="family-color-detail-body">
-        ${familyRows}
+        <div class="family-color-detail-inner">
+          ${familyRows}
+        </div>
       </div>
     </details>
   `;
+  bindAnimatedDetails(elements.settingsFamilyColorList);
+}
+
+/* 让原生 <details> 的「收起」也平滑过渡。
+   原生 details 在移除 open 时瞬间抽走内容，grid 的 1fr→0fr 过渡播不出来；
+   这里拦截 summary 点击、自管 open 属性：收起时先保留 open、强制 0fr
+   播完过渡再真正移除 open；展开则直接加 open 走 CSS 0fr→1fr。*/
+function bindAnimatedDetails(root = document) {
+  root
+    .querySelectorAll(".settings-actions-details > summary, .family-color-details > summary")
+    .forEach((summary) => {
+      if (summary.dataset.animatedDetailsBound) return;
+      summary.dataset.animatedDetailsBound = "1";
+      summary.addEventListener("click", (event) => {
+        const details = summary.parentElement;
+        if (!details || !details.matches("details")) return;
+        event.preventDefault();
+        if (details.dataset.animating === "1") return;
+        const grid = details.querySelector(".details-body, .family-color-detail-body");
+        if (!details.hasAttribute("open")) {
+          details.setAttribute("open", "");
+          return;
+        }
+        details.dataset.animating = "1";
+        details.classList.add("is-closing");
+        const finish = () => {
+          details.removeAttribute("open");
+          details.classList.remove("is-closing");
+          details.dataset.animating = "0";
+          if (grid) grid.removeEventListener("transitionend", onEnd);
+        };
+        const onEnd = (ev) => {
+          if (ev && ev.propertyName && ev.propertyName !== "grid-template-rows") return;
+          finish();
+        };
+        if (grid) grid.addEventListener("transitionend", onEnd);
+        /* 减动或过渡未触发 transitionend 时的兜底 */
+        setTimeout(() => {
+          if (details.dataset.animating === "1") onEnd();
+        }, 620);
+      });
+    });
 }
 
 function getMatchedPaletteId() {
@@ -2659,6 +2864,15 @@ function renderTotalAmount(nextText, shouldAnimate, options = {}) {
     return;
   }
 
+  /* VT 已对整个 #totalAmount 做交叉淡变刷新（::view-transition-old/new 的
+     text-slide-out/in），此处不再叠加 is-soft-refresh 的模糊位移，避免数字
+     “先交叉淡变、再模糊滑入”的双段感。仅在不支持 View Transitions
+     的浏览器走 is-soft-refresh 这层 CSS 兜底。 */
+  if (document.startViewTransition && shouldAnimate) {
+    elements.totalAmount.textContent = nextText;
+    return;
+  }
+
   elements.totalAmount.classList.remove("is-soft-refresh");
   elements.totalAmount.textContent = nextText;
   void elements.totalAmount.offsetWidth;
@@ -2781,7 +2995,12 @@ function renderSoftText(element, nextText, shouldAnimate = false) {
 
 function renderSummary({ animateFinancialChanges = false } = {}) {
   const summary = calculateSummary();
-  const enterClass = animateFinancialChanges ? " is-entering" : "";
+  /* paidByFamily / categorySummary / settlementList 三个容器都带有独立的
+     view-transition-name，VT 生效时整块交叉淡变已覆盖刷新；若子项再挂
+     is-entering，落定后会“再滑一次”，形成双重动效。故 VT 生效时
+     跳过子项 is-entering，仅在不支持 View Transitions 的浏览器用 CSS 兜底。 */
+  const vtActive = document.startViewTransition && animateFinancialChanges;
+  const enterClass = vtActive ? "" : " is-entering";
   renderTotalAmount(formatMoney(summary.totalCents), animateFinancialChanges);
   renderSoftText(elements.shareAmount, formatMoney(summary.shareCents), animateFinancialChanges);
   renderSoftText(elements.expenseCount, String(state.expenses.length), animateFinancialChanges);
@@ -3512,7 +3731,15 @@ function addCategoryFromInput(input) {
   state.activeCategory = category;
 
   input.value = "";
+  // 移动端：收起内联新增表单，回到类别横滑；并把新类别滚入可视区。
+  const picker = elements.categoryChips.closest(".category-picker");
+  picker?.classList.remove("is-adding");
   render();
+  elements.categoryChips.querySelectorAll(".selectable-category-chip").forEach((chip) => {
+    if (chip.dataset.category === category) {
+      chip.scrollIntoView({ inline: "center", block: "nearest" });
+    }
+  });
   queueCloudSettingsSync();
   window.setTimeout(() => {
     if (lastAddedCategory === category) lastAddedCategory = "";
@@ -3520,6 +3747,10 @@ function addCategoryFromInput(input) {
 }
 
 function handleCategorySelection(event) {
+  if (event.target.closest(".category-add-chip")) {
+    handleCategoryAddReveal();
+    return;
+  }
   const button = event.target.closest("[data-category]");
   if (!button) return;
 
@@ -3747,7 +3978,7 @@ function handleSettingsCategoryClick(event) {
   const button = event.target.closest("[data-remove-category]");
   if (!button) return;
 
-  removeCategory(button.dataset.removeCategory);
+  removeCategory(button.dataset.removeCategory, button.closest(".settings-category-chip"));
 }
 
 function moveCategory(category, direction) {
@@ -3763,28 +3994,39 @@ function moveCategory(category, direction) {
   saveState();
 }
 
-function removeCategory(category) {
+function removeCategory(category, chipEl) {
   if (state.expenses.some((expense) => expense.category === category)) return;
   const categoryIndex = state.categories.indexOf(category);
   if (categoryIndex < 0) return;
 
-  state.categories = state.categories.filter((item) => item !== category);
-  if (state.activeCategory === category) {
-    state.activeCategory = "";
+  const commit = () => {
+    state.categories = state.categories.filter((item) => item !== category);
+    if (state.activeCategory === category) {
+      state.activeCategory = "";
+    }
+    render();
+    queueCloudSettingsSync();
+    showToast({
+      message: `已删除“${category}”`,
+      actionLabel: "撤销",
+      onAction: () => {
+        state.categories.splice(Math.max(categoryIndex, 0), 0, category);
+        state.categories = normalizeCategories(state.categories);
+        state.activeCategory = category;
+        render();
+        queueCloudSettingsSync();
+      },
+    });
+  };
+
+  /* 有 chip 节点且未减动时，先播退场动画，结束后再真正移除并重渲染；
+     使设置内分类删除不再硬消失（与记账表单 chips 的进出场对齐）。 */
+  if (chipEl && !prefersReducedMotion()) {
+    chipEl.classList.add("is-removing");
+    window.setTimeout(commit, MOTION_DELAYS.categoryExit);
+  } else {
+    commit();
   }
-  render();
-  queueCloudSettingsSync();
-  showToast({
-    message: `已删除“${category}”`,
-    actionLabel: "撤销",
-    onAction: () => {
-      state.categories.splice(Math.max(categoryIndex, 0), 0, category);
-      state.categories = normalizeCategories(state.categories);
-      state.activeCategory = category;
-      render();
-      queueCloudSettingsSync();
-    },
-  });
 }
 
 function handleFamilyMemberStep(event) {
@@ -4126,9 +4368,14 @@ function switchLedger(ledgerId, { announce = true } = {}) {
   resetSplitScope();
   updateLedgerUrl();
   render({ animateFinancialChanges: true });
-  markLedgerSwitching();
-  if (announce) showToast({ message: `已切换到“${state.name}”` });
+  /* VT 已对整个视口（root + total/paid/category/settlement 命名组）做交叉淡变，
+     此处不再叠加 is-switching-ledger 的 app-content-refresh（面板位移），否则命名组
+     子项会“原位交叉淡变 + 随父面板位移”双段。仅在不支持 View Transitions
+     的浏览器保留该 CSS 兜底（其内置减动守卫仍生效）。 */
+  if (!document.startViewTransition) markLedgerSwitching();
+  if (announce) showToast({ message: `已切换到"${state.name}"` });
   checkOperatorFamilyPrompt();
+  syncRealtimeSubscription();
 }
 
 function renameCurrentLedger() {
@@ -5528,6 +5775,7 @@ elements.createCloudLedgerButton.addEventListener("click", createCloudLedger);
 elements.copyShareLinkButton.addEventListener("click", copyShareLink);
 elements.syncStatus.addEventListener("click", handleManualCloudSync);
 elements.openSettingsButton.addEventListener("click", openSettings);
+bindAnimatedDetails();
 elements.settlementEntryButton?.addEventListener("click", openSettlementInSettings);
 elements.closeSettingsButton.addEventListener("click", closeSettings);
 elements.settingsBackdrop.addEventListener("click", closeSettings);
@@ -5768,35 +6016,38 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
 /* 收起头部时 mobile-panel-switch 会从 grid 第 3 行移到第 2 行。
    先量出旧位置，再让它从旧位置 FLIP 到新位置，避免胶囊熔化时切换条吃到一次瞬移。 */
 function settleMobilePanelSwitchLayout(panelSwitch, beforeRect) {
-  if (prefersReducedMotion() || !panelSwitch || !beforeRect || typeof panelSwitch.animate !== "function") return;
-  panelSwitch.getAnimations?.().forEach((animation) => animation.cancel());
+  if (prefersReducedMotion() || !panelSwitch || !beforeRect) return;
   const afterRect = panelSwitch.getBoundingClientRect();
   const deltaY = beforeRect.top - afterRect.top;
   if (Math.abs(deltaY) < 0.5) return;
-
-  const animation = panelSwitch.animate(
-    [
-      { transform: `translate3d(0, ${deltaY}px, 0)` },
-      { transform: "translate3d(0, 0, 0)" },
-    ],
-    {
-      duration: 220,
-      easing: "cubic-bezier(0.22, 0.74, 0.24, 1)",
-      fill: "none",
-    }
-  );
-  animation.onfinish = () => animation.cancel();
+  /* 经典 FLIP + CSS transition（双 rAF）：
+     1) 内联瞬间把切换器放回“旧位置”（transition:none + 强制 reflow 提交起始帧）；
+     2) 下一帧恢复 CSS transition 并清掉内联 transform → 从旧位置平滑补间到新位置。
+     不用 WAAPI：它在 iOS Safari 上对 sticky+contain+translateZ(0) 元素静默不播，
+     正是“切换器补位时突然卡上去”的根因；CSS transition 在本设备已被胶囊
+     熔化证明可靠。 */
+  panelSwitch.style.transition = "none";
+  panelSwitch.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+  void panelSwitch.offsetWidth; // 强制同步 reflow，提交起始帧
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      panelSwitch.style.transition = "";   // 恢复 .mobile-panel-switch 上的 transition: transform
+      panelSwitch.style.transform = "";  // 回到基础 translateZ(0)（= 新位置）
+    });
+  });
 }
 
 /* 收起态指示灯停靠点：量出账本标题文字的右缘，把胶囊（此时壳已熔掉只剩灯）平移成「账本名 ●」。
    h1 以 left/bottom 为原点做缩放过渡，收起触发瞬间量到的是过渡前的宽高，
    需按 --header-title-collapse-scale 折算终值；胶囊原位用 offset*（不受 transform 影响）。 */
-function updateSyncLampDock() {
+function updateSyncLampDock(force = false) {
   const header = document.querySelector(".app-header");
   const capsule = elements.syncStatus;
   const title = elements.currentLedgerTitle;
   if (!header || !capsule || !title) return;
-  if (!header.classList.contains("is-collapsed")) return;
+  /* 默认仅在收起态算停靠点；scroll 联动需要展开态也先量出终值坐标，
+     故 force=true 时跳过收起态门槛（仍保留 grid 布局守卫）。 */
+  if (!force && !header.classList.contains("is-collapsed")) return;
   if (window.getComputedStyle(header).display !== "grid") return; // 仅移动端 grid 布局参与熔化
 
   const headerRect = header.getBoundingClientRect();
@@ -5816,11 +6067,22 @@ function updateSyncLampDock() {
   const finalTextRight = textRect.left + finalTextWidth;
   const finalTextCenterY = textRect.bottom - finalTextHeight / 2;
 
-  /* 目标：灯芯离文字 10px；长标题时 clamp 到设置齿轮左侧 */
+  /* 目标 X：灯芯离文字 10px；长标题时 clamp 到设置齿轮左侧。
+     目标 Y：与设置齿轮水平对齐（同一水平线），而非标题文字内容中心——
+     齿轮在 row1 右、h1 在 row1 左，二者各自垂直居中，中心通常不等，
+     故直接取齿轮中心 Y，让「●」和「⚙」落在同一条水平线。
+     无齿轮时回退到标题文字中心。 */
   const lampHalf = 5;
   let targetX = finalTextRight + 10 + lampHalf;
+  let targetY = finalTextCenterY;
   if (elements.openSettingsButton) {
-    targetX = Math.min(targetX, elements.openSettingsButton.getBoundingClientRect().left - 10 - lampHalf);
+    const btnRect = elements.openSettingsButton.getBoundingClientRect();
+    /* 按钮内部 SF Symbol 图标自身的中心，比按钮盒中心更贴近视觉中心；
+       按钮盒可能带 padding/行高，导致盒中心与图标实际中心不一致。 */
+    const iconEl = elements.openSettingsButton.querySelector(".sf-icon, .sf-symbol") || elements.openSettingsButton;
+    const iconRect = iconEl.getBoundingClientRect();
+    targetX = Math.min(targetX, btnRect.left - 10 - lampHalf);
+    targetY = iconRect.top + iconRect.height / 2;
   }
 
   /* 收起态胶囊收成 padding 0 11px 的小圆（边框在壳层不占位），灯芯在盒内 x≈16（11px padding + 半径）；
@@ -5835,33 +6097,101 @@ function updateSyncLampDock() {
       : capsule.offsetTop + capsule.offsetHeight / 2);
 
   header.style.setProperty("--sync-dock-x", `${targetX - dotFinalX}px`);
-  header.style.setProperty("--sync-dock-y", `${finalTextCenterY - dotFinalY}px`);
+  header.style.setProperty("--sync-dock-y", `${targetY - dotFinalY}px`);
 }
 
 function setupScrollCollapse() {
   // 主页面头部滚动监听
   const appHeader = document.querySelector(".app-header");
   const mobilePanelSwitch = document.getElementById("mobilePanelSwitch");
+  const isMobile = () => window.matchMedia?.("(max-width: 820px), (pointer: coarse)").matches ?? false;
+  let switchBeforeRect = null;
   attachCollapseOnScroll(window, appHeader, {
     onThreshold: 56,
     offThreshold: 24,
-    onBeforeChange: () => {
-      // CSS grid-template-rows transition handles layout changes smoothly now.
+    /* 在 layout 改变前先记录切换器位置，用 FLIP 补间其纵向位移。
+       之前靠 CSS grid-template-rows transition 做平滑，但在 iOS Safari
+       上布局属性逐帧插值会触发重排，导致切换器滚动时明显跳动。 */
+    onBeforeChange: (willCollapse) => {
+      if (mobilePanelSwitch) {
+        switchBeforeRect = mobilePanelSwitch.getBoundingClientRect();
+      }
     },
-    /* 收起先算好停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算 */
+    /* 收起先算好停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算。
+       layout 改变后触发 FLIP，让切换器从旧位置平滑到新位置（纯 transform）。 */
     onChange: (collapsed) => {
-      // CSS grid-template-rows transition handles layout changes smoothly now.
-      if (collapsed) updateSyncLampDock();
+      if (collapsed) updateSyncLampDock(true);
+      if (mobilePanelSwitch && switchBeforeRect) {
+        settleMobilePanelSwitchLayout(mobilePanelSwitch, switchBeforeRect);
+      }
+      switchBeforeRect = null;
     }
   });
 
-  /* 收起态下窗口尺寸变化（旋屏/键盘）时重算停靠点（rAF 节流；展开态函数内部直接返回） */
+  /* 指示灯随滚动进度飞向账本名称：进度 p∈[0,1] 把胶囊里原位的灯
+     平移到标题右缘，p 由滚动量连续驱动（而非到阈值才一次性过渡），
+     所以“胶囊随滑动过程，指示灯移到账本名称旁边”。坐标在进 zone 或
+     旋屏/改名时标脏后一次性重算，每帧只写进度比例，不强制重排。 */
+  const DOCK_ON = 56;
+  const DOCK_OFF = 24;
+  let dockFrame = 0;
+  let lastDockP = -1;
+  let isDocking = false;
+  const applyDockProgress = () => {
+    dockFrame = 0;
+    const y = isMobile() ? (window.scrollY || window.pageYOffset || 0) : 0;
+    if (!isMobile()) {
+      /* 非移动端：确保进度归零、类摘掉即可，且只在尚未归零时写一次，
+         避免每帧都无谓触达 .app-header 子树 recalc。 */
+      if (lastDockP !== 0) {
+        lastDockP = 0;
+        appHeader.style.setProperty("--sync-dock-progress", "0");
+      }
+      if (isDocking) {
+        isDocking = false;
+        appHeader.classList.remove("is-docking");
+      }
+      return;
+    }
+    if (dockCoordsDirty) {
+      updateSyncLampDock(true);
+      dockCoordsDirty = false;
+    }
+    const p = Math.min(1, Math.max(0, (y - DOCK_OFF) / (DOCK_ON - DOCK_OFF)));
+    const inZone = p > 0.001 && p < 0.999;
+    /* 量化写入：滚动时 p 近每帧变化，但若没跨过 1% 步进就跳过写入，
+       避免每帧触达 .app-header 整棵子树 style recalc；zone 外只确保落位到
+       0/1 端点一次。这是“滚动时切换器被动重算”的隐性卡顿来源之一。 */
+    if (inZone) {
+      const pQuant = Math.round(p * 100) / 100;
+      if (pQuant !== lastDockP) {
+        lastDockP = pQuant;
+        appHeader.style.setProperty("--sync-dock-progress", String(pQuant));
+      }
+    } else if (lastDockP !== (p <= 0.001 ? 0 : 1)) {
+      lastDockP = p <= 0.001 ? 0 : 1;
+      appHeader.style.setProperty("--sync-dock-progress", String(lastDockP));
+    }
+    /* 只在“进入/离开 docking 区间”时才 toggle is-docking，不每帧操作 classList，
+       两端贴边时交给 .is-collapsed 的稳态规则（避免类反复横跳）。 */
+    if (inZone !== isDocking) {
+      isDocking = inZone;
+      appHeader.classList.toggle("is-docking", inZone);
+    }
+  };
+  window.addEventListener("scroll", () => {
+    if (dockFrame) return;
+    dockFrame = window.requestAnimationFrame(applyDockProgress);
+  }, { passive: true });
+
+  /* 收起态下窗口尺寸变化（旋屏/键盘）时重算停靠点（rAF 节流；展开态也强制重算） */
   let dockResizeFrame = 0;
   window.addEventListener("resize", () => {
     if (dockResizeFrame) return;
     dockResizeFrame = window.requestAnimationFrame(() => {
       dockResizeFrame = 0;
-      updateSyncLampDock();
+      dockCoordsDirty = true;
+      applyDockProgress();
     });
   });
 
@@ -5928,7 +6258,15 @@ function setupSafeAreaMode() {
   );
   const mobileQuery = window.matchMedia?.("(max-width: 820px), (pointer: coarse)");
 
-  const readSafeAreaInsets = () => {
+  /* Safe-area insets are fixed by the device's physical safe area (notch /
+     home indicator). They do NOT change when the iOS URL bar shows/hides, yet the
+     old code measured them on every visualViewport event — creating a probe div
+     and forcing a synchronous reflow (getComputedStyle) on every single frame of
+     the address-bar animation. That forced reflow per frame was the main source
+     of the "顿一下" jank on Safari mobile. Measure once, and again only when the
+     orientation can actually change the insets. */
+  let cachedInsets = [0, 0, 0, 0];
+  const measureInsets = () => {
     const probe = document.createElement("div");
     probe.style.cssText = [
       "position: fixed",
@@ -5938,36 +6276,92 @@ function setupSafeAreaMode() {
     ].join(";");
     document.body.appendChild(probe);
     const style = window.getComputedStyle(probe);
-    const insets = ["Top", "Right", "Bottom", "Left"].map((side) => Number.parseFloat(style[`padding${side}`]) || 0);
+    cachedInsets = ["Top", "Right", "Bottom", "Left"].map((side) => Number.parseFloat(style[`padding${side}`]) || 0);
     probe.remove();
-    return insets;
   };
+  measureInsets();
 
-  const sync = () => {
+  /* Mode-dependent classes / data attr: these only flip on rare, discrete events
+     (rotation, entering/exiting fullscreen or standalone, breakpoint cross). They
+     never change during the address-bar animation, so they stay out of the per-
+     frame hot path. */
+  const syncModes = () => {
     const isStandalone =
       window.navigator.standalone === true || displayQueries[0]?.matches || displayQueries[2]?.matches;
     const isFullscreen = Boolean(document.fullscreenElement) || displayQueries[1]?.matches || isStandalone;
     const isMobile = mobileQuery?.matches ?? window.innerWidth <= 820;
-    const hasSafeArea = readSafeAreaInsets().some((inset) => inset > 0);
-    const viewport = window.visualViewport;
-    const viewportBottom = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
-
+    const hasSafeArea = cachedInsets.some((inset) => inset > 0);
     root.classList.toggle("mobile-viewport", isMobile);
     root.classList.toggle("mobile-fullscreen", isMobile && isFullscreen);
     root.classList.toggle("safe-area-detected", hasSafeArea);
-    root.classList.toggle("viewport-bottom-occluded", viewportBottom > 1);
     root.dataset.displayMode = isStandalone ? "standalone" : isFullscreen ? "fullscreen" : "browser";
-    root.style.setProperty("--visual-viewport-bottom", `${Math.round(viewportBottom)}px`);
   };
 
-  sync();
-  displayQueries.forEach((query) => query?.addEventListener?.("change", sync));
-  mobileQuery?.addEventListener?.("change", sync);
-  window.visualViewport?.addEventListener("resize", sync);
-  window.visualViewport?.addEventListener("scroll", sync);
-  window.addEventListener("resize", sync);
-  window.addEventListener("orientationchange", sync);
-  document.addEventListener("fullscreenchange", sync);
+  /* The bottom offset is the ONLY thing that changes while the address bar
+     animates. We hold the fixed tab bar at the running MAX offset during the
+     gesture (so it is always lifted clear of the possibly-expanding address bar)
+     and only settle to the true resting value after the animation goes quiet. The
+     bar is therefore re-laid-out at most twice per gesture instead of every frame
+     — eliminating the tab stutter. Writes are skipped when the rounded value is
+     unchanged, so identical frames cost nothing. */
+  let lastVvb = -1;
+  let heldMax = 0;
+  let settleTimer = 0;
+
+  const writeViewport = (bottom) => {
+    const rounded = Math.round(bottom);
+    if (rounded === lastVvb) return;
+    lastVvb = rounded;
+    root.style.setProperty("--visual-viewport-bottom", `${rounded}px`);
+    root.classList.toggle("viewport-bottom-occluded", rounded > 1);
+  };
+
+  const readViewportBottom = () => {
+    const viewport = window.visualViewport;
+    return viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+  };
+
+  const onViewportFrame = () => {
+    const bottom = readViewportBottom();
+    heldMax = Math.max(heldMax, bottom);
+    writeViewport(heldMax);
+    window.clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(() => {
+      heldMax = 0;
+      writeViewport(readViewportBottom()); // settle to the real resting offset
+    }, 140);
+  };
+
+  /* Coalesce the burst of resize/scroll events that fire per frame during the
+     address-bar animation into at most one run per animation frame. */
+  let rafPending = false;
+  const scheduleViewport = () => {
+    if (rafPending) return;
+    rafPending = true;
+    window.requestAnimationFrame(() => {
+      rafPending = false;
+      onViewportFrame();
+    });
+  };
+
+  const syncModesAndViewport = () => {
+    syncModes();
+    scheduleViewport();
+  };
+
+  syncModes();
+  writeViewport(readViewportBottom());
+  displayQueries.forEach((query) => query?.addEventListener?.("change", syncModesAndViewport));
+  mobileQuery?.addEventListener?.("change", syncModesAndViewport);
+  window.addEventListener("fullscreenchange", syncModesAndViewport);
+  window.addEventListener("orientationchange", () => {
+    measureInsets();
+    syncModesAndViewport();
+  });
+  // All continuous events funnel through one rAF-throttled, max-held path.
+  window.visualViewport?.addEventListener("resize", scheduleViewport);
+  window.visualViewport?.addEventListener("scroll", scheduleViewport);
+  window.addEventListener("resize", syncModesAndViewport);
 }
 
 async function bootstrap() {
@@ -5984,6 +6378,7 @@ async function bootstrap() {
   if (!restoredFromBackup && isCloudLedgerActive()) {
     await pullCloudLedger({ announce: Boolean(cloudState.shareToken) });
   }
+  syncRealtimeSubscription();
   checkOperatorFamilyPrompt();
   revealInitialTotalAmount();
 }

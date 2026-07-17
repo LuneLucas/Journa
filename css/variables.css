@@ -90,8 +90,36 @@
   initial-value: 0px;
 }
 
+/* 主题色 HSL 基量注册为可插值属性：切换 data-theme 时 --theme-h/s/l
+   在 :root 上做过渡，驱动 --theme-color / --theme-color-strong / --submit-color 默认等
+   派生量逐帧重算，整屏主题色平滑过渡而非硬切。不支持 @property
+   的老浏览器忽略注册与过渡，回退为即时切换（无回归）。 */
+@property --theme-h {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 12;
+}
+
+@property --theme-s {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 44%;
+}
+
+@property --theme-l {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 45%;
+}
+
 :root {
   color-scheme: light;
+  /* 仅这三个主题基量过渡；其余属性不受影响。data-theme 切换时
+     整屏主题色（绿/强调/描边派生量）随之平滑插值。 */
+  transition:
+    --theme-h var(--motion) var(--settle),
+    --theme-s var(--motion) var(--settle),
+    --theme-l var(--motion) var(--settle);
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
@@ -107,10 +135,19 @@
      跟着 --mobile-submit-bottom 走，按钮挪位/让位键盘时预留量自动同步，不再是脱节的固定像素。 */
   --mobile-data-scroll-bottom: calc(var(--mobile-submit-bottom) + 62px + 18px);
   --visual-viewport-bottom: 0px;
-  --bg: #f7f9f8;
-  /* 毛玻璃反射与模糊定义 */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-bg-strong: rgba(255, 255, 255, 0.82);
+  /* 指示灯随滚动进度的停靠比例（0=在胶囊内，1=已贴到账本名称旁）；由 JS 每帧按滚动量写入 */
+  --sync-dock-progress: 0;
+  --bg: #f7f4ef;
+  /* 环境光网格：三家庭色在页面四角柔光晕染，玻璃面板在其上漂浮（expressive gradient mesh）。
+     作为 body::before 固定层背景，末尾 var(--bg) 收底。 */
+  --page-bg:
+    radial-gradient(120% 80% at 6% -4%, rgba(169, 206, 181, 0.24), transparent 55%),
+    radial-gradient(110% 75% at 98% 2%, rgba(185, 201, 230, 0.22), transparent 55%),
+    radial-gradient(135% 95% at 50% 108%, rgba(239, 194, 191, 0.22), transparent 58%),
+    var(--bg);
+  /* 毛玻璃反射与模糊定义（暖白：纯白玻璃在暖底上会显冷，统一为暖白更调和） */
+  --glass-bg: rgba(255, 252, 248, 0.72);
+  --glass-bg-strong: rgba(255, 253, 250, 0.82);
   --glass-blur: blur(12px) saturate(180%);
   /*
    * 边框层级：所有常驻描边均为 1px。
@@ -130,7 +167,7 @@
 
   --surface: var(--glass-bg);
   --surface-strong: var(--glass-bg-strong);
-  --surface-soft: rgba(255, 255, 255, 0.62);
+  --surface-soft: rgba(255, 252, 248, 0.60);
   --ink: #202427;
   --muted: #5b625f;
   --line: var(--border-divider);
@@ -139,8 +176,8 @@
   --theme-h: 12;
   --theme-s: 44%;
   --theme-l: 45%;
-  --green: hsl(var(--theme-h), var(--theme-s), var(--theme-l));
-  --green-dark: hsl(var(--theme-h), calc(var(--theme-s) - 5%), calc(var(--theme-l) - 10%));
+  --theme-color: oklch(from hsl(var(--theme-h), var(--theme-s), var(--theme-l)) L C h);
+  --theme-color-strong: oklch(from var(--theme-color) calc(L - 0.06) C h);
   --coral: #b74f38;
   --amber: #d9a441;
   --violet: #6554a8;
@@ -176,10 +213,11 @@
   --total-edge-soft: rgba(204, 197, 181, 0.19);
   --total-text-color: rgba(37, 48, 45, 0.86);
   --total-label-color: rgba(37, 48, 45, 0.72); /* 对比度 ≥ 4.5:1 */
-  --category-bg: #e5e2d8;
-  --category-text: #696252;
-  --category-border: rgba(104, 94, 72, 0.24);
-  --category-gradient: #d5cfbd;
+  /* 类别色收敛黄色倾向、改为中性灰，去掉原棕黄的浑浊感（clay/morandi 基调下更清爽） */
+  --category-bg: #e6e6e2;
+  --category-text: #5f5f5c;
+  --category-border: rgba(95, 95, 90, 0.24);
+  --category-gradient: #dcdcd8;
   --category-summary-gradient: linear-gradient(
     135deg,
     rgba(185, 216, 204, 0.44) 0%,
@@ -203,19 +241,25 @@
   --label-sm: 0.82rem;
   --label-md: 0.86rem;
   --font-body:
-    system-ui,
-    "PingFang SC", "Microsoft YaHei", sans-serif;
+    system-ui, -apple-system,
+    "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-number:
     "SF Mono",
     "SFMono-Regular",
     ui-monospace,
     Menlo, Consolas, "Liberation Mono", monospace;
   --font-number-features: "tnum" 1;
+  /* 英雄展示数字：沿用正文系统字体。注意：system-ui 不是可变字体、没有 opsz 光学尺寸轴，
+     "大字号自动走 Display 光学尺寸" 并不成立，故 --font-display 实际等于 body。仍带 tnum 保证计数动画不抖动。
+     账本表格等密集数字仍用 --font-number 等宽。若日后想要超大字号更精致的字形，可在此换成带 opsz 的
+     可变字体（如 Inter Variable），其余保持系统字体，以兼顾性能与一致性。 */
+  --font-display: var(--font-body);
   /* 统一视觉语言：圆角、控件、色彩语义 token 集中管理。 */
-  --brand-primary: var(--green);
-  --brand-primary-strong: var(--green-dark);
-  --brand-primary-soft: color-mix(in srgb, var(--brand-primary) 12%, transparent);
-  --brand-primary-wash: color-mix(in srgb, var(--brand-primary) 7%, transparent);
+  --brand-primary: var(--theme-color);
+  --brand-primary-strong: var(--theme-color-strong);
+  --brand-primary-soft: color-mix(in oklch, var(--brand-primary) 12%, transparent);
+  --brand-primary-wash: color-mix(in oklch, var(--brand-primary) 7%, transparent);
   --brand-accent: var(--amber);
   --brand-danger: var(--coral);
   --control-surface: rgba(255, 255, 255, 0.68);
@@ -223,9 +267,9 @@
   --control-surface-strong: rgba(255, 255, 255, 0.90);
   --control-border: var(--border-control);
   --control-border-hover: var(--border-strong);
-  --control-border-active: color-mix(in srgb, var(--brand-primary) 34%, var(--border-control));
-  --button-secondary-bg: color-mix(in srgb, var(--brand-primary) 10%, var(--control-surface));
-  --button-secondary-bg-hover: color-mix(in srgb, var(--brand-primary) 15%, var(--control-surface-hover));
+  --control-border-active: color-mix(in oklch, var(--brand-primary) 34%, var(--border-control));
+  --button-secondary-bg: color-mix(in oklch, var(--brand-primary) 10%, var(--control-surface));
+  --button-secondary-bg-hover: color-mix(in oklch, var(--brand-primary) 15%, var(--control-surface-hover));
   --button-secondary-text: var(--brand-primary-strong);
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
@@ -271,7 +315,7 @@
   --family-focus-motion: 713ms;
   --number-swap-motion: 980ms;
   /* 统一 focus-visible 光环：强调绿低透明 */
-  --focus-ring: 0 0 0 4px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+  --focus-ring: 0 0 0 4px color-mix(in oklch, var(--brand-primary) 20%, transparent);
   /* 阴影三档：从现有强度归纳；玻璃/发光/focus 光环等语义阴影不走 token */
   --shadow-sm: 0 10px 26px rgba(22, 26, 30, 0.06);
   --shadow-md: 0 14px 44px rgba(22, 26, 30, 0.08);
@@ -282,13 +326,44 @@
   /* 自然玻璃边光对：顶部亮边(微模糊) + 底部接触暗边，组合使用替代不透明硬白线 */
   --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.50);
   --edge-shade: inset 0 -1px 1px rgba(22, 26, 30, 0.05);
+  /* 控件/强调框用的更强边光：顶边更亮、底边更深，让可交互元素从玻璃面里"浮"出来 */
+  --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.62);
+  --edge-shade-strong: inset 0 -1px 1px rgba(22, 26, 30, 0.09);
+  /* 玻璃边光组合：替换生硬 1px 实线。strong 用于控件/强调；普通用于卡片/容器。
+     注意：已带 --inset-highlight 的元素只用 --edge-shade，避免顶部高光叠加过重。 */
+  --glass-edge: var(--edge-light), var(--edge-shade);
+  --glass-edge-strong: var(--edge-light-strong), var(--edge-shade-strong);
   --shadow-chip: var(--inset-highlight), 0 8px 22px rgba(22, 26, 30, 0.07);
   --shadow-card-lift: 0 12px 34px rgba(22, 26, 30, 0.08);
   --shadow-hero: 0 34px 92px rgba(22, 26, 30, 0.14);
-  /* 字重语义：正文继承系统默认，强调只用这三档 */
+  /* 分层 hover 位移：卡片/行级抬升 translateY(-2px) + 更深投影；
+     胶囊/标签级只点灯不变位（transform: none），token 化便于全局微调 */
+  --hover-lift-card: translateY(-2px);
+  --hover-lift-chip: none;
+  --hover-lift-card-shadow: 0 16px 40px -16px rgba(22, 26, 30, 0.20), 0 4px 12px -8px rgba(22, 26, 30, 0.14);
+  /* 间距刻度：统一布局节奏与留白，结构性间距从本刻度取，避免 14/18/22 等散落字面量 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  /* 字重语义：正文继承系统默认，强调只用这三档。
+     ⚠️ 注意：PingFang SC / 微软雅黑无 800/900 真实字重，--fw-heavy/--fw-black 作用在中文上会被浏览器
+        合成加粗(faux bold)，笔画发糊发胖。只要元素文本含中文，必须用下方 cjk 字重（600/700）。 */
   --fw-bold: 700;
-  --fw-heavy: 800;
-  --fw-black: 900;
+  --fw-heavy: 800;   /* 仅限纯拉丁/数字：金额、英文 logo、符号 */
+  --fw-black: 900;   /* 仅限纯拉丁/数字 */
+  /* CJK 封顶字重：中文强调单独降到 600/700，避免 faux bold；与上方拉丁字重并存互不干扰。 */
+  --fw-cjk-heavy: 600;
+  --fw-cjk-black: 700;
+  --fw-medium: 500;   /* 数字默认字重：金额/统计/平账，通透不方块 */
+  --fw-regular: 400;  /* 英雄数字可选：最轻盈（压在渐变上略虚，慎用于浅底大数字） */
   /* 浮层 z-index 总表：局部堆叠(0/1/2/-1)不入表 */
   --z-settings: 20;
   --z-ledger-management: 22;
@@ -298,7 +373,7 @@
   --z-toast: 30;
   --z-flying-token: 40;
   /* 提交主题色由 app.js 按选中家庭内联覆盖；这里声明兜底值 */
-  --submit-color: var(--green);
+  --submit-color: var(--theme-color);
 }
 
 @supports (animation-timing-function: linear(0, 1)) {
@@ -318,9 +393,10 @@
 .ledger-filter-summary,
 .current-ledger-summary,
 .ledger-card-stats,
-.ledger-item,
-.stat-block,
-.settlement-list,
+  .ledger-item,
+  .stat-block,
+  .settlement-list,
+  .settings-data-item strong,
 .ledger-token,
 .split-scope-panel,
 .mobile-submit-summary {

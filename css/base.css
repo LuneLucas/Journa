@@ -3,6 +3,7 @@
 }
 
 html {
+  background: var(--bg);
   /* iOS 横屏时不自动放大字号 */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -29,10 +30,26 @@ button,
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--bg);
+  background: transparent;
   color: var(--ink);
   /* 正文与数字字体分别走变量，后续换字体只改 :root 的字体 token。 */
   font-family: var(--font-body);
+  /* 内联数字统一走表格数字，计数/列表对齐不抖动（与 --font-number 等宽互补，互不冲突） */
+  font-variant-numeric: tabular-nums;
+  /* 深色背景下浅色文字更利落，避免 subpixel 抗锯齿导致的发糊 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 环境光网格：固定层柔光，玻璃面板在其上漂浮；滚动时柔光锚定视口 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--page-bg);
+  pointer-events: none;
 }
 
 h1,

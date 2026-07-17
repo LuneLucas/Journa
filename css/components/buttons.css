@@ -145,7 +145,8 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 3px;
   height: 58px;
   min-height: 58px;
-  border: var(--stroke-width) solid var(--control-border);
+  border: none;
+  box-shadow: var(--glass-edge-strong);
   border-radius: var(--split-control-radius);
   background: rgba(255, 255, 255, 0.50);
   color: var(--muted);
@@ -166,7 +167,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: inherit;
   background:
     radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.18), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 18%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.50));
+    linear-gradient(135deg, color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 18%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.50));
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -178,7 +179,7 @@ input[type="number"]::-webkit-inner-spin-button {
   z-index: 1;
   color: var(--ink);
   font-size: var(--label-md);
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   transition:
     color calc(var(--selection-motion) * 0.74) var(--settle),
     transform var(--selection-motion) var(--settle);
@@ -196,12 +197,12 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .split-mode-button.is-selected {
-  border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 34%, var(--border-control));
   background: rgba(255, 255, 255, 0.50);
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 10%, var(--border-highlight)),
+    inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 10%, var(--border-highlight)),
     0 0 26px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
-    0 10px 26px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 48%, transparent);
+    0 10px 26px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 48%, transparent),
+    var(--edge-shade);
   /* 点灯方向：慢启动坡道，光晕略滞后 */
   transition:
     background-color var(--lamp-on-motion) var(--lamp-on),
@@ -216,22 +217,28 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .split-mode-button.is-selected span {
-  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 78%, var(--ink));
+  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--theme-color))) 78%, var(--ink));
   transition:
     color var(--lamp-on-motion) var(--lamp-on),
     transform var(--lamp-on-motion) var(--lamp-on);
 }
 
 .split-mode-button.is-selected small {
-  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 62%, var(--muted));
+  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--theme-color))) 62%, var(--muted));
   transition:
     color var(--lamp-on-motion) var(--lamp-on),
     transform var(--lamp-on-motion) var(--lamp-on);
 }
 
+/* 胶囊/标签级 hover：只点灯不变位（与卡片级 --hover-lift-card 分层） */
+.split-mode-button:hover:not(.is-selected) {
+  background: rgba(255, 255, 255, 0.62);
+}
+
 .inline-button {
   min-height: 36px;
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 11%, transparent), var(--glass-edge);
   border-radius: var(--control-radius-compact);
   background: var(--control-surface);
   color: inherit;
@@ -248,7 +255,7 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-content: center;
   gap: 6px;
   min-height: var(--control-height);
-  border: var(--stroke-width) solid var(--control-border);
+  border: none;
   border-radius: var(--control-radius);
   padding: 0 var(--control-padding-x);
   font-weight: var(--fw-bold);
@@ -269,15 +276,16 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.20)),
-    color-mix(in srgb, var(--submit-color, var(--green)) 32%, rgba(255, 255, 255, 0.48));
-  color: var(--submit-text, var(--green-dark));
+    color-mix(in srgb, var(--submit-color, var(--theme-color)) 32%, rgba(255, 255, 255, 0.48));
+  color: var(--submit-text, var(--theme-color-strong));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
   transform-origin: center;
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, white),
+    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, white),
     0 0 58px -16px var(--submit-glow, rgba(23, 108, 95, 0.46)),
-    0 0 26px -9px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
-    0 18px 50px rgba(22, 26, 30, 0.10);
+    0 0 26px -9px color-mix(in srgb, var(--submit-color, var(--theme-color)) 48%, transparent),
+    0 18px 50px rgba(22, 26, 30, 0.10),
+    var(--edge-shade);
 }
 
 .primary-button .button-label {
@@ -288,19 +296,21 @@ input[type="number"]::-webkit-inner-spin-button {
 .primary-button:hover {
   transform: translateY(-1px);
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 22%, white),
+    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 22%, white),
     0 0 70px -16px var(--submit-glow, rgba(23, 108, 95, 0.50)),
-    0 0 32px -9px color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent),
-    0 22px 58px rgba(22, 26, 30, 0.12);
+    0 0 32px -9px color-mix(in srgb, var(--submit-color, var(--theme-color)) 52%, transparent),
+    0 22px 58px rgba(22, 26, 30, 0.12),
+    var(--edge-shade);
 }
 
 .primary-button:active {
   transform: scale(0.95) translateY(2px) !important;
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 16%, white),
+    inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 16%, white),
     inset 0 2px 6px rgba(0, 0, 0, 0.16),
     0 0 40px -18px var(--submit-glow, rgba(23, 108, 95, 0.35)),
-    0 6px 18px rgba(22, 26, 30, 0.06) !important;
+    0 6px 18px rgba(22, 26, 30, 0.06),
+    var(--edge-shade) !important;
   filter: brightness(0.95);
   transition-duration: var(--press-motion) !important;
   transition-timing-function: var(--lamp-quick) !important;
@@ -356,12 +366,12 @@ input[type="number"]::-webkit-inner-spin-button {
     radial-gradient(circle 120px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.22), transparent 85%),
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--submit-color, var(--green)) 58%, transparent),
-      color-mix(in srgb, var(--submit-color, var(--green)) 44%, transparent) 52%,
-      color-mix(in srgb, var(--submit-color, var(--green)) 52%, transparent)
+      color-mix(in srgb, var(--submit-color, var(--theme-color)) 58%, transparent),
+      color-mix(in srgb, var(--submit-color, var(--theme-color)) 44%, transparent) 52%,
+      color-mix(in srgb, var(--submit-color, var(--theme-color)) 52%, transparent)
     ),
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 64%),
-    radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--green)) 22%, white), transparent 58%);
+    radial-gradient(ellipse at 50% -18%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 22%, white), transparent 58%);
   content: "";
   opacity: 1;
   pointer-events: none;
@@ -443,7 +453,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .secondary-button {
-  border-color: color-mix(in srgb, var(--brand-primary) 16%, var(--control-border));
   background: var(--button-secondary-bg);
   color: var(--button-secondary-text);
   white-space: nowrap;
@@ -451,7 +460,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .secondary-button:hover {
-  border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--control-border-hover));
   background: var(--button-secondary-bg-hover);
   box-shadow: var(--edge-light), var(--edge-shade), var(--shadow-md);
   transform: translateY(-1px);
@@ -466,13 +474,12 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-surface);
   color: var(--ink);
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--glass-edge), var(--shadow-sm);
 }
 
 .ghost-button:hover {
-  border-color: var(--control-border-hover);
   background: var(--control-surface-hover);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--glass-edge), var(--shadow-md);
   transform: translateY(-1px);
 }
 
@@ -589,7 +596,8 @@ input[type="number"]::-webkit-inner-spin-button {
   place-items: center;
   width: 38px;
   min-height: 38px;
-  border: 1px solid color-mix(in srgb, var(--family-color) 22%, rgba(22, 26, 30, 0.12));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent), var(--glass-edge);
   border-radius: var(--control-radius-compact);
   background:
     linear-gradient(135deg, var(--control-surface-strong), var(--control-surface)),
@@ -615,7 +623,8 @@ input[type="number"]::-webkit-inner-spin-button {
   height: 24px;
   min-height: 24px;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--category-text) 14%, transparent);
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--category-text) 9%, transparent), var(--glass-edge);
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--category-text) 10%, transparent);
   color: var(--category-text);
@@ -662,7 +671,7 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   border-radius: var(--control-radius-compact);
   font-size: var(--label-sm);
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   opacity: 0;
   padding: 0;
   pointer-events: none;
@@ -672,14 +681,14 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .ledger-edit-button {
-  border: 1px solid color-mix(in srgb, var(--family-color) 24%, rgba(22, 26, 30, 0.12));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--family-color) 13%, transparent), var(--glass-edge);
   background: color-mix(in srgb, var(--family-color) 8%, rgba(255, 255, 255, 0.68));
   color: var(--family-text);
 }
 
 .delete-button {
-  border: 1px solid rgba(183, 79, 56, 0.35);
-  border-width: 0;
+  border: none;
   background: rgba(183, 79, 56, 0.08);
   color: var(--coral);
 }
@@ -689,9 +698,16 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 48px;
   min-width: 48px;
   min-height: var(--control-height);
-  border-width: 1px;
   opacity: 1;
   pointer-events: auto;
+}
+
+.ledger-item.is-expanded .ledger-edit-button {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--family-color) 16%, transparent), var(--glass-edge);
+}
+
+.ledger-item.is-expanded .delete-button {
+  box-shadow: inset 0 0 0 1px rgba(183, 79, 56, 0.24), var(--glass-edge);
 }
 
 .ledger-edit-button:hover {

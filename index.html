@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/base.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-settlement-watermark-v4-20260717">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-settlement-watermark-v4-20260717">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/base.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-settlement-watermark-v6-20260717">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-settlement-watermark-v6-20260717">
     <script>
       // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
       // browsers don't expose the SF Symbols font to web content — even Safari
@@ -133,7 +133,9 @@
               <fieldset class="category-picker full-row">
                 <legend>类别</legend>
                 <input id="categoryInput" name="category" type="hidden" />
-                <div id="categoryChips" class="category-chips selectable-category-chips" role="radiogroup" aria-label="选择类别"></div>
+                <div class="category-chips-fade">
+                  <div id="categoryChips" class="category-chips selectable-category-chips" role="radiogroup" aria-label="选择类别"></div>
+                </div>
                 <div id="categoryForm" class="category-form inline-category-form" aria-label="新增类别">
                   <input id="newCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" />
                   <button class="secondary-button" type="button">添加</button>
@@ -159,7 +161,7 @@
                 <input id="dateInput" name="date" type="date" />
               </label>
 
-              <label class="note-label full-row">
+              <label class="note-label">
                 <span>备注</span>
                 <input id="noteInput" name="note" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" placeholder="例如：高铁票、晚餐、酒店" />
               </label>
@@ -169,12 +171,14 @@
                 <button class="inline-button" id="cancelEditButton" type="button">取消</button>
               </div>
 
-              <p class="form-error" id="formError" role="alert"></p>
+              <p class="form-error full-row" id="formError" role="alert"></p>
               <button class="primary-button full-row" id="submitButton" type="submit">
                 <span class="button-glow-ring"></span>
                 <span class="button-label" id="submitButtonLabel">添加账单</span>
               </button>
             </form>
+
+            <section class="recent-peek" id="recentPeek" aria-label="最近记录" hidden></section>
 
           </section>
 
@@ -338,33 +342,37 @@
                   <span>云同步与备份</span>
                   <small>分享、导出、清空</small>
                 </summary>
-                <div class="settings-action-stack">
-                  <button class="secondary-button" id="createCloudLedgerButton" type="button">
-                    <span class="sf-icon sf-symbol">&#x101EC;</span>
-                    <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
-                    <span>创建云账本</span>
-                  </button>
-                  <button class="secondary-button" id="copyShareLinkButton" type="button" hidden>
-                    <span class="sf-icon sf-symbol">&#x10263;</span>
-                    <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                    <span>复制邀请链接</span>
-                  </button>
-                  <button class="secondary-button" id="exportCsvButton" type="button">
-                    <span class="sf-icon sf-symbol">&#x10237;</span>
-                    <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                    <span>导出 CSV</span>
-                  </button>
-                  <button class="secondary-button" id="exportJsonButton" type="button">
-                    <span class="sf-icon sf-symbol">&#x1064B;</span>
-                    <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
-                    <span>备份 JSON</span>
-                  </button>
+                <div class="details-body">
+                  <div class="details-body-inner">
+                    <div class="settings-action-stack">
+                      <button class="secondary-button" id="createCloudLedgerButton" type="button">
+                        <span class="sf-icon sf-symbol">&#x101EC;</span>
+                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                        <span>创建云账本</span>
+                      </button>
+                      <button class="secondary-button" id="copyShareLinkButton" type="button" hidden>
+                        <span class="sf-icon sf-symbol">&#x10263;</span>
+                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span>复制邀请链接</span>
+                      </button>
+                      <button class="secondary-button" id="exportCsvButton" type="button">
+                        <span class="sf-icon sf-symbol">&#x10237;</span>
+                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        <span>导出 CSV</span>
+                      </button>
+                      <button class="secondary-button" id="exportJsonButton" type="button">
+                        <span class="sf-icon sf-symbol">&#x1064B;</span>
+                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+                        <span>备份 JSON</span>
+                      </button>
+                    </div>
+                    <button class="ghost-button danger settings-clear-button" id="settingsClearLedgerButton" type="button">
+                      <span class="sf-icon sf-symbol">&#x10211;</span>
+                      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                      <span>清空账本</span>
+                    </button>
+                  </div>
                 </div>
-                <button class="ghost-button danger settings-clear-button" id="settingsClearLedgerButton" type="button">
-                  <span class="sf-icon sf-symbol">&#x10211;</span>
-                  <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                  <span>清空账本</span>
-                </button>
               </details>
             </section>
 
@@ -540,7 +548,8 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <script src="./app.js?v=journa-settlement-watermark-v4-20260717"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js?v=journa-realtime-v1-20260718"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

@@ -12,11 +12,11 @@
 .insights-panel,
 .ledger-section {
   border-radius: var(--radius-xl);
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .entry-panel {
-  border-color: color-mix(in srgb, var(--green) 12%, var(--line));
+  border-color: color-mix(in oklch, var(--theme-color) 12%, var(--line));
   background:
     radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.16), transparent 48%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(247, 251, 249, 0.78)),
@@ -38,5 +38,5 @@
 }
 
 .ledger-section {
-  margin-top: 18px;
+  margin-top: 0;
 }

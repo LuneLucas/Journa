@@ -1,17 +1,17 @@
 /* 品牌化文字选中色：浅主题色底 + 深墨字 */
 ::selection {
-  background: color-mix(in srgb, var(--green) 16%, transparent);
+  background: color-mix(in oklch, var(--theme-color) 16%, transparent);
   color: var(--ink);
 }
 
 .family-tag.is-selected {
-  border-color: color-mix(in srgb, var(--family-color) 56%, var(--border-highlight));
   /* 深色家庭标签坐在浅色填充上，对比 ≥ 5.3:1 */
   color: color-mix(in srgb, var(--family-text) 70%, black);
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.28), /* 与基态第二层同位，保持 box-shadow 过渡可插值 */
     0 8px 20px -12px var(--family-soft),
-    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
+    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent),
+    var(--edge-shade);
   transform: none;
 }
 
@@ -64,7 +64,8 @@ select {
   font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
   min-height: var(--control-height);
   width: 100%;
-  border: var(--stroke-width) solid var(--control-border);
+  border: none;
+  box-shadow: var(--glass-edge-strong);
   border-radius: var(--control-radius);
   background: var(--control-surface);
   color: var(--ink);
@@ -80,7 +81,6 @@ select {
 
 input:focus,
 select:focus {
-  border-color: var(--control-border-active);
   box-shadow: var(--focus-ring);
 }
 
@@ -96,14 +96,13 @@ input[type="date"] {
   max-width: 100%;
   min-width: 0;
   min-height: var(--control-height);
-  border-color: var(--control-border);
   border-radius: var(--control-radius);
   background:
     linear-gradient(135deg, var(--control-surface-strong), var(--control-surface)),
     var(--control-surface);
   color: var(--ink);
   line-height: normal;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44), var(--edge-shade);
 }
 
 select {
@@ -147,7 +146,6 @@ select {
 
 select:focus,
 input[type="date"]:focus {
-  border-color: var(--control-border-active);
   box-shadow: var(--focus-ring);
 }
 
@@ -161,7 +159,7 @@ input[type="date"]:focus {
   box-shadow: inset 0 1px 0 var(--border-highlight);
   color: var(--selected-family-text);
   font-size: clamp(1.8rem, 5.2vw, 3.4rem);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   letter-spacing: 0;
   line-height: normal;
   transform-origin: center;
@@ -190,11 +188,11 @@ input[type="date"]:focus {
 }
 
 .split-family-chip.is-selected {
-  border-color: color-mix(in srgb, var(--family-color) 56%, var(--border-highlight));
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.28),
     0 8px 20px -12px var(--family-soft),
-    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
+    0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent),
+    var(--edge-shade);
 }
 
 .split-family-chip.is-selected::before {
@@ -204,26 +202,25 @@ input[type="date"]:focus {
 .split-amount-row input {
   width: 100%;
   min-height: 46px;
-  border-color: color-mix(in srgb, var(--family-color) 18%, var(--border-control));
+  border: none;
   border-radius: var(--split-control-radius);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.56)),
     color-mix(in srgb, var(--family-color) 5%, transparent);
   color: var(--family-text);
   font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-medium);
   line-height: 1.15;
   box-shadow:
     inset 0 1px 0 var(--border-highlight),
+    var(--edge-shade),
     0 0 18px -14px var(--family-soft);
   transition:
-    border-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring),
     background-color var(--motion-fast) var(--spring);
 }
 
 .split-amount-row input:focus {
-  border-color: color-mix(in srgb, var(--family-color) 42%, var(--border-control));
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--family-color) 13%, transparent),
     0 0 30px -16px var(--family-soft);
@@ -232,7 +229,7 @@ input[type="date"]:focus {
 .checkbox-option input {
   width: 18px;
   min-height: 18px;
-  accent-color: var(--green);
+  accent-color: var(--theme-color);
 }
 
 .selectable-category-chip {
@@ -244,7 +241,8 @@ input[type="date"]:focus {
   isolation: isolate;
   min-height: 40px;
   max-width: 100%;
-  border-color: color-mix(in srgb, var(--category-text) 16%, transparent);
+  border: none;
+  box-shadow: var(--glass-edge);
   background: color-mix(in srgb, var(--category-gradient) 7%, rgba(255, 255, 255, 0.58));
   color: color-mix(in srgb, var(--category-text) 78%, var(--ink));
   cursor: pointer;
@@ -295,21 +293,21 @@ input[type="date"]:focus {
 }
 
 .selectable-category-chip:hover {
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--category-gradient) 12%, rgba(255, 255, 255, 0.60));
+  transform: var(--hover-lift-chip);
+  background: color-mix(in srgb, var(--category-gradient) 16%, rgba(255, 255, 255, 0.66));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 0 30px -20px var(--category-gradient),
-    0 10px 24px color-mix(in srgb, var(--category-gradient) 14%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 34px -18px var(--category-gradient),
+    0 12px 26px color-mix(in srgb, var(--category-gradient) 18%, transparent);
 }
 
 .selectable-category-chip.is-recent:not(.is-selected) {
-  border-color: color-mix(in srgb, var(--category-gradient) 36%, rgba(22, 26, 30, 0.10));
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.46)),
     color-mix(in srgb, var(--category-gradient) 14%, transparent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    var(--edge-shade),
     0 8px 20px -16px color-mix(in srgb, var(--category-gradient) 48%, transparent);
 }
 
@@ -318,7 +316,7 @@ input[type="date"]:focus {
 }
 
 .selectable-category-chip.is-selected {
-  border-color: color-mix(in srgb, var(--category-gradient) 70%, white);
+  border: none;
   /* 点亮填充完全由 ::before 承担，元素本体不改背景以免首帧跳变 */
   color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
@@ -358,22 +356,21 @@ input[type="date"]:focus {
   min-width: 126px;
   appearance: none;
   -webkit-appearance: none;
-  border-color: color-mix(in srgb, var(--green) 18%, var(--line-dark));
   border-radius: var(--radius-pill);
   background:
-    linear-gradient(45deg, transparent 50%, var(--green-dark) 50%) calc(100% - 17px) 50% / 6px 6px no-repeat,
+    linear-gradient(45deg, transparent 50%, var(--theme-color-strong) 50%) calc(100% - 17px) 50% / 6px 6px no-repeat,
     linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
-    color-mix(in srgb, var(--green) 7%, rgba(255, 255, 255, 0.72));
+    color-mix(in oklch, var(--theme-color) 7%, rgba(255, 255, 255, 0.72));
   padding-inline: 14px 34px;
-  color: color-mix(in srgb, var(--green-dark) 82%, var(--ink));
+  color: color-mix(in oklch, var(--theme-color-strong) 82%, var(--ink));
   font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.54),
+    var(--edge-shade),
     0 8px 22px rgba(22, 26, 30, 0.05);
 }
 
 .ledger-controls select:hover {
-  border-color: color-mix(in srgb, var(--green) 28%, var(--line-dark));
-  background-color: color-mix(in srgb, var(--green) 10%, rgba(255, 255, 255, 0.78));
+  background-color: color-mix(in oklch, var(--theme-color) 10%, rgba(255, 255, 255, 0.78));
 }

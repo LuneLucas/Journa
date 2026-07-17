@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journa 深色层次感 · 改前 vs 改后</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 24px 64px;
+    font-family: -apple-system, "PingFang SC", "Segoe UI", system-ui, sans-serif;
+    color: #f0f0f0;
+    background:
+      radial-gradient(ellipse at 16% 2%, rgba(255,255,255,.03), transparent 42%),
+      radial-gradient(ellipse at 84% 8%, rgba(255,255,255,.02), transparent 40%),
+      linear-gradient(180deg, #18181a 0%, #111 52%, #141416 100%);
+    min-height: 100vh;
+  }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: .3px; margin: 0 0 4px; }
+  p.sub { color: #a1a1a6; font-size: 13px; margin: 0 0 32px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; max-width: 920px; margin: 0 auto; }
+  @media (max-width: 640px){ .grid { grid-template-columns: 1fr; } }
+  .col h2 { font-size: 13px; font-weight: 600; color: #cfcfd4; margin: 0 0 18px; display:flex; align-items:center; gap:8px;}
+  .col.bad h2::before { content:"●"; color:#ff6b6b; }
+  .col.good h2::before { content:"●"; color:#7ee0a0; }
+  .stage { position: relative; border-radius: 22px; padding: 28px 22px; min-height: 360px;
+    background: rgba(255,255,255,.012); }
+  /* 卡片：静态面板，改前/改后用同一底色 rgba(28,28,30,.68) */
+  .card {
+    background: rgba(28,28,30,.68);
+    border: 1px solid rgba(232,236,233,.10);
+    border-radius: 18px;
+    padding: 18px 18px 20px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(12px) saturate(180%);
+  }
+  .card .ttl { font-size: 13px; color:#e6ebe8; margin-bottom: 10px; font-weight:600;}
+  .card .amt { font-size: 26px; font-weight: 700; letter-spacing: .5px; color:#f3f7f4; }
+  .card .meta { font-size: 11px; color:#a1a1a6; margin-top: 6px;}
+  .pill {
+    display:inline-flex; align-items:center; gap:6px;
+    border-radius: 999px; padding: 7px 13px; font-size: 12px; color:#e6ebe8;
+    margin-top: 6px;
+  }
+  /* —— 改前：亮色阴影在暗底隐身，无边光 —— */
+  .bad .card { box-shadow: 0 14px 44px rgba(22,26,30,0.08); }
+  .bad .pill { background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03)), rgba(255,255,255,.03); }
+  /* —— 改后：真实黑色投影 + 顶亮底暗玻璃边光 + 提亮玻璃层 —— */
+  .good .card { box-shadow: 0 16px 48px rgba(0,0,0,0.50), inset 0 1px 1px rgba(255,255,255,.12), inset 0 -1px 1px rgba(0,0,0,.28); }
+  .good .pill { background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.045)), rgba(255,255,255,.05); }
+  .note { font-size: 11px; color:#8a8a90; margin-top: 14px; line-height:1.6;}
+</style>
+</head>
+<body>
+  <h1>Journa · 深色模式层次感</h1>
+  <p class="sub">左：原实现（卡片贴底、发灰）　·　右：本次优化（投影浮起 + 玻璃边光）— 仅视觉改动，不影响云同步</p>
+  <div class="grid">
+    <div class="col bad">
+      <h2>改前</h2>
+      <div class="stage">
+        <div class="card">
+          <div class="ttl">总支出</div>
+          <div class="amt">¥ 4,280</div>
+          <div class="meta">三家共 12 笔 · 待平账 3 笔</div>
+        </div>
+        <div class="card">
+          <div class="ttl">最新一笔</div>
+          <div class="amt">¥ 168</div>
+          <div class="meta">乐家 · 晚餐 · 2 小时前</div>
+          <span class="pill">分摊 3 家</span>
+        </div>
+        <p class="note">阴影为 rgba(22,26,30,0.08)（深灰低透明），在 #12 暗底上不可见；卡片仅靠 0.68 暗玻璃与背景微差，缺乏层级。</p>
+      </div>
+    </div>
+    <div class="col good">
+      <h2>改后</h2>
+      <div class="stage">
+        <div class="card">
+          <div class="ttl">总支出</div>
+          <div class="amt">¥ 4,280</div>
+          <div class="meta">三家共 12 笔 · 待平账 3 笔</div>
+        </div>
+        <div class="card">
+          <div class="ttl">最新一笔</div>
+          <div class="amt">¥ 168</div>
+          <div class="meta">乐家 · 晚餐 · 2 小时前</div>
+          <span class="pill">分摊 3 家</span>
+        </div>
+        <p class="note">--shadow-md 改为 rgba(0,0,0,0.50) 黑色投影，叠加 inset 顶亮(0.12)/底暗(0.28) 边光；胶囊玻璃提亮到 0.045~0.08。卡片在暗底上浮起。</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

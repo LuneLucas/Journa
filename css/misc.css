@@ -24,9 +24,17 @@ body::before {
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 34px 0 44px;
+  padding: var(--space-8) 0 var(--space-10);
+}
+
+/* 桌面端也用统一 flex gap 把控三块（汇总/工作区/账单列表）的纵向节奏，
+   与移动端一致；各块自身的 margin 已归零，避免双重间距。 */
+.app-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
 .app-header {
@@ -139,10 +147,10 @@ body::before {
 .sync-status .sync-status-shell {
   position: absolute;
   inset: 0;
-  border: 1px solid var(--capsule-border);
+  border: none;
   border-radius: var(--radius-pill);
   background: var(--capsule-bg);
-  box-shadow: var(--capsule-shadow);
+  box-shadow: var(--glass-edge), var(--capsule-shadow);
   pointer-events: none;
   transition:
     opacity var(--motion-fast) var(--settle),
@@ -168,7 +176,7 @@ body::before {
 }
 
 .sync-status:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--green) 46%, transparent);
+  outline: 3px solid color-mix(in oklch, var(--theme-color) 46%, transparent);
   outline-offset: 3px;
 }
 
@@ -274,7 +282,7 @@ body::before {
 
 .eyebrow {
   margin: 0 0 6px;
-  color: var(--green);
+  color: var(--theme-color);
   font-size: var(--label-sm);
   font-weight: var(--fw-bold);
   letter-spacing: 0.05em; /* 全局唯一保留 letter-spacing 的层级 */
@@ -294,13 +302,13 @@ h3 {
 .summary-band {
   display: grid;
   grid-template-columns: 1.7fr 0.9fr 0.72fr;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: var(--space-4);
+  margin-bottom: 0;
 }
 
 .metric {
   min-height: 120px;
-  padding: 22px;
+  padding: var(--space-6);
   border-radius: var(--radius-lg);
   transition:
     transform var(--motion-fast) var(--spring),
@@ -318,9 +326,9 @@ h3 {
 
 .metric strong {
   display: block;
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
   font-size: clamp(1.45rem, 3.3vw, 2.35rem);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -343,8 +351,8 @@ h3 {
     inset 18px 0 32px -30px var(--total-edge-left),
     inset -18px 0 32px -30px var(--total-edge-right),
     0 0 0 1px var(--total-edge-soft),
-    -14px 0 38px -30px var(--total-glow-left),
-    14px 0 38px -30px var(--total-glow-right),
+    -16px 0 56px -24px var(--total-glow-left),
+    16px 0 56px -24px var(--total-glow-right),
     0 18px 54px rgba(22, 26, 30, 0.11);
 }
 
@@ -362,13 +370,13 @@ h3 {
 .metric.primary::after {
   position: absolute;
   z-index: 0;
-  top: 18%;
-  bottom: 18%;
-  width: 62px;
+  top: 14%;
+  bottom: 14%;
+  width: 78px;
   border-radius: var(--radius-pill);
   content: "";
-  filter: blur(12px);
-  opacity: 0.30;
+  filter: blur(18px);
+  opacity: 0.55;
 }
 
 .metric.primary::before {
@@ -390,6 +398,10 @@ h3 {
   overflow: hidden;
   color: var(--total-text-color);
   font-size: var(--num-lg);
+  /* 英雄总支出数字用 SF Mono 等宽（--font-number），金额严格对齐、账本味更足；
+     tnum 仍由 .metric strong 提供，计数动画不抖动。（2026-07-18 由 --font-display 改回等宽） */
+  font-family: var(--font-number);
+  font-weight: var(--fw-regular);
   min-height: 1.08em;
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.42),
@@ -431,7 +443,7 @@ h3 {
 .workspace {
   display: grid;
   grid-template-columns: minmax(380px, 1.08fr) minmax(0, 0.92fr);
-  gap: 18px;
+  gap: var(--space-6);
   align-items: start;
 }
 
@@ -448,8 +460,8 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .ledger-heading-copy {
@@ -461,13 +473,14 @@ h3 {
 }
 
 .ledger-filter-summary {
-  border: 1px solid color-mix(in srgb, var(--green) 16%, rgba(22, 26, 30, 0.08));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 9%, transparent), var(--glass-edge);
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--green) 7%, rgba(255, 255, 255, 0.64));
-  color: var(--green-dark);
+  background: color-mix(in oklch, var(--theme-color) 7%, rgba(255, 255, 255, 0.64));
+  color: var(--theme-color-strong);
   padding: 5px 9px;
   font-size: 0.76rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -542,7 +555,7 @@ label,
   gap: 4px;
   /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
   padding: 15px 19px 14px;
-  border: var(--stroke-width) solid color-mix(in srgb, var(--submit-color, var(--green)) 18%, var(--border-surface));
+  border: var(--stroke-width) solid color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, var(--border-surface));
   border-radius: var(--radius-xl);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.64)),
@@ -639,12 +652,13 @@ label,
   max-width: 100%;
   min-height: 20px;
   padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, transparent);
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, transparent), var(--glass-edge);
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--selected-family-color, var(--green)) 8%, rgba(255, 255, 255, 0.44));
+  background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 8%, rgba(255, 255, 255, 0.44));
   color: color-mix(in srgb, var(--selected-family-text) 58%, var(--muted));
   font-size: 0.68rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   letter-spacing: 0;
   line-height: 1;
   opacity: 0;
@@ -745,7 +759,7 @@ label,
   gap: 12px;
   width: 100%;
   min-height: var(--control-height);
-  border: 1px solid rgba(22, 26, 30, 0.12);
+  border: none;
   border-radius: var(--control-radius);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.46)),
@@ -753,7 +767,7 @@ label,
   color: var(--muted);
   padding: 0 14px;
   text-align: left;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.46);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.46), var(--edge-shade);
   transition:
     border-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring),
@@ -762,10 +776,10 @@ label,
 
 .split-scope-toggle:hover,
 .split-scope-toggle[aria-expanded="true"] {
-  border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, rgba(22, 26, 30, 0.12));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.52),
-    0 12px 34px color-mix(in srgb, var(--submit-color, var(--green)) 14%, transparent);
+    var(--edge-shade),
+    0 12px 34px color-mix(in srgb, var(--submit-color, var(--theme-color)) 14%, transparent);
 }
 
 .split-scope-toggle > span {
@@ -775,9 +789,9 @@ label,
 
 .split-scope-toggle > strong {
   min-width: 0;
-  color: color-mix(in srgb, var(--submit-text, var(--green)) 84%, var(--ink));
+  color: color-mix(in srgb, var(--submit-text, var(--theme-color)) 84%, var(--ink));
   font-size: 0.9rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -792,14 +806,14 @@ label,
   overflow-anchor: none;
   max-height: none;
   margin-top: var(--split-panel-offset);
-  border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(22, 26, 30, 0.10));
+  border: none;
   border-radius: var(--split-outer-radius);
   background:
-    radial-gradient(ellipse at 18% 8%, color-mix(in srgb, var(--submit-color, var(--green)) 10%, transparent), transparent 48%),
+    radial-gradient(ellipse at 18% 8%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 10%, transparent), transparent 48%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.50)),
     rgba(255, 255, 255, 0.54);
   padding: var(--split-panel-padding);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), var(--edge-shade);
   transform-origin: top center;
 }
 
@@ -821,9 +835,10 @@ label,
   gap: 8px;
   min-height: 0;
   overflow: visible;
-  border: 1px solid color-mix(in srgb, var(--submit-color, var(--green)) 10%, rgba(22, 26, 30, 0.08));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 6%, transparent), var(--glass-edge);
   border-radius: var(--split-inner-radius);
-  background: color-mix(in srgb, var(--submit-color, var(--green)) 5%, rgba(255, 255, 255, 0.42));
+  background: color-mix(in srgb, var(--submit-color, var(--theme-color)) 5%, rgba(255, 255, 255, 0.42));
   padding: 10px 10px 12px;
 }
 
@@ -890,7 +905,7 @@ label,
 
 .split-amount-row span {
   font-size: 0.76rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
 }
 
 .split-total-line {
@@ -898,7 +913,7 @@ label,
   margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
 }
 
 .edit-banner {
@@ -906,7 +921,8 @@ label,
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid color-mix(in srgb, var(--selected-family-color) 18%, rgba(22, 26, 30, 0.12));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 10%, transparent), var(--glass-edge);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--selected-family-wash) 75%, rgba(255, 255, 255, 0.46));
   color: var(--selected-family-text);
@@ -924,7 +940,7 @@ label,
   align-items: center;
   justify-content: center;
   min-height: 40px;
-  border: 1px solid color-mix(in srgb, var(--token-color) 28%, rgba(255, 255, 255, 0.68));
+  border: none;
   border-radius: var(--radius-pill);
   background:
     radial-gradient(ellipse at 28% 0%, rgba(255, 255, 255, 0.58), transparent 62%),
@@ -936,6 +952,7 @@ label,
   white-space: nowrap;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.44),
+    var(--edge-shade),
     0 0 30px -18px var(--token-glow),
     0 12px 28px rgba(22, 26, 30, 0.08);
   pointer-events: none;
@@ -949,7 +966,7 @@ label,
 }
 
 .sf-symbol {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-weight: 400;
   font-size: 1.25em;
   font-style: normal;
@@ -971,7 +988,7 @@ label,
   display: grid;
   gap: 16px;
   width: min(420px, 100%);
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  border: none;
   border-radius: var(--radius-xl);
   background:
     radial-gradient(ellipse at 20% 0%, rgba(169, 206, 181, 0.18), transparent 48%),
@@ -980,6 +997,7 @@ label,
   padding: 22px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    var(--edge-shade),
     0 28px 90px rgba(22, 26, 30, 0.20);
   animation: confirm-dialog-enter var(--motion) var(--spring) both;
 }
@@ -1125,7 +1143,8 @@ label,
 .current-ledger-card {
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(22, 26, 30, 0.10);
+  border: none;
+  box-shadow: var(--glass-edge);
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.60), rgba(255, 255, 255, 0.36)),
@@ -1146,7 +1165,8 @@ label,
 }
 
 .current-ledger-card strong {
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
+  font-weight: var(--fw-medium);
   font-size: 1.05rem;
 }
 
@@ -1215,27 +1235,27 @@ label,
   min-width: 42px;
   height: 24px;
   min-height: 24px;
-  border: 1px solid color-mix(in srgb, var(--muted) 28%, transparent);
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 16%, transparent), var(--glass-edge), inset 0 1px 2px rgba(22, 26, 30, 0.10);
   border-radius: var(--radius-pill);
   background:
     radial-gradient(circle at 11px 50%, white 0 8px, transparent 8.5px),
     color-mix(in srgb, var(--muted) 25%, transparent);
-  box-shadow: inset 0 1px 2px rgba(22, 26, 30, 0.10);
   cursor: pointer;
   transition:
     background var(--motion-fast) var(--settle),
-    border-color var(--motion-fast) var(--settle),
     box-shadow var(--motion-fast) var(--settle);
 }
 
 .settings-preference-row input:checked {
-  border-color: color-mix(in srgb, var(--green) 54%, transparent);
   background:
     radial-gradient(circle at 30px 50%, white 0 8px, transparent 8.5px),
-    var(--green);
+    var(--theme-color);
   box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 30%, transparent),
+    var(--glass-edge),
     inset 0 1px 2px rgba(22, 26, 30, 0.08),
-    0 0 16px color-mix(in srgb, var(--green) 24%, transparent);
+    0 0 16px color-mix(in oklch, var(--theme-color) 24%, transparent);
 }
 
 .settings-preference-row input:focus-visible {
@@ -1256,7 +1276,7 @@ label,
 }
 
 .ledger-manager-card.is-active {
-  border-color: color-mix(in srgb, var(--green) 25%, transparent);
+  border-color: color-mix(in oklch, var(--theme-color) 25%, transparent);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.38)),
     rgba(169, 206, 181, 0.18);
@@ -1290,7 +1310,7 @@ label,
 .ledger-card-status {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
 }
 
 .ledger-card-stats {
@@ -1302,7 +1322,8 @@ label,
 .ledger-card-stats div {
   display: grid;
   gap: 4px;
-  border: 1px solid rgba(22, 26, 30, 0.09);
+  border: none;
+  box-shadow: var(--glass-edge);
   border-radius: var(--control-radius);
   background: rgba(255, 255, 255, 0.42);
   padding: 10px;
@@ -1318,6 +1339,7 @@ label,
 .ledger-card-stats strong {
   overflow: hidden;
   color: var(--ink);
+  font-weight: var(--fw-medium);
   font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1339,14 +1361,14 @@ label,
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid rgba(22, 26, 30, 0.10);
+  border: none;
+  box-shadow: var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.34);
   padding: 8px;
 }
 
 .ledger-manager-item.is-active {
-  border-color: color-mix(in srgb, var(--green) 24%, transparent);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.34)),
     rgba(169, 206, 181, 0.20);
@@ -1380,12 +1402,12 @@ label,
 }
 
 .ledger-manager-item.is-active .ledger-manager-main span {
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
 }
 
 .ledger-active-badge {
-  background: color-mix(in srgb, var(--green) 10%, transparent);
-  color: var(--green-dark);
+  background: color-mix(in oklch, var(--theme-color) 10%, transparent);
+  color: var(--theme-color-strong);
 }
 
 .settings-family-list,
@@ -1439,7 +1461,7 @@ label,
 .settings-rule strong,
 .settings-data-item strong {
   color: var(--ink);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   white-space: nowrap;
 }
 
@@ -1474,6 +1496,25 @@ label,
   font-weight: var(--fw-bold);
 }
 
+/* 设置内分类删除退场：淡出 + 轻微收退，避免硬消失。
+   实际提交（从 state 移除并重渲染）延后到动画结束后，见 app.js removeCategory。 */
+.settings-category-chip.is-removing {
+  animation: settings-chip-exit 280ms var(--settle) both;
+  pointer-events: none;
+}
+
+@keyframes settings-chip-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+}
+
 .personalization-panel {
   gap: 14px;
 }
@@ -1490,21 +1531,20 @@ label,
   align-items: center;
   width: 100%;
   min-height: 58px;
-  border: 1px solid color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 15%, var(--control-border));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 9%, transparent), var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.38);
   padding: 10px 12px;
   color: var(--ink);
   text-align: left;
   transition:
-    border-color var(--motion-fast) var(--spring),
     background-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring),
     transform var(--press-motion) var(--spring);
 }
 
 .palette-card:hover {
-  border-color: color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 28%, var(--control-border-hover));
   background: rgba(255, 255, 255, 0.52);
 }
 
@@ -1513,12 +1553,12 @@ label,
 }
 
 .palette-card.is-active {
-  border-color: color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 44%, var(--control-border-active));
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 10%, transparent), rgba(255, 255, 255, 0.54)),
     rgba(255, 255, 255, 0.46);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 14%, transparent),
+    var(--edge-shade),
     0 12px 30px -22px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 46%, transparent);
 }
 
@@ -1575,7 +1615,8 @@ label,
 }
 
 .family-color-details {
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 10%, var(--control-border));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-primary) 6%, transparent), var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.28);
   overflow: clip;
@@ -1604,8 +1645,8 @@ label,
   height: 18px;
   border-radius: var(--radius-pill);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, white), rgba(255, 255, 255, 0.66));
-  color: color-mix(in srgb, var(--brand-primary) 68%, var(--ink));
+    linear-gradient(135deg, color-mix(in oklch, var(--brand-primary) 14%, white), rgba(255, 255, 255, 0.66));
+  color: color-mix(in oklch, var(--brand-primary) 68%, var(--ink));
   content: "+";
   display: grid;
   place-items: center;
@@ -1626,8 +1667,23 @@ label,
 
 .family-color-detail-body {
   display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion) var(--settle);
+}
+
+.family-color-details[open] .family-color-detail-body {
+  grid-template-rows: 1fr;
+}
+
+.family-color-detail-body > * {
+  min-height: 0;
+  overflow: clip;
+}
+
+.family-color-detail-inner {
+  display: grid;
   gap: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--brand-primary) 8%, var(--control-border));
+  border-top: 1px solid color-mix(in oklch, var(--brand-primary) 8%, var(--control-border));
   padding: 10px;
 }
 
@@ -1666,11 +1722,11 @@ label,
   width: 26px;
   height: 26px;
   min-height: 26px;
-  border: 1px solid color-mix(in srgb, var(--swatch-color) 44%, rgba(22, 26, 30, 0.12));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--swatch-color) 24%, transparent), var(--glass-edge);
   border-radius: var(--radius-pill);
   padding: 0;
   transition:
-    border-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring),
     transform var(--press-motion) var(--spring);
 }
@@ -1686,9 +1742,9 @@ label,
 }
 
 .family-color-choice.is-selected {
-  border-color: color-mix(in srgb, var(--swatch-color) 76%, white);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    var(--edge-shade),
     0 0 0 3px color-mix(in srgb, var(--swatch-color) 16%, transparent),
     0 0 24px -9px color-mix(in srgb, var(--swatch-color) 72%, transparent);
 }
@@ -1740,7 +1796,8 @@ label,
 .settings-actions-details {
   overflow: clip;
   margin-top: 14px;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 10%, var(--control-border));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-primary) 6%, transparent), var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.28);
 }
@@ -1770,8 +1827,8 @@ label,
   height: 18px;
   border-radius: var(--radius-pill);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, white), rgba(255, 255, 255, 0.66));
-  color: color-mix(in srgb, var(--brand-primary) 68%, var(--ink));
+    linear-gradient(135deg, color-mix(in oklch, var(--brand-primary) 14%, white), rgba(255, 255, 255, 0.66));
+  color: color-mix(in oklch, var(--brand-primary) 68%, var(--ink));
   content: "+";
   font-size: 0.88rem;
   line-height: 1;
@@ -1789,13 +1846,41 @@ label,
 }
 
 .settings-actions-details .settings-action-stack {
-  border-top: 1px solid color-mix(in srgb, var(--brand-primary) 8%, var(--control-border));
+  border-top: 1px solid color-mix(in oklch, var(--brand-primary) 8%, var(--control-border));
   padding: 12px 12px 10px;
 }
 
 .settings-actions-details .settings-clear-button {
   width: calc(100% - 24px);
   margin: 0 12px 12px;
+}
+
+.settings-actions-details .details-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion) var(--settle);
+}
+
+.settings-actions-details[open] .details-body {
+  grid-template-rows: 1fr;
+}
+
+.settings-actions-details .details-body > * {
+  min-height: 0;
+  overflow: clip;
+}
+
+/* 收起动画：原生 <details> 在移除 open 时会瞬间抽走内容，
+   grid 的 1fr→0fr 过渡来不及播。这里在 open 仍在时
+   强制 0fr（覆盖 [open] 的 1fr），等过渡结束再真正移除 open。*/
+.settings-actions-details[open].is-closing .details-body,
+.family-color-details[open].is-closing .family-color-detail-body {
+  grid-template-rows: 0fr;
+}
+
+.settings-actions-details.is-closing summary::after,
+.family-color-details.is-closing summary::after {
+  transform: none;
 }
 
 .settings-data-item.is-syncing strong,
@@ -1826,7 +1911,8 @@ label,
 }
 
 .chip {
-  border: 1px solid var(--category-border);
+  border: none;
+  box-shadow: var(--glass-edge);
   border-radius: var(--radius-pill);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.36)),
@@ -1838,7 +1924,6 @@ label,
   white-space: nowrap;
   transition:
     transform var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
     background-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring),
     color var(--motion-fast) var(--spring);
@@ -1847,13 +1932,14 @@ label,
 .category-chip {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    var(--edge-shade),
     0 0 18px -16px var(--category-gradient);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: var(--space-4);
 }
 
 .stat-block {
@@ -1913,7 +1999,8 @@ label,
   gap: 12px;
   margin-top: 14px;
   width: 100%;
-  border: 1px solid rgba(217, 164, 65, 0.24);
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(217, 164, 65, 0.16), var(--glass-edge);
   border-radius: var(--radius-lg);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
@@ -1924,13 +2011,11 @@ label,
   cursor: pointer;
   transition:
     transform var(--motion-fast) var(--spring),
-    border-color var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring);
 }
 
 .settlement-entry:hover {
   transform: translateY(-1px);
-  border-color: rgba(217, 164, 65, 0.42);
   box-shadow: var(--shadow-md);
 }
 
@@ -1949,13 +2034,13 @@ label,
 .settlement-entry-title {
   color: color-mix(in srgb, var(--amber) 54%, var(--ink));
   font-size: 1rem;
-  font-weight: var(--fw-heavy);
+  font-weight: 600;
 }
 
 .settlement-entry-sub {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: var(--fw-bold);
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -1973,23 +2058,23 @@ label,
   padding: 3px 10px;
   color: color-mix(in srgb, var(--amber) 72%, var(--ink));
   font-size: 0.74rem;
-  font-weight: var(--fw-heavy);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .settlement-entry.is-settled .settlement-entry-title,
 .settlement-entry.is-settled .settlement-entry-cue {
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
 }
 
 .settlement-entry.is-settled {
-  border-color: color-mix(in srgb, var(--green) 22%, transparent);
+  border-color: color-mix(in oklch, var(--theme-color) 22%, transparent);
 }
 
 .settlement-entry.is-settled .settlement-entry-count {
-  background: color-mix(in srgb, var(--green) 16%, transparent);
-  color: var(--green-dark);
+  background: color-mix(in oklch, var(--theme-color) 16%, transparent);
+  color: var(--theme-color-strong);
 }
 
 /* 设置抽屉里的平账面板：标题与徽章沿用琥珀色调 */
@@ -1998,7 +2083,7 @@ label,
 }
 
 .settlement-panel .readonly-badge.is-settled {
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
 }
 
 .stat-block h3 {
@@ -2013,7 +2098,7 @@ label,
   width: 5px;
   height: 13px;
   border-radius: var(--radius-pill);
-  background: linear-gradient(180deg, var(--green), color-mix(in srgb, var(--green) 36%, transparent));
+  background: linear-gradient(180deg, var(--theme-color), color-mix(in oklch, var(--theme-color) 36%, transparent));
   content: "";
   translate: 0 -50%;
 }
@@ -2021,12 +2106,12 @@ label,
 .settlement-flow-map {
   overflow: hidden;
   margin-top: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: none;
   border-radius: var(--radius-md);
   background:
     radial-gradient(ellipse at 50% 120%, rgba(217, 164, 65, 0.10), transparent 62%),
     linear-gradient(165deg, rgba(28, 32, 40, 0.05), rgba(255, 255, 255, 0.12));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), var(--edge-shade);
 }
 
 .settlement-flow-map svg {
@@ -2042,13 +2127,13 @@ label,
 .settlement-flow-map .flow-col-label {
   fill: color-mix(in srgb, var(--muted) 78%, transparent);
   font-size: 10.5px;
-  font-weight: var(--fw-bold);
+  font-weight: 600;
 }
 
 .settlement-flow-map .flow-name {
   fill: var(--family-text);
   font-size: 15px;
-  font-weight: var(--fw-heavy);
+  font-weight: 600;
 }
 
 .settlement-flow-map .flow-dot {
@@ -2175,7 +2260,7 @@ label,
 
 .row-item strong {
   color: color-mix(in srgb, var(--family-text, var(--ink)) 82%, var(--ink));
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2217,7 +2302,7 @@ label,
   transform: translate(-50%, -50%);
   z-index: 0;
   color: color-mix(in srgb, var(--settlement-target-color) 48%, var(--muted));
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Symbol", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 3.5rem;
   font-weight: 700;
   line-height: 1;
@@ -2239,7 +2324,7 @@ label,
   overflow: hidden;
   font-family: var(--font-body);
   font-size: 1.22rem;
-  font-weight: var(--fw-heavy);
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.12;
   text-overflow: ellipsis;
@@ -2284,7 +2369,7 @@ label,
   color: var(--muted);
   font-family: var(--font-body);
   font-size: 0.68rem;
-  font-weight: var(--fw-heavy);
+  font-weight: 600;
   letter-spacing: 0.08em;
 }
 
@@ -2319,13 +2404,14 @@ label,
   justify-items: center;
   gap: 6px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--green) 16%, transparent);
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 9%, transparent), var(--glass-edge);
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--green) 28%, transparent), transparent 44%),
+    radial-gradient(circle at 50% 18%, color-mix(in oklch, var(--theme-color) 28%, transparent), transparent 44%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.54), rgba(255, 255, 255, 0.24)),
     rgba(169, 206, 181, 0.18);
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
   padding: 28px 20px 26px;
   text-align: center;
 }
@@ -2335,17 +2421,17 @@ label,
   place-items: center;
   width: 46px;
   height: 46px;
-  border: 1px solid color-mix(in srgb, var(--green) 28%, white);
+  border: none;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.78));
+  background: color-mix(in oklch, var(--theme-color) 18%, rgba(255, 255, 255, 0.78));
   font-size: 1.35rem;
-  box-shadow: 0 12px 34px color-mix(in srgb, var(--green) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 16%, transparent), var(--glass-edge), 0 12px 34px color-mix(in oklch, var(--theme-color) 20%, transparent);
 }
 
 .settlement-done-kicker {
-  color: color-mix(in srgb, var(--green-dark) 72%, var(--muted));
+  color: color-mix(in oklch, var(--theme-color-strong) 72%, var(--muted));
   font-size: 0.68rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   letter-spacing: 0.12em;
 }
 
@@ -2404,7 +2490,7 @@ label,
 
 .ledger-list {
   display: grid;
-  gap: 12px;
+  gap: var(--space-4);
   transition: gap var(--motion) var(--settle);
 }
 
@@ -2456,7 +2542,7 @@ label,
 }
 
 .ledger-day-heading strong {
-  color: var(--green-dark);
+  color: var(--theme-color-strong);
   white-space: nowrap;
 }
 
@@ -2481,7 +2567,7 @@ label,
   max-width: 0;
   color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
   font-size: 0.88rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   line-height: 1.12;
   opacity: 0;
   pointer-events: none;
@@ -2500,7 +2586,7 @@ label,
 .ledger-date strong {
   margin-top: 4px;
   font-size: 1.18rem;
-  font-weight: var(--fw-black);
+  font-weight: var(--fw-cjk-black);
 }
 
 .ledger-main {
@@ -2528,7 +2614,7 @@ label,
   max-width: min(132px, 48%);
   color: var(--family-text);
   font-size: 0.96rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   min-width: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2572,7 +2658,7 @@ label,
   margin-top: 0;
   color: color-mix(in srgb, var(--family-text) 64%, var(--muted));
   font-size: 0.72rem;
-  font-weight: var(--fw-heavy);
+  font-weight: var(--fw-cjk-heavy);
   line-height: 1.25;
   opacity: 0;
   transform: translateY(-4px);
@@ -2596,13 +2682,14 @@ label,
   align-items: center;
   flex: 0 0 auto;
   min-height: 22px;
-  border: 1px solid color-mix(in srgb, var(--family-color) 22%, rgba(22, 26, 30, 0.10));
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent), var(--glass-edge);
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.64));
   color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
   padding: 0 7px;
   font-size: 0.68rem;
-  font-weight: var(--fw-black);
+  font-weight: var(--fw-cjk-black);
   line-height: 1;
 }
 
@@ -2611,7 +2698,8 @@ label,
   min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--category-border);
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--category-text) 8%, transparent), var(--glass-edge);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.10)),
     var(--category-bg);
@@ -2628,7 +2716,7 @@ label,
   grid-area: amount;
   color: color-mix(in srgb, var(--family-text) 88%, var(--ink));
   font-size: var(--num-md);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   letter-spacing: 0;
   white-space: nowrap;
   align-self: center;
@@ -2644,7 +2732,7 @@ label,
   bottom: 6px;
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
   font-size: 0.66rem;
-  font-weight: var(--fw-black);
+  font-weight: var(--fw-cjk-black);
   letter-spacing: 0;
   opacity: 0.68;
   pointer-events: none;
@@ -2678,7 +2766,7 @@ label,
   display: grid;
   width: min(440px, 100%);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  border: none;
   border-radius: var(--radius-xl);
   background:
     radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.18), transparent 46%),
@@ -2687,6 +2775,7 @@ label,
     rgba(247, 249, 248, 0.94);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    var(--edge-shade),
     0 28px 90px rgba(22, 26, 30, 0.20);
   animation: confirm-dialog-enter var(--motion) var(--spring) both;
 }
@@ -2858,17 +2947,16 @@ label,
   grid-template-columns: 46px minmax(0, 1fr);
   gap: 11px;
   align-items: center;
-  border: 1px solid var(--line);
+  border: none;
   border-radius: var(--control-radius);
   background: var(--control-surface-strong);
   padding: 9px 12px;
-  box-shadow: var(--shadow-chip);
+  box-shadow: var(--glass-edge), var(--shadow-chip);
   text-align: left;
 }
 
 .welcome-split-mode.is-default {
-  border-color: color-mix(in srgb, var(--brand-primary) 30%, var(--line));
-  background: color-mix(in srgb, var(--brand-primary) 8%, var(--control-surface-strong));
+  background: color-mix(in oklch, var(--brand-primary) 8%, var(--control-surface-strong));
 }
 
 .welcome-split-mark {
@@ -2876,11 +2964,12 @@ label,
   place-items: center;
   min-height: 30px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--brand-primary) 13%, var(--control-surface));
+  background: color-mix(in oklch, var(--brand-primary) 13%, var(--control-surface));
   color: var(--brand-primary-strong);
-  font-family: var(--font-number);
+  /* 标记内容含中文"家"（如 "3 家"），不能用等宽数字字体，字重也封顶到 cjk-black(700) 避免 faux bold */
+  font-family: var(--font-body);
   font-size: 0.72rem;
-  font-weight: var(--fw-black);
+  font-weight: var(--fw-cjk-black);
 }
 
 .welcome-split-mode.is-custom .welcome-split-mark {
@@ -2898,7 +2987,7 @@ label,
 .welcome-split-mode strong {
   color: var(--ink);
   font-size: 0.86rem;
-  font-weight: var(--fw-black);
+  font-weight: var(--fw-cjk-black);
 }
 
 .welcome-split-mode small {
@@ -2920,11 +3009,11 @@ label,
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--line);
+  border: none;
   border-radius: var(--radius-pill);
   background: var(--control-surface-strong);
   padding: 12px 18px;
-  box-shadow: var(--shadow-chip);
+  box-shadow: var(--glass-edge), var(--shadow-chip);
 }
 
 .welcome-settle-party {
@@ -2969,12 +3058,12 @@ label,
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--line);
+  border: none;
   border-radius: var(--radius-pill);
   background: var(--control-surface-strong);
   color: var(--muted);
   padding: 10px 18px;
-  box-shadow: var(--shadow-chip);
+  box-shadow: var(--glass-edge), var(--shadow-chip);
   font-family: var(--font-number);
   font-size: 0.8rem;
   font-weight: var(--fw-bold);
@@ -3044,11 +3133,122 @@ label,
   /* --submit-text 注册初值为透明（提交按钮由 JS 按家庭注入），这里必须显式给值 */
   --submit-color: var(--brand-primary);
   --submit-text: var(--brand-primary-strong);
-  --submit-glow: color-mix(in srgb, var(--brand-primary) 42%, transparent);
+  --submit-glow: color-mix(in oklch, var(--brand-primary) 42%, transparent);
   width: 100%;
 }
 
 /* 自绘滚动动画期间关闭吸附，避免逐帧被拉回吸附点 */
 .welcome-track.is-animating {
   scroll-snap-type: none;
+}
+
+/* ── 类别行末尾的「新增」胶囊：虚线描边表达“可添加”，随横滑条一起滚动 ── */
+.category-add-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 42px;
+  padding-inline: 14px;
+  border: 1px dashed color-mix(in oklch, var(--theme-color) 42%, var(--line));
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklch, var(--theme-color) 7%, transparent);
+  color: color-mix(in oklch, var(--theme-color-strong) 88%, var(--ink));
+  font-size: var(--label-md);
+  font-weight: var(--fw-cjk-heavy);
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--motion-fast) var(--spring),
+    border-color var(--motion-fast) var(--spring),
+    background-color var(--motion-fast) var(--spring);
+}
+
+.category-add-chip:active {
+  transform: scale(0.96);
+}
+
+.category-add-plus {
+  font-size: 1.1em;
+  line-height: 1;
+  margin-top: -1px;
+}
+
+/* ── 记账视图内的「最近记录」：提交后即时反馈，无需切到「数据」 ── */
+.recent-peek {
+  margin-top: var(--space-4);
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+  box-shadow: var(--glass-edge);
+}
+
+.recent-peek[hidden] {
+  display: none;
+}
+
+.recent-peek-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.recent-peek-title {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: var(--fw-cjk-heavy);
+  letter-spacing: 0.02em;
+}
+
+.recent-peek-all {
+  border: 0;
+  background: none;
+  padding: 4px 2px;
+  color: var(--theme-color-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: var(--fw-cjk-heavy);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recent-peek-all:active {
+  opacity: 0.7;
+}
+
+.recent-peek-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recent-peek-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.recent-peek-note {
+  font-size: 0.88rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-peek-amount {
+  font-size: 0.98rem;
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

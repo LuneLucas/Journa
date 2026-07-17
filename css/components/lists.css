@@ -6,10 +6,10 @@
 .stat-block,
 .settlement-block,
 .ledger-item {
-  border: var(--stroke-width) solid var(--border-surface);
+  border: none;
   /* 静态面板用实底（--surface）：玻璃材质只留给悬浮层（提交栏 / toast / 遮罩） */
   background: var(--surface);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--glass-edge), var(--shadow-md);
 }
 
 .family-roster {
@@ -31,7 +31,7 @@
   overflow: hidden;
   isolation: isolate;
   min-height: 48px;
-  border: var(--stroke-width) solid color-mix(in srgb, var(--family-color) 18%, var(--border-control));
+  border: none;
   border-radius: var(--radius-pill);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.50)),
@@ -41,9 +41,9 @@
   font-size: var(--label-md);
   font-weight: var(--fw-bold);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.32),
-    var(--shadow-sm),
-    0 0 32px -12px transparent;
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent),
+    var(--glass-edge),
+    var(--shadow-sm);
   transition:
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring),
@@ -97,11 +97,10 @@
 }
 
 .family-tag:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--family-color) 30%, var(--border-control));
+  transform: var(--hover-lift-chip);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58)),
-    color-mix(in srgb, var(--family-color) 9%, transparent);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.66)),
+    color-mix(in srgb, var(--family-color) 13%, transparent);
 }
 
 .family-tag.is-activating {
@@ -140,15 +139,27 @@
   grid-template-columns: 88px minmax(0, 1fr);
   gap: 16px;
   align-items: center;
-  border: var(--stroke-width) solid color-mix(in srgb, var(--family-color) 18%, var(--border-surface));
+  border: none;
   border-radius: var(--radius-lg);
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--family-color) 8%, rgba(255, 255, 255, 0.58)), color-mix(in srgb, var(--settlement-target-color) 8%, rgba(255, 255, 255, 0.44)));
   padding: 14px 16px 14px 14px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent),
+    var(--glass-edge),
     0 10px 26px rgba(22, 26, 30, 0.07);
   animation-delay: var(--settlement-delay, 0ms);
+  transition:
+    transform var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring);
+}
+
+.settlement-item:hover {
+  transform: var(--hover-lift-card);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent),
+    var(--glass-edge),
+    var(--hover-lift-card-shadow);
 }
 
 .settlement-item > * {
@@ -167,14 +178,15 @@
   align-items: center;
   min-height: 60px;
   max-height: 94px;
-  border: 1px solid color-mix(in srgb, var(--family-color) 16%, rgba(22, 26, 30, 0.08));
+  border: none;
   border-radius: var(--control-radius-large);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62)),
     color-mix(in srgb, var(--family-color) 7%, rgba(255, 255, 255, 0.68));
   padding: 8px 12px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, transparent),
+    var(--glass-edge),
     0 10px 28px rgba(22, 26, 30, 0.06);
   contain: layout paint;
   /* 高度/内边距不走 CSS 过渡：展开收起由 JS 按实测高度做 WAAPI 动画
@@ -225,19 +237,19 @@
   gap: 12px 14px;
   min-height: 124px;
   max-height: 280px;
-  border-color: color-mix(in srgb, var(--family-color) 30%, rgba(255, 255, 255, 0.62));
   border-radius: var(--radius-lg);
   background: var(--surface-strong);
   padding: 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    var(--edge-shade),
     0 16px 42px rgba(22, 26, 30, 0.10);
 }
 
 .ledger-item.is-editing {
-  border-color: color-mix(in srgb, var(--family-color) 44%, white);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--family-color) 18%, transparent),
+    var(--edge-shade),
     0 0 34px -20px var(--family-soft),
     var(--shadow-lg);
 }
@@ -260,8 +272,12 @@
 }
 
 .ledger-item:hover {
-  transform: translateY(-1px);
+  transform: var(--hover-lift-card);
   background: rgba(255, 255, 255, 0.84);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, transparent),
+    var(--glass-edge),
+    var(--hover-lift-card-shadow);
 }
 
 .ledger-item:active {
@@ -373,7 +389,7 @@
 }
 
 .ledger-item.is-sync-failed .ledger-sync-badge {
-  border-color: rgba(183, 79, 56, 0.24);
+  border: none;
   background: rgba(183, 79, 56, 0.08);
   color: var(--coral);
 }

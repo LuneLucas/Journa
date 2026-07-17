@@ -2,10 +2,16 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #121212;
-    /* 毛玻璃深色微调 */
-    --glass-bg: rgba(28, 28, 30, 0.68);
-    --glass-bg-strong: rgba(36, 36, 38, 0.78);
+    --bg: #141210;
+    /* 深色环境光网格：三家庭色以更高不透明度柔染，避免暗底发死 */
+    --page-bg:
+      radial-gradient(120% 80% at 6% -4%, rgba(122, 170, 140, 0.22), transparent 55%),
+      radial-gradient(110% 75% at 98% 2%, rgba(120, 150, 205, 0.20), transparent 55%),
+      radial-gradient(135% 95% at 50% 108%, rgba(206, 144, 142, 0.20), transparent 58%),
+      var(--bg);
+    /* 毛玻璃深色微调（暖调玻璃，与暖底一致） */
+    --glass-bg: rgba(30, 28, 26, 0.68);
+    --glass-bg-strong: rgba(38, 36, 33, 0.78);
     --glass-blur: blur(12px) saturate(180%);
     --border-divider: rgba(232, 236, 233, 0.075);
     --border-surface: rgba(232, 236, 233, 0.10);
@@ -14,7 +20,17 @@
     --border-highlight: rgba(255, 255, 255, 0.10);
     --glass-border: var(--border-surface);
     --glass-border-strong: var(--border-strong);
+    /* 暗色玻璃边光：暗底上顶部高光必须压低(0.10)，底部接触暗边必须加重(0.28)才看得出来层次 */
+    --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.10);
+    --edge-shade: inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+    --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.14);
+    --edge-shade-strong: inset 0 -1px 1px rgba(0, 0, 0, 0.34);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    /* 深色下重定 elevation：亮色阴影是深灰低透明，在暗底直接隐身，
+       这里换成真实黑色投影，让静态面板从背景浮起 */
+    --shadow-sm: 0 6px 18px  rgba(0, 0, 0, 0.38);
+    --shadow-md: 0 16px 48px rgba(0, 0, 0, 0.50);
+    --shadow-lg: 0 28px 84px rgba(0, 0, 0, 0.58);
 
     --surface: var(--glass-bg);
     --surface-strong: var(--glass-bg-strong);
@@ -25,12 +41,12 @@
     --line-dark: var(--border-surface);
 
     /* HSL 调色在暗色模式下的自适应亮度与饱和度调优 */
-    --green: hsl(var(--theme-h), var(--theme-s), var(--theme-l));
-    --green-dark: hsl(var(--theme-h), calc(var(--theme-s) + 4%), calc(var(--theme-l) + 6%));
+    --theme-color: oklch(from hsl(var(--theme-h), var(--theme-s), var(--theme-l)) L C h);
+    --theme-color-strong: oklch(from var(--theme-color) calc(L + 0.04) C h);
 
     --dark-panel: linear-gradient(145deg, rgba(36, 36, 38, 0.96), rgba(28, 28, 30, 0.92)), rgba(18, 18, 20, 0.96);
-    --dark-card: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.03);
-    --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.05);
+    --dark-card: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.045)), rgba(255, 255, 255, 0.05);
+    --dark-card-tinted: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.045)), rgba(255, 255, 255, 0.07);
     --dark-field: rgba(255, 255, 255, 0.08);
     --dark-field-strong: rgba(255, 255, 255, 0.10);
     --dark-hairline: var(--border-surface);
@@ -44,15 +60,23 @@
     --control-surface-strong: rgba(255, 255, 255, 0.14);
     --control-border: var(--border-control);
     --control-border-hover: var(--border-strong);
-    --button-secondary-bg: color-mix(in srgb, var(--green) 14%, rgba(255, 255, 255, 0.04));
-    --button-secondary-bg-hover: color-mix(in srgb, var(--green) 18%, rgba(255, 255, 255, 0.07));
-    --button-secondary-text: color-mix(in srgb, var(--green) 46%, white);
-    --theme-aura-soft: color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent);
-    --theme-aura-medium: color-mix(in srgb, var(--submit-color, var(--green)) 22%, transparent);
-    --theme-aura-strong: color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent);
+    --button-secondary-bg: color-mix(in oklch, var(--theme-color) 14%, rgba(255, 255, 255, 0.04));
+    --button-secondary-bg-hover: color-mix(in oklch, var(--theme-color) 18%, rgba(255, 255, 255, 0.07));
+    --button-secondary-text: color-mix(in oklch, var(--theme-color) 46%, white);
+    --theme-aura-soft: color-mix(in oklch, var(--submit-color, var(--theme-color)) 12%, transparent);
+    --theme-aura-medium: color-mix(in oklch, var(--submit-color, var(--theme-color)) 22%, transparent);
+    --theme-aura-strong: color-mix(in oklch, var(--submit-color, var(--theme-color)) 32%, transparent);
     --total-text-color: rgba(243, 247, 244, 0.86);
     --total-label-color: rgba(230, 235, 232, 0.64);
     --family-label-rest: color-mix(in srgb, var(--family-text) 40%, white);
+    /* 暗色下抬升投影改用深色扩散 + 主题色微光，亮底阴影在暗环境不可见 */
+    --hover-lift-card-shadow: 0 18px 46px -16px rgba(0, 0, 0, 0.55), 0 4px 14px -8px rgba(0, 0, 0, 0.45);
+  }
+
+  /* 深色层次感：静态面板补真实投影 + 顶亮底暗的玻璃边光，从背景浮起 */
+  .glass, .metric, .entry-panel, .insights-panel,
+  .ledger-section, .stat-block, .settlement-block, .ledger-item {
+    box-shadow: var(--shadow-md), var(--edge-light), var(--edge-shade);
   }
 
   /* ── 全局主题色预设的暗色对（暗色模式自适应 HSL 对齐） ── */
@@ -81,18 +105,18 @@
   }
 
   .palette-card:hover {
-    border-color: color-mix(in srgb, var(--palette-accent, var(--green)) 26%, var(--dark-hairline-strong));
+    border-color: color-mix(in srgb, var(--palette-accent, var(--theme-color)) 26%, var(--dark-hairline-strong));
     background: rgba(255, 255, 255, 0.07);
   }
 
   .palette-card.is-active {
-    border-color: color-mix(in srgb, var(--palette-accent, var(--green)) 38%, var(--dark-hairline-strong));
+    border-color: color-mix(in srgb, var(--palette-accent, var(--theme-color)) 38%, var(--dark-hairline-strong));
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--green)) 11%, transparent), rgba(255, 255, 255, 0.045)),
+      linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--theme-color)) 11%, transparent), rgba(255, 255, 255, 0.045)),
       rgba(255, 255, 255, 0.04);
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--green)) 14%, transparent),
-      0 0 34px -22px color-mix(in srgb, var(--palette-accent, var(--green)) 46%, transparent);
+      inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--theme-color)) 14%, transparent),
+      0 0 34px -22px color-mix(in srgb, var(--palette-accent, var(--theme-color)) 46%, transparent);
   }
 
   .palette-card-copy small {
@@ -114,15 +138,15 @@
 
   .family-color-details summary::after {
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--green) 16%, rgba(255, 255, 255, 0.10)), rgba(255, 255, 255, 0.06));
-    color: color-mix(in srgb, var(--green) 38%, white);
+      linear-gradient(135deg, color-mix(in oklch, var(--theme-color) 16%, rgba(255, 255, 255, 0.10)), rgba(255, 255, 255, 0.06));
+    color: color-mix(in oklch, var(--theme-color) 38%, white);
   }
 
   .family-color-details summary small {
     color: rgba(230, 235, 232, 0.58);
   }
 
-  .family-color-detail-body {
+  .family-color-detail-inner {
     border-top-color: var(--dark-hairline);
   }
 
@@ -167,8 +191,8 @@
   }
 
   .amount-auto-badge {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, var(--dark-hairline));
-    background: color-mix(in srgb, var(--selected-family-color, var(--green)) 8%, rgba(255, 255, 255, 0.04));
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 18%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 8%, rgba(255, 255, 255, 0.04));
     color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 28%, white);
   }
 
@@ -183,23 +207,23 @@
     -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.07)),
-      color-mix(in srgb, var(--selected-family-color, var(--green)) 10%, rgba(20, 24, 22, 0.72));
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, rgba(20, 24, 22, 0.72));
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
   .amount-label.amount-themed {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 30%, var(--border-surface));
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 30%, var(--border-surface));
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--green)) 10%, var(--border-highlight)),
+      inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, var(--border-highlight)),
       0 22px 58px -30px var(--selected-family-glow),
       0 12px 34px rgba(0, 0, 0, 0.24);
   }
 
   .amount-label.amount-active.amount-themed {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--green)) 48%, var(--border-control));
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 48%, var(--border-control));
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--green)) 18%, rgba(255, 255, 255, 0.16)),
+      inset 0 1px 0 color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 18%, rgba(255, 255, 255, 0.16)),
       0 0 32px -14px var(--selected-family-glow),
       0 22px 62px -30px var(--selected-family-glow),
       var(--shadow-hero);
@@ -214,16 +238,16 @@
   }
 
   .mobile-panel-switch {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, var(--border-surface));
+    border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, var(--border-surface));
     background:
       linear-gradient(135deg, rgba(232, 236, 233, 0.13), rgba(232, 236, 233, 0.03) 48%, rgba(232, 236, 233, 0.10)),
       radial-gradient(ellipse at 16% -36%, rgba(232, 236, 233, 0.24), transparent 55%),
-      radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--green)) 28%, transparent), transparent 64%),
+      radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 28%, transparent), transparent 64%),
       rgba(22, 22, 24, 0.28);
     box-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.14),
       inset 0 -1px 1px rgba(0, 0, 0, 0.30),
-      0 0 30px -16px color-mix(in srgb, var(--submit-color, var(--green)) 82%, transparent),
+      0 0 30px -16px color-mix(in srgb, var(--submit-color, var(--theme-color)) 82%, transparent),
       0 12px 34px rgba(0, 0, 0, 0.26);
   }
 
@@ -247,11 +271,11 @@
   }
 
   .mobile-panel-indicator {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 12%, rgba(255, 255, 255, 0.18)), rgba(255, 255, 255, 0.08));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--theme-color)) 12%, rgba(255, 255, 255, 0.18)), rgba(255, 255, 255, 0.08));
     box-shadow:
-      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.16)),
+      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, rgba(255, 255, 255, 0.16)),
       inset 0 -1px 1px rgba(0, 0, 0, 0.22),
-      0 4px 14px -4px color-mix(in srgb, var(--submit-color, var(--green)) 28%, rgba(0, 0, 0, 0.3));
+      0 4px 14px -4px color-mix(in srgb, var(--submit-color, var(--theme-color)) 28%, rgba(0, 0, 0, 0.3));
     border: 0;
   }
 
@@ -272,13 +296,13 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 1px rgba(0, 0, 0, 0.4),
-      0 0 22px -8px color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent),
+      0 0 22px -8px color-mix(in srgb, var(--submit-color, var(--theme-color)) 32%, transparent),
       0 12px 34px rgba(0, 0, 0, 0.42);
   }
 
   body.mobile-panel-data .mobile-submit-bar::before {
     background:
-      radial-gradient(ellipse at 70% 56%, color-mix(in srgb, var(--submit-color, var(--green)) 24%, transparent), transparent 58%),
+      radial-gradient(ellipse at 70% 56%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 24%, transparent), transparent 58%),
       radial-gradient(ellipse at 30% 18%, rgba(232, 236, 233, 0.08), transparent 46%);
     opacity: 0.16;
     transform: scale(0.68);
@@ -290,10 +314,10 @@
     width: 30px;
     height: 30px;
     background: none;
-    background-color: color-mix(in srgb, var(--submit-text, var(--submit-color, var(--green))) 20%, white);
+    background-color: color-mix(in srgb, var(--submit-text, var(--submit-color, var(--theme-color))) 20%, white);
     filter:
       drop-shadow(0 1px 1px rgba(0, 0, 0, 0.44))
-      drop-shadow(0 0 4px color-mix(in srgb, var(--submit-color, var(--green)) 26%, transparent));
+      drop-shadow(0 0 4px color-mix(in srgb, var(--submit-color, var(--theme-color)) 26%, transparent));
   }
 
   body.mobile-panel-data .mobile-submit-bar.submit-themed {
@@ -318,7 +342,7 @@
       inset 0 -1px 4px rgba(0, 0, 0, 0.32),
       0 0 10px -1px color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
       0 0 22px 0 color-mix(in srgb, white 7%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent),
+      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--theme-color)) 38%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28);
   }
 
@@ -329,7 +353,7 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 1px rgba(0, 0, 0, 0.4),
-      0 0 22px -8px color-mix(in srgb, var(--submit-color, var(--green)) 32%, transparent),
+      0 0 22px -8px color-mix(in srgb, var(--submit-color, var(--theme-color)) 32%, transparent),
       0 12px 34px rgba(0, 0, 0, 0.42);
   }
 
@@ -351,7 +375,7 @@
       inset 0 -1px 4px rgba(0, 0, 0, 0.32),
       0 0 10px -1px color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
       0 0 22px 0 color-mix(in srgb, white 7%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent),
+      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--theme-color)) 38%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28);
   }
 
@@ -361,7 +385,7 @@
       inset 0 -1px 4px rgba(0, 0, 0, 0.32),
       0 0 10px -1px color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
       0 0 22px 0 color-mix(in srgb, white 7%, var(--submit-glow, rgba(23, 108, 95, 0.5))),
-      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--green)) 38%, transparent),
+      0 0 38px -20px color-mix(in srgb, var(--submit-color, var(--theme-color)) 38%, transparent),
       0 8px 20px -6px rgba(0, 0, 0, 0.28) !important;
   }
 
@@ -388,8 +412,8 @@
     color: rgba(232, 236, 233, 0.82);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      0 0 12px -2px color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent),
-      0 0 24px -6px color-mix(in srgb, var(--submit-color, var(--green)) 20%, transparent),
+      0 0 12px -2px color-mix(in srgb, var(--submit-color, var(--theme-color)) 40%, transparent),
+      0 0 24px -6px color-mix(in srgb, var(--submit-color, var(--theme-color)) 20%, transparent),
       0 10px 28px rgba(0, 0, 0, 0.35);
     text-shadow: none;
   }
@@ -446,7 +470,7 @@
   a:focus-visible,
   .family-tag:focus-visible,
   .selectable-category-chip:focus-visible {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 45%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--theme-color) 45%, transparent);
   }
 
   .ghost-button {
@@ -590,7 +614,7 @@
   }
 
   .amount-label {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, var(--border-surface));
+    border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 24%, var(--border-surface));
     background:
       linear-gradient(135deg, rgba(40, 47, 44, 0.90), rgba(30, 36, 33, 0.70)),
       rgba(24, 29, 27, 0.78);
@@ -602,7 +626,7 @@
   }
 
   .settlement-done {
-    border-color: color-mix(in srgb, var(--green) 24%, transparent);
+    border-color: color-mix(in oklch, var(--theme-color) 24%, transparent);
     background: var(--dark-card-tinted);
   }
 
@@ -665,26 +689,26 @@
   }
 
   .ledger-filter-summary {
-    border-color: color-mix(in srgb, var(--green) 26%, var(--dark-hairline));
-    background: color-mix(in srgb, var(--green) 12%, rgba(255, 255, 255, 0.04));
+    border-color: color-mix(in oklch, var(--theme-color) 26%, var(--dark-hairline));
+    background: color-mix(in oklch, var(--theme-color) 12%, rgba(255, 255, 255, 0.04));
     color: #6cc2ad;
   }
 
   .ledger-controls select {
-    border-color: color-mix(in srgb, var(--green) 28%, var(--dark-hairline));
+    border-color: color-mix(in oklch, var(--theme-color) 28%, var(--dark-hairline));
     background:
       linear-gradient(45deg, transparent 50%, #6cc2ad 50%) calc(100% - 17px) 50% / 6px 6px no-repeat,
       linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05)),
-      color-mix(in srgb, var(--green) 10%, var(--dark-field-strong));
-    color: color-mix(in srgb, var(--green-dark) 78%, var(--ink));
+      color-mix(in oklch, var(--theme-color) 10%, var(--dark-field-strong));
+    color: color-mix(in oklch, var(--theme-color-strong) 78%, var(--ink));
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 10px 24px rgba(0, 0, 0, 0.16);
   }
 
   .ledger-controls select:hover {
-    border-color: color-mix(in srgb, var(--green) 38%, var(--dark-hairline-strong));
-    background-color: color-mix(in srgb, var(--green) 14%, rgba(255, 255, 255, 0.08));
+    border-color: color-mix(in oklch, var(--theme-color) 38%, var(--dark-hairline-strong));
+    background-color: color-mix(in oklch, var(--theme-color) 14%, rgba(255, 255, 255, 0.08));
   }
 
   .row-item {
@@ -742,8 +766,8 @@
   }
 
   .settlement-done-mark {
-    border-color: color-mix(in srgb, var(--green) 30%, var(--dark-hairline));
-    background: color-mix(in srgb, var(--green) 16%, rgba(24, 29, 27, 0.9));
+    border-color: color-mix(in oklch, var(--theme-color) 30%, var(--dark-hairline));
+    background: color-mix(in oklch, var(--theme-color) 16%, rgba(24, 29, 27, 0.9));
   }
 
   .ledger-day-group::before {
@@ -770,9 +794,15 @@
   }
 
   .ledger-item:hover {
+    transform: var(--hover-lift-card);
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
       color-mix(in srgb, var(--family-color) 10%, rgba(20, 24, 22, 0.70));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, transparent),
+      var(--glass-edge),
+      var(--hover-lift-card-shadow),
+      0 0 28px -14px color-mix(in oklch, var(--theme-color) 36%, transparent);
   }
 
   .ledger-item.is-expanded {
@@ -921,7 +951,7 @@
 
   /* 分摊范围二级面板：整片白底转暗 */
   .split-scope-panel {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 24%, var(--dark-hairline));
+    border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 24%, var(--dark-hairline));
     background:
       radial-gradient(ellipse at 18% 8%, var(--theme-aura-soft), transparent 48%),
       linear-gradient(135deg, rgba(40, 47, 44, 0.60), rgba(30, 36, 33, 0.40)),
@@ -945,29 +975,29 @@
   .split-mode-button::before {
     background:
       radial-gradient(ellipse at 22% 0%, rgba(255, 255, 255, 0.08), transparent 58%),
-      linear-gradient(135deg, color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 20%, transparent), var(--dark-highlight));
+      linear-gradient(135deg, color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 20%, transparent), var(--dark-highlight));
   }
 
   .split-mode-button.is-selected {
-    border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 46%, var(--border-control));
+    border-color: color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 46%, var(--border-control));
     background: var(--dark-highlight);
     box-shadow:
-      inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 10%, var(--border-highlight)),
+      inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 10%, var(--border-highlight)),
       0 0 30px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
-      0 10px 28px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--green))) 52%, transparent);
+      0 10px 28px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 52%, transparent);
   }
 
   .split-mode-button.is-selected span {
-    color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 42%, white);
+    color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--theme-color))) 42%, white);
   }
 
   .split-mode-button.is-selected small {
-    color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--green))) 30%, rgba(232, 236, 233, 0.70));
+    color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--theme-color))) 30%, rgba(232, 236, 233, 0.70));
   }
 
   .split-detail-area {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 20%, var(--dark-hairline));
-    background: color-mix(in srgb, var(--submit-color, var(--green)) 8%, rgba(20, 24, 22, 0.46));
+    border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 20%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, rgba(20, 24, 22, 0.46));
   }
 
   .split-amount-row input {
@@ -1032,12 +1062,12 @@
   .primary-button {
     border-color: transparent;
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--green)) 34%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.04)),
-      color-mix(in srgb, var(--submit-color, var(--green)) 22%, var(--dark-highlight));
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--theme-color)) 34%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.04)),
+      color-mix(in srgb, var(--submit-color, var(--theme-color)) 22%, var(--dark-highlight));
     box-shadow:
-      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(255, 255, 255, 0.12)),
+      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, rgba(255, 255, 255, 0.12)),
       0 0 62px -16px var(--submit-glow, rgba(23, 108, 95, 0.52)),
-      0 0 30px -10px color-mix(in srgb, var(--submit-color, var(--green)) 56%, transparent),
+      0 0 30px -10px color-mix(in srgb, var(--submit-color, var(--theme-color)) 56%, transparent),
       0 18px 50px rgba(0, 0, 0, 0.28);
   }
 
@@ -1060,9 +1090,9 @@
     background:
       radial-gradient(circle 120px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.12), transparent 85%),
       linear-gradient(135deg,
-        color-mix(in srgb, var(--submit-color, var(--green)) 54%, transparent),
-        color-mix(in srgb, var(--submit-color, var(--green)) 40%, transparent) 52%,
-        color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent)),
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 54%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 40%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 48%, transparent)),
       linear-gradient(180deg, var(--dark-highlight), transparent 58%);
   }
 
@@ -1074,7 +1104,7 @@
 
   /* 账本管理卡片：当前账本高亮 + 三格统计白底转暗 */
   .ledger-manager-card.is-active {
-    border-color: color-mix(in srgb, var(--green) 28%, transparent);
+    border-color: color-mix(in oklch, var(--theme-color) 28%, transparent);
     background: var(--dark-card-tinted);
   }
 
@@ -1087,7 +1117,7 @@
 
   /* 总支出板块：暗罩压在 JS 内联的 aura/gradient 上，三家庭色透出为深调莫兰迪 */
   .metric.primary {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, var(--dark-hairline));
+    border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, var(--dark-hairline));
     background:
       radial-gradient(ellipse at 50% 8%, rgba(255, 255, 255, 0.08), transparent 42%),
       linear-gradient(135deg, rgba(34, 41, 38, 0.82), rgba(24, 29, 27, 0.62)),
@@ -1102,7 +1132,7 @@
 
   .metric.primary::before,
   .metric.primary::after {
-    opacity: 0.10; /* 两侧彩色光斑降到隐约 */
+    opacity: 0.28; /* 两侧彩色光斑调明显（仍低于浅色主题，避免暗底过曝） */
   }
 
   .metric.primary span {
@@ -1118,52 +1148,52 @@
   /* 提交栏外圈光晕：白光 → 主题色氛围光 */
   .mobile-submit-bar::before {
     background:
-      radial-gradient(ellipse at 78% 62%, color-mix(in srgb, var(--submit-color, var(--green)) 30%, transparent), transparent 54%),
-      radial-gradient(ellipse at 18% 20%, color-mix(in srgb, var(--green) 10%, transparent), transparent 48%);
+      radial-gradient(ellipse at 78% 62%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 30%, transparent), transparent 54%),
+      radial-gradient(ellipse at 18% 20%, color-mix(in oklch, var(--theme-color) 10%, transparent), transparent 48%);
     opacity: 0.55;
   }
 
-  /* 液态玻璃环：迎光边压暗，背光边加深 */
+  /* 液态玻璃环：迎光边压暗，背光边与暗底融合，避免形成明显黑线 */
   .mobile-submit-bar::after {
     background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.25),
       rgba(255, 255, 255, 0.07) 38%,
-      rgba(255, 255, 255, 0.02) 60%,
-      rgba(0, 0, 0, 0.30));
+      rgba(255, 255, 255, 0.03) 60%,
+      rgba(0, 0, 0, 0.12));
   }
 
   .mobile-submit-bar.submit-themed {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 0 82px -16px var(--submit-glow),
-      0 0 38px -12px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 0 38px -12px color-mix(in srgb, var(--submit-color, var(--theme-color)) 48%, transparent),
       0 24px 70px rgba(0, 0, 0, 0.40);
   }
 
   .mobile-submit-bar[data-state="needs-input"] {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(232, 236, 233, 0.14));
+    border-color: transparent;
     background:
-      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 12%, transparent), transparent 62%),
       radial-gradient(120% 140% at 16% 0%, rgba(232, 236, 233, 0.14), transparent 44%),
       linear-gradient(135deg, rgba(232, 236, 233, 0.12), rgba(232, 236, 233, 0.05)),
       rgba(20, 24, 22, 0.52);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.10),
-      0 0 30px -20px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 0 30px -20px color-mix(in srgb, var(--submit-color, var(--theme-color)) 42%, transparent),
       0 22px 62px rgba(0, 0, 0, 0.30);
   }
 
   .mobile-submit-bar[data-state="needs-input"].is-bar-morphing-to-entry,
   .mobile-submit-bar[data-state="needs-input"].is-flip-morphing.is-bar-morphing-to-entry {
-    border-color: color-mix(in srgb, var(--submit-color, var(--green)) 18%, rgba(232, 236, 233, 0.14));
+    border-color: transparent;
     background:
-      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--green)) 12%, transparent), transparent 62%),
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 12%, transparent), transparent 62%),
       radial-gradient(120% 140% at 16% 0%, rgba(232, 236, 233, 0.14), transparent 44%),
       linear-gradient(135deg, rgba(232, 236, 233, 0.12), rgba(232, 236, 233, 0.05)),
       rgba(20, 24, 22, 0.52);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.10),
-      0 0 30px -20px color-mix(in srgb, var(--submit-color, var(--green)) 42%, transparent),
+      0 0 30px -20px color-mix(in srgb, var(--submit-color, var(--theme-color)) 42%, transparent),
       0 22px 62px rgba(0, 0, 0, 0.30) !important;
   }
 
@@ -1178,7 +1208,7 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 0 82px -16px var(--submit-glow),
-      0 0 38px -12px color-mix(in srgb, var(--submit-color, var(--green)) 48%, transparent),
+      0 0 38px -12px color-mix(in srgb, var(--submit-color, var(--theme-color)) 48%, transparent),
       0 24px 70px rgba(0, 0, 0, 0.40) !important;
   }
 
@@ -1272,7 +1302,7 @@
   }
 
   .welcome-next-button {
-    --submit-text: color-mix(in srgb, var(--brand-primary) 30%, white);
+    --submit-text: color-mix(in oklch, var(--brand-primary) 30%, white);
   }
 
   /* 三圆插画在暗底用 screen 混合保持可见（同空状态插画） */
@@ -1287,12 +1317,12 @@
   }
 
   .welcome-split-mode.is-default {
-    border-color: color-mix(in srgb, var(--brand-primary) 38%, var(--dark-hairline));
-    background: color-mix(in srgb, var(--brand-primary) 13%, rgba(255, 255, 255, 0.05));
+    border-color: color-mix(in oklch, var(--brand-primary) 38%, var(--dark-hairline));
+    background: color-mix(in oklch, var(--brand-primary) 13%, rgba(255, 255, 255, 0.05));
   }
 
   .welcome-split-mark {
-    background: color-mix(in srgb, var(--brand-primary) 22%, rgba(255, 255, 255, 0.08));
+    background: color-mix(in oklch, var(--brand-primary) 22%, rgba(255, 255, 255, 0.08));
   }
 
   .welcome-split-mode.is-custom .welcome-split-mark {

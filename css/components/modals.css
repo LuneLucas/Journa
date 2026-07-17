@@ -143,10 +143,10 @@ body.ledger-management-open .mobile-submit-bar {
 .settings-panel,
 .ledger-management-tools,
 .ledger-manager-card {
-  border: var(--stroke-width) solid var(--border-surface);
+  border: none;
   /* 抽屉内面板坐在近实底抽屉上，玻璃不可见，改实底（--surface）省性能 */
   background: var(--surface);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--glass-edge), var(--shadow-md);
 }
 
 .settings-hero,

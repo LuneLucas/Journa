@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-settlement-watermark-v4-20260717";
+const APP_VERSION = "journa-realtime-v1-20260718";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",
