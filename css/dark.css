@@ -495,13 +495,22 @@
     --capsule-border: rgba(240, 198, 104, 0.20);
   }
 
-  .sync-status.is-failed,
-  .sync-status.is-error {
+  .sync-status.is-failed {
     color: #f0aa9a;
     --capsule-bg:
       linear-gradient(135deg, rgba(224, 95, 64, 0.14), rgba(255, 255, 255, 0.04)),
       var(--dark-card);
     --capsule-border: rgba(224, 95, 64, 0.22);
+  }
+
+  /* 错误态（云端不可用 / 链接失效 / 通用同步失败）：橙色类别，与 is-failed(红) 区分；
+     灯色 --status-dot 由浅色 .is-error 规则统一为橙色，这里只补文字/壳皮肤 */
+  .sync-status.is-error {
+    color: #f3b46e;
+    --capsule-bg:
+      linear-gradient(135deg, rgba(255, 149, 64, 0.16), rgba(255, 255, 255, 0.04)),
+      var(--dark-card);
+    --capsule-border: rgba(255, 149, 64, 0.24);
   }
 
   .family-tag {

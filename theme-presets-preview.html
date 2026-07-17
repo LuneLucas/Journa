@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>主题色明度折中 · C / C~ / C- 三档对比</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--page-bg, #f7f4ef);
+      font-family: var(--font-body);
+      color: var(--ink);
+      padding: 40px 20px 60px;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: var(--fw-cjk-heavy, 600);
+      margin: 0 0 6px;
+    }
+    .lede {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 720px;
+      margin: 0 0 24px;
+    }
+    .lede strong { color: var(--ink); font-weight: var(--fw-cjk-heavy, 600); }
+
+    .section {
+      background: #fff;
+      border: 1px solid var(--border-divider, rgba(0,0,0,0.08));
+      border-radius: var(--radius-lg, 25px);
+      padding: 22px 24px;
+      margin-bottom: 18px;
+    }
+    .section h2 {
+      font-size: 1.05rem;
+      font-weight: var(--fw-cjk-heavy, 600);
+      margin: 0 0 4px;
+    }
+    .section .sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0 0 18px;
+    }
+
+    /* ── 三档对比网格 ── */
+    .triple {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 720px) {
+      .triple { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border-divider, rgba(0,0,0,0.08));
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+    .card.is-rec {
+      border-color: #6fa3c4;
+      box-shadow: 0 0 0 2px rgba(111, 163, 196, 0.35);
+    }
+    .card .badge {
+      position: absolute;
+      top: -8px; left: 14px;
+      font-size: 0.68rem;
+      font-weight: var(--fw-bold, 700);
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: #fff;
+    }
+    .badge.b-c { color: #3a7a55; border: 1px solid #a9ceb5; }
+    .badge.b-cm { color: #2a6d8a; border: 1px solid #6fa3c4; background: #f0f6fa; }
+    .badge.b-cd { color: #6a5a8a; border: 1px solid #b3a5c8; }
+
+    .card .head {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 4px;
+    }
+    .card .head .dots { display: flex; gap: 6px; }
+    .card .head .dots .d {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .card .head .name {
+      font-size: 0.95rem;
+      font-weight: var(--fw-cjk-heavy, 600);
+    }
+    .card .head .name small {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: var(--fw-bold, 700);
+      margin-top: 2px;
+    }
+    .card .hsl {
+      font-family: var(--font-number);
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .card .lbar {
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.72rem;
+    }
+    .card .lbar .lbl { color: var(--muted); font-weight: var(--fw-bold, 700); }
+    .card .lbar .bar {
+      height: 6px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .card .lbar .bar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: var(--w, 0%);
+      background: var(--c, #999);
+    }
+    .card .lbar .val {
+      font-family: var(--font-number);
+      text-align: right;
+      font-weight: var(--fw-medium, 500);
+    }
+
+    /* ── 真实场景对比 ── */
+    .scenes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 720px) {
+      .scenes { grid-template-columns: 1fr; }
+    }
+    .scene {
+      background: var(--page-bg, #f7f4ef);
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid var(--border-divider, rgba(0,0,0,0.08));
+    }
+    .scene-title {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-weight: var(--fw-bold, 700);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .scene-title .tag {
+      font-size: 0.64rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: var(--fw-bold, 700);
+    }
+    .tag.rec { background: rgba(111,163,196,0.2); color: #2a6d8a; border: 1px solid #6fa3c4; }
+    .tag.ok { background: rgba(169,206,181,0.25); color: #3a7a55; border: 1px solid #a9ceb5; }
+    .tag.deep { background: rgba(178,165,200,0.25); color: #6a5a8a; border: 1px solid #b3a5c8; }
+
+    .ledger-item {
+      background: var(--card-bg, #fff);
+      border-radius: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-divider, rgba(0,0,0,0.06));
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ledger-item .family-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .ledger-item .info { flex: 1; min-width: 0; }
+    .ledger-item .info .who {
+      font-size: 0.78rem;
+      font-weight: var(--fw-cjk-heavy, 600);
+    }
+    .ledger-item .info .note {
+      font-size: 0.7rem;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ledger-item .amt {
+      font-family: var(--font-number);
+      font-size: 0.88rem;
+      font-weight: var(--fw-medium, 500);
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 12px;
+      border: 0;
+      color: #fff;
+      font-size: 0.86rem;
+      font-weight: var(--fw-bold, 700);
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .total-card {
+      background: var(--card-bg, #fff);
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-divider, rgba(0,0,0,0.06));
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .total-card .lbl { font-size: 0.72rem; color: var(--muted); }
+    .total-card .amt {
+      font-family: var(--font-number);
+      font-size: 1.15rem;
+      font-weight: var(--fw-medium, 500);
+    }
+    .accent-line {
+      height: 3px;
+      border-radius: 999px;
+      margin-top: -4px;
+      margin-bottom: 8px;
+    }
+
+    .ref-line {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+    .ref-line code {
+      background: rgba(0,0,0,0.05);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>明度折中 · C / C~ / C- 三档</h1>
+    <p class="lede">
+      C- 降 6% 太深 → 在 C 和 C- 之间加一档 <strong>C~（L 只降 3%）</strong>。
+      pine L=27% 几乎与当前 L=26% 持平（不深也不亮），harbor L=39% 与 malt 同档略深一点；
+      "不喧宾夺主"主要靠饱和压低（65%→32%），明度只是微调。
+    </p>
+
+    <!-- 三档参数对比 -->
+    <div class="section">
+      <h2>三档参数对比</h2>
+      <p class="sub">饱和都不变（pine 32% / harbor 30%），只调明度 L</p>
+      <div class="triple">
+        <div class="card">
+          <span class="badge b-c">C · 原档</span>
+          <div class="head">
+            <div class="dots"><div class="d" style="background:#346165"></div><div class="d" style="background:#504b8b"></div></div>
+            <div class="name">墨青松 + 靛港蓝<small>L 不变 / 略升</small></div>
+          </div>
+          <div class="hsl">pine  #346165 · (185°, 32%, 30%)<br>harbor #504b8b · (245°, 30%, 42%)</div>
+          <div class="lbar"><span class="lbl">pine L</span><div class="bar" style="--w:30%;--c:#999"></div><span class="val">30%</span></div>
+          <div class="lbar"><span class="lbl">hbr L</span><div class="bar" style="--w:42%;--c:#999"></div><span class="val">42%</span></div>
+        </div>
+
+        <div class="card is-rec">
+          <span class="badge b-cm">C~ · 折中（推荐）</span>
+          <div class="head">
+            <div class="dots"><div class="d" style="background:#2f575b"></div><div class="d" style="background:#4b4681"></div></div>
+            <div class="name">墨青松 + 靛港蓝<small>L 各降 3%</small></div>
+          </div>
+          <div class="hsl">pine  #2f575b · (185°, 32%, 27%)<br>harbor #4b4681 · (245°, 30%, 39%)</div>
+          <div class="lbar"><span class="lbl">pine L</span><div class="bar" style="--w:27%;--c:#666"></div><span class="val">27% ↓</span></div>
+          <div class="lbar"><span class="lbl">hbr L</span><div class="bar" style="--w:39%;--c:#666"></div><span class="val">39% ↓</span></div>
+        </div>
+
+        <div class="card">
+          <span class="badge b-cd">C- · 太深</span>
+          <div class="head">
+            <div class="dots"><div class="d" style="background:#2a4e51"></div><div class="d" style="background:#454077"></div></div>
+            <div class="name">墨青松·深 + 靛港蓝·深<small>L 各降 6%（已否）</small></div>
+          </div>
+          <div class="hsl">pine  #2a4e51 · (185°, 32%, 24%)<br>harbor #454077 · (245°, 30%, 36%)</div>
+          <div class="lbar"><span class="lbl">pine L</span><div class="bar" style="--w:24%;--c:#444"></div><span class="val">24% ↓</span></div>
+          <div class="lbar"><span class="lbl">hbr L</span><div class="bar" style="--w:36%;--c:#444"></div><span class="val">36% ↓</span></div>
+        </div>
+      </div>
+      <div class="ref-line">
+        参照：pine 现 L=26% · harbor 现 L=43% · clay L=44% · malt L=39% · lotus L=45%<br>
+        C~ 的 pine L=27% 与当前 L=26% 仅差 1%（明度基本不变），harbor L=39% 与 malt 同档（比当前略深 4%）。
+      </div>
+    </div>
+
+    <!-- pine 真实场景 -->
+    <div class="section">
+      <h2>pine 三档真实场景</h2>
+      <p class="sub">看家庭绿圆点显眼度 + 主题按钮沉稳度的平衡点</p>
+      <div class="scenes">
+        <div class="scene">
+          <div class="scene-title">C · L=30%<span class="tag ok">略亮</span></div>
+          <div class="total-card"><span class="lbl">总支出</span><span class="amt">¥3,280.50</span></div>
+          <div class="accent-line" style="background:#346165"></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#a9ceb5"></div><div class="info"><div class="who">家庭绿付款</div><div class="note">午餐 · 餐厅</div></div><div class="amt">¥128.00</div></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#b9c9e6"></div><div class="info"><div class="who">家庭蓝付款</div><div class="note">打车 · 交通</div></div><div class="amt">¥45.50</div></div>
+          <button class="submit-btn" style="background:#346165">提交记账</button>
+        </div>
+        <div class="scene">
+          <div class="scene-title">C~ · L=27%<span class="tag rec">推荐</span></div>
+          <div class="total-card"><span class="lbl">总支出</span><span class="amt">¥3,280.50</span></div>
+          <div class="accent-line" style="background:#2f575b"></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#a9ceb5"></div><div class="info"><div class="who">家庭绿付款</div><div class="note">午餐 · 餐厅</div></div><div class="amt">¥128.00</div></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#b9c9e6"></div><div class="info"><div class="who">家庭蓝付款</div><div class="note">打车 · 交通</div></div><div class="amt">¥45.50</div></div>
+          <button class="submit-btn" style="background:#2f575b">提交记账</button>
+        </div>
+        <div class="scene">
+          <div class="scene-title">C- · L=24%<span class="tag deep">太深</span></div>
+          <div class="total-card"><span class="lbl">总支出</span><span class="amt">¥3,280.50</span></div>
+          <div class="accent-line" style="background:#2a4e51"></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#a9ceb5"></div><div class="info"><div class="who">家庭绿付款</div><div class="note">午餐 · 餐厅</div></div><div class="amt">¥128.00</div></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#b9c9e6"></div><div class="info"><div class="who">家庭蓝付款</div><div class="note">打车 · 交通</div></div><div class="amt">¥45.50</div></div>
+          <button class="submit-btn" style="background:#2a4e51">提交记账</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- harbor 真实场景 -->
+    <div class="section">
+      <h2>harbor 三档真实场景</h2>
+      <p class="sub">harbor 当前 L=43% 偏亮，C~ 降到 39% 与 malt 同档</p>
+      <div class="scenes">
+        <div class="scene">
+          <div class="scene-title">C · L=42%<span class="tag ok">与现持平</span></div>
+          <div class="total-card"><span class="lbl">总支出</span><span class="amt">¥3,280.50</span></div>
+          <div class="accent-line" style="background:#504b8b"></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#a9ceb5"></div><div class="info"><div class="who">家庭绿付款</div><div class="note">午餐 · 餐厅</div></div><div class="amt">¥128.00</div></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#b9c9e6"></div><div class="info"><div class="who">家庭蓝付款</div><div class="note">打车 · 交通</div></div><div class="amt">¥45.50</div></div>
+          <button class="submit-btn" style="background:#504b8b">提交记账</button>
+        </div>
+        <div class="scene">
+          <div class="scene-title">C~ · L=39%<span class="tag rec">推荐</span></div>
+          <div class="total-card"><span class="lbl">总支出</span><span class="amt">¥3,280.50</span></div>
+          <div class="accent-line" style="background:#4b4681"></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#a9ceb5"></div><div class="info"><div class="who">家庭绿付款</div><div class="note">午餐 · 餐厅</div></div><div class="amt">¥128.00</div></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#b9c9e6"></div><div class="info"><div class="who">家庭蓝付款</div><div class="note">打车 · 交通</div></div><div class="amt">¥45.50</div></div>
+          <button class="submit-btn" style="background:#4b4681">提交记账</button>
+        </div>
+        <div class="scene">
+          <div class="scene-title">C- · L=36%<span class="tag deep">太深</span></div>
+          <div class="total-card"><span class="lbl">总支出</span><span class="amt">¥3,280.50</span></div>
+          <div class="accent-line" style="background:#454077"></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#a9ceb5"></div><div class="info"><div class="who">家庭绿付款</div><div class="note">午餐 · 餐厅</div></div><div class="amt">¥128.00</div></div>
+          <div class="ledger-item"><div class="family-dot" style="background:#b9c9e6"></div><div class="info"><div class="who">家庭蓝付款</div><div class="note">打车 · 交通</div></div><div class="amt">¥45.50</div></div>
+          <button class="submit-btn" style="background:#454077">提交记账</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="ref-line">
+      <strong>C~ 落地值：</strong>pine <code>:root[data-theme="pine"]</code> → <code>--theme-h: 185; --theme-s: 32%; --theme-l: 27%</code> ·
+      harbor <code>:root[data-theme="harbor"]</code> → <code>--theme-h: 245; --theme-s: 30%; --theme-l: 39%</code>；<br>
+      <code>THEME_PRESETS</code> 同步：pine name="墨青松" color="#2f575b" · harbor name="靛港蓝" color="#4b4681"。<br>
+      确定后我就改这两处 + bump 缓存戳。
+    </p>
+  </div>
+</body>
+</html>

@@ -411,6 +411,9 @@ const SYNC_MIN_VISIBLE_MS = 800;
 let syncShownAt = 0;
 let syncHoldTimer = 0;
 let cloudReady = false;
+/* 上一次云端拉取/保存的持久化错误标签：同步中会被 syncing 态覆盖，非同步中时沿用，
+   直到下一次成功同步清除。用于把“账本不存在/网络异常”等具体失败原因透出到同步指示灯。 */
+let cloudErrorLabel = "";
 let pendingSettingsSync = 0;
 let confirmResolve = null;
 let confirmCloseTimer = 0;
@@ -915,11 +918,29 @@ async function supabaseRpc(functionName, payload = {}) {
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `Supabase 请求失败：${response.status}`);
+    const err = new Error(message || `Supabase 请求失败：${response.status}`);
+    err.status = response.status;
+    throw err;
   }
 
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+/**
+ * 判断 Supabase 后端是否“整体不可达”（区别于某个账本不存在）。
+ * 覆盖三类情形：
+ *   1. 网络层失败：断网 / DNS 解析失败（如项目被 pause 后域名 NXDOMAIN）→ fetch 抛 TypeError
+ *   2. 源站 5xx：Cloudflare 521 / 502 / 503 / 504（项目刚恢复、仍在热身，或已被删除）
+ *   3. 消息中带 Cloudflare / 连接失败特征
+ * 注意：数据库显式抛 'Ledger not found' (P0002) 是 400/404，且消息不含上述特征，不会被误判。
+ */
+function isSupabaseBackendUnavailable(error) {
+  if (!error) return false;
+  if (error instanceof TypeError) return true; // 浏览器对网络/DNS 失败统一抛 TypeError
+  if (typeof error.status === "number" && error.status >= 500) return true;
+  const message = String(error?.message || "");
+  return /Failed to fetch|NetworkError|Network request failed|The network connection was lost|Web server is down|cloudflare|ERR_|\b5\d\d\b/i.test(message);
 }
 
 function normalizeRemotePayload(payload) {
@@ -979,6 +1000,7 @@ async function pullCloudLedger({ announce = false } = {}) {
   updateCloudControls();
   try {
     const payload = await supabaseRpc("get_travel_ledger", { p_share_token: cloudState.shareToken });
+    cloudErrorLabel = "";
     const remote = normalizeRemotePayload(payload);
 
     // LWW Merge for settings
@@ -1025,8 +1047,27 @@ async function pullCloudLedger({ announce = false } = {}) {
     return true;
   } catch (error) {
     cloudReady = false;
-    updateCloudControls("同步失败");
-    showToast({ message: "云账本同步失败，先保留本地数据" });
+    /* 三种失败原因，按优先级区分：
+       1. 后端整体不可达：断网 / DNS 解析失败（项目被 pause 时域名 NXDOMAIN） / 源站 5xx（刚恢复热身、或被删）
+          → fetch 抛 TypeError 或返回 5xx，应提示“云端服务可能不可用”。
+       2. 账本不存在：get_travel_ledger 在 token 无对应行时由数据库抛 'Ledger not found' (errcode P0002)。
+       3. 其他（认证、字段、4xx 等）。
+       优先级：先判后端不可达（覆盖最广），再判账本不存在，最后兜底为通用同步失败。 */
+    const backendDown = isSupabaseBackendUnavailable(error);
+    const ledgerMissing = !backendDown && /Ledger not found|P0002/i.test(String(error?.message || ""));
+    let label, toast;
+    if (backendDown) {
+      label = "云端不可用";
+      toast = "云端服务暂时不可用，可能是项目被暂停或网络异常，请稍后重试（本地数据已保留）";
+    } else if (ledgerMissing) {
+      label = "链接已失效";
+      toast = "邀请链接已失效：对应的云账本不存在或已被删除，请让创建者重新分享链接";
+    } else {
+      label = "同步失败";
+      toast = "云账本同步失败，请检查网络后重试（本地数据已保留）";
+    }
+    cloudErrorLabel = label;
+    showToast({ message: toast });
     return false;
   } finally {
     cloudBusy = false;
@@ -1333,20 +1374,22 @@ function updateCloudControls(forcedStatus = "") {
 function renderCloudControls(forcedStatus = "") {
   const configured = isCloudConfigured();
   const active = isCloudLedgerActive();
-  const syncing = active && cloudBusy && !forcedStatus;
+  /* 非同步中且存在持久化云端错误时，沿用错误态（覆盖正常摘要标签与配色） */
+  const effectiveForced = (!cloudBusy && cloudErrorLabel) ? cloudErrorLabel : forcedStatus;
+  const syncing = active && cloudBusy && !effectiveForced;
   const syncSummary = getSyncSummary();
-  elements.syncStatus.classList.toggle("is-cloud", active && !forcedStatus);
-  elements.syncStatus.classList.toggle("is-error", Boolean(forcedStatus));
-  elements.syncStatus.classList.toggle("is-pending", !forcedStatus && syncSummary.state === "pending");
-  elements.syncStatus.classList.toggle("is-failed", !forcedStatus && syncSummary.state === "failed");
+  elements.syncStatus.classList.toggle("is-cloud", active && !effectiveForced);
+  elements.syncStatus.classList.toggle("is-error", Boolean(effectiveForced));
+  elements.syncStatus.classList.toggle("is-pending", !effectiveForced && syncSummary.state === "pending");
+  elements.syncStatus.classList.toggle("is-failed", !effectiveForced && syncSummary.state === "failed");
   elements.syncStatus.classList.toggle("is-syncing", syncing);
   elements.syncStatus.setAttribute("aria-disabled", String(!active || cloudBusy));
   elements.syncStatus.setAttribute("aria-busy", String(syncing));
-  elements.syncStatus.setAttribute("title", syncSummary.detail);
-  elements.syncStatus.setAttribute("aria-label", active ? `同步云账本，${syncSummary.detail}` : syncSummary.detail);
-  if (syncStatusWasSyncing && !syncing && active && !forcedStatus) playSyncLampIgnite();
+  elements.syncStatus.setAttribute("title", effectiveForced || syncSummary.detail);
+  elements.syncStatus.setAttribute("aria-label", active ? `同步云账本，${effectiveForced || syncSummary.detail}` : (effectiveForced || syncSummary.detail));
+  if (syncStatusWasSyncing && !syncing && active && !effectiveForced) playSyncLampIgnite();
   syncStatusWasSyncing = syncing;
-  const nextLabel = forcedStatus || syncSummary.label;
+  const nextLabel = effectiveForced || syncSummary.label;
   if (elements.syncStatusLabel.textContent !== nextLabel) {
     elements.syncStatusLabel.textContent = nextLabel;
     if (!prefersReducedMotion()) {

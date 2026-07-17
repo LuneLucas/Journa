@@ -1335,7 +1335,7 @@
   }
 
   .amount-label.amount-active {
-    border-radius: 41px; /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
+    border-radius: var(--radius-hero); /* 放大态语义值，与 rest 态(xl)成对，不并入圆角阶梯 */
     --amount-scale: 1.014;
   }
 
@@ -1482,15 +1482,31 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  .inline-category-form {
-    display: none;
+  /* 移动端：点类别行末尾的「新增」胶囊后，就地平滑展开内联新增表单
+     用 max-height + opacity 过渡，避免 display 硬切换的瞬弹/瞬收。
+     展开与收起同速（420ms），缓动统一用 --settle。 */
+  .category-picker .inline-category-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 0;
+    margin-top: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: max-height 420ms var(--settle),
+                opacity 420ms var(--settle),
+                margin-top 420ms var(--settle),
+                transform 420ms var(--settle);
   }
 
-  /* 移动端：点类别行末尾的「新增」胶囊后，就地展开内联新增表单 */
   .category-picker.is-adding .inline-category-form {
-    display: flex;
-    gap: 8px;
+    max-height: 96px;
     margin-top: 4px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .split-scope-toggle {
@@ -2141,10 +2157,6 @@
 
   .note-label input {
     padding-inline: 14px;
-  }
-
-  .inline-category-form {
-    display: none;
   }
 
   .mobile-submit-bar {

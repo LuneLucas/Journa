@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>英雄卡片光晕修复 · Before / After</title>
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/misc.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 48px 24px;
+      background: var(--bg, #f7f4ef);
+      font-family: var(--font-body);
+      color: var(--ink);
+    }
+    .page-head { max-width: 920px; margin: 0 auto 36px; }
+    .page-head h1 { font-size: 1.4rem; margin: 0 0 6px; }
+    .page-head p { color: var(--muted); margin: 0; line-height: 1.6; }
+
+    .compare {
+      max-width: 920px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+    .col h2 {
+      font-size: 1rem;
+      margin: 0 0 4px;
+    }
+    .col .note { color: var(--muted); font-size: 0.85rem; margin: 0 0 20px; line-height: 1.5; }
+    .col.bad .note { color: #b4452f; }
+    .col.good .note { color: #3f7d57; }
+
+    /* 给“修复前”卡片强制恢复旧状态：overflow:hidden + 光晕块在 -22px */
+    .metric.primary.force-overflow { overflow: hidden; }
+    .metric.primary.force-overflow::before { left: -22px; }
+    .metric.primary.force-overflow::after { right: -22px; }
+
+    /* 让对比图里卡片周围留白，方便看清外溢光晕 */
+    .stage {
+      padding: 56px 24px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
+      border-radius: var(--radius-lg);
+    }
+
+    @media (max-width: 680px) {
+      .compare { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>英雄「总支出」卡片 · 光晕裁切修复对比</h1>
+    <p>
+      左图复现<strong>修复前</strong>状态（<code>.metric.primary</code> 带 <code>overflow: hidden</code>，光晕块在 -22px）：
+      卡片的 <code>::before</code>/<code>::after</code> 光晕伪元素被裁切在卡片圆角边界内，无法向外溢出，
+      边缘出现被「切平」的方形感。右图为<strong>修复后</strong>（已去掉 <code>overflow: hidden</code>，光晕块收回 -12px）：
+      氛围光晕自然外溢成柔和的圆角光。下方用的是项目真实 CSS 变量与渐变。
+    </p>
+  </div>
+
+  <div class="compare">
+    <div class="col bad">
+      <h2>修复前 · overflow: hidden（-22px）</h2>
+      <p class="note">光晕被裁切在卡片圆角内 → 边缘「切平」的方框感</p>
+      <div class="stage">
+        <section class="summary-band" style="display:block;">
+          <div class="metric primary force-overflow" role="status">
+            <span>总支出</span>
+            <strong>¥12,480.00</strong>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="col good">
+      <h2>修复后 · 去掉 overflow（-12px）</h2>
+      <p class="note">氛围光晕外溢成柔和圆角光，数字保持干净</p>
+      <div class="stage">
+        <section class="summary-band" style="display:block;">
+          <div class="metric primary" role="status">
+            <span>总支出</span>
+            <strong>¥12,480.00</strong>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

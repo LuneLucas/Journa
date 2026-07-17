@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>移动端「添加类别」展开动画 Demo</title>
+<style>
+  :root {
+    --settle: cubic-bezier(0.16, 0.9, 0.14, 1);
+    --radius-md: 12px;
+    --bg: #f7f4ef;
+    --ink: #3a352f;
+    --muted: #8a8278;
+    --line: rgba(58, 53, 47, 0.12);
+    --accent: #a9ceb5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p.sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+
+  /* —— 复刻 app 里的 .category-picker 结构 —— */
+  fieldset.category-picker {
+    border: 1px solid var(--line); border-radius: var(--radius-md);
+    padding: 14px; margin: 0; background: #fff;
+  }
+  fieldset.category-picker legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
+  .category-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .selectable-category-chip {
+    border: 1px solid var(--line); background: #faf8f4; color: var(--ink);
+    border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  }
+  .selectable-category-chip[aria-checked="true"] {
+    background: var(--accent); border-color: transparent; color: #1f2a23;
+  }
+  .category-add-chip {
+    border: 1px dashed var(--line); background: transparent; color: var(--muted);
+    border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  }
+  .category-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 2px; }
+
+  /* —— 这里是本次新增的动画（与 css/responsive.css 中 @media (max-width:820px) 内一致） —— */
+  .category-picker .inline-category-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 0;
+    margin-top: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: max-height 420ms var(--settle),
+                opacity 420ms var(--settle),
+                margin-top 420ms var(--settle),
+                transform 420ms var(--settle);
+  }
+  .category-picker.is-adding .inline-category-form {
+    max-height: 96px;
+    margin-top: 4px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .inline-category-form input {
+    flex: 1 1 140px; min-width: 0; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 10px; font-size: 14px;
+  }
+  .inline-category-form .secondary-button {
+    border: 1px solid var(--line); background: #fff; border-radius: 10px;
+    padding: 10px 16px; font-size: 14px; cursor: pointer;
+  }
+
+  .hint { margin-top: 18px; font-size: 12px; color: var(--muted); }
+  .toggle-compare {
+    margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+  }
+  /* 对比：关掉动画，回到原来的 display 硬切换 */
+  .no-anim .category-picker .inline-category-form {
+    transition: none; max-height: none; opacity: 1; transform: none; overflow: visible;
+  }
+  .no-anim .category-picker:not(.is-adding) .inline-category-form { display: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>移动端「添加类别」展开动画</h1>
+    <p class="sub">点类别行末尾的「新增」胶囊，内联表单会平滑展开 / 收起。</p>
+
+    <fieldset class="category-picker" id="picker">
+      <legend>类别</legend>
+      <div class="category-chips" role="radiogroup" aria-label="选择类别">
+        <button class="selectable-category-chip" type="button" aria-checked="false">餐饮</button>
+        <button class="selectable-category-chip" type="button" aria-checked="false">交通</button>
+        <button class="selectable-category-chip" type="button" aria-checked="false">住宿</button>
+        <button class="category-add-chip" id="addChip" type="button">+ 新增</button>
+      </div>
+      <div class="category-form inline-category-form" aria-label="新增类别">
+        <input id="newCategoryInput" type="text" maxlength="12" placeholder="新增类别" />
+        <button class="secondary-button" type="button">添加</button>
+      </div>
+    </fieldset>
+
+    <label class="toggle-compare">
+      <input type="checkbox" id="compare" /> 对比：关闭动画（原 display 硬切换）
+    </label>
+
+    <p class="hint">在手机视口（或浏览器开发者工具的移动模拟）下打开本页效果最佳。</p>
+  </div>
+
+<script>
+  const picker = document.getElementById('picker');
+  const addChip = document.getElementById('addChip');
+  const input = document.getElementById('newCategoryInput');
+  const compare = document.getElementById('compare');
+
+  addChip.addEventListener('click', () => {
+    const adding = picker.classList.toggle('is-adding');
+    if (adding) input.focus();
+  });
+
+  compare.addEventListener('change', () => {
+    document.body.classList.toggle('no-anim', compare.checked);
+  });
+</script>
+</body>
+</html>

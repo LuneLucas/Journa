@@ -217,12 +217,16 @@ body::before {
   --capsule-border: rgba(86, 151, 206, 0.22);
 }
 
+/* 错误态（云端不可用 / 链接失效 / 通用同步失败）：独立“错误类别”——橙色灯，
+   与 is-failed(珊瑚红·同步尝试失败) 区分；灯闪烁见下方 .is-error::before。 */
 .sync-status.is-error {
-  --status-dot: #ffc7b8;
-  --status-dot-glow: rgba(224, 95, 64, 0.62);
-  color: var(--coral);
-  --capsule-bg: rgba(255, 237, 230, 0.74);
-  --capsule-border: rgba(183, 79, 56, 0.18);
+  --status-dot: #ffac4d;
+  --status-dot-glow: rgba(255, 149, 64, 0.74);
+  --status-dot-core: rgba(255, 255, 255, 0.9);
+  --status-dot-bloom: rgba(255, 196, 120, 0);
+  color: #c2691f;
+  --capsule-bg: rgba(255, 240, 224, 0.74);
+  --capsule-border: rgba(214, 130, 40, 0.20);
 }
 
 .sync-status.is-pending {
@@ -261,6 +265,13 @@ body::before {
 /* 同步中：指示灯保持呼吸闪烁（不再叠加旋转加载环，避免与灯错位） */
 .sync-status.is-syncing::before {
   animation: sync-dot-breathe 1.2s ease-in-out infinite;
+}
+
+/* 错误态：橙色灯警示性闪烁（区别于 is-syncing 的呼吸）；仅在未要求减少动效时启用 */
+@media (prefers-reduced-motion: no-preference) {
+  .sync-status.is-error::before {
+    animation: sync-dot-error-blink 1.1s ease-in-out infinite;
+  }
 }
 
 /* 同步完成：指示灯一次性“过冲”——冲亮越过稳态后回落，最后保持常亮（JS 一次性挂类触发） */
@@ -336,7 +347,6 @@ h3 {
 .metric.primary {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
   background:
     radial-gradient(ellipse at 50% -8%, rgba(255, 255, 255, 0.52), transparent 58%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.30) 48%, rgba(255, 255, 255, 0.40)),
@@ -380,14 +390,14 @@ h3 {
 }
 
 .metric.primary::before {
-  left: -22px;
+  left: -12px;
   background:
     linear-gradient(90deg, var(--total-edge-left), rgba(255, 255, 255, 0)),
     var(--total-glow-left);
 }
 
 .metric.primary::after {
-  right: -22px;
+  right: -12px;
   background:
     linear-gradient(270deg, var(--total-edge-right), rgba(255, 255, 255, 0)),
     var(--total-glow-right);
@@ -399,9 +409,10 @@ h3 {
   color: var(--total-text-color);
   font-size: var(--num-lg);
   /* 英雄总支出数字用 SF Mono 等宽（--font-number），金额严格对齐、账本味更足；
-     tnum 仍由 .metric strong 提供，计数动画不抖动。（2026-07-18 由 --font-display 改回等宽） */
+     tnum 仍由 .metric strong 提供，计数动画不抖动。（2026-07-18 由 --font-display 改回等宽）
+     字重：与全站金额一致用 --fw-medium(500)（最初试过 400，用户最终定 500 更稳更一致）。 */
   font-family: var(--font-number);
-  font-weight: var(--fw-regular);
+  font-weight: var(--fw-medium);
   min-height: 1.08em;
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.42),
@@ -1124,7 +1135,7 @@ label,
   gap: 8px;
   margin-bottom: 0;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: var(--surface-soft);
 }
 
@@ -1881,6 +1892,20 @@ label,
 .settings-actions-details.is-closing summary::after,
 .family-color-details.is-closing summary::after {
   transform: none;
+}
+
+/* 轻量淡入：为若干"硬显隐"的次要片段补 show 动画
+   （recent-peek / 筛选摘要 / 清除筛选 / 编辑横幅 / 云端按钮 / 加主屏提示 / 欢迎跳过）
+   仅在 un-hidden 时播一次；prefers-reduced-motion 由 a11y.css 统一降级为瞬显 */
+.recent-peek:not([hidden]),
+.ledger-filter-summary:not([hidden]),
+#clearLedgerFiltersButton:not([hidden]),
+.edit-banner:not([hidden]),
+#createCloudLedgerButton:not([hidden]),
+#copyShareLinkButton:not([hidden]),
+.add-to-home-hint:not([hidden]),
+#welcomeSkipButton:not([hidden]) {
+  animation: soft-fade-in 240ms var(--settle) both;
 }
 
 .settings-data-item.is-syncing strong,
