@@ -97,6 +97,7 @@
     position: sticky;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
     align-items: center;
     column-gap: 12px;
     row-gap: 8px;
@@ -114,6 +115,11 @@
     -webkit-mask-image: none;
     mask-image: none;
     box-shadow: none;
+    transition:
+      padding var(--motion) var(--settle),
+      row-gap var(--motion) var(--settle),
+      margin-bottom var(--motion) var(--settle),
+      grid-template-rows var(--motion) var(--settle);
   }
 
   .app-header::before {
@@ -132,6 +138,7 @@
   }
 
   .app-header.is-collapsed {
+    grid-template-rows: auto 0px auto;
     row-gap: 7px;
     margin-bottom: 10px;
     padding-block: var(--mobile-header-collapsed-top) 12px;
@@ -573,9 +580,9 @@
     -webkit-backdrop-filter: none;
   }
 
-  .app-header.is-collapsed .mobile-panel-switch {
+  /* .app-header.is-collapsed .mobile-panel-switch {
     grid-row: 2;
-  }
+  } */
 
   .mobile-panel-switch::before,
   .mobile-panel-switch::after {

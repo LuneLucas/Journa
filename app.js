@@ -5842,18 +5842,15 @@ function setupScrollCollapse() {
   // 主页面头部滚动监听
   const appHeader = document.querySelector(".app-header");
   const mobilePanelSwitch = document.getElementById("mobilePanelSwitch");
-  let mobilePanelSwitchBeforeRect = null;
   attachCollapseOnScroll(window, appHeader, {
     onThreshold: 56,
     offThreshold: 24,
     onBeforeChange: () => {
-      if (!mobilePanelSwitch || window.getComputedStyle(appHeader).display !== "grid") return;
-      mobilePanelSwitchBeforeRect = mobilePanelSwitch.getBoundingClientRect();
+      // CSS grid-template-rows transition handles layout changes smoothly now.
     },
     /* 收起先算好停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算 */
     onChange: (collapsed) => {
-      settleMobilePanelSwitchLayout(mobilePanelSwitch, mobilePanelSwitchBeforeRect);
-      mobilePanelSwitchBeforeRect = null;
+      // CSS grid-template-rows transition handles layout changes smoothly now.
       if (collapsed) updateSyncLampDock();
     }
   });
