@@ -800,9 +800,11 @@
   .app-view.is-mobile-panel-switching-in .entry-panel,
   .app-view.is-mobile-panel-switching-in .ledger-section,
   .app-view.is-mobile-panel-switching-in .insights-panel {
+    /* 外阴影不再单独做 keyframes：卡片自身 box-shadow 是多层（浅色双/深色三，
+       且黑暗模式各卡片层数不一），none→多层阴影无法插值，会在动画末帧“啪”地
+       弹出。改为随 mobile-panel-fade-in 的 opacity 一起淡入，平滑且跨主题/跨卡片安全。 */
     animation:
-      mobile-panel-fade-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.22, 0.74, 0.24, 1) both,
-      mobile-panel-shadow-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+      mobile-panel-fade-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
   body.mobile-panel-data .mobile-submit-bar {
@@ -1278,14 +1280,9 @@
     }
   }
 
-  /* 内容先显现并落位，外阴影随后建立；省略 100% 的 box-shadow 值会让动画
-     回到每张卡片自身的计算值，因此亮色、深色及不同卡片强度都无需硬编码。 */
-  @keyframes mobile-panel-shadow-in {
-    0%,
-    35% {
-      box-shadow: none;
-    }
-  }
+  /* 注：面板切换时的外阴影不再单独做 keyframes（原 mobile-panel-shadow-in 已移除）。
+     原因：卡片 box-shadow 为多层阴影，none→多层无法插值，会在动画末帧“啪”地弹出；
+     现由 mobile-panel-fade-in 的 opacity 统一带阴影淡入。 */
 
   .entry-panel,
   .insights-panel,

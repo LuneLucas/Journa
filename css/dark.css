@@ -1154,6 +1154,67 @@
     text-shadow: none;
   }
 
+  /* 暗底 bloom 治理（柔和版）：保留"吸收入账"语义（两侧家庭色亮点 + 中心吸收光），
+     但整体亮度压低，避免暗底炸开。不引用 JS inline 的 --absorb-glow/--absorb-color
+     （inline 优先级会盖掉暗色压低），改用从家庭色动态变量派生的 --bloom-* 低 alpha 变体。 */
+  .metric.primary {
+    --bloom-glow-left: color-mix(in srgb, var(--total-glow-left) 42%, transparent);
+    --bloom-glow-right: color-mix(in srgb, var(--total-glow-right) 42%, transparent);
+    --bloom-edge-left: color-mix(in srgb, var(--total-edge-left) 42%, transparent);
+    --bloom-edge-right: color-mix(in srgb, var(--total-edge-right) 42%, transparent);
+    --bloom-edge-soft: color-mix(in srgb, var(--total-edge-soft) 50%, transparent);
+  }
+
+  .metric.primary.is-blooming {
+    animation:
+      total-absorb-dark 1320ms var(--settle) both,
+      total-bloom var(--motion) var(--spring-overshoot) both;
+  }
+
+  .metric.primary.is-blooming::before {
+    animation: total-edge-absorb-left-dark 1320ms var(--settle) both;
+  }
+
+  .metric.primary.is-blooming::after {
+    animation: total-edge-absorb-right-dark 1320ms var(--settle) both;
+  }
+
+  @keyframes total-absorb-dark {
+    0%, 100% {
+      box-shadow:
+        inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+        inset 18px 0 30px -30px var(--bloom-edge-left),
+        inset -18px 0 30px -30px var(--bloom-edge-right),
+        0 0 0 1px var(--bloom-edge-soft),
+        -14px 0 34px -30px var(--bloom-glow-left),
+        14px 0 34px -30px var(--bloom-glow-right),
+        0 18px 54px rgba(0, 0, 0, 0.30);
+    }
+    42% {
+      box-shadow:
+        inset 0 0 0 1px var(--bloom-edge-soft),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+        inset 18px 0 32px -30px var(--bloom-edge-left),
+        inset -18px 0 32px -30px var(--bloom-edge-right),
+        0 0 0 1px var(--bloom-edge-soft),
+        0 0 28px -30px var(--bloom-glow-left),
+        -14px 0 36px -30px var(--bloom-glow-left),
+        14px 0 36px -30px var(--bloom-glow-right),
+        0 18px 56px rgba(0, 0, 0, 0.30);
+    }
+  }
+
+  @keyframes total-edge-absorb-left-dark {
+    0%, 100% { opacity: 0.32; transform: scaleY(1); }
+    42% { opacity: 0.42; background: var(--bloom-glow-left); transform: scaleY(1.08); }
+  }
+
+  @keyframes total-edge-absorb-right-dark {
+    0%, 100% { opacity: 0.32; transform: scaleY(1); }
+    42% { opacity: 0.42; background: var(--bloom-glow-right); transform: scaleY(1.08); }
+  }
+
   /* 提交栏外圈光晕：白光 → 主题色氛围光 */
   .mobile-submit-bar::before {
     background:
