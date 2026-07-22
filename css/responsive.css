@@ -54,22 +54,23 @@
     touch-action: pan-y pinch-zoom;
   }
 
-  /* 固定在内容与提交栏之间，让滚到底的内容自然退入底部安全区。
-     幕布只覆盖安全区上方的滚动区（height: 124px、bottom: safe-area-bottom），
-     底部安全区留给 body::before 的彩色光晕透出，不再被纯 --bg 盖成黑边。 */
+  /* 底部渐隐幕布只负责把滚入安全区的内容柔和淡出。
+     不把 mask-image 与 backdrop-filter 叠在同一个 fixed 图层：iOS Safari/PWA
+     在地址栏或全屏视口切换时可能把它栅格化成一块有明显上边界的灰色区域。
+     真正的背景模糊由悬浮提交栏自身承担，这一层保持普通 alpha 渐变。 */
   body::after {
     position: fixed;
     z-index: var(--z-mobile-curtain);
     right: 0;
-    bottom: var(--safe-area-bottom);
+    bottom: 0;
     left: 0;
-    height: 124px;
+    height: calc(140px + var(--safe-area-bottom));
     background: linear-gradient(
       to bottom,
       transparent 0%,
-      color-mix(in srgb, var(--bg) 62%, transparent) 54%,
-      var(--bg) 88%,
-      color-mix(in srgb, var(--bg) 55%, transparent) 100%
+      color-mix(in srgb, var(--bg) 20%, transparent) 34%,
+      color-mix(in srgb, var(--bg) 58%, transparent) 68%,
+      color-mix(in srgb, var(--bg) 88%, transparent) 100%
     );
     content: "";
     pointer-events: none;
@@ -115,7 +116,6 @@
     margin-bottom: 12px;
     padding: var(--mobile-header-top) 14px 16px;
     box-sizing: border-box;
-    isolation: isolate;
     overflow: visible;
     border-bottom: 0;
     background: transparent;
@@ -135,15 +135,31 @@
 
   .app-header::before {
     position: absolute;
-    z-index: -1;
-    inset: 0 -14px -18px;
-    border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-    background: linear-gradient(to bottom, var(--glass-bg) 0%, var(--glass-bg) 72%, color-mix(in srgb, var(--glass-bg) 64%, transparent) 86%, transparent 100%);
-    -webkit-backdrop-filter: blur(6px) saturate(170%);
-    backdrop-filter: blur(6px) saturate(170%);
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 74%, rgba(0, 0, 0, 0.82) 86%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 0%, black 74%, rgba(0, 0, 0, 0.82) 86%, transparent 100%);
-    box-shadow: var(--shadow-sm);
+    z-index: 0;
+    inset: 0 -14px 0;
+    border-bottom: 0;
+    /* 一个稳定的取景层负责整块毛玻璃；下缘淡出交给无滤镜的 ::after。
+       避免 sticky + isolation + 负层级 + mask + backdrop-filter 的复合路径。 */
+    background: color-mix(in srgb, var(--glass-bg) 58%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+    box-shadow: 0 12px 28px -24px rgba(0, 0, 0, 0.22);
+    content: "";
+    pointer-events: none;
+  }
+
+  .app-header::after {
+    position: absolute;
+    z-index: 0;
+    right: -14px;
+    bottom: -18px;
+    left: -14px;
+    height: 18px;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--glass-bg) 34%, transparent),
+      transparent
+    );
     content: "";
     pointer-events: none;
   }
@@ -162,11 +178,19 @@
   }
 
   .app-header.is-collapsed::before {
-    inset: 0 -14px -16px;
-    border-bottom-color: color-mix(in srgb, var(--line) 56%, transparent);
-    background: linear-gradient(to bottom, var(--glass-bg) 0%, var(--glass-bg) 76%, color-mix(in srgb, var(--glass-bg) 58%, transparent) 88%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 78%, rgba(0, 0, 0, 0.78) 88%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 0%, black 78%, rgba(0, 0, 0, 0.78) 88%, transparent 100%);
+    inset: 0 -14px 0;
+    background: color-mix(in srgb, var(--glass-bg) 62%, transparent);
+  }
+
+  .app-header.is-collapsed::after {
+    bottom: -16px;
+    height: 16px;
+  }
+
+  .app-header > *,
+  .app-header .header-actions > * {
+    position: relative;
+    z-index: 1;
   }
 
   .app-header > :first-child {
@@ -556,14 +580,33 @@
   .ledger-controls select {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 36px;
+    min-height: 44px;
     font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
     font-weight: var(--fw-bold);
   }
 
   .ledger-controls .compact-button {
     flex: 1 1 100%;
-    min-height: 36px;
+    min-height: 44px;
+  }
+
+  .compact-button {
+    min-height: 44px;
+  }
+
+  /* 设置里的类别排序/删除图标保持轻巧外观，但按钮本体 + 伪元素热区达到 44px。 */
+  .chip-icon-button {
+    position: relative;
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .chip-icon-button::after {
+    position: absolute;
+    inset: -3px;
+    content: "";
   }
 
   .workspace,
@@ -612,18 +655,18 @@
     border: var(--stroke-width) solid color-mix(in oklch, var(--theme-color) 14%, var(--border-surface));
     border-radius: var(--radius-pill);
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0.24)),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.06) 46%, rgba(255, 255, 255, 0.18)),
       radial-gradient(ellipse at 16% -36%, rgba(255, 255, 255, 0.88), transparent 55%),
       radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 24%, transparent), transparent 64%),
-      rgba(247, 249, 248, 0.18);
+      rgba(247, 249, 248, 0.12);
     padding: 4px;
     box-shadow:
       var(--inset-highlight-strong),
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 28px -16px color-mix(in srgb, var(--submit-color, var(--theme-color)) 68%, transparent),
       0 8px 22px rgba(22, 26, 30, 0.08);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    -webkit-backdrop-filter: blur(12px) saturate(170%) brightness(1.03);
+    backdrop-filter: blur(12px) saturate(170%) brightness(1.03);
   }
 
   /* .app-header.is-collapsed .mobile-panel-switch {
@@ -655,7 +698,7 @@
   .mobile-panel-tab {
     position: relative;
     z-index: 1;
-    min-height: 40px;
+    min-height: 44px;
     border: 0;
     border-radius: var(--radius-pill);
     background: transparent;
@@ -1424,33 +1467,62 @@
     overflow: visible;
   }
 
-  /* 外层只负责两端渐隐 mask + 负边距出血；它本身不滚动，mask 在静止元素上
+  /* 整行出血挂到 .category-row 上：让类别行（含行尾的 + 按钮）与面板左右边缘齐平，
+     与原本 .category-chips-fade 单独出血的视觉效果一致。移动端类别横滑（不折行），
+     所以行内不换行，+ 始终钉在行尾同行。 */
+  .category-row {
+    margin: -24px -20px -14px;
+    flex-wrap: nowrap;
+  }
+
+  /* 外层只负责两端渐隐覆盖层 + 占满行内剩余宽度；它本身不滚动，渐隐在静止元素上
      只合成一次。内部滚动走 GPU 合成层，避免「滚动容器直接挂 mask」导致 macOS
      触控板横向滑动逐帧主线程重绘、不跟手的问题。 */
   .category-chips-fade {
     position: relative;
-    margin: -24px -20px -14px;
+    flex: 1 1 auto;
+    /* 关键：grid 子项默认 min-width:auto 会被内部 nowrap 芯片的 max-content 撑大
+       （本应 330 的轨道被撑到 512），导致滚动容器"按内容宽度贴合"而不溢出——
+       横滑永远无法触发。min-width:0 让它回到轨道宽度，内部芯片才会溢出并滚动。 */
+    min-width: 0;
+    /* 两端渐隐用伪元素色块覆盖层，而非 mask-image：
+       iOS/WebKit 上「mask 祖先 + 合成层滚动子元素(translateZ(0))」会让横滑容器
+       彻底无法滚动（mask 把子树钉成单层光栅，scroll 不重绘）；且 mask 的 alpha
+       会把选中芯片的光晕在边缘裁切/扭曲（即「阴影异常」）。改用与页面底色同色的
+       渐隐覆盖层后，横滑恢复正常，光晕也不再被裁。 */
     --cat-edge-fade: 36px;
-    --cat-fade-l: 0px;
-    --cat-fade-r: 0px;
-    -webkit-mask-image: linear-gradient(to right,
-      transparent 0,
-      #000 var(--cat-fade-l),
-      #000 calc(100% - var(--cat-fade-r)),
-      transparent 100%);
-    mask-image: linear-gradient(to right,
-      transparent 0,
-      #000 var(--cat-fade-l),
-      #000 calc(100% - var(--cat-fade-r)),
-      transparent 100%);
+    --cat-fade-color: var(--bg);
   }
 
-  .category-chips-fade.can-fade-start {
-    --cat-fade-l: var(--cat-edge-fade);
+  .category-chips-fade::before,
+  .category-chips-fade::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--cat-edge-fade);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 220ms var(--settle);
+    z-index: 3;
   }
 
-  .category-chips-fade.can-fade-end {
-    --cat-fade-r: var(--cat-edge-fade);
+  .category-chips-fade::before {
+    left: 0;
+    background: linear-gradient(to right, var(--cat-fade-color), transparent);
+  }
+
+  .category-chips-fade::after {
+    right: 0;
+    background: linear-gradient(to left, var(--cat-fade-color), transparent);
+  }
+
+  .category-chips-fade.can-fade-start::before {
+    opacity: 1;
+  }
+
+  .category-chips-fade.can-fade-end::after {
+    opacity: 1;
   }
 
   .selectable-category-chips {
@@ -1458,10 +1530,9 @@
     flex-wrap: nowrap;
     gap: 8px;
     overflow-x: auto;
-    /* pan-x：横向手势在本容器消化，垂直手势自动让给页面（chips 是 nowrap，
-       自身没有纵向内容）。原 pan-x pan-y 等于让浏览器两个方向都接管，反而
-       进入「手势方向判定」阶段，iOS 触摸横滑启动会有一段被吃掉的涩感。 */
-    touch-action: pan-x;
+    /* 同时声明横纵原生平移：横向由类别带消费，纵向可继续滚动页面。
+       JS 橡皮筋另有方向锁，只会拦截明确的横向越界手势。 */
+    touch-action: pan-x pan-y;
     margin: 0;
     padding: 28px 20px 24px;
     scroll-padding-inline: 20px;
@@ -1480,7 +1551,7 @@
 
   .selectable-category-chip {
     flex: 0 0 auto;
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 12px;
     font-size: var(--label-md);
     line-height: 1.1;
@@ -1504,10 +1575,10 @@
     overflow: hidden;
     transform: translateY(-4px);
     pointer-events: none;
-    transition: max-height 420ms var(--settle),
-                opacity 420ms var(--settle),
-                margin-top 420ms var(--settle),
-                transform 420ms var(--settle);
+    transition: max-height 280ms var(--settle),
+                opacity 220ms var(--settle),
+                margin-top 280ms var(--settle),
+                transform 220ms var(--settle);
   }
 
   .category-picker.is-adding .inline-category-form {
@@ -1615,7 +1686,7 @@
     isolation: isolate;
     border: 1px solid transparent;
     border-radius: var(--radius-pill);
-    contain: layout paint style;
+    contain: layout style;
     transform: translateZ(0);
     backface-visibility: hidden;
     /*
@@ -1649,8 +1720,8 @@
       inset 0 -1px 1px rgba(22, 26, 30, 0.06),
       0 0 54px -22px color-mix(in srgb, var(--submit-color, var(--theme-color)) 76%, transparent),
       0 24px 72px rgba(22, 26, 30, 0.16);
-    backdrop-filter: blur(1px) saturate(211%) brightness(1.08);
-    -webkit-backdrop-filter: blur(1px) saturate(211%) brightness(1.08);
+    -webkit-backdrop-filter: blur(14px) saturate(185%) brightness(1.06);
+    backdrop-filter: blur(14px) saturate(185%) brightness(1.06);
   }
 
   .mobile-submit-bar::before,
@@ -1840,8 +1911,9 @@
       0 0 16px -4px color-mix(in srgb, var(--submit-color, var(--theme-color)) 25%, transparent),
       0 8px 24px -6px rgba(22, 26, 30, 0.12);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
-    backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
-    -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.04);
+    /* Safari 对嵌套 backdrop-filter 的取景不稳定；模糊统一由父 bar 负责。 */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     cursor: pointer;
   }
 
@@ -1974,7 +2046,7 @@
   .ledger-item.is-expanded .delete-button {
     width: 44px;
     min-width: 44px;
-    min-height: 42px;
+    min-height: 44px;
   }
 
 }
@@ -2017,7 +2089,7 @@
   }
 
   .sync-status {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 13px; /* 边框已挪进壳层，padding 补 1px 保持灯位 */
     font-size: 0.8rem;
   }
@@ -2120,6 +2192,7 @@
   .settings-panel-title .compact-button {
     width: auto;
     min-width: 96px;
+    min-height: 44px;
   }
 
   .ledger-card-main,
@@ -2214,14 +2287,14 @@
   }
 
   .settlement-item {
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
     padding: 10px 12px;
   }
 
   .settlement-route-node {
-    width: 96px;
-    min-height: 78px;
+    width: 100%;
+    min-height: 48px;
   }
 
   .settlement-itinerary::before {
@@ -2252,14 +2325,14 @@
   }
 
   .settlement-item {
-    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     padding: 9px 11px;
   }
 
   .settlement-route-node {
-    width: 88px;
-    min-height: 74px;
+    width: 100%;
+    min-height: 46px;
   }
 
   .settlement-itinerary::before {
@@ -2267,15 +2340,15 @@
   }
 
   .settlement-node-family {
-    max-width: 72px;
+    max-width: 100%;
   }
 
   .settlement-node-family strong {
-    font-size: 1.08rem;
+    font-size: 0.82rem;
   }
 
   .settlement-route-watermark {
-    font-size: 3rem;
+    font-size: 1.72rem;
   }
 
   .settlement-amount strong {
@@ -2360,39 +2433,165 @@
 
 }
 
+/* 低矮手机首屏：把同步状态收成仍可点的 44px 灯钮，并让它与标题同排。
+   这样不压缩付款人/金额控件本身，也能让 320×568 一类视口避开固定提交栏。 */
+@media (max-width: 520px) and (max-height: 620px) {
+  .app-header,
+  .app-header.is-collapsed {
+    grid-template-columns: minmax(0, 1fr) 44px auto;
+    grid-template-rows: auto auto;
+    column-gap: 8px;
+    row-gap: 6px;
+    margin-bottom: 7px;
+    padding: calc(6px + var(--safe-area-top)) 10px 8px;
+  }
+
+  .app-header > :first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .app-header .sync-status,
+  .app-header.is-collapsed .sync-status,
+  .app-header.is-docking .sync-status {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    transform: none;
+  }
+
+  .app-header .sync-status .sync-status-shell,
+  .app-header.is-collapsed .sync-status .sync-status-shell,
+  .app-header.is-docking .sync-status .sync-status-shell {
+    border-radius: var(--radius-pill);
+    opacity: 1;
+  }
+
+  .app-header .sync-status .sync-status-label,
+  .app-header.is-collapsed .sync-status .sync-status-label,
+  .app-header.is-docking .sync-status .sync-status-label {
+    display: none;
+    max-width: 0;
+    opacity: 0;
+  }
+
+  .app-header #openSettingsButton {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .app-header .mobile-panel-switch {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .app-view {
+    gap: 12px;
+  }
+
+  .metric.primary {
+    min-height: 68px;
+    padding-block: 7px;
+  }
+
+  .metric.primary span {
+    margin-bottom: 2px;
+  }
+
+  .entry-panel {
+    padding-top: 13px;
+  }
+}
+
 @media (hover: none) and (pointer: coarse) {
-  /* iOS26 触感系统：按下＝玻璃压缩（即时 scale + wash 变色，~90ms 快速响应），
-     松开＝走各自基础过渡的弹簧/点灯回弹。压缩幅度按控件体量分档：
-     小胶囊 0.96 / 图标钮 0.90 / 中型钮 0.97 / 大钮 0.98 / 整行 0.99 */
+  :root {
+    /* 桌面 401ms 的悬停/回弹在手指离开后显得拖沓；触屏缩短基础反馈，
+       长叙事动画（底栏 FLIP、账单入场）仍保留各自独立时序。 */
+    --motion-fast: 240ms;
+    --motion: 340ms;
+    --selection-motion: 360ms;
+    --selection-release-motion: var(--touch-release-motion);
+    --lamp-on-motion: 460ms;
+    --lamp-off-motion: var(--touch-release-motion);
+    --lamp-glow-delay: 40ms;
+  }
+
+  /* 触摸端反馈使用短促、单调的按下/释放节奏；桌面端保留原有弹簧与悬停层次。 */
 
   /* 触屏上中和桌面 hover 位移（iOS 粘滞 hover 会残留在松开后） */
   .family-tag:hover,
   .selectable-category-chip:hover,
   .primary-button:hover,
+  .secondary-button:hover,
+  .ghost-button:hover,
+  .icon-button:hover,
+  .compact-button:hover,
+  .split-mode-button:hover,
+  .split-scope-toggle:hover,
+  .settlement-item:hover,
+  .settlement-entry:hover,
+  .palette-card:hover,
+  .family-color-choice:hover,
+  .welcome-skip:hover,
+  .category-add-fab:hover,
+  .sync-status[aria-disabled="false"]:hover,
   .ledger-item:hover {
     transform: none;
   }
 
-  /* 回弹兜底：这些控件基础规则缺 transform/box-shadow 过渡，补齐后松开才有弹性回弹；
-     transform/box-shadow 用过冲曲线（liquid-glass 松手回弹），其余属性保持原节奏 */
+  /* 鼠标位置追随光只在 fine pointer 上有意义；触屏使用稳定的居中高光。 */
+  .primary-button::before {
+    background:
+      radial-gradient(circle 140px at 50% 20%, rgba(255, 255, 255, 0.20), transparent 82%),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 58%, transparent),
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 44%, transparent) 52%,
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 52%, transparent)
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 64%);
+  }
+
+  /* 基础规则若没有 transform 过渡，松开会瞬间跳回；触摸端统一用 190ms 单调缓出，
+     避免 320ms 过冲在手指离开后仍显得“黏”。 */
   .inline-button,
   .toast-action,
   .member-stepper button,
   .ledger-edit-button,
   .ledger-delete-button,
   .delete-button,
-  .chip-icon-button {
+  .chip-icon-button,
+  .icon-button,
+  .mobile-panel-tab,
+  .sync-status,
+  .palette-card,
+  .theme-choice,
+  .family-color-choice,
+  .settlement-entry,
+  .welcome-skip,
+  .welcome-dot,
+  .recent-peek-all,
+  .category-add-fab,
+  .ledger-item,
+  .settings-actions-details summary,
+  .family-color-details summary {
     transition:
-      transform 320ms var(--lamp-bloom),
-      box-shadow 320ms var(--lamp-bloom),
-      opacity var(--motion-fast) var(--spring),
-      background-color var(--motion-fast) var(--spring);
+      transform var(--touch-release-motion) var(--touch-release-easing),
+      box-shadow var(--touch-release-motion) var(--touch-release-easing),
+      opacity var(--touch-release-motion) var(--touch-release-easing),
+      background-color var(--touch-release-motion) var(--touch-release-easing);
   }
 
   .selectable-category-chip:active,
   .family-tag:active {
     background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
-    transform: scale(0.96);
+    transform: scale(0.975);
     transition-duration: var(--press-motion);
     transition-timing-function: var(--lamp-quick);
   }
@@ -2412,14 +2611,33 @@
     transition-timing-function: var(--lamp-quick);
   }
 
-  /* 图标小钮：目标区小，压缩幅度加大以确认命中 */
+  .mobile-panel-tab:active,
+  .sync-status[aria-disabled="false"]:active,
+  .palette-card:active,
+  .theme-choice:active,
+  .family-color-choice:active,
+  .settlement-entry:active,
+  .welcome-skip:active,
+  .welcome-dot:active,
+  .recent-peek-all:active,
+  .category-add-fab:active,
+  .settings-actions-details summary:active,
+  .family-color-details summary:active {
+    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.09);
+    transform: scale(0.975);
+    transition-duration: var(--press-motion);
+    transition-timing-function: var(--lamp-quick);
+  }
+
+  /* 小图标也保持清晰反馈，但不再缩到 0.90 造成突兀跳动。 */
   .chip-icon-button:active,
+  .icon-button:active,
   .member-stepper button:active,
   .ledger-edit-button:active,
   .ledger-delete-button:active,
   .toast-action:active {
     box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.12);
-    transform: scale(0.90);
+    transform: scale(0.95);
     transition-duration: var(--press-motion);
     transition-timing-function: var(--lamp-quick);
   }
@@ -2427,7 +2645,7 @@
   .primary-button:active,
   .mobile-submit-button:active {
     box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.10);
-    transform: scale(0.98);
+    transform: scale(0.985);
     transition-duration: var(--press-motion);
     transition-timing-function: var(--lamp-quick);
   }
@@ -2436,8 +2654,19 @@
   .ledger-item:active {
     background-color: rgba(127, 160, 143, 0.16); /* color-mix 静态回退 */
     background-color: color-mix(in srgb, var(--family-color) 14%, transparent);
-    transform: scale(0.99);
-    transition-duration: 120ms;
+    transform: scale(0.992);
+    transition-duration: var(--press-motion);
     transition-timing-function: var(--lamp-quick);
+  }
+
+  /* 触屏没有 hover 可提前揭示展开箭头，静息态给出弱提示，按下时再加强。 */
+  .ledger-item:not(.is-expanded) .ledger-expand-cue {
+    opacity: 0.52;
+    transform: none;
+  }
+
+  .ledger-item:active .ledger-expand-cue {
+    opacity: 0.92;
+    transform: translateY(1px);
   }
 }

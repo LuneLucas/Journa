@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-fulledge-v1-20260718";
+const APP_VERSION = "journa-mobile-touch-v1-20260722";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -317,6 +317,25 @@ const bootHadLocalData = (() => {
   }
 })();
 let cloudBusy = false;
+/* 云端请求可能嵌套或并行（例如拉取过程中补传待同步账单），用计数保持
+   指示灯直到最后一个请求结束，避免某个子请求提前把“同步中”状态清掉。 */
+let cloudBusyDepth = 0;
+
+function enterCloudBusy() {
+  cloudBusyDepth += 1;
+  if (cloudBusyDepth === 1) {
+    cloudBusy = true;
+    updateCloudControls();
+  }
+}
+
+function leaveCloudBusy() {
+  cloudBusyDepth = Math.max(0, cloudBusyDepth - 1);
+  if (cloudBusyDepth === 0 && cloudBusy) {
+    cloudBusy = false;
+    updateCloudControls();
+  }
+}
 
 /* ── 实时协同：Supabase Realtime Broadcast ──
    每个云账本占用一个频道 ledger:<share_token>。写入方保存成功后广播 changed，
@@ -1020,8 +1039,7 @@ function normalizeRemoteLedgerName(name) {
 async function pullCloudLedger({ announce = false } = {}) {
   if (!isCloudLedgerActive()) return false;
 
-  cloudBusy = true;
-  updateCloudControls();
+  enterCloudBusy();
   try {
     const payload = await supabaseRpc("get_travel_ledger", { p_share_token: cloudState.shareToken });
     cloudErrorLabel = "";
@@ -1098,9 +1116,8 @@ async function pullCloudLedger({ announce = false } = {}) {
     showToast({ message: toast });
     return false;
   } finally {
-    cloudBusy = false;
+    leaveCloudBusy();
     updateLedgerUrl();
-    updateCloudControls();
   }
 }
 
@@ -1139,8 +1156,7 @@ async function handleManualCloudSync() {
   lastLifecycleRefreshAt = Date.now();
   window.clearTimeout(pendingSettingsSync);
   pendingSettingsSync = 0;
-  cloudBusy = true;
-  updateCloudControls();
+  enterCloudBusy();
 
   let settingsSynced = true;
   try {
@@ -1150,8 +1166,7 @@ async function handleManualCloudSync() {
   }
 
   const expensesSynced = await syncPendingCloudExpenses({ silent: false });
-  cloudBusy = false;
-  updateCloudControls();
+  leaveCloudBusy();
 
   if (!settingsSynced || !expensesSynced) {
     showToast({ message: "还有内容未同步，先保留本地账本" });
@@ -1167,8 +1182,7 @@ async function createCloudLedger() {
     return;
   }
 
-  cloudBusy = true;
-  updateCloudControls();
+  enterCloudBusy();
   try {
     const payload = await supabaseRpc("create_travel_ledger");
     cloudState.shareToken = payload?.ledger?.share_token || "";
@@ -1182,8 +1196,7 @@ async function createCloudLedger() {
   } catch (error) {
     showToast({ message: "创建云账本失败，请确认 SQL 已执行" });
   } finally {
-    cloudBusy = false;
-    updateCloudControls();
+    leaveCloudBusy();
   }
 }
 
@@ -1247,35 +1260,40 @@ function queueCloudSettingsSync() {
 
 async function syncCloudSettingsNow() {
   if (!isCloudLedgerActive()) return;
-  syncFamilyVisualRows();
-  const basePayload = {
-    p_share_token: cloudState.shareToken,
-    p_categories: state.categories,
-    p_family_members: state.familyMembers,
-    p_updated_at: state.updatedAt,
-  };
-  const namePayload = {
-    ...basePayload,
-    p_name: state.name,
-  };
-  const visualPayload = {
-    ...namePayload,
-    p_families: serializeFamiliesForCloud(),
-  };
-
+  enterCloudBusy();
   try {
-    await supabaseRpc("update_travel_ledger_settings", visualPayload);
-  } catch (error) {
-    if (!isSettingsRpcCompatibilityError(error)) throw error;
+    syncFamilyVisualRows();
+    const basePayload = {
+      p_share_token: cloudState.shareToken,
+      p_categories: state.categories,
+      p_family_members: state.familyMembers,
+      p_updated_at: state.updatedAt,
+    };
+    const namePayload = {
+      ...basePayload,
+      p_name: state.name,
+    };
+    const visualPayload = {
+      ...namePayload,
+      p_families: serializeFamiliesForCloud(),
+    };
+
     try {
-      await supabaseRpc("update_travel_ledger_settings", namePayload);
-    } catch (fallbackError) {
-      if (!isSettingsRpcCompatibilityError(fallbackError)) throw fallbackError;
-      await supabaseRpc("update_travel_ledger_settings", basePayload);
+      await supabaseRpc("update_travel_ledger_settings", visualPayload);
+    } catch (error) {
+      if (!isSettingsRpcCompatibilityError(error)) throw error;
+      try {
+        await supabaseRpc("update_travel_ledger_settings", namePayload);
+      } catch (fallbackError) {
+        if (!isSettingsRpcCompatibilityError(fallbackError)) throw fallbackError;
+        await supabaseRpc("update_travel_ledger_settings", basePayload);
+      }
     }
+    state.lastSyncedAt = new Date().toISOString();
+    notifyLedgerChanged();
+  } finally {
+    leaveCloudBusy();
   }
-  state.lastSyncedAt = new Date().toISOString();
-  notifyLedgerChanged();
 }
 
 function isSettingsRpcCompatibilityError(error) {
@@ -1319,8 +1337,9 @@ async function syncCloudExpenseWithState(expenseId, { silent = false } = {}) {
   const expense = state.expenses.find((item) => item.id === expenseId);
   if (!expense) return true;
 
-  markExpenseSyncState(expenseId, "pending");
+  enterCloudBusy();
   try {
+    markExpenseSyncState(expenseId, "pending");
     await syncCloudExpense({ ...expense, syncState: "synced" });
     markExpenseSyncState(expenseId, "synced");
     return true;
@@ -1328,6 +1347,8 @@ async function syncCloudExpenseWithState(expenseId, { silent = false } = {}) {
     markExpenseSyncState(expenseId, "failed");
     if (!silent) showToast({ message: "云端保存失败，本地已保留，稍后会重试" });
     return false;
+  } finally {
+    leaveCloudBusy();
   }
 }
 
@@ -2288,7 +2309,7 @@ function scheduleCategoryEdgeFades() {
 }
 
 // 按横滚位置切换两侧渐隐：只在该侧仍有内容可滚时显示（iOS 边缘行为）。
-// can-fade-* 切到外层 .category-chips-fade（mask 挂在那里，而非滚动容器本身）。
+// can-fade-* 切到外层 .category-chips-fade（两端渐隐覆盖层挂在那里，而非滚动容器本身）。
 function updateCategoryEdgeFades() {
   const el = elements.categoryChips;
   if (!el) return;
@@ -2344,19 +2365,35 @@ function setupCategoryOverscroll(el) {
   };
 
   // ── 触摸拖动 ──
+  let startX = 0;
+  let startY = 0;
   let lastX = 0;
+  let gestureAxis = "";
   let dragging = false;
   el.addEventListener("touchstart", (e) => {
     if (e.touches.length !== 1) return;
     cancelSettle();
     paint();
-    lastX = e.touches[0].clientX;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    lastX = startX;
+    gestureAxis = "";
     dragging = true;
   }, { passive: true });
 
   el.addEventListener("touchmove", (e) => {
     if (!dragging || e.touches.length !== 1 || prefersReducedMotion()) return;
-    const x = e.touches[0].clientX;
+    const touch = e.touches[0];
+    const x = touch.clientX;
+    const totalX = x - startX;
+    const totalY = touch.clientY - startY;
+    if (!gestureAxis) {
+      if (Math.max(Math.abs(totalX), Math.abs(totalY)) < 7) return;
+      gestureAxis = Math.abs(totalX) > Math.abs(totalY) * 1.15 ? "horizontal" : "vertical";
+    }
+    /* 纵向意图完全交还给页面。没有方向锁时，类别带到达横向边缘后会在
+       touchmove 里 preventDefault，导致从胶囊上起手的页面滚动像被卡住。 */
+    if (gestureAxis !== "horizontal") return;
     const dx = x - lastX;
     lastX = x;
     if (raw > 0) { // 正从起点方向拉伸
@@ -2377,6 +2414,7 @@ function setupCategoryOverscroll(el) {
   const endDrag = () => {
     if (!dragging) return;
     dragging = false;
+    gestureAxis = "";
     springBack();
   };
   el.addEventListener("touchend", endDrag, { passive: true });
@@ -5917,6 +5955,16 @@ elements.mobileSubmitButton.addEventListener("click", () => {
   setMobilePanel("entry", { behavior: "auto", scroll: false });
   elements.expenseForm.requestSubmit();
 });
+elements.amountInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  elements.noteInput.focus();
+});
+elements.noteInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  elements.expenseForm.requestSubmit();
+});
 elements.amountInput.addEventListener("focus", updateAmountMotionState);
 elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
@@ -6006,15 +6054,28 @@ document.addEventListener("keydown", (event) => {
 
 function setupSubmitButtonSpotlight() {
   const buttons = [elements.submitButton, elements.mobileSubmitButton].filter(Boolean);
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const reset = () => {
+    buttons.forEach((btn) => {
+      btn.style.removeProperty("--mouse-x");
+      btn.style.removeProperty("--mouse-y");
+    });
+  };
   buttons.forEach((btn) => {
     btn.addEventListener("mousemove", (e) => {
+      if (!finePointer.matches) {
+        reset();
+        return;
+      }
       const rect = btn.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       btn.style.setProperty("--mouse-x", `${x}px`);
       btn.style.setProperty("--mouse-y", `${y}px`);
     });
+    btn.addEventListener("mouseleave", reset);
   });
+  finePointer.addEventListener?.("change", reset);
 }
 
 function spawnButtonParticles(btn, visual, themedGlow) {
@@ -6188,24 +6249,28 @@ function updateSyncLampDock(force = false) {
   let targetY = finalTextCenterY;
   if (elements.openSettingsButton) {
     const btnRect = elements.openSettingsButton.getBoundingClientRect();
-    /* 按钮内部 SF Symbol 图标自身的中心，比按钮盒中心更贴近视觉中心；
-       按钮盒可能带 padding/行高，导致盒中心与图标实际中心不一致。 */
-    const iconEl = elements.openSettingsButton.querySelector(".sf-icon, .sf-symbol") || elements.openSettingsButton;
-    const iconRect = iconEl.getBoundingClientRect();
+    /* 按钮内部图标自身的中心，比按钮盒中心更贴近视觉中心；
+       SF Symbol 与 SVG 是互斥的，不能只取 DOM 中排在前面的隐藏 SF 节点，
+       否则它的 0 高度会把目标 Y 算到按钮顶部。 */
+    const iconCandidates = elements.openSettingsButton.querySelectorAll(".sf-icon, .sf-symbol, .svg-icon");
+    let iconRect = btnRect;
+    for (const iconCandidate of iconCandidates) {
+      const candidateRect = iconCandidate.getBoundingClientRect();
+      if (candidateRect.width > 0 && candidateRect.height > 0) {
+        iconRect = candidateRect;
+        break;
+      }
+    }
     targetX = Math.min(targetX, btnRect.left - 10 - lampHalf);
     targetY = iconRect.top + iconRect.height / 2;
   }
 
-  /* 收起态胶囊收成 padding 0 11px 的小圆（边框在壳层不占位），灯芯在盒内 x≈16（11px padding + 半径）；
-     布局收缩延迟到淡出后才落地，但此处算的是终值坐标，与延迟无关；
-     竖直中心取同占 row 2 的切换条（尺寸不参与过渡，量到即终值），胶囊靠 align-items:center 与其同心 */
-  const panelSwitch = document.getElementById("mobilePanelSwitch");
+  /* 收起态胶囊收成 padding 0 11px 的小圆（边框在壳层不占位），灯芯在盒内 x≈16（11px padding + 半径）。
+     纵向基准直接取胶囊自身的 offset 位置：切换条可能仍在 grid 第 3 行，不能拿它的
+     offsetTop 推算灯位，否则会把停靠目标算到视口外。布局收缩延迟到淡出后才落地，
+     但此处算的是收缩后的胶囊基准与目标之间的位移，与延迟无关。 */
   const dotFinalX = headerRect.left + capsule.offsetLeft + 16;
-  const dotFinalY =
-    headerRect.top +
-    (panelSwitch
-      ? panelSwitch.offsetTop + panelSwitch.offsetHeight / 2
-      : capsule.offsetTop + capsule.offsetHeight / 2);
+  const dotFinalY = headerRect.top + capsule.offsetTop + capsule.offsetHeight / 2;
 
   header.style.setProperty("--sync-dock-x", `${targetX - dotFinalX}px`);
   header.style.setProperty("--sync-dock-y", `${targetY - dotFinalY}px`);
@@ -6228,10 +6293,16 @@ function setupScrollCollapse() {
         switchBeforeRect = mobilePanelSwitch.getBoundingClientRect();
       }
     },
-    /* 收起先算好停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算。
+    /* 收起先等 grid 行高落地后再算停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算。
        layout 改变后触发 FLIP，让切换器从旧位置平滑到新位置（纯 transform）。 */
     onChange: (collapsed) => {
-      if (collapsed) updateSyncLampDock(true);
+      if (collapsed) {
+        /* classList 刚切换时 offsetTop 仍可能是旧 grid 行的值；下一帧再量，
+           确保灯的基准中心和收缩后的胶囊位置一致，避免灯飞出视口。 */
+        window.requestAnimationFrame(() => {
+          if (appHeader.classList.contains("is-collapsed")) updateSyncLampDock(true);
+        });
+      }
       if (mobilePanelSwitch && switchBeforeRect) {
         settleMobilePanelSwitchLayout(mobilePanelSwitch, switchBeforeRect);
       }

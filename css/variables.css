@@ -311,6 +311,8 @@
   --ease-out-soft: cubic-bezier(0.20, 0.70, 0.24, 1);
   /* 触屏按压响应时长：按下即时压缩，松开走各自基础过渡回弹 */
   --press-motion: 90ms;
+  --touch-release-motion: 190ms;
+  --touch-release-easing: cubic-bezier(0.2, 0.72, 0.24, 1);
   --amount-motion: 580ms;
   --family-focus-motion: 713ms;
   --number-swap-motion: 980ms;

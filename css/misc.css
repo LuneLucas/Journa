@@ -2332,8 +2332,9 @@ label,
   grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
   grid-template-rows: 1fr;
   align-items: center;
-  width: 96px;
-  min-height: 78px;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
   overflow: hidden;
   border: 0;
   border-radius: 0;
@@ -2349,10 +2350,10 @@ label,
   z-index: 0;
   color: color-mix(in srgb, var(--settlement-target-color) 48%, var(--muted));
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 3.5rem;
+  font-size: 2rem;
   font-weight: 700;
   line-height: 1;
-  opacity: 0.16;
+  opacity: 0.22;
   pointer-events: none;
 }
 
@@ -2369,14 +2370,16 @@ label,
 .settlement-node-family strong {
   overflow: hidden;
   font-family: var(--font-body);
-  font-size: 1.22rem;
+  display: block;
+  max-width: 100%;
+  font-size: 0.92rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
-  writing-mode: vertical-rl;
-  text-orientation: upright;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
 }
 
 .settlement-node-from {
@@ -2384,7 +2387,7 @@ label,
   grid-row: 1;
   align-self: center;
   padding: 0;
-  transform: translateY(-6px);
+  transform: none;
 }
 
 .settlement-node-from strong {
@@ -2396,7 +2399,7 @@ label,
   grid-row: 1;
   align-self: center;
   padding: 0;
-  transform: translateY(6px);
+  transform: none;
 }
 
 .settlement-node-to strong {
@@ -3190,11 +3193,19 @@ label,
 
 /* ── 类别行末尾的「新增」胶囊：虚线描边表达“可添加”，随横滑条一起滚动 ── */
 /* 类别区「新增」入口：圆形 + 按钮，与内联新增表单同一行 */
-.category-add-area {
+/* 类别行：滚动的 chips 与「+」按钮同一行；+ 固定在行尾，不随横滑滚走。
+   桌面端允许换行（类别多到折行时 + 自然落到下一行）；移动端在 responsive.css
+   里改成 nowrap 且不换行（因为类别是横滑而非折行）。移动端的整行出血（负边距）
+   也在 responsive.css 的 @media(max-width:820px) 内。 */
+.category-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  /* 关键：本行是 .category-picker（grid）的子项，默认 min-width:auto 会被内部
+     nowrap 芯片的 max-content 撑大，导致整行溢出、+ 按钮被推出视口、横滑也无法
+     触发（滚动容器按内容贴合）。min-width:0 让它回到轨道宽度，内部才能溢出滚动。 */
+  min-width: 0;
 }
 
 .category-add-fab {
@@ -3258,10 +3269,11 @@ label,
   transform: rotate(45deg);
 }
 
-/* 内联新增表单在 .category-add-area 内占满剩余宽度（桌面/移动通用） */
-.category-add-area .inline-category-form {
-  flex: 1 1 auto;
-  min-width: 0;
+/* 内联新增表单现在是 .category-picker 的直接子元素（不再包在 .category-add-area 内），
+   占满整行宽度由 grid 父级决定；移动端展开/收起过渡见 responsive.css 的
+   .category-picker .inline-category-form（max-height 方案）。 */
+.category-picker > .inline-category-form {
+  margin-top: 8px;
 }
 
 /* ── 记账视图内的「最近记录」：提交后即时反馈，无需切到「数据」 ── */

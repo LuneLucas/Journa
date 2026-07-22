@@ -239,6 +239,7 @@ input[type="date"]:focus {
   position: relative;
   overflow: visible;
   isolation: isolate;
+  z-index: 1; /* 基础层级；选中/激活/最近态抬到 2，使光晕压在相邻芯片之上（修复层级问题） */
   min-height: 40px;
   max-width: 100%;
   border: none;
@@ -313,6 +314,15 @@ input[type="date"]:focus {
 
 .selectable-category-chip.is-recent:not(.is-selected)::after {
   opacity: 0.34;
+}
+
+/* 选中/激活/最近 的芯片抬升层级：各芯片 isolation:isolate 自成堆叠上下文，
+   不抬升时选中芯片的 ::after 光晕会被后序兄弟的实底盖住（即「层级不对」）。
+   这里统一抬到 2，光晕即可压在相邻芯片之上。 */
+.selectable-category-chip.is-selected,
+.selectable-category-chip.is-activating,
+.selectable-category-chip.is-recent {
+  z-index: 2;
 }
 
 .selectable-category-chip.is-selected {

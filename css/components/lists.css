@@ -136,7 +136,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
   border: none;
