@@ -1471,8 +1471,21 @@
      与原本 .category-chips-fade 单独出血的视觉效果一致。移动端类别横滑（不折行），
      所以行内不换行，+ 始终钉在行尾同行。 */
   .category-row {
+    position: relative;
+    --cat-dock-color: rgba(255, 252, 248, 0.96);
     margin: -24px -20px -14px;
     flex-wrap: nowrap;
+  }
+
+  .category-row::after {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    z-index: 3;
+    width: 84px;
+    background: linear-gradient(to right, transparent, var(--cat-dock-color) 38%);
+    content: "";
+    pointer-events: none;
   }
 
   /* 外层只负责两端渐隐覆盖层 + 占满行内剩余宽度；它本身不滚动，渐隐在静止元素上
@@ -1480,7 +1493,7 @@
      触控板横向滑动逐帧主线程重绘、不跟手的问题。 */
   .category-chips-fade {
     position: relative;
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     /* 关键：grid 子项默认 min-width:auto 会被内部 nowrap 芯片的 max-content 撑大
        （本应 330 的轨道被撑到 512），导致滚动容器"按内容宽度贴合"而不溢出——
        横滑永远无法触发。min-width:0 让它回到轨道宽度，内部芯片才会溢出并滚动。 */
@@ -1490,8 +1503,8 @@
        彻底无法滚动（mask 把子树钉成单层光栅，scroll 不重绘）；且 mask 的 alpha
        会把选中芯片的光晕在边缘裁切/扭曲（即「阴影异常」）。改用与页面底色同色的
        渐隐覆盖层后，横滑恢复正常，光晕也不再被裁。 */
-    --cat-edge-fade: 36px;
-    --cat-fade-color: var(--bg);
+    --cat-edge-fade: 28px;
+    --cat-fade-color: rgba(255, 252, 248, 0.94);
   }
 
   .category-chips-fade::before,
@@ -1513,7 +1526,7 @@
   }
 
   .category-chips-fade::after {
-    right: 0;
+    right: 58px;
     background: linear-gradient(to left, var(--cat-fade-color), transparent);
   }
 
@@ -1534,8 +1547,8 @@
        JS 橡皮筋另有方向锁，只会拦截明确的横向越界手势。 */
     touch-action: pan-x pan-y;
     margin: 0;
-    padding: 28px 20px 24px;
-    scroll-padding-inline: 20px;
+    padding: 24px 76px 20px 20px;
+    scroll-padding-inline: 20px 76px;
     scrollbar-width: none;
     overscroll-behavior-x: contain; /* 横滚到头不带动页面；桌面浏览器原生橡皮筋由此接管 */
     -webkit-overflow-scrolling: touch;
@@ -1557,6 +1570,16 @@
     line-height: 1.1;
   }
 
+  /* 新增入口叠在分类带末端，不再单独占出一整块白色列；末端留白保证最后一个
+     类别完整滚出按钮下方，按钮本身仍固定可见。 */
+  .category-add-fab {
+    position: absolute;
+    inset-block: 0;
+    right: 14px;
+    z-index: 4;
+    margin-block: auto;
+  }
+
   .family-tag,
   .selectable-category-chip {
     -webkit-tap-highlight-color: transparent;
@@ -1567,7 +1590,7 @@
      展开与收起同速（420ms），缓动统一用 --settle。 */
   .category-picker .inline-category-form {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     max-height: 0;
     margin-top: 0;
@@ -1593,6 +1616,12 @@
   .category-picker .inline-category-form input {
     flex: 1 1 120px;
     min-width: 0;
+  }
+
+  .category-picker .inline-category-form .secondary-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 84px;
   }
 
   .split-scope-toggle {

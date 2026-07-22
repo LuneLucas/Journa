@@ -949,6 +949,26 @@
     color: color-mix(in srgb, var(--category-text) 88%, #101412);
   }
 
+  .category-chips-fade {
+    --cat-fade-color: rgba(22, 22, 24, 0.96);
+  }
+
+  .category-row {
+    --cat-dock-color: rgba(22, 22, 24, 0.97);
+  }
+
+  .category-add-fab,
+  .category-picker.is-adding .category-add-fab {
+    border-color: color-mix(in srgb, var(--theme-color) 30%, var(--dark-hairline));
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.045)),
+      color-mix(in srgb, var(--theme-color) 10%, var(--dark-card));
+    color: color-mix(in srgb, var(--theme-color) 54%, white);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 10px 22px -16px color-mix(in srgb, var(--theme-color) 48%, transparent);
+  }
+
   .empty-state small {
     color: rgba(232, 236, 233, 0.62);
   }

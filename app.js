@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-mobile-touch-v1-20260722";
+const APP_VERSION = "journa-safari-header-category-polish-v4-20260722";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -6162,7 +6162,11 @@ function spawnButtonParticles(btn, visual, themedGlow) {
 
 /* 滚动折叠通用逻辑：RAF 节流 + 滞回阈值，避免临界点抖动闪烁。
    scrollTarget 提供 scrollTop 的来源；window 场景传 window 本身（读 window.scrollY）。 */
-function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThreshold, onBeforeChange, onChange }) {
+function attachCollapseOnScroll(
+  scrollTarget,
+  collapseEl,
+  { onThreshold, offThreshold, shouldSkipChange, onBeforeChange, onChange }
+) {
   if (!scrollTarget || !collapseEl) return;
   let collapsed = false;
   let scrollFrame = 0;
@@ -6170,8 +6174,10 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
     scrollTarget === window ? window.scrollY : scrollTarget.scrollTop;
   const sync = () => {
     scrollFrame = 0;
-    const shouldCollapse = collapsed ? readScrollTop() > offThreshold : readScrollTop() > onThreshold;
+    const scrollTop = readScrollTop();
+    const shouldCollapse = collapsed ? scrollTop > offThreshold : scrollTop > onThreshold;
     if (shouldCollapse === collapsed) return;
+    if (shouldSkipChange?.({ collapsed, shouldCollapse, scrollTop })) return;
     onBeforeChange?.(shouldCollapse);
     collapsed = shouldCollapse;
     collapseEl.classList.toggle("is-collapsed", collapsed);
@@ -6185,26 +6191,116 @@ function attachCollapseOnScroll(scrollTarget, collapseEl, { onThreshold, offThre
   sync();
 }
 
-/* 收起头部时 mobile-panel-switch 会从 grid 第 3 行移到第 2 行。
-   先量出旧位置，再让它从旧位置 FLIP 到新位置，避免胶囊熔化时切换条吃到一次瞬移。 */
-function settleMobilePanelSwitchLayout(panelSwitch, beforeRect) {
-  if (prefersReducedMotion() || !panelSwitch || !beforeRect) return;
-  const afterRect = panelSwitch.getBoundingClientRect();
-  const deltaY = beforeRect.top - afterRect.top;
-  if (Math.abs(deltaY) < 0.5) return;
-  /* 经典 FLIP + CSS transition（双 rAF）：
-     1) 内联瞬间把切换器放回“旧位置”（transition:none + 强制 reflow 提交起始帧）；
-     2) 下一帧恢复 CSS transition 并清掉内联 transform → 从旧位置平滑补间到新位置。
-     不用 WAAPI：它在 iOS Safari 上对 sticky+contain+translateZ(0) 元素静默不播，
-     正是“切换器补位时突然卡上去”的根因；CSS transition 在本设备已被胶囊
-     熔化证明可靠。 */
-  panelSwitch.style.transition = "none";
-  panelSwitch.style.transform = `translate3d(0, ${deltaY}px, 0)`;
-  void panelSwitch.offsetWidth; // 强制同步 reflow，提交起始帧
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      panelSwitch.style.transition = "";   // 恢复 .mobile-panel-switch 上的 transition: transform
-      panelSwitch.style.transform = "";  // 回到基础 translateZ(0)（= 新位置）
+let mobileHeaderLayoutFlipRunId = 0;
+let mobileHeaderLayoutFlipTimer = 0;
+let mobileHeaderScrollAnchorTimer = 0;
+let mobileHeaderScrollAnchorRestore = null;
+
+/* Safari 在 sticky 头部向下展开时，可能为了维持正文锚点而同步抬高 scrollY。
+   这会把本应只有一次的布局 FLIP 拆成“展开 + 浏览器补偿”两次位移。
+   展开补间期间临时关闭滚动锚定，结束后原样恢复页面已有的内联设置。 */
+function holdMobileHeaderScrollAnchor() {
+  window.clearTimeout(mobileHeaderScrollAnchorTimer);
+  mobileHeaderScrollAnchorTimer = 0;
+  if (mobileHeaderScrollAnchorRestore) return;
+  mobileHeaderScrollAnchorRestore = {
+    root: document.documentElement.style.overflowAnchor,
+    body: document.body?.style.overflowAnchor ?? ""
+  };
+  document.documentElement.style.overflowAnchor = "none";
+  if (document.body) document.body.style.overflowAnchor = "none";
+}
+
+function releaseMobileHeaderScrollAnchor(delay = 0) {
+  window.clearTimeout(mobileHeaderScrollAnchorTimer);
+  mobileHeaderScrollAnchorTimer = 0;
+  if (!mobileHeaderScrollAnchorRestore) return;
+  const restore = () => {
+    if (!mobileHeaderScrollAnchorRestore) return;
+    document.documentElement.style.overflowAnchor = mobileHeaderScrollAnchorRestore.root;
+    if (document.body) document.body.style.overflowAnchor = mobileHeaderScrollAnchorRestore.body;
+    mobileHeaderScrollAnchorRestore = null;
+    mobileHeaderScrollAnchorTimer = 0;
+  };
+  if (delay > 0) {
+    mobileHeaderScrollAnchorTimer = window.setTimeout(restore, delay);
+  } else {
+    restore();
+  }
+}
+
+/* 头部收起会同时改变切换器和下方页面的文档流位置。只补切换器会让 Safari
+   在同一帧把 .app-view 瞬移到新位置，视觉上仍像“tab 带着页面跳了一下”。
+   这里让两者共用同一次 FLIP：先冻结到各自旧屏幕坐标，再同步落到新布局。 */
+function settleMobileHeaderLayout(layoutItems, { pinScrollTop = null } = {}) {
+  const items = (layoutItems || []).filter((item) => item?.element && item?.beforeRect);
+  const runId = ++mobileHeaderLayoutFlipRunId;
+  window.clearTimeout(mobileHeaderLayoutFlipTimer);
+  mobileHeaderLayoutFlipTimer = 0;
+
+  /* 快速反向滚动时，先摘掉上一轮的过渡和反向 transform，再量当前布局终点。
+     beforeRect 已记录上一帧真实可见坐标；同步重置不会在浏览器绘制前泄露。 */
+  items.forEach(({ element }) => {
+    element.style.transition = "none";
+    element.style.transform = "";
+    element.style.willChange = "";
+  });
+  if (!items.length) return;
+  void items[0].element.offsetWidth;
+
+  /* 强制布局可能正好触发 Safari 的滚动锚定。此处仍在同一个 scroll 回调任务内，
+     用户手势不可能插入；只在展开方向把浏览器自动改写的 scrollY 还原，避免
+     FLIP 起点之后又多出一段整页位移。 */
+  if (Number.isFinite(pinScrollTop) && Math.abs(window.scrollY - pinScrollTop) >= 0.5) {
+    window.scrollTo(window.scrollX, pinScrollTop);
+  }
+  if (prefersReducedMotion()) {
+    items.forEach(({ element }) => { element.style.transition = ""; });
+    return;
+  }
+
+  const flips = items
+    .map(({ element, beforeRect }) => {
+      const afterRect = element.getBoundingClientRect();
+      return { element, deltaY: beforeRect.top - afterRect.top };
+    })
+    .filter(({ deltaY }) => Math.abs(deltaY) >= 0.5);
+  const flipElements = new Set(flips.map(({ element }) => element));
+  items
+    .filter(({ element }) => !flipElements.has(element))
+    .forEach(({ element }) => {
+      element.style.transition = "";
+      element.style.transform = "";
+      element.style.willChange = "";
+    });
+  if (!flips.length) {
+    return;
+  }
+
+  flips.forEach(({ element, deltaY }) => {
+    element.style.willChange = "transform";
+    element.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+  });
+  void flips[0].element.offsetWidth;
+
+  /* CSS transition 比 WAAPI 更稳：iOS Safari 曾对 sticky + contain 的切换器
+     静默跳过 WAAPI。两层使用完全相同的 220ms 单调缓出，避免一前一后落位。 */
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      if (runId !== mobileHeaderLayoutFlipRunId) return;
+      flips.forEach(({ element }) => {
+        element.style.transition = "transform var(--mobile-panel-flip-motion, 220ms) cubic-bezier(0.22, 0.74, 0.24, 1)";
+        element.style.transform = "";
+      });
+      mobileHeaderLayoutFlipTimer = window.setTimeout(() => {
+        if (runId !== mobileHeaderLayoutFlipRunId) return;
+        flips.forEach(({ element }) => {
+          element.style.transition = "";
+          element.style.transform = "";
+          element.style.willChange = "";
+        });
+        mobileHeaderLayoutFlipTimer = 0;
+      }, 280);
     });
   });
 }
@@ -6280,21 +6376,39 @@ function setupScrollCollapse() {
   // 主页面头部滚动监听
   const appHeader = document.querySelector(".app-header");
   const mobilePanelSwitch = document.getElementById("mobilePanelSwitch");
+  const appView = document.querySelector(".app-view");
   const isMobile = () => window.matchMedia?.("(max-width: 820px), (pointer: coarse)").matches ?? false;
-  let switchBeforeRect = null;
+  let headerLayoutBefore = null;
+  let headerScrollBefore = null;
+  let suppressRecollapseUntil = 0;
   attachCollapseOnScroll(window, appHeader, {
     onThreshold: 56,
     offThreshold: 24,
-    /* 在 layout 改变前先记录切换器位置，用 FLIP 补间其纵向位移。
+    /* 展开后的首个 Safari scroll 事件可能只是页头增高产生的锚定补偿。
+       仅跳过极短的反向重触发；真实的后续下滑会在下一帧窗口后正常响应。 */
+    shouldSkipChange: ({ shouldCollapse }) =>
+      isMobile() && shouldCollapse && performance.now() < suppressRecollapseUntil,
+    /* 在 layout 改变前同时记录切换器和页面位置，用同一轮 FLIP 补间纵向位移。
        之前靠 CSS grid-template-rows transition 做平滑，但在 iOS Safari
        上布局属性逐帧插值会触发重排，导致切换器滚动时明显跳动。 */
     onBeforeChange: (willCollapse) => {
-      if (mobilePanelSwitch) {
-        switchBeforeRect = mobilePanelSwitch.getBoundingClientRect();
+      if (!isMobile()) {
+        headerLayoutBefore = null;
+        headerScrollBefore = null;
+        return;
       }
+      if (willCollapse) {
+        releaseMobileHeaderScrollAnchor();
+      } else {
+        holdMobileHeaderScrollAnchor();
+      }
+      headerScrollBefore = window.scrollY;
+      headerLayoutBefore = [mobilePanelSwitch, appView]
+        .filter(Boolean)
+        .map((element) => ({ element, beforeRect: element.getBoundingClientRect() }));
     },
     /* 收起先等 grid 行高落地后再算停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算。
-       layout 改变后触发 FLIP，让切换器从旧位置平滑到新位置（纯 transform）。 */
+       layout 改变后触发同步 FLIP，让切换器与页面从旧位置一起平滑落到新位置。 */
     onChange: (collapsed) => {
       if (collapsed) {
         /* classList 刚切换时 offsetTop 仍可能是旧 grid 行的值；下一帧再量，
@@ -6303,10 +6417,13 @@ function setupScrollCollapse() {
           if (appHeader.classList.contains("is-collapsed")) updateSyncLampDock(true);
         });
       }
-      if (mobilePanelSwitch && switchBeforeRect) {
-        settleMobilePanelSwitchLayout(mobilePanelSwitch, switchBeforeRect);
-      }
-      switchBeforeRect = null;
+      if (!collapsed) suppressRecollapseUntil = performance.now() + 96;
+      settleMobileHeaderLayout(headerLayoutBefore, {
+        pinScrollTop: collapsed ? null : headerScrollBefore
+      });
+      if (!collapsed) releaseMobileHeaderScrollAnchor(300);
+      headerLayoutBefore = null;
+      headerScrollBefore = null;
     }
   });
 

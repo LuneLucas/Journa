@@ -3191,8 +3191,7 @@ label,
   scroll-snap-type: none;
 }
 
-/* ── 类别行末尾的「新增」胶囊：虚线描边表达“可添加”，随横滑条一起滚动 ── */
-/* 类别区「新增」入口：圆形 + 按钮，与内联新增表单同一行 */
+/* 类别区「新增」入口：与类别芯片共用同一套轻量表面语言。 */
 /* 类别行：滚动的 chips 与「+」按钮同一行；+ 固定在行尾，不随横滑滚走。
    桌面端允许换行（类别多到折行时 + 自然落到下一行）；移动端在 responsive.css
    里改成 nowrap 且不换行（因为类别是横滑而非折行）。移动端的整行出血（负边距）
@@ -3217,15 +3216,28 @@ label,
   justify-content: center;
   padding: 0;
   border-radius: var(--radius-pill);
-  border: 1px dashed color-mix(in oklch, var(--theme-color) 42%, var(--line));
-  background: color-mix(in oklch, var(--theme-color) 7%, transparent);
+  border: 1px solid color-mix(in oklch, var(--theme-color) 24%, var(--line));
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.54)),
+    color-mix(in oklch, var(--theme-color) 9%, transparent);
   color: color-mix(in oklch, var(--theme-color-strong) 88%, var(--ink));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 9px 20px -16px color-mix(in oklch, var(--theme-color) 58%, transparent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition:
     transform var(--motion-fast) var(--spring),
     border-color var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring);
+    background-color var(--motion-fast) var(--spring),
+    box-shadow var(--motion-fast) var(--spring);
+}
+
+.category-add-fab:hover {
+  border-color: color-mix(in oklch, var(--theme-color) 40%, var(--line));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 11px 24px -16px color-mix(in oklch, var(--theme-color) 72%, transparent);
 }
 
 .category-add-fab:active {
@@ -3267,6 +3279,13 @@ label,
 /* 展开时 + 旋转成 ×，兼作收起入口 */
 .category-picker.is-adding .category-add-fab-icon {
   transform: rotate(45deg);
+}
+
+.category-picker.is-adding .category-add-fab {
+  border-color: color-mix(in oklch, var(--theme-color) 48%, var(--line));
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.46)),
+    color-mix(in oklch, var(--theme-color) 18%, transparent);
 }
 
 /* 内联新增表单现在是 .category-picker 的直接子元素（不再包在 .category-add-area 内），
