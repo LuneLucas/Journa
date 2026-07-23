@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>类别横滑 + +按钮底部 — Before/After 对比</title>
+<link rel="stylesheet" href="css/variables.css" />
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/layout.css" />
+<link rel="stylesheet" href="css/animations.css" />
+<link rel="stylesheet" href="css/misc.css" />
+<link rel="stylesheet" href="css/components/forms.css" />
+<link rel="stylesheet" href="css/components/buttons.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+<link rel="stylesheet" href="css/dark.css" />
+<style>
+  body { padding: 24px 16px 60px; }
+  .row { max-width: 390px; margin: 0 auto 28px; }
+  .stage {
+    padding: 18px 18px 20px;
+    border-radius: var(--radius-xl);
+    background: var(--bg-elev, var(--surface));
+    box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 12px 30px -18px rgba(0,0,0,0.18);
+    margin-bottom: 18px;
+  }
+  .stage h2 { margin: 0 0 12px; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .stage .tag { display:inline-block; padding:2px 8px; border-radius: 999px; font-size:11px; margin-left:6px; background: rgba(0,0,0,0.06); color: var(--muted); font-weight: 500; }
+  .stage .tag.after { background: rgba(79, 155, 120, 0.18); color: #2f6b50; }
+  fieldset.category-picker { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px; margin: 0; background: var(--surface-soft, #fff); }
+  fieldset.category-picker legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
+  .selectable-category-chip { /* 让 chips 容器里有真实可滚的若干 chip，最后一个被压在模糊区 */
+    flex: 0 0 auto;
+  }
+
+  /* BEFORE 模拟：恢复旧版只覆盖 44px 行高的模糊 */
+  .before-mode .category-chips-fade::after {
+    right: -72px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100px !important;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.08) 26%, rgba(0,0,0,0.48) 58%, #000 82%, #000 100%) !important;
+    mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.08) 26%, rgba(0,0,0,0.48) 58%, #000 82%, #000 100%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(0.84) !important;
+    backdrop-filter: blur(8px) saturate(0.84) !important;
+    -webkit-mask-composite: source-over !important;
+    mask-composite: add !important;
+  }
+</style>
+</head>
+<body class="theme-clay">
+  <div class="row">
+    <div class="stage before-mode">
+      <h2>浅色 · 修改前 <span class="tag">top:0 / bottom:0 · 44px</span></h2>
+      <fieldset class="category-picker">
+        <legend>类别</legend>
+        <div class="category-control-row">
+          <div class="category-chips-fade can-fade-end">
+            <div class="selectable-category-chips">
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>餐饮</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>住宿</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>门票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>交通</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>购物</span></button>
+              <button class="selectable-category-chip is-selected" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>机票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>杂项</span></button>
+            </div>
+          </div>
+          <div class="category-add-control">
+            <button class="category-add-fab" type="button" aria-label="新增类别">
+              <span class="category-add-fab-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="stage">
+      <h2>浅色 · 修改后 <span class="tag after">top:-28 / bottom:-28 · 100px + 纵羽化</span></h2>
+      <fieldset class="category-picker">
+        <legend>类别</legend>
+        <div class="category-control-row">
+          <div class="category-chips-fade can-fade-end">
+            <div class="selectable-category-chips">
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>餐饮</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>住宿</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>门票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>交通</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>购物</span></button>
+              <button class="selectable-category-chip is-selected" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>机票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>杂项</span></button>
+            </div>
+          </div>
+          <div class="category-add-control">
+            <button class="category-add-fab" type="button" aria-label="新增类别">
+              <span class="category-add-fab-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <div class="row" data-theme="harbor">
+    <div class="stage before-mode">
+      <h2>深色 · 修改前 <span class="tag">top:0 / bottom:0 · 44px</span></h2>
+      <fieldset class="category-picker">
+        <legend>类别</legend>
+        <div class="category-control-row">
+          <div class="category-chips-fade can-fade-end">
+            <div class="selectable-category-chips">
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>餐饮</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>住宿</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>门票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>交通</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>购物</span></button>
+              <button class="selectable-category-chip is-selected" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>机票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>杂项</span></button>
+            </div>
+          </div>
+          <div class="category-add-control">
+            <button class="category-add-fab" type="button" aria-label="新增类别">
+              <span class="category-add-fab-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="stage">
+      <h2>深色 · 修改后 <span class="tag after">top:-28 / bottom:-28 · 100px + 纵羽化</span></h2>
+      <fieldset class="category-picker">
+        <legend>类别</legend>
+        <div class="category-control-row">
+          <div class="category-chips-fade can-fade-end">
+            <div class="selectable-category-chips">
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>餐饮</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>住宿</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>门票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>交通</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#6a8fb0;--category-text:#16263a;"><span>购物</span></button>
+              <button class="selectable-category-chip is-selected" type="button" style="--category-gradient:#b06a78;--category-text:#3a1620;"><span>机票</span></button>
+              <button class="selectable-category-chip" type="button" style="--category-gradient:#4f9b78;--category-text:#143025;"><span>杂项</span></button>
+            </div>
+          </div>
+          <div class="category-add-control">
+            <button class="category-add-fab" type="button" aria-label="新增类别">
+              <span class="category-add-fab-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+</body>
+</html>

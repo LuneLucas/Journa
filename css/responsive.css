@@ -38,6 +38,9 @@
      --mobile-header-top(=13px+safe-area-top) 推到刘海下方，原生全屏感。 */
   :root {
     --mobile-shell-top: 0px;
+    --control-height: 46px;
+    --control-gap: 10px;
+    --panel-padding: 16px;
   }
 
   /* 页面级左右滑动全部屏蔽：根滚动只保留纵向。clip 不产生新滚动容器（不影响
@@ -837,6 +840,7 @@
   .app-view.is-mobile-panel-switching-out .entry-panel,
   .app-view.is-mobile-panel-switching-out .ledger-section,
   .app-view.is-mobile-panel-switching-out .insights-panel {
+    will-change: opacity, transform, filter;
     animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 100ms) cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
@@ -846,6 +850,7 @@
     /* 外阴影不再单独做 keyframes：卡片自身 box-shadow 是多层（浅色双/深色三，
        且黑暗模式各卡片层数不一），none→多层阴影无法插值，会在动画末帧“啪”地
        弹出。改为随 mobile-panel-fade-in 的 opacity 一起淡入，平滑且跨主题/跨卡片安全。 */
+    will-change: opacity, transform, filter;
     animation:
       mobile-panel-fade-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
@@ -1285,8 +1290,8 @@
     100% { opacity: 1; transform: scale(1); }
   }
 
-  /* 只动 opacity/transform（全程合成器合成）；不要在这两组 keyframes 里加
-     filter/blur——对整个面板做 filter 动画会逐帧重新光栅化，移动端明显掉帧 */
+  /* soft 切换只在短时面板进出中启用，模糊半径很小且不会进入静止态；不对常态
+     卡片使用 backdrop-filter，避免滚动时持续触发大面积重绘。 */
   .app-view {
     --switch-out-x: -12px;
     --switch-in-x: 18px;
@@ -1302,11 +1307,13 @@
   @keyframes mobile-panel-fade-out {
     from {
       opacity: 1;
+      filter: blur(0);
       transform: translate(0, 0);
     }
 
     to {
       opacity: 0;
+      filter: blur(var(--soft-transition-blur));
       transform: translate(var(--switch-out-x), var(--switch-out-y));
     }
   }
@@ -1314,11 +1321,13 @@
   @keyframes mobile-panel-fade-in {
     from {
       opacity: 0;
+      filter: blur(var(--soft-transition-blur));
       transform: translate(var(--switch-in-x), var(--switch-in-y));
     }
 
     to {
       opacity: 1;
+      filter: blur(0);
       transform: translate(0, 0);
     }
   }
@@ -1330,7 +1339,7 @@
   .entry-panel,
   .insights-panel,
   .ledger-section {
-    padding: 18px;
+    padding: var(--panel-padding);
     border-radius: var(--radius-xl);
   }
 
@@ -1352,7 +1361,7 @@
 
   .family-tag {
     width: 100%;
-    min-height: 46px;
+    min-height: var(--control-height);
     justify-content: center;
     padding: 4px 8px;
     font-size: 0.9rem;
@@ -1379,7 +1388,9 @@
 
   /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
   .amount-label {
-    padding: 15px 19px 14px;
+    grid-template-rows: minmax(16px, auto) minmax(66px, 1fr);
+    min-height: 108px;
+    padding: 13px 16px 12px;
     border-radius: var(--radius-xl);
   }
 
@@ -1394,7 +1405,7 @@
   }
 
   .amount-label input {
-    height: 72px;
+    height: 58px;
     padding: 0 12px;
     font-size: clamp(2.2rem, 11vw, 3.5rem);
     line-height: normal;
@@ -1410,7 +1421,11 @@
 
   .expense-form {
     grid-template-columns: minmax(126px, 0.86fr) minmax(0, 1.14fr);
-    gap: 12px;
+    gap: var(--control-gap);
+  }
+
+  .amount-field {
+    min-height: 66px;
   }
 
   .date-label,
@@ -1467,25 +1482,10 @@
     overflow: visible;
   }
 
-  /* 整行出血挂到 .category-row 上：让类别行（含行尾的 + 按钮）与面板左右边缘齐平，
-     与原本 .category-chips-fade 单独出血的视觉效果一致。移动端类别横滑（不折行），
-     所以行内不换行，+ 始终钉在行尾同行。 */
-  .category-row {
-    position: relative;
-    --cat-dock-color: rgba(255, 252, 248, 0.96);
-    margin: -24px -20px -14px;
-    flex-wrap: nowrap;
-  }
-
-  .category-row::after {
-    position: absolute;
-    inset-block: 0;
-    right: 0;
-    z-index: 3;
-    width: 84px;
-    background: linear-gradient(to right, transparent, var(--cat-dock-color) 38%);
-    content: "";
-    pointer-events: none;
+  /* 类别横滑带与 + 共用面板内容宽度；按钮沿用其他控件的 16px 内容边界，
+     不再向父卡片圆角外沿出血。 */
+  .category-control-row {
+    margin: 0;
   }
 
   /* 外层只负责两端渐隐覆盖层 + 占满行内剩余宽度；它本身不滚动，渐隐在静止元素上
@@ -1493,52 +1493,117 @@
      触控板横向滑动逐帧主线程重绘、不跟手的问题。 */
   .category-chips-fade {
     position: relative;
-    flex: 1 1 100%;
     /* 关键：grid 子项默认 min-width:auto 会被内部 nowrap 芯片的 max-content 撑大
        （本应 330 的轨道被撑到 512），导致滚动容器"按内容宽度贴合"而不溢出——
        横滑永远无法触发。min-width:0 让它回到轨道宽度，内部芯片才会溢出并滚动。 */
     min-width: 0;
-    /* 两端渐隐用伪元素色块覆盖层，而非 mask-image：
+    /* 标签内容在自己的网格列内结束，不伸进 + 下方，避免文字叠穿按钮。 */
+    margin-right: 0;
+    /* 左侧渐隐保留轻量色块，右侧改用透明 backdrop-filter + mask：
        iOS/WebKit 上「mask 祖先 + 合成层滚动子元素(translateZ(0))」会让横滑容器
        彻底无法滚动（mask 把子树钉成单层光栅，scroll 不重绘）；且 mask 的 alpha
-       会把选中芯片的光晕在边缘裁切/扭曲（即「阴影异常」）。改用与页面底色同色的
-       渐隐覆盖层后，横滑恢复正常，光晕也不再被裁。 */
-    --cat-edge-fade: 28px;
+       会把选中芯片的光晕在边缘裁切/扭曲（即「阴影异常」）。右侧伪元素只负责
+       采样并模糊标签，不绘制实体底色。 */
+    --cat-edge-fade: 24px;
     --cat-fade-color: rgba(255, 252, 248, 0.94);
   }
 
-  .category-chips-fade::before,
-  .category-chips-fade::after {
+  .category-chips-fade::before {
+    /* 左端 fade：垂直方向扩到 chips 选中态光晕的 ±40px 安全区（与容器
+       padding 同步），让最左 chips 的光晕也能被遮罩柔化。
+       垂直 mask 让上下 ±18% 渐入渐出，消除 row 上下矩形截断。 */
     content: "";
     position: absolute;
-    top: 0;
-    bottom: 0;
+    left: 0;
+    top: -40px;
+    bottom: -40px;
     width: var(--cat-edge-fade);
     pointer-events: none;
     opacity: 0;
     transition: opacity 220ms var(--settle);
     z-index: 3;
-  }
-
-  .category-chips-fade::before {
-    left: 0;
     background: linear-gradient(to right, var(--cat-fade-color), transparent);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 18%,
+      black 82%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 18%,
+      black 82%,
+      transparent 100%
+    );
   }
 
-  .category-chips-fade::after {
-    right: 58px;
-    background: linear-gradient(to left, var(--cat-fade-color), transparent);
+  /* 右端 fade 移到 .category-control-row::after：只有 row 层级才能水平
+     跨过 8px gap、延伸到 + 按钮所在列，让 + 按钮的顶部/底部（光晕范围）
+     也有渐隐过渡——+ 按钮的玻璃胶囊（z-index:5 + backdrop-filter）盖住
+     fade 中部，按钮本身仍清晰，但上下「空白安全区」里能看到渐隐延伸到
+     行边界，形成统一的玻璃尾端。
+     水平 linear-gradient 只解决左右渐隐，配上垂直 mask（±18% 渐入渐出）
+     才能消除 row 上下 ±40px 处的「直角阴影截断」——mask 单独用无
+     backdrop-filter，不会触发 WebKit 矩形合成层 bug（design-qa.md P1）。
+     宽度 = 118 chips + 8 gap + 44 button = 170px，比之前 148px 更厚，
+     让 fade 在 + 按钮左侧的可见部分更宽、连续感更强。
+     保持 8px 网格间距；filter:blur(2px) 仅做颜色过渡的轻微柔化。 */
+  .category-control-row::after {
+    content: "";
+    position: absolute;
+    display: block;
+    top: -40px;
+    bottom: -40px;
+    left: auto;
+    right: 0;
+    width: 170px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 220ms var(--settle);
+    z-index: 3;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      color-mix(in srgb, var(--cat-fade-color) 28%, transparent) 25%,
+      color-mix(in srgb, var(--cat-fade-color) 58%, transparent) 50%,
+      color-mix(in srgb, var(--cat-fade-color) 85%, transparent) 75%,
+      var(--cat-fade-color) 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 18%,
+      black 82%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 18%,
+      black 82%,
+      transparent 100%
+    );
+    filter: blur(2px);
   }
 
   .category-chips-fade.can-fade-start::before {
     opacity: 1;
   }
 
-  .category-chips-fade.can-fade-end::after {
+  .category-control-row.can-fade-end::after {
     opacity: 1;
   }
 
-  .selectable-category-chips {
+  /* 展开/收起 Morph 时，新增胶囊接管整条轨道；此时撤销关闭态的出血，避免
+     隐藏的横滑带参与 FLIP 测量。 */
+  .category-picker.is-adding .category-chips-fade,
+  .category-picker.is-category-morph-closing .category-chips-fade {
+    margin-right: 0;
+  }
+
+  .category-control-row .selectable-category-chips {
     display: flex;
     flex-wrap: nowrap;
     gap: 8px;
@@ -1546,9 +1611,14 @@
     /* 同时声明横纵原生平移：横向由类别带消费，纵向可继续滚动页面。
        JS 橡皮筋另有方向锁，只会拦截明确的横向越界手势。 */
     touch-action: pan-x pan-y;
-    margin: 0;
-    padding: 24px 76px 20px 20px;
-    scroll-padding-inline: 20px 76px;
+    /* 横向滚动容器会连带裁剪纵向溢出；选中态的 42px 光晕实际可见范围
+       ~40px（含 Gaussian 尾部），28px padding 会刚好截在光晕还 30-50%
+       不透明的位置形成「直角截断」。给到 40px 让光晕在容器内基本消散
+       干净，再用负外边距抵消新增空间，保持类别行仍是 44px 布局高度。 */
+    height: auto;
+    margin: -40px 0;
+    padding: 40px 20px;
+    scroll-padding-inline: 20px;
     scrollbar-width: none;
     overscroll-behavior-x: contain; /* 横滚到头不带动页面；桌面浏览器原生橡皮筋由此接管 */
     -webkit-overflow-scrolling: touch;
@@ -1558,7 +1628,28 @@
     -webkit-transform: translateZ(0);
   }
 
-  .selectable-category-chips::-webkit-scrollbar {
+  /* + 是类别尾部入口：与 chip 共用玻璃边光，稳定关闭态弱化描边和图标；
+     展开/关闭 Morph 期间仍使用原有胶囊样式。 */
+  .category-add-control {
+    position: relative;
+    z-index: 5;
+  }
+
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--theme-color) 6%, rgba(255, 255, 255, 0.34));
+    -webkit-backdrop-filter: blur(12px) saturate(1.12);
+    backdrop-filter: blur(12px) saturate(1.12);
+    box-shadow: var(--glass-edge);
+  }
+
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-fab {
+    position: relative;
+    z-index: 1;
+    color: color-mix(in oklch, var(--theme-color-strong) 42%, var(--muted));
+  }
+
+  .category-control-row .selectable-category-chips::-webkit-scrollbar {
     display: none;
   }
 
@@ -1570,62 +1661,13 @@
     line-height: 1.1;
   }
 
-  /* 新增入口叠在分类带末端，不再单独占出一整块白色列；末端留白保证最后一个
-     类别完整滚出按钮下方，按钮本身仍固定可见。 */
-  .category-add-fab {
-    position: absolute;
-    inset-block: 0;
-    right: 14px;
-    z-index: 4;
-    margin-block: auto;
-  }
-
   .family-tag,
   .selectable-category-chip {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* 移动端：点类别行末尾的「新增」胶囊后，就地平滑展开内联新增表单
-     用 max-height + opacity 过渡，避免 display 硬切换的瞬弹/瞬收。
-     展开与收起同速（420ms），缓动统一用 --settle。 */
-  .category-picker .inline-category-form {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 8px;
-    max-height: 0;
-    margin-top: 0;
-    opacity: 0;
-    overflow: hidden;
-    transform: translateY(-4px);
-    pointer-events: none;
-    transition: max-height 280ms var(--settle),
-                opacity 220ms var(--settle),
-                margin-top 280ms var(--settle),
-                transform 220ms var(--settle);
-  }
-
-  .category-picker.is-adding .inline-category-form {
-    max-height: 96px;
-    margin-top: 4px;
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  /* 移动端：输入框在「圆形 + 按钮 + 表单」同一行内占满剩余宽度 */
-  .category-picker .inline-category-form input {
-    flex: 1 1 120px;
-    min-width: 0;
-  }
-
-  .category-picker .inline-category-form .secondary-button {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 84px;
-  }
-
   .split-scope-toggle {
-    min-height: 46px;
+    min-height: var(--control-height);
     border-radius: var(--radius-md);
     padding-inline: 12px;
   }
@@ -2128,9 +2170,18 @@
     justify-self: start;
   }
 
-  .expense-form,
   .category-form {
     grid-template-columns: 1fr;
+  }
+
+  .settings-category-form {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 8px;
+  }
+
+  .settings-category-form .secondary-button {
+    width: auto;
+    min-width: 88px;
   }
 
   .expense-form > .primary-button {
@@ -2206,7 +2257,7 @@
   }
 
   .amount-label input {
-    height: 64px;
+    height: 58px;
     font-size: clamp(2rem, 11vw, 3.2rem);
   }
 
@@ -2246,17 +2297,6 @@
     min-height: 46px;
     max-height: 46px;
     font-size: 1rem; /* ≥16px，避免 iOS 聚焦自动放大 */
-  }
-
-  .split-scope-toggle {
-    grid-template-columns: 1fr;
-    gap: 3px;
-    align-items: start;
-    padding-block: 9px;
-  }
-
-  .split-scope-toggle > strong {
-    width: 100%;
   }
 
   .split-mode-button {
@@ -2343,6 +2383,28 @@
   .settlement-amount strong {
     max-width: 100%;
     font-size: clamp(1.44rem, 7.2vw, 1.78rem);
+  }
+}
+
+@media (max-width: 359px) {
+  .expense-form {
+    grid-template-columns: 1fr;
+  }
+
+  .date-label,
+  .note-label {
+    grid-column: 1 / -1;
+  }
+
+  .split-scope-toggle {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    align-items: start;
+    padding-block: 7px;
+  }
+
+  .split-scope-toggle > strong {
+    width: 100%;
   }
 }
 

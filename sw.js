@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-safari-header-category-polish-v4-20260722";
+const APP_VERSION = "journa-category-fade-v7-20260724";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 const PRECACHE_URLS = [
   "./",

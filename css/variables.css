@@ -280,7 +280,13 @@
   --radius-xl: 34px;
   --radius-pill: 999px;
   --radius-hero: 42px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
-  --control-height: 60px;
+  /* 控件几何：常规输入/按钮、紧凑操作和面板排版共用同一套节奏。 */
+  --control-height: 52px;
+  --control-height-compact: 44px;
+  --control-gap: 12px;
+  --panel-padding: 22px;
+  /* soft 过渡只在短时状态切换中使用，避免常态大面积模糊带来的重绘。 */
+  --soft-transition-blur: 2px;
   --control-radius: var(--radius-lg);
   --control-radius-compact: var(--radius-md);
   --control-radius-large: var(--radius-lg);

@@ -52,7 +52,7 @@
 .expense-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: var(--control-gap);
 }
 
 .expense-form > * {
@@ -152,7 +152,7 @@ input[type="date"]:focus {
 .amount-label input {
   min-width: 0;
   flex: 1;
-  height: 72px;
+  height: 64px;
   border: 0;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.56);

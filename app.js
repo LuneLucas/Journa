@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-header-category-polish-v4-20260722";
+const APP_VERSION = "journa-control-layout-v4-20260722";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -34,6 +34,8 @@ const MOTION_DELAYS = {
    clearly visible elastic rebound rather than easing flatly into place. */
 const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
 const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
+const SPRING_CATEGORY_ADD_OPEN = { stiffness: 280, damping: 24, mass: 1 };
+const SPRING_CATEGORY_ADD_CLOSE = { stiffness: 320, damping: 28, mass: 1 };
 const SPRING_LANDING_TAIL_MS = 64;
 const BAR_ARC_LIFT_PX = 5;
 const BAR_ARC_REBOUND_PX = 1.4;
@@ -190,6 +192,7 @@ const elements = {
   submitButtonLabel: document.querySelector("#submitButtonLabel"),
   categoryForm: document.querySelector("#categoryForm"),
   categoryAddFab: document.querySelector("#categoryAddFab"),
+  categoryAddConfirm: document.querySelector("#categoryAddConfirm"),
   newCategoryInput: document.querySelector("#newCategoryInput"),
   settingsCategoryForm: document.querySelector("#settingsCategoryForm"),
   settingsNewCategoryInput: document.querySelector("#settingsNewCategoryInput"),
@@ -298,6 +301,10 @@ let barMorphTimer = 0;
 let ledgerMorphRunId = 0;
 let barFlipAnimations = [];
 let barFlipRunId = 0;
+let categoryAddMorphAnimations = [];
+let categoryAddMorphRunId = 0;
+let categoryAddViewportTimer = 0;
+let categoryAddViewportCleanup = null;
 let editReturnState = null;
 let editFormSnapshot = null;
 let totalAmountText = "";
@@ -2278,15 +2285,205 @@ function renderRecentPeek() {
   host.querySelector(".recent-peek-all")?.addEventListener("click", openFullLedger, { once: false });
 }
 
+function updateCategoryAddConfirmState() {
+  const hasValue = Boolean(elements.newCategoryInput?.value.trim());
+  if (elements.categoryAddConfirm) {
+    elements.categoryAddConfirm.disabled = !hasValue;
+    elements.categoryAddConfirm.setAttribute("aria-disabled", String(!hasValue));
+  }
+}
+
+function cancelCategoryAddViewportSettle() {
+  window.clearTimeout(categoryAddViewportTimer);
+  categoryAddViewportTimer = 0;
+  categoryAddViewportCleanup?.();
+  categoryAddViewportCleanup = null;
+}
+
+function scheduleCategoryInputViewportSettle(duration) {
+  cancelCategoryAddViewportSettle();
+  /* 桌面端输入框本就完整可见，额外 scrollIntoView 会触发页头滚动联动；
+     只在可能出现软键盘的窄屏视口等待 visualViewport 稳定后校正。 */
+  if (!window.matchMedia("(max-width: 820px)").matches) return;
+  const picker = elements.categoryChips.closest(".category-picker");
+  const input = elements.newCategoryInput;
+  if (!picker || !input) return;
+  const runId = categoryAddMorphRunId;
+
+  const settle = () => {
+    if (runId !== categoryAddMorphRunId || !picker.classList.contains("is-adding")) return;
+    input.scrollIntoView({ block: "nearest", behavior: "auto" });
+  };
+  const scheduleAfterViewport = () => {
+    window.clearTimeout(categoryAddViewportTimer);
+    categoryAddViewportTimer = window.setTimeout(settle, 120);
+  };
+
+  const viewport = window.visualViewport;
+  if (viewport) {
+    viewport.addEventListener("resize", scheduleAfterViewport, { passive: true });
+    categoryAddViewportCleanup = () => viewport.removeEventListener("resize", scheduleAfterViewport);
+  }
+  categoryAddViewportTimer = window.setTimeout(settle, duration + 80);
+  window.setTimeout(() => {
+    if (runId !== categoryAddMorphRunId || !picker.classList.contains("is-adding")) return;
+    cancelCategoryAddViewportSettle();
+  }, duration + 720);
+}
+
+function cancelCategoryAddMorphAnimations() {
+  categoryAddMorphAnimations.forEach((animation) => animation.cancel());
+  categoryAddMorphAnimations = [];
+  elements.categoryForm?.style.removeProperty("will-change");
+  elements.categoryAddFab?.style.removeProperty("will-change");
+}
+
+function setCategoryChipAccessibility(hidden) {
+  const focusableChips = elements.categoryChips.querySelectorAll("button, [href], input, select, textarea, [tabindex]");
+  if (hidden) {
+    elements.categoryChips.setAttribute("aria-hidden", "true");
+    focusableChips.forEach((element) => {
+      if (!("categoryMorphTabIndex" in element.dataset)) {
+        element.dataset.categoryMorphTabIndex = element.hasAttribute("tabindex")
+          ? element.getAttribute("tabindex")
+          : "none";
+      }
+      element.tabIndex = -1;
+    });
+  } else {
+    elements.categoryChips.removeAttribute("aria-hidden");
+    focusableChips.forEach((element) => {
+      const previous = element.dataset.categoryMorphTabIndex;
+      if (previous === undefined) return;
+      if (previous === "none") element.removeAttribute("tabindex");
+      else element.setAttribute("tabindex", previous);
+      delete element.dataset.categoryMorphTabIndex;
+    });
+  }
+}
+
+function animateCategoryAddMorph(firstRect, opening, onSettled) {
+  const picker = elements.categoryChips.closest(".category-picker");
+  const form = elements.categoryForm;
+  const button = elements.categoryAddFab;
+  if (!picker || !form || !button) return;
+
+  const finish = () => {
+    picker.classList.remove("is-category-morphing");
+    if (!opening) {
+      picker.classList.remove("is-category-morph-closing");
+      setCategoryChipAccessibility(false);
+    }
+    onSettled?.();
+  };
+
+  const lastRect = form.getBoundingClientRect();
+  if (
+    prefersReducedMotion()
+    || typeof form.animate !== "function"
+    || !firstRect.width
+    || !lastRect.width
+  ) {
+    finish();
+    return;
+  }
+
+  const runId = categoryAddMorphRunId;
+  const { values, duration } = springSamples(opening ? SPRING_CATEGORY_ADD_OPEN : SPRING_CATEGORY_ADD_CLOSE);
+  const startScaleX = firstRect.width / lastRect.width;
+  const deltaX = firstRect.left - lastRect.left;
+  const deltaY = firstRect.top - lastRect.top;
+  const formFrames = [];
+  const buttonFrames = [];
+
+  values.forEach((progress, index) => {
+    const offset = index / (values.length - 1);
+    const scaleX = Math.max(0.04, startScaleX + (1 - startScaleX) * progress);
+    formFrames.push({
+      offset,
+      transform: `translate3d(${deltaX * (1 - progress)}px, ${deltaY * (1 - progress)}px, 0) scaleX(${scaleX})`,
+    });
+    /* 外壳做横向 FLIP 时，反向缩放左端按钮，避免 + / × 被压扁或拉宽。 */
+    buttonFrames.push({ offset, transform: `scaleX(${1 / scaleX})` });
+  });
+
+  form.style.willChange = "transform";
+  button.style.willChange = "transform";
+  const options = { duration, easing: "linear", fill: "forwards", composite: "replace" };
+  const formAnimation = form.animate(formFrames, options);
+  const buttonAnimation = button.animate(buttonFrames, options);
+  categoryAddMorphAnimations = [formAnimation, buttonAnimation];
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned || runId !== categoryAddMorphRunId) return;
+    cleaned = true;
+    window.requestAnimationFrame(() => {
+      if (runId !== categoryAddMorphRunId) return;
+      cancelCategoryAddMorphAnimations();
+      finish();
+    });
+  };
+  formAnimation.onfinish = cleanup;
+  window.setTimeout(cleanup, duration + 100);
+
+  if (opening) scheduleCategoryInputViewportSettle(duration);
+}
+
+function setCategoryAddOpen(opening, { clearInput = false, restoreFocus = false, onSettled = null } = {}) {
+  const picker = elements.categoryChips.closest(".category-picker");
+  const form = elements.categoryForm;
+  const input = elements.newCategoryInput;
+  if (!picker || !form || !input) return;
+
+  const firstRect = form.getBoundingClientRect();
+  categoryAddMorphRunId += 1;
+  cancelCategoryAddMorphAnimations();
+  cancelCategoryAddViewportSettle();
+  picker.classList.add("is-category-morphing");
+
+  if (opening) {
+    picker.classList.remove("is-category-morph-closing");
+    picker.classList.add("is-adding");
+    setCategoryChipAccessibility(true);
+    input.tabIndex = 0;
+    elements.categoryAddFab?.setAttribute("aria-expanded", "true");
+    elements.categoryAddFab?.setAttribute("aria-label", "取消新增类别");
+    updateCategoryAddConfirmState();
+    /* iOS 只允许在原始点击事件中同步聚焦；延迟 focus 会让软键盘不弹。 */
+    try {
+      input.focus({ preventScroll: true });
+    } catch (error) {
+      input.focus();
+    }
+  } else {
+    picker.classList.add("is-category-morph-closing");
+    picker.classList.remove("is-adding");
+    /* render() 可能刚替换过类别按钮；收起动画期间继续移出 Tab 顺序。 */
+    setCategoryChipAccessibility(true);
+    if (clearInput) input.value = "";
+    input.tabIndex = -1;
+    elements.categoryAddFab?.setAttribute("aria-expanded", "false");
+    elements.categoryAddFab?.setAttribute("aria-label", "新增类别");
+    updateCategoryAddConfirmState();
+    if (restoreFocus) {
+      try {
+        elements.categoryAddFab?.focus({ preventScroll: true });
+      } catch (error) {
+        elements.categoryAddFab?.focus();
+      }
+    }
+  }
+
+  void form.offsetWidth;
+  animateCategoryAddMorph(firstRect, opening, onSettled);
+}
+
 function toggleCategoryAdd() {
   const picker = elements.categoryChips.closest(".category-picker");
   if (!picker) return;
-  const adding = picker.classList.toggle("is-adding");
-  elements.categoryAddFab?.setAttribute("aria-expanded", String(adding));
-  if (adding) {
-    elements.newCategoryInput?.focus();
-    elements.newCategoryInput?.scrollIntoView({ block: "nearest" });
-  }
+  const opening = !picker.classList.contains("is-adding");
+  setCategoryAddOpen(opening, { clearInput: !opening, restoreFocus: !opening });
 }
 
 function openFullLedger() {
@@ -2309,15 +2506,25 @@ function scheduleCategoryEdgeFades() {
 }
 
 // 按横滚位置切换两侧渐隐：只在该侧仍有内容可滚时显示（iOS 边缘行为）。
-// can-fade-* 切到外层 .category-chips-fade（两端渐隐覆盖层挂在那里，而非滚动容器本身）。
+// can-fade-* 同时打到 .category-chips-fade（左端 ::before 在此）和
+// .category-control-row（右端 ::after 已搬到 row 上、跨到 + 按钮列），
+// 避免用 :has() 选择器——iOS Safari 每次 style recalc 会遍历子树匹配，
+// 触发 header 区域滚动卡顿（见 responsive.css :has 注释）。
 function updateCategoryEdgeFades() {
   const el = elements.categoryChips;
   if (!el) return;
   const wrap = el.closest(".category-chips-fade") || el;
   const maxScroll = el.scrollWidth - el.clientWidth;
   const threshold = 2;
-  wrap.classList.toggle("can-fade-start", el.scrollLeft > threshold);
-  wrap.classList.toggle("can-fade-end", el.scrollLeft < maxScroll - threshold);
+  const canStart = el.scrollLeft > threshold;
+  const canEnd = el.scrollLeft < maxScroll - threshold;
+  wrap.classList.toggle("can-fade-start", canStart);
+  wrap.classList.toggle("can-fade-end", canEnd);
+  const row = wrap.closest && wrap.closest(".category-control-row");
+  if (row) {
+    row.classList.toggle("can-fade-start", canStart);
+    row.classList.toggle("can-fade-end", canEnd);
+  }
 }
 
 // 类别横滑到头的橡皮筋回弹：触摸拖到边后继续拖，用阻尼位移把整条类别带
@@ -3760,9 +3967,15 @@ function handleInlineCategoryAdd(event) {
 }
 
 function handleNewCategoryKeydown(event) {
-  if (event.key !== "Enter") return;
-  event.preventDefault();
-  addCategoryFromInput(elements.newCategoryInput);
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setCategoryAddOpen(false, { clearInput: true, restoreFocus: true });
+    return;
+  }
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addCategoryFromInput(elements.newCategoryInput);
+  }
 }
 
 function handleSettingsCategorySubmit(event) {
@@ -3826,7 +4039,10 @@ function handleSettingsFamilyColorClick(event) {
 
 function addCategoryFromInput(input) {
   const category = input.value.trim();
-  if (!category) return;
+  if (!category) {
+    updateCategoryAddConfirmState();
+    return;
+  }
 
   if (!state.categories.includes(category)) {
     state.categories.push(category);
@@ -3835,16 +4051,20 @@ function addCategoryFromInput(input) {
   state.activeCategory = category;
 
   input.value = "";
-  // 移动端：收起内联新增表单，回到类别横滑；并把新类别滚入可视区。
-  const picker = elements.categoryChips.closest(".category-picker");
-  picker?.classList.remove("is-adding");
-  elements.categoryAddFab?.setAttribute("aria-expanded", "false");
   render();
-  elements.categoryChips.querySelectorAll(".selectable-category-chip").forEach((chip) => {
-    if (chip.dataset.category === category) {
-      chip.scrollIntoView({ inline: "center", block: "nearest" });
-    }
-  });
+  const revealCategory = () => {
+    elements.categoryChips.querySelectorAll(".selectable-category-chip").forEach((chip) => {
+      if (chip.dataset.category === category) {
+        chip.scrollIntoView({ inline: "center", block: "nearest" });
+      }
+    });
+  };
+  if (input === elements.newCategoryInput) {
+    updateCategoryAddConfirmState();
+    setCategoryAddOpen(false, { clearInput: false, restoreFocus: false, onSettled: revealCategory });
+  } else {
+    revealCategory();
+  }
   queueCloudSettingsSync();
   window.setTimeout(() => {
     if (lastAddedCategory === category) lastAddedCategory = "";
@@ -5858,9 +6078,8 @@ function escapeHtml(value) {
 }
 
 elements.expenseForm.addEventListener("submit", handleExpenseSubmit);
-elements.categoryForm.addEventListener("click", (event) => {
-  if (event.target.closest("button")) handleInlineCategoryAdd(event);
-});
+elements.categoryAddConfirm?.addEventListener("click", handleInlineCategoryAdd);
+elements.newCategoryInput.addEventListener("input", updateCategoryAddConfirmState);
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
 elements.categoryChips.addEventListener("click", handleCategorySelection);
 elements.categoryAddFab?.addEventListener("click", toggleCategoryAdd);

@@ -953,20 +953,48 @@
     --cat-fade-color: rgba(22, 22, 24, 0.96);
   }
 
-  .category-row {
-    --cat-dock-color: rgba(22, 22, 24, 0.97);
+  .category-add-control {
+    border-color: color-mix(in srgb, var(--theme-color) 22%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--theme-color) 5%, rgba(255, 255, 255, 0.035));
+    box-shadow: none;
+  }
+
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--theme-color) 8%, rgba(255, 255, 255, 0.045));
+    -webkit-backdrop-filter: blur(12px) saturate(1.12);
+    backdrop-filter: blur(12px) saturate(1.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 20px -16px rgba(0, 0, 0, 0.48);
+  }
+
+  .category-picker.is-adding .category-add-control {
+    border-color: color-mix(in srgb, var(--theme-color) 22%, var(--dark-hairline));
+    background: color-mix(in srgb, var(--theme-color) 5%, rgba(255, 255, 255, 0.035));
+    box-shadow: none;
   }
 
   .category-add-fab,
   .category-picker.is-adding .category-add-fab {
-    border-color: color-mix(in srgb, var(--theme-color) 30%, var(--dark-hairline));
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.045)),
-      color-mix(in srgb, var(--theme-color) 10%, var(--dark-card));
+    background: transparent;
     color: color-mix(in srgb, var(--theme-color) 54%, white);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
-      0 10px 22px -16px color-mix(in srgb, var(--theme-color) 48%, transparent);
+    box-shadow: none;
+  }
+
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-fab {
+    color: color-mix(in srgb, var(--theme-color) 38%, rgba(232, 236, 233, 0.68));
+  }
+
+  .category-add-control #newCategoryInput {
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+  }
+
+  .category-add-confirm {
+    background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+    color: color-mix(in srgb, var(--theme-color) 52%, white);
   }
 
   .empty-state small {

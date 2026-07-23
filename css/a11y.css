@@ -20,7 +20,14 @@
   }
 
   .settings-drawer,
+  .ledger-management-drawer,
   .settings-backdrop,
+  .app-view.is-mobile-panel-switching-out .entry-panel,
+  .app-view.is-mobile-panel-switching-out .ledger-section,
+  .app-view.is-mobile-panel-switching-out .insights-panel,
+  .app-view.is-mobile-panel-switching-in .entry-panel,
+  .app-view.is-mobile-panel-switching-in .ledger-section,
+  .app-view.is-mobile-panel-switching-in .insights-panel,
   .app-view.is-switching-ledger .summary-band,
   .app-view.is-switching-ledger .workspace,
   .app-view.is-switching-ledger .ledger-section,
@@ -29,6 +36,22 @@
   .metric.primary strong.is-scrambling,
   .toast {
     animation: none !important;
+  }
+
+  .settings-drawer,
+  .ledger-management-drawer,
+  .app-view.is-mobile-panel-switching-out .entry-panel,
+  .app-view.is-mobile-panel-switching-out .ledger-section,
+  .app-view.is-mobile-panel-switching-out .insights-panel,
+  .app-view.is-mobile-panel-switching-in .entry-panel,
+  .app-view.is-mobile-panel-switching-in .ledger-section,
+  .app-view.is-mobile-panel-switching-in .insights-panel {
+    filter: none !important;
+  }
+
+  .category-picker.is-adding .category-chips-fade,
+  .category-picker.is-category-morph-closing .category-chips-fade {
+    filter: none !important;
   }
 
   .metric.primary strong.is-scrambling {

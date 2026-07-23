@@ -12,7 +12,7 @@
 .insights-panel,
 .ledger-section {
   border-radius: var(--radius-xl);
-  padding: var(--space-6);
+  padding: var(--panel-padding);
 }
 
 .entry-panel {

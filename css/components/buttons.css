@@ -236,7 +236,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .inline-button {
-  min-height: 36px;
+  min-height: var(--control-height-compact);
   border: none;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 11%, transparent), var(--glass-edge);
   border-radius: var(--control-radius-compact);
@@ -556,7 +556,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .compact-button {
   flex: 0 0 auto;
-  min-height: 36px;
+  min-height: var(--control-height-compact);
   border-radius: var(--control-radius-compact);
   padding: 0 14px;
   font-size: var(--label-sm);
@@ -582,6 +582,10 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 0.76rem;
   font-weight: var(--fw-bold);
   white-space: nowrap;
+}
+
+.ledger-delete-button {
+  min-height: var(--control-height-compact);
 }
 
 .ledger-delete-button {

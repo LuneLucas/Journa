@@ -910,11 +910,13 @@
 @keyframes settings-drawer-enter {
   0% {
     opacity: 0;
+    filter: blur(var(--soft-transition-blur));
     transform: translateX(42px);
   }
 
   100% {
     opacity: 1;
+    filter: blur(0);
     transform: translateX(0);
   }
 }
@@ -922,11 +924,13 @@
 @keyframes settings-drawer-exit {
   0% {
     opacity: 1;
+    filter: blur(0);
     transform: translateX(0);
   }
 
   100% {
     opacity: 0;
+    filter: blur(var(--soft-transition-blur));
     transform: translateX(48px);
   }
 }
@@ -934,11 +938,13 @@
 @keyframes settings-drawer-enter-mobile {
   0% {
     opacity: 0;
+    filter: blur(var(--soft-transition-blur));
     transform: translateY(28px);
   }
 
   100% {
     opacity: 1;
+    filter: blur(0);
     transform: translateY(0);
   }
 }
@@ -946,11 +952,13 @@
 @keyframes settings-drawer-exit-mobile {
   0% {
     opacity: 1;
+    filter: blur(0);
     transform: translateY(0);
   }
 
   100% {
     opacity: 0;
+    filter: blur(var(--soft-transition-blur));
     transform: translateY(24px);
   }
 }
