@@ -1518,6 +1518,9 @@
     top: -40px;
     bottom: -40px;
     width: var(--cat-edge-fade);
+    /* 圆掉外（左）侧上下直角，避免遮罩矩形在 row 上下形成直角截断；
+       右（芯片侧）朝向透明渐隐端，不圆也不会露直角。 */
+    border-radius: 22px 0 0 22px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 220ms var(--settle);
@@ -1540,10 +1543,13 @@
   }
 
   /* 右端 fade 移到 .category-control-row::after：只有 row 层级才能水平
-     跨过 8px gap、延伸到 + 按钮所在列，让 + 按钮的顶部/底部（光晕范围）
-     也有渐隐过渡——+ 按钮的玻璃胶囊（z-index:5 + backdrop-filter）盖住
-     fade 中部，按钮本身仍清晰，但上下「空白安全区」里能看到渐隐延伸到
-     行边界，形成统一的玻璃尾端。
+     跨过 8px gap、延伸到 + 按钮所在列，让 + 按钮的顶部（光晕范围）
+     也有渐隐过渡。底部与 + 按钮底部对齐（bottom: 0），不再向下探出形成
+     直角尾端；四角全圆（border-radius:22px），右下 22px 与 + 按钮圆形轮廓
+     匹配，左上/左下身处透明渐隐端也一并圆掉，消除任何直角边。
+     + 按钮的玻璃胶囊（z-index:5 + backdrop-filter）盖住 fade 中部，按钮本身
+     仍清晰，上下「空白安全区」里能看到渐隐自然过渡到行边界，形成统一的
+     玻璃尾端。
      水平 linear-gradient 只解决左右渐隐，配上垂直 mask（±18% 渐入渐出）
      才能消除 row 上下 ±40px 处的「直角阴影截断」——mask 单独用无
      backdrop-filter，不会触发 WebKit 矩形合成层 bug（design-qa.md P1）。
@@ -1555,10 +1561,13 @@
     position: absolute;
     display: block;
     top: -40px;
-    bottom: -40px;
+    bottom: 0;
     left: auto;
     right: 0;
     width: 170px;
+    /* 四角全圆：右下 22px 与 + 按钮圆形轮廓匹配；左（透明渐隐端）上下直角
+       也一并圆掉，否则遮罩矩形在 + 按钮左侧仍会露出左下/左上直角。 */
+    border-radius: 22px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 220ms var(--settle);
@@ -2356,14 +2365,14 @@
   }
 
   .settlement-item {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 96px minmax(0, 1fr);
     gap: 12px;
     padding: 10px 12px;
   }
 
   .settlement-route-node {
-    width: 100%;
-    min-height: 48px;
+    width: 96px;
+    min-height: 78px;
   }
 
   .settlement-itinerary::before {
@@ -2416,14 +2425,14 @@
   }
 
   .settlement-item {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 88px minmax(0, 1fr);
     gap: 10px;
     padding: 9px 11px;
   }
 
   .settlement-route-node {
-    width: 100%;
-    min-height: 46px;
+    width: 88px;
+    min-height: 74px;
   }
 
   .settlement-itinerary::before {
@@ -2431,15 +2440,15 @@
   }
 
   .settlement-node-family {
-    max-width: 100%;
+    max-width: 72px;
   }
 
   .settlement-node-family strong {
-    font-size: 0.82rem;
+    font-size: 1.08rem;
   }
 
   .settlement-route-watermark {
-    font-size: 1.72rem;
+    font-size: 3rem;
   }
 
   .settlement-amount strong {

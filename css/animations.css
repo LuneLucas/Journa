@@ -1197,3 +1197,12 @@
     opacity: 1;
   }
 }
+
+/* 滚动进行中暂停装饰性无限动画（同步呼吸灯/错误闪烁/欢迎页元素）。
+   这些动画每帧都触发 filter/transform 重绘，滚动时暂停可降低合成器负载；
+   滚动停止 180ms 后 JS 摘掉 is-scrolling，动画从当前相位继续，无跳变。 */
+body.is-scrolling .sync-status::before,
+body.is-scrolling .welcome-orb,
+body.is-scrolling .welcome-sync-dots span {
+  animation-play-state: paused;
+}

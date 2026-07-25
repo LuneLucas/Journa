@@ -837,6 +837,33 @@ function saveState() {
   }
 }
 
+/* render() 每次都触发 saveState；账目多后 JSON.stringify(整个 appState)
+   是主线程长任务（多账本、几百条记录时可达十几 ms）。改为 400ms 防抖合写，
+   离散事件（提交/删除/同步回调）仍可直调 saveState() 立即落盘。
+   页面转入后台/关闭时 flush，保证防抖窗口内的状态不丢。 */
+const SAVE_STATE_DEBOUNCE_MS = 400;
+let saveStateTimer = 0;
+
+function scheduleSaveState() {
+  window.clearTimeout(saveStateTimer);
+  saveStateTimer = window.setTimeout(() => {
+    saveStateTimer = 0;
+    saveState();
+  }, SAVE_STATE_DEBOUNCE_MS);
+}
+
+function flushPendingSave() {
+  if (!saveStateTimer) return;
+  window.clearTimeout(saveStateTimer);
+  saveStateTimer = 0;
+  saveState();
+}
+
+window.addEventListener("pagehide", flushPendingSave);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushPendingSave();
+});
+
 function loadCloudState() {
   const tokenFromUrl = getLedgerTokenFromLocation();
 
@@ -1722,7 +1749,7 @@ function render(options = {}) {
     applySelectedFamilyTheme();
     applySubmitButtonTheme();
     updateAmountMotionState();
-    saveState();
+    scheduleSaveState();
   };
 
   if (document.startViewTransition && animateFinancialChanges) {
@@ -6923,4 +6950,20 @@ bootstrap();
   viewport?.addEventListener("resize", syncKeyboardFlag);
   document.addEventListener("focusin", syncKeyboardFlag);
   document.addEventListener("focusout", () => setTimeout(syncKeyboardFlag, 0));
+})();
+
+// 滚动期间给 body 挂 is-scrolling：CSS 借此暂停装饰性无限动画（同步呼吸灯等），
+// 降低 iOS 滚动时合成器每帧的重绘工作量；停止滚动 180ms 后恢复，视觉上无差异。
+(() => {
+  let scrollIdleTimer = 0;
+  window.addEventListener("scroll", () => {
+    if (!document.body.classList.contains("is-scrolling")) {
+      document.body.classList.add("is-scrolling");
+    }
+    window.clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = window.setTimeout(() => {
+      document.body.classList.remove("is-scrolling");
+      scrollIdleTimer = 0;
+    }, 180);
+  }, { passive: true });
 })();

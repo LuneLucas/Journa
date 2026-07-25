@@ -136,7 +136,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 88px minmax(0, 1fr);
   gap: 16px;
   align-items: center;
   border: none;
@@ -447,4 +447,19 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 长列表滚动性能：视口外的账目行整体跳过样式/布局/绘制。
+   挂载在行级而非 .ledger-day-group 级：content-visibility 隐含 paint
+   containment，组级会裁掉行 box-shadow 的溢出部分；元素自身的阴影/边框
+   不受自身 paint containment 影响，行级挂载无损。
+   contain-intrinsic-height 的 auto 前缀让浏览器记住上次实渲高度，
+   首次未渲染时按 72px（折叠行约 60-94px）占位，滚动条基本不跳。
+   展开动画由用户点击触发、目标行必在视口内（已渲染），不受影响。
+   不支持的浏览器（老 Safari）整条规则被忽略，行为回退为现状。 */
+@supports (content-visibility: auto) {
+  .ledger-item {
+    content-visibility: auto;
+    contain-intrinsic-height: auto 72px;
+  }
 }

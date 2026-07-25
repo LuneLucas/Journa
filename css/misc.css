@@ -2334,9 +2334,8 @@ label,
   grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
   grid-template-rows: 1fr;
   align-items: center;
-  width: 100%;
-  min-width: 0;
-  min-height: 48px;
+  width: 96px;
+  min-height: 78px;
   overflow: hidden;
   border: 0;
   border-radius: 0;
@@ -2352,10 +2351,10 @@ label,
   z-index: 0;
   color: color-mix(in srgb, var(--settlement-target-color) 48%, var(--muted));
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 2rem;
+  font-size: 3.5rem;
   font-weight: 700;
   line-height: 1;
-  opacity: 0.22;
+  opacity: 0.16;
   pointer-events: none;
 }
 
@@ -2372,16 +2371,14 @@ label,
 .settlement-node-family strong {
   overflow: hidden;
   font-family: var(--font-body);
-  display: block;
-  max-width: 100%;
-  font-size: 0.92rem;
+  font-size: 1.22rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
-  writing-mode: horizontal-tb;
-  text-orientation: mixed;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
 }
 
 .settlement-node-from {
@@ -2389,7 +2386,7 @@ label,
   grid-row: 1;
   align-self: center;
   padding: 0;
-  transform: none;
+  transform: translateY(-6px);
 }
 
 .settlement-node-from strong {
@@ -2401,7 +2398,7 @@ label,
   grid-row: 1;
   align-self: center;
   padding: 0;
-  transform: none;
+  transform: translateY(6px);
 }
 
 .settlement-node-to strong {
