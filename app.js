@@ -233,6 +233,8 @@ const elements = {
   welcomeCloudCopy: document.querySelector("#welcomeCloudCopy"),
   welcomeIdentityFamilyList: document.querySelector("#welcomeIdentityFamilyList"),
   welcomeIdentityHint: document.querySelector("#welcomeIdentityHint"),
+  welcomeSourceBadge: document.querySelector("#welcomeSourceBadge"),
+  welcomeSourceBadgeText: document.querySelector("#welcomeSourceBadgeText"),
   openWelcomeButton: document.querySelector("#openWelcomeButton"),
   currentLedgerSummary: document.querySelector("#currentLedgerSummary"),
   ledgerManagerList: document.querySelector("#ledgerManagerList"),
@@ -5188,6 +5190,8 @@ let welcomeCloseTimer = 0;
 let welcomeReturnFocus = null;
 let operatorModalReturnFocus = null;
 let welcomeScrollAnimation = 0;
+let welcomeEnterTimer = null;
+let welcomeEnterRevealed = false;
 
 function isWelcomeOpen() {
   return Boolean(elements.welcomeView && !elements.welcomeView.hidden);
@@ -5195,6 +5199,82 @@ function isWelcomeOpen() {
 
 function welcomeRequiresFamily() {
   return isCloudLedgerActive() || Boolean(getLedgerTokenFromLocation());
+}
+
+/* 分享来源感知：来源文案 + 徽标。复制与预览原型 share-welcome.html 的 SOURCES 保持一致。 */
+const SHARE_SOURCES = {
+  default: {
+    badge: "共享账本",
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>',
+    eyebrow: "欢迎加入",
+    title: "三个家庭，一本账",
+    copy: "这是你们三家的共享旅行账本。打开就能看到每个人记的每一笔，也能随手记一笔。"
+  },
+  qr: {
+    badge: "扫码加入",
+    icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h3v3H8zM13 8h3v3h-3zM8 13h3v3H8zM14 14h2M16 16h.01"/>',
+    eyebrow: "扫码加入",
+    title: "账本，就在你手边",
+    copy: "扫一下就进来了。这是家人共享的旅行账本，谁花了多少，打开全看得见。"
+  },
+  email: {
+    badge: "邮件邀请",
+    icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/>',
+    eyebrow: "来自一封邀请邮件",
+    title: "家人喊你一起记账啦",
+    copy: "点开链接就能加入。之后你记的每一笔，都会实时同步给其他两家。"
+  },
+  social: {
+    badge: "社交分享",
+    icon: '<path d="M4 12a8 8 0 0 1 8-8 8 8 0 0 1 0 16c-1.4 0-2.5-.4-3.6-1l-3 1 1-3c-.6-1-1-2.1-1-3.4z"/>',
+    eyebrow: "来自社交分享",
+    title: "朋友分享了一个共享账本",
+    copy: "三家同行，账单一目了然。点进来认个家，旅程花销从此清清楚楚。"
+  },
+  message: {
+    badge: "私信邀请",
+    icon: '<path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 21l2-6a8.4 8.4 0 1 1 16-3.5z"/>',
+    eyebrow: "家人邀请你",
+    title: "来一起算清这趟旅行",
+    copy: "先选好你来自哪个家庭，之后每笔记账都带上你的名字。"
+  }
+};
+
+function detectShareSource() {
+  const params = new URLSearchParams(location.search);
+  let from = params.get("from");
+  if (!from) {
+    const hashMatch = location.hash.match(/[?&]from=([^&]+)/);
+    if (hashMatch) from = hashMatch[1];
+  }
+  const valid = ["qr", "email", "social", "message"];
+  if (from && valid.includes(from)) {
+    return { key: from, inviter: params.get("inviter") || "" };
+  }
+  const referrer = document.referrer || "";
+  if (referrer) {
+    if (/mail|email|outlook|gmail/i.test(referrer)) return { key: "email", inviter: "" };
+    if (/weibo|twitter|facebook|instagram|t\.me|line\.me|reddit|douban/i.test(referrer)) return { key: "social", inviter: "" };
+    if (/im\.qq|wx\.qq|message|wetransfer|dingtalk|feishu/i.test(referrer)) return { key: "message", inviter: "" };
+  }
+  return { key: "default", inviter: "" };
+}
+
+function applyShareSourceHero() {
+  const src = detectShareSource();
+  const s = SHARE_SOURCES[src.key] || SHARE_SOURCES.default;
+  elements.welcomeHeroEyebrow.textContent = (src.inviter && (src.key === "message" || src.key === "email"))
+    ? src.inviter + " 邀请你"
+    : s.eyebrow;
+  elements.welcomeTitle.textContent = s.title;
+  elements.welcomeHeroCopy.textContent = s.copy;
+  const badge = elements.welcomeSourceBadge;
+  if (!badge) return;
+  const badgeText = elements.welcomeSourceBadgeText;
+  const badgeIcon = badge.querySelector("svg");
+  badgeText.textContent = s.badge;
+  if (badgeIcon) badgeIcon.innerHTML = s.icon;
+  badge.hidden = false;
 }
 
 function maybeShowWelcome() {
@@ -5213,11 +5293,20 @@ function openWelcome({ invitedArrival = false } = {}) {
   view.classList.remove("is-closing");
   welcomeReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-  elements.welcomeHeroEyebrow.textContent = invitedArrival ? "邀请已生效" : "欢迎使用";
-  elements.welcomeTitle.textContent = invitedArrival ? "你已加入共享账本" : "三个家庭，一本账";
-  elements.welcomeHeroCopy.textContent = invitedArrival
-    ? "家人邀请你共同记账，三家实时同步；账单一多，也会自动算出平账建议。"
-    : "默认按各家人数分摊，也能为单笔账指定家庭或金额，最后自动算出平账建议。";
+  /* 末屏终端 CTA 的 2 秒淡入门控：每次打开欢迎页都重新计时 */
+  window.clearTimeout(welcomeEnterTimer);
+  welcomeEnterTimer = null;
+  welcomeEnterRevealed = false;
+  elements.welcomeNextButton.classList.remove("pending-reveal", "is-revealed");
+
+  if (invitedArrival) {
+    applyShareSourceHero();
+  } else {
+    elements.welcomeHeroEyebrow.textContent = "欢迎使用";
+    elements.welcomeTitle.textContent = "三个家庭，一本账";
+    elements.welcomeHeroCopy.textContent = "默认按各家人数分摊，也能为单笔账指定家庭或金额，最后自动算出平账建议。";
+    if (elements.welcomeSourceBadge) elements.welcomeSourceBadge.hidden = true;
+  }
   const cloudActive = invitedArrival || isCloudLedgerActive();
   elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : "邀请家人一起记";
   elements.welcomeCloudCopy.textContent = cloudActive
@@ -5225,7 +5314,7 @@ function openWelcome({ invitedArrival = false } = {}) {
     : "在「设置 → 云同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。";
   renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList);
   elements.welcomeIdentityHint.textContent = cloudActive
-    ? "选好后，账单会自动记下由哪一家创建或更新，之后对账也更清楚。"
+    ? "选一下家庭，之后你记的每笔账都会带上你的名字。"
     : "本地账本可以稍后再选；开启云同步后，请先完成家庭选择。";
 
   view.hidden = false;
@@ -5238,6 +5327,10 @@ function openWelcome({ invitedArrival = false } = {}) {
 function closeWelcome({ goToEntry = false } = {}) {
   const view = elements.welcomeView;
   if (!view || view.hidden || view.classList.contains("is-closing")) return;
+  window.clearTimeout(welcomeEnterTimer);
+  welcomeEnterTimer = null;
+  welcomeEnterRevealed = false;
+  elements.welcomeNextButton.classList.remove("pending-reveal", "is-revealed");
   if (welcomeRequiresFamily() && !getOperatorFamilyId()) {
     setWelcomeSlide(getWelcomeSlides().length - 1);
     showToast({ message: "还差一步：选好家庭，就可以一起记账了" });
@@ -5323,10 +5416,29 @@ function syncWelcomeControls() {
   const isLast = welcomeSlideIndex === getWelcomeSlides().length - 1;
   const selectedFamilyId = getSelectedOperatorFamilyId(elements.welcomeIdentityFamilyList) || getOperatorFamilyId();
   const identityMissing = isLast && welcomeRequiresFamily() && !selectedFamilyId;
-  elements.welcomeNextLabel.textContent = isLast ? "开始记账" : "继续";
+  elements.welcomeNextLabel.textContent = isLast ? "立即查看" : "继续";
   elements.welcomeSkipButton.hidden = isLast;
   elements.welcomeNextButton.disabled = identityMissing;
   elements.welcomeNextButton.setAttribute("aria-disabled", String(identityMissing));
+  /* 末屏终端 CTA：进入末屏后 2 秒才淡入，期间不可点击，避免一进来就误点跳过认家。
+     离开末屏则复位，下次回到末屏重新计时。 */
+  if (isLast) {
+    if (!welcomeEnterRevealed) {
+      elements.welcomeNextButton.classList.add("pending-reveal");
+      elements.welcomeNextButton.classList.remove("is-revealed");
+      if (!welcomeEnterTimer) {
+        welcomeEnterTimer = window.setTimeout(function () {
+          welcomeEnterRevealed = true;
+          elements.welcomeNextButton.classList.remove("pending-reveal");
+          elements.welcomeNextButton.classList.add("is-revealed");
+        }, 2000);
+      }
+    }
+  } else {
+    if (welcomeEnterTimer) { window.clearTimeout(welcomeEnterTimer); welcomeEnterTimer = null; }
+    welcomeEnterRevealed = false;
+    elements.welcomeNextButton.classList.remove("pending-reveal", "is-revealed");
+  }
   /* 只切 class 不重建节点：滚动中重写 innerHTML 会打断平滑滚动动画 */
   [...elements.welcomeDots.children].forEach((dot, index) => {
     dot.classList.toggle("is-active", index === welcomeSlideIndex);
@@ -6950,6 +7062,41 @@ bootstrap();
   viewport?.addEventListener("resize", syncKeyboardFlag);
   document.addEventListener("focusin", syncKeyboardFlag);
   document.addEventListener("focusout", () => setTimeout(syncKeyboardFlag, 0));
+})();
+
+// P0-2: iOS/Safari 软键盘避让。interactive-widget=resizes-content 仅 Chromium 生效，
+// Safari 是键盘悬浮覆盖、页面不 resize，直点输入框时不会自动滚入可视区，
+// 偶发被固定头部/键盘遮挡。这里在窄屏聚焦文本输入后显式滚入视区中央，
+// 复用 inputs/select 已有的 scroll-margin-block（12px 96px）避开头部与提交栏。
+(() => {
+  const mobileQuery = window.matchMedia("(max-width: 820px), (pointer: coarse)");
+  const isTextEntry = (el) =>
+    el && (el.tagName === "SELECT" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
+  let focusedEl = null;
+
+  const scrollFocusedIntoView = () => {
+    if (!focusedEl || document.activeElement !== focusedEl) return;
+    focusedEl.scrollIntoView({ block: "center", behavior: "auto" });
+  };
+
+  document.addEventListener("focusin", (e) => {
+    if (!mobileQuery.matches) return;
+    const t = e.target;
+    if (isTextEntry(t)) {
+      focusedEl = t;
+      // 等键盘动画基本结束再滚（iOS 约 250-300ms），避免与 resize 抢滚动
+      window.setTimeout(scrollFocusedIntoView, 300);
+    }
+  });
+  document.addEventListener("focusout", (e) => {
+    if (e.target === focusedEl) focusedEl = null;
+  });
+  // 键盘高度变化（含悬浮键盘完全弹起到位）后再校正一次
+  window.visualViewport?.addEventListener("resize", () => {
+    if (focusedEl && document.activeElement === focusedEl) {
+      window.setTimeout(scrollFocusedIntoView, 50);
+    }
+  });
 })();
 
 // 滚动期间给 body 挂 is-scrolling：CSS 借此暂停装饰性无限动画（同步呼吸灯等），

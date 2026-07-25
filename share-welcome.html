@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f7f4ef" />
+<title>TravelLedger · 共享账本邀请</title>
+<!-- 直接复用主站真实样式，保证令牌 / 按钮 / 暗色 / 减少动效 100% 一致 -->
+<link rel="stylesheet" href="css/variables.css" />
+<link rel="stylesheet" href="css/animations.css" />
+<link rel="stylesheet" href="css/components/buttons.css" />
+<link rel="stylesheet" href="css/misc.css" />
+<link rel="stylesheet" href="css/dark.css" />
+<link rel="stylesheet" href="css/a11y.css" />
+<style>
+  /* ── 分享落地：全屏分步滑卡（沿用 .welcome-view 语言，仅做落地微调） ── */
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: grid;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  /* 落地背景取代确认浮层的暗色遮罩，改用暖色品牌光晕 */
+  .sw-landing .welcome-backdrop {
+    background:
+      radial-gradient(120% 90% at 12% 4%, rgba(169, 206, 181, 0.22), transparent 52%),
+      radial-gradient(120% 90% at 90% 8%, rgba(185, 201, 230, 0.20), transparent 50%),
+      radial-gradient(120% 120% at 70% 100%, rgba(239, 194, 191, 0.16), transparent 55%),
+      var(--bg);
+  }
+  .sw-landing .welcome-dialog {
+    width: min(460px, 100%);
+    max-height: 92dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* 分享来源徽标（仅英雄屏显示，随 ?from= 变化） */
+  .sw-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px 5px 9px;
+    margin-bottom: 2px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in oklch, var(--brand-primary) 12%, var(--control-surface));
+    color: var(--brand-primary-strong);
+    font-size: 0.72rem;
+    font-weight: var(--fw-bold);
+    box-shadow: var(--glass-edge);
+  }
+  .sw-source-badge svg { width: 14px; height: 14px; flex: none; }
+
+  /* 英雄屏标题稍大，承担"行动号召"功能 */
+  .welcome-slide .sw-hero-title {
+    font-size: 1.85rem;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+  }
+
+  /* 终端 CTA 在最后一屏的认家区下方 */
+  .sw-enter-row {
+    display: grid;
+    gap: 9px;
+    width: min(300px, 100%);
+    margin-top: 4px;
+  }
+  .sw-enter-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: var(--fw-bold);
+  }
+
+  /* 终端 CTA：进入第 5 屏后 2 秒才淡入，期间不可点击 */
+  .sw-enter-row .welcome-next-button {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: opacity .55s ease, transform .55s ease;
+  }
+  .sw-enter-row .welcome-next-button.is-revealed {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sw-enter-row .welcome-next-button { transition: opacity .2s ease; transform: none; }
+  }
+
+  /* 认家选择（预览用静态 3 家；生产中由 app.js 注入 operator-family-choices） */
+  .sw-family-choices {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 9px;
+    width: min(330px, 100%);
+  }
+  .sw-family-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid rgba(22, 26, 30, 0.10);
+    border-radius: var(--radius-pill);
+    background: var(--control-surface-strong);
+    padding: 9px 16px;
+    font-size: 0.86rem;
+    font-weight: var(--fw-cjk-black);
+    color: var(--ink);
+    cursor: pointer;
+    box-shadow: var(--glass-edge);
+    transition: transform var(--motion-fast) var(--spring), border-color var(--motion-fast) var(--settle);
+  }
+  .sw-family-chip::before {
+    content: "";
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--chip-color, var(--brand-primary));
+  }
+  .sw-family-chip:active { transform: scale(0.96); }
+  .sw-family-chip.is-selected {
+    border-color: var(--brand-primary);
+    background: color-mix(in oklch, var(--brand-primary) 12%, var(--control-surface-strong));
+  }
+
+  /* 当前屏内容交错渐入（减少动效时关闭） */
+  @keyframes sw-rise {
+    from { opacity: 0; transform: translateY(11px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .welcome-slide.is-active > * { animation: sw-rise 460ms var(--spring) both; }
+    .welcome-slide.is-active > *:nth-child(2) { animation-delay: 55ms; }
+    .welcome-slide.is-active > *:nth-child(3) { animation-delay: 110ms; }
+    .welcome-slide.is-active > *:nth-child(4) { animation-delay: 165ms; }
+    .welcome-slide.is-active > *:nth-child(5) { animation-delay: 220ms; }
+  }
+
+  /* 来源预览开关（演示用，生产中移除） */
+  .sw-source-switch {
+    position: fixed;
+    left: 14px;
+    bottom: 14px;
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: min(440px, calc(100vw - 28px));
+    padding: 8px;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+    backdrop-filter: blur(12px) saturate(160%);
+    box-shadow: var(--edge-shade), 0 12px 34px rgba(22, 26, 30, 0.14);
+    font-size: 0.72rem;
+  }
+  .sw-source-switch span { color: var(--muted); font-weight: var(--fw-bold); align-self: center; padding-left: 4px; }
+  .sw-source-switch button {
+    border: 1px solid rgba(22, 26, 30, 0.10);
+    border-radius: var(--radius-pill);
+    background: var(--control-surface-strong);
+    color: var(--ink);
+    padding: 6px 11px;
+    font-size: 0.72rem;
+    font-weight: var(--fw-bold);
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--settle);
+  }
+  .sw-source-switch button.is-on {
+    background: var(--brand-primary);
+    color: var(--brand-primary-strong);
+    border-color: transparent;
+  }
+  @media (max-width: 520px) {
+    .sw-source-switch { left: 8px; right: 8px; bottom: 8px; max-width: none; }
+  }
+</style>
+</head>
+<body class="sw-landing">
+  <section class="welcome-view" id="welcomeView" aria-labelledby="swHeroTitle" aria-modal="true" role="dialog">
+    <div class="confirm-backdrop welcome-backdrop" aria-label="背景"></div>
+    <div class="welcome-dialog" role="document">
+      <button class="welcome-skip" id="welcomeSkipButton" type="button">跳过</button>
+      <div class="welcome-track" id="welcomeTrack" tabindex="-1">
+
+        <!-- 屏 1 · 英雄页（分享来源感知） -->
+        <article class="welcome-slide is-active" data-slide="0">
+          <div class="welcome-art" aria-hidden="true">
+            <div class="welcome-orbs">
+              <span class="welcome-orb orb-a"></span>
+              <span class="welcome-orb orb-b"></span>
+              <span class="welcome-orb orb-c"></span>
+            </div>
+          </div>
+          <span class="sw-source-badge" id="swSourceBadge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+            <span id="swSourceBadgeText">共享账本</span>
+          </span>
+          <p class="eyebrow welcome-eyebrow" id="swHeroEyebrow">欢迎加入</p>
+          <h2 class="sw-hero-title" id="swHeroTitle">三个家庭，一本账</h2>
+          <p class="welcome-copy" id="swHeroCopy">这是你们三家的共享旅行账本。打开就能看到每个人记的每一笔，也能随手记一笔。</p>
+        </article>
+
+        <!-- 屏 2 · 分摊方式 -->
+        <article class="welcome-slide" data-slide="1">
+          <div class="welcome-art welcome-split-art">
+            <div class="welcome-split-modes" role="list" aria-label="三种分摊方式">
+              <div class="welcome-split-mode is-default" role="listitem">
+                <span class="welcome-split-mark">3 家</span>
+                <span><strong>全部家庭</strong><small>三家都参与，按人头平分</small></span>
+              </div>
+              <div class="welcome-split-mode" role="listitem">
+                <span class="welcome-split-mark">2 家</span>
+                <span><strong>指定家庭</strong><small>谁去了选谁，没去的免单</small></span>
+              </div>
+              <div class="welcome-split-mode is-custom" role="listitem">
+                <span class="welcome-split-mark">¥</span>
+                <span><strong>自定金额</strong><small>请客或儿童免单？逐家填金额</small></span>
+              </div>
+            </div>
+          </div>
+          <p class="eyebrow welcome-eyebrow">分摊范围，很灵活</p>
+          <h3>这笔钱，由谁平摊？</h3>
+          <p class="welcome-copy welcome-split-copy">记一笔账时，先选「这笔钱算在谁头上」：默认三家按人头分；祺家没去聚餐就只选另两家；有人请客直接填他付的金额。怎么分你定，平账交给系统。</p>
+        </article>
+
+        <!-- 屏 3 · 平账 -->
+        <article class="welcome-slide" data-slide="2">
+          <div class="welcome-art" aria-hidden="true">
+            <div class="welcome-mini-settle">
+              <span class="welcome-settle-party dot-b">祺家</span>
+              <span class="welcome-settle-arrow">→</span>
+              <span class="welcome-settle-party dot-c">旦家</span>
+              <strong class="welcome-settle-amount">¥86.50</strong>
+            </div>
+          </div>
+          <h3>谁该给谁多少，一眼看清</h3>
+          <p class="welcome-copy">不用自己扒拉计算器。打开「统计和平账」，总花费、每家该摊多少、谁转谁多少钱，都帮你列得清清楚楚。</p>
+        </article>
+
+        <!-- 屏 4 · 同步 -->
+        <article class="welcome-slide" data-slide="3">
+          <div class="welcome-art" aria-hidden="true">
+            <div class="welcome-cloud-art">
+              <div class="welcome-mini-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <span>…?ledger=一起旅行</span>
+              </div>
+              <div class="welcome-sync-dots"><span class="dot-a"></span><span class="dot-b"></span><span class="dot-c"></span></div>
+            </div>
+          </div>
+          <h3>记一笔，三家同时看见</h3>
+          <p class="welcome-copy">账本是实时的：你刚记的一笔，家人的手机上立刻出现。再也不用事后对账、群里接龙。</p>
+        </article>
+
+        <!-- 屏 5 · 认家 + 终端 CTA -->
+        <article class="welcome-slide welcome-identity-slide" data-slide="4">
+          <div class="welcome-art welcome-identity-art">
+            <div class="sw-family-choices" id="swFamilyChoices" role="radiogroup" aria-label="选择编辑者所属家庭">
+              <button class="sw-family-chip" type="button" style="--chip-color:#a9ceb5" data-family="祺家" aria-checked="false" role="radio">祺家</button>
+              <button class="sw-family-chip" type="button" style="--chip-color:#b9c9e6" data-family="旦家" aria-checked="false" role="radio">旦家</button>
+              <button class="sw-family-chip" type="button" style="--chip-color:#efc2bf" data-family="明家" aria-checked="false" role="radio">明家</button>
+            </div>
+          </div>
+          <p class="eyebrow welcome-eyebrow">最后一步</p>
+          <h3>你来自哪个家庭？</h3>
+          <p class="welcome-copy">选一下家庭，之后你记的每笔账都会带上你的名字。</p>
+          <div class="sw-enter-row">
+            <button class="primary-button welcome-next-button" id="swEnterButton" type="button" disabled>
+              <span class="button-glow-ring"></span>
+              <span class="button-label">立即查看</span>
+            </button>
+            <p class="sw-enter-hint" id="swEnterHint">选一个家庭后即可进入共享账本</p>
+          </div>
+        </article>
+
+      </div>
+      <div class="welcome-footer">
+        <div class="welcome-dots" id="welcomeDots" role="tablist" aria-label="引导步骤"></div>
+        <button class="primary-button welcome-next-button" id="welcomeNextButton" type="button">
+          <span class="button-glow-ring"></span>
+          <span class="button-label" id="welcomeNextLabel">继续</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 演示用：来源预览开关（生产移除） -->
+  <div class="sw-source-switch" aria-label="预览分享来源">
+    <span>预览来源</span>
+    <button data-from="default" class="is-on">默认</button>
+    <button data-from="qr">二维码</button>
+    <button data-from="email">邮件</button>
+    <button data-from="social">社交</button>
+    <button data-from="message">私信</button>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+  var track = document.getElementById("welcomeTrack");
+  var slides = Array.prototype.slice.call(track.querySelectorAll(".welcome-slide"));
+  var dotsWrap = document.getElementById("welcomeDots");
+  var nextBtn = document.getElementById("welcomeNextButton");
+  var nextLabel = document.getElementById("welcomeNextLabel");
+  var skipBtn = document.getElementById("welcomeSkipButton");
+  var total = slides.length;
+  var current = 0;
+
+  // 构建步骤圆点
+  var dots = [];
+  for (var i = 0; i < total; i++) {
+    var d = document.createElement("button");
+    d.className = "welcome-dot" + (i === 0 ? " is-active" : "");
+    d.type = "button";
+    d.setAttribute("role", "tab");
+    d.setAttribute("aria-label", "第 " + (i + 1) + " 步");
+    (function (idx) { d.addEventListener("click", function () { goTo(idx); }); })(i);
+    dotsWrap.appendChild(d);
+    dots.push(d);
+  }
+
+  function setActive(idx) {
+    current = idx;
+    slides.forEach(function (s, i) { s.classList.toggle("is-active", i === idx); });
+    dots.forEach(function (d, i) { d.classList.toggle("is-active", i === idx); });
+    var last = idx === total - 1;
+    nextLabel.textContent = last ? "完成" : "继续";
+    nextBtn.classList.toggle("is-final", last);
+    if (last) revealEnterAfterDelay();
+  }
+
+  // 终端 CTA：进入第 5 屏后等 2 秒再淡入（避免一进来就误点）
+  var enterRevealed = false;
+  function revealEnterAfterDelay() {
+    if (enterRevealed) return;
+    enterRevealed = true;
+    setTimeout(function () { enterBtn.classList.add("is-revealed"); }, 2000);
+  }
+
+  function goTo(idx) {
+    idx = Math.max(0, Math.min(total - 1, idx));
+    track.scrollTo({ left: slides[idx].offsetLeft, behavior: "smooth" });
+    setActive(idx);
+  }
+
+  // 滚动时同步当前屏（含触屏滑动）
+  var raf = 0;
+  track.addEventListener("scroll", function () {
+    if (raf) return;
+    raf = requestAnimationFrame(function () {
+      raf = 0;
+      var center = track.scrollLeft + track.clientWidth / 2;
+      var idx = 0, best = Infinity;
+      slides.forEach(function (s, i) {
+        var c = s.offsetLeft + s.offsetWidth / 2;
+        var dist = Math.abs(c - center);
+        if (dist < best) { best = dist; idx = i; }
+      });
+      if (idx !== current) setActive(idx);
+    });
+  }, { passive: true });
+
+  nextBtn.addEventListener("click", function () {
+    if (current < total - 1) goTo(current + 1);
+    else enterLedger();
+  });
+  skipBtn.addEventListener("click", enterLedger);
+
+  // 终端 CTA：认家后可用
+  var enterBtn = document.getElementById("swEnterButton");
+  var enterHint = document.getElementById("swEnterHint");
+  var familyChoices = document.getElementById("swFamilyChoices");
+  familyChoices.addEventListener("click", function (e) {
+    var chip = e.target.closest(".sw-family-chip");
+    if (!chip) return;
+    familyChoices.querySelectorAll(".sw-family-chip").forEach(function (c) {
+      c.classList.remove("is-selected");
+      c.setAttribute("aria-checked", "false");
+    });
+    chip.classList.add("is-selected");
+    chip.setAttribute("aria-checked", "true");
+    enterBtn.disabled = false;
+    enterHint.textContent = "即将以「" + chip.dataset.family + "」身份进入共享账本";
+  });
+  enterBtn.addEventListener("click", enterLedger);
+
+  function enterLedger() {
+    // 生产中：关闭欢迎层并展示共享账本；此处仅演示反馈
+    document.getElementById("welcomeView").classList.add("is-closing");
+    setTimeout(function () {
+      document.body.insertAdjacentHTML("beforeend",
+        '<p style="position:fixed;inset:0;display:grid;place-items:center;margin:0;color:var(--muted);font-weight:var(--fw-bold)">（演示）已离开欢迎页，进入共享账本 →</p>');
+    }, 280);
+  }
+
+  setActive(0);
+
+  /* ── 分享来源感知：?from= / ?inviter=，否则默认 ── */
+  var SOURCES = {
+    default: {
+      badge: "共享账本",
+      icon: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>',
+      eyebrow: "欢迎加入",
+      title: "三个家庭，一本账",
+      copy: "这是你们三家的共享旅行账本。打开就能看到每个人记的每一笔，也能随手记一笔。"
+    },
+    qr: {
+      badge: "扫码加入",
+      icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h3v3H8zM13 8h3v3h-3zM8 13h3v3H8zM14 14h2M16 16h.01"/>',
+      eyebrow: "扫码加入",
+      title: "账本，就在你手边",
+      copy: "扫一下就进来了。这是家人共享的旅行账本，谁花了多少，打开全看得见。"
+    },
+    email: {
+      badge: "邮件邀请",
+      icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/>',
+      eyebrow: "来自一封邀请邮件",
+      title: "家人喊你一起记账啦",
+      copy: "点开链接就能加入。之后你记的每一笔，都会实时同步给其他两家。"
+    },
+    social: {
+      badge: "社交分享",
+      icon: '<path d="M4 12a8 8 0 0 1 8-8 8 8 0 0 1 0 16c-1.4 0-2.5-.4-3.6-1l-3 1 1-3c-.6-1-1-2.1-1-3.4z"/>',
+      eyebrow: "来自社交分享",
+      title: "朋友分享了一个共享账本",
+      copy: "三家同行，账单一目了然。点进来认个家，旅程花销从此清清楚楚。"
+    },
+    message: {
+      badge: "私信邀请",
+      icon: '<path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 21l2-6a8.4 8.4 0 1 1 16-3.5z"/>',
+      eyebrow: "家人邀请你",
+      title: "来一起算清这趟旅行",
+      copy: "先选好你来自哪个家庭，之后每笔记账都带上你的名字。"
+    }
+  };
+
+  function applySource(key, inviter) {
+    var s = SOURCES[key] || SOURCES.default;
+    var badge = document.getElementById("swSourceBadge");
+    badge.querySelector("svg").innerHTML = s.icon;
+    document.getElementById("swSourceBadgeText").textContent = s.badge;
+    var eyebrow = document.getElementById("swHeroEyebrow");
+    eyebrow.textContent = inviter && (key === "message" || key === "email")
+      ? inviter + " " + (key === "message" ? "邀请你" : "邀你一起记账")
+      : s.eyebrow;
+    document.getElementById("swHeroTitle").textContent = s.title;
+    document.getElementById("swHeroCopy").textContent = s.copy;
+    // 切换来源时重放英雄屏渐入
+    var hero = slides[0];
+    hero.classList.remove("is-active");
+    void hero.offsetWidth;
+    hero.classList.add("is-active");
+  }
+
+  var params = new URLSearchParams(location.search);
+  var from = params.get("from");
+  var inviter = params.get("inviter");
+  if (!SOURCES[from]) from = "default";
+  applySource(from, inviter);
+
+  // 演示开关
+  var sw = document.querySelector(".sw-source-switch");
+  sw.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-from]");
+    if (!b) return;
+    sw.querySelectorAll("button").forEach(function (x) { x.classList.remove("is-on"); });
+    b.classList.add("is-on");
+    applySource(b.dataset.from, inviter);
+  });
+})();
+</script>
+</body>
+</html>

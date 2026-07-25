@@ -1390,7 +1390,7 @@
   .amount-label {
     grid-template-rows: minmax(16px, auto) minmax(66px, 1fr);
     min-height: 108px;
-    padding: 13px 16px 12px;
+    padding: 12px 16px 12px;
     border-radius: var(--radius-xl);
   }
 
@@ -1421,20 +1421,21 @@
 
   .expense-form {
     grid-template-columns: minmax(126px, 0.86fr) minmax(0, 1.14fr);
-    gap: var(--control-gap);
+    gap: var(--field-gap);
   }
 
   .amount-field {
     min-height: 66px;
   }
 
-  .date-label,
-  .note-label {
-    grid-column: auto;
-    align-content: start;
-    grid-template-rows: 16px 46px;
-    min-width: 0;
-  }
+      .date-label,
+      .note-label {
+        grid-column: auto;
+        align-content: start;
+        grid-template-rows: auto auto;
+        row-gap: var(--field-inner-gap);
+        min-width: 0;
+      }
 
   .date-label input,
   .note-label input {
@@ -1509,14 +1510,14 @@
   }
 
   .category-chips-fade::before {
-    /* 左端 fade：垂直方向扩到 chips 选中态光晕的 ±40px 安全区（与容器
-       padding 同步），让最左 chips 的光晕也能被遮罩柔化。
-       垂直 mask 让上下 ±18% 渐入渐出，消除 row 上下矩形截断。 */
+    /* 左端 fade：只覆盖 chip 行本身（44px）+ 少量光晕缓冲，不再向上侵入
+       "类别" label、向下侵入「分摊范围」等文字区域。垂直 mask 仍让上下
+       ±18% 渐入渐出，消除矩形截断。 */
     content: "";
     position: absolute;
     left: 0;
-    top: -40px;
-    bottom: -40px;
+    top: -10px;
+    bottom: -10px;
     width: var(--cat-edge-fade);
     /* 圆掉外（左）侧上下直角，避免遮罩矩形在 row 上下形成直角截断；
        右（芯片侧）朝向透明渐隐端，不圆也不会露直角。 */
@@ -1542,31 +1543,24 @@
     );
   }
 
-  /* 右端 fade 移到 .category-control-row::after：只有 row 层级才能水平
-     跨过 8px gap、延伸到 + 按钮所在列，让 + 按钮的顶部（光晕范围）
-     也有渐隐过渡。底部与 + 按钮底部对齐（bottom: 0），不再向下探出形成
-     直角尾端；四角全圆（border-radius:22px），右下 22px 与 + 按钮圆形轮廓
-     匹配，左上/左下身处透明渐隐端也一并圆掉，消除任何直角边。
-     + 按钮的玻璃胶囊（z-index:5 + backdrop-filter）盖住 fade 中部，按钮本身
-     仍清晰，上下「空白安全区」里能看到渐隐自然过渡到行边界，形成统一的
-     玻璃尾端。
-     水平 linear-gradient 只解决左右渐隐，配上垂直 mask（±18% 渐入渐出）
-     才能消除 row 上下 ±40px 处的「直角阴影截断」——mask 单独用无
-     backdrop-filter，不会触发 WebKit 矩形合成层 bug（design-qa.md P1）。
-     宽度 = 118 chips + 8 gap + 44 button = 170px，比之前 148px 更厚，
-     让 fade 在 + 按钮左侧的可见部分更宽、连续感更强。
-     保持 8px 网格间距；filter:blur(2px) 仅做颜色过渡的轻微柔化。 */
+  /* 右端 fade：仅覆盖 chips 末端 + 8px gap，不再覆盖 + 按钮本体。
+     + 按钮（44px）完整浮于 fade 右侧，按钮左侧与 fade 透明端衔接，
+     消除之前「遮罩切到按钮左边」的直角截断。
+     行层级 ::after 仍能跨过 gap 到按钮左边缘，保证 chips 尾部渐隐连续。
+     上下范围只扩到 chip 行 ±10px 缓冲，不侵入 label/文字区域。
+     水平 gradient 从 chip 侧不透明渐变到按钮侧透明；filter:blur(2px)
+     保留 iOS 26 渐变模糊质感；垂直 mask 消除矩形截断。 */
   .category-control-row::after {
     content: "";
     position: absolute;
     display: block;
-    top: -40px;
-    bottom: 0;
+    top: -10px;
+    bottom: -10px;
     left: auto;
-    right: 0;
-    width: 170px;
-    /* 四角全圆：右下 22px 与 + 按钮圆形轮廓匹配；左（透明渐隐端）上下直角
-       也一并圆掉，否则遮罩矩形在 + 按钮左侧仍会露出左下/左上直角。 */
+    right: 44px;
+    width: 126px;
+    /* 四角全圆：右侧透明端贴合按钮圆形轮廓，左（不透明端）在 chips 内部
+       被 mask 渐隐，不会露出直角。 */
     border-radius: 22px;
     pointer-events: none;
     opacity: 0;
@@ -1574,11 +1568,11 @@
     z-index: 3;
     background: linear-gradient(
       to right,
-      transparent 0%,
-      color-mix(in srgb, var(--cat-fade-color) 28%, transparent) 25%,
+      var(--cat-fade-color) 0%,
+      color-mix(in srgb, var(--cat-fade-color) 85%, transparent) 25%,
       color-mix(in srgb, var(--cat-fade-color) 58%, transparent) 50%,
-      color-mix(in srgb, var(--cat-fade-color) 85%, transparent) 75%,
-      var(--cat-fade-color) 100%
+      color-mix(in srgb, var(--cat-fade-color) 28%, transparent) 75%,
+      transparent 100%
     );
     -webkit-mask-image: linear-gradient(
       to bottom,
@@ -1725,7 +1719,7 @@
   }
 
   .split-family-chip {
-    min-height: 36px;
+    min-height: 44px;
     justify-content: center;
     padding: 0 8px;
     font-size: var(--label-sm);
@@ -2465,7 +2459,7 @@
 
   /* 圆角在超窄屏依旧很大，内边距不能缩回去，否则"金额"标题又贴回圆角弧线里 */
   .amount-label {
-    padding: 13px 16px 12px;
+    padding: 12px 16px 12px;
   }
 
   .amount-label.amount-active {

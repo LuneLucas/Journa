@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/base.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-category-fade-round-all-20260725">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-category-fade-round-all-20260725">
+    <link rel="stylesheet" href="./css/variables.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/base.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/layout.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/components/forms.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/components/lists.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/components/modals.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/components/toast.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/animations.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/misc.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/responsive.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/dark.css?v=mobile-p0-touch-keyboard-20260725">
+    <link rel="stylesheet" href="./css/a11y.css?v=mobile-p0-touch-keyboard-20260725">
     <script>
       // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
       // browsers don't expose the SF Symbols font to web content — even Safari
@@ -126,7 +126,7 @@
                 </span>
                 <span class="amount-field">
                   <span class="currency-mark">¥</span>
-                  <input id="amountInput" name="amount" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" placeholder="0.00" />
+                  <input id="amountInput" name="amount" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="next" placeholder="0.00" />
                 </span>
               </label>
 
@@ -483,6 +483,10 @@
                   <span class="welcome-orb orb-c"></span>
                 </div>
               </div>
+              <div class="welcome-source-badge" id="welcomeSourceBadge" hidden>
+                <span class="welcome-source-badge-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg></span>
+                <span class="welcome-source-badge-text" id="welcomeSourceBadgeText"></span>
+              </div>
               <p class="eyebrow welcome-eyebrow" id="welcomeHeroEyebrow">欢迎使用</p>
               <h2 id="welcomeTitle">三个家庭，一本账</h2>
               <p class="welcome-copy" id="welcomeHeroCopy">默认按各家人数分摊，也能为单笔账指定家庭或金额，最后自动算出平账建议。</p>
@@ -537,8 +541,8 @@
               <div class="welcome-art welcome-identity-art">
                 <div id="welcomeIdentityFamilyList" class="operator-family-choices welcome-family-choices" role="radiogroup" aria-label="选择编辑者所属家庭"></div>
               </div>
-              <p class="eyebrow welcome-eyebrow">先认个家</p>
-              <h3>请问，你来自哪个家庭？</h3>
+              <p class="eyebrow welcome-eyebrow">最后一步</p>
+              <h3>你来自哪个家庭？</h3>
               <p class="welcome-copy" id="welcomeIdentityHint">选好后，每次记账都会留下清楚的家庭署名。</p>
             </article>
           </div>
@@ -557,7 +561,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-category-fade-round-all-20260725"></script>
+    <script src="./app.js?v=mobile-p0-touch-keyboard-20260725"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

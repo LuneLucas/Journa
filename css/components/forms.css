@@ -52,7 +52,7 @@
 .expense-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--control-gap);
+  gap: var(--field-gap);
 }
 
 .expense-form > * {
@@ -270,10 +270,14 @@ input[type="date"]:focus {
   inset: 0;
   z-index: 0;
   border-radius: inherit;
+  /* iOS 26 liquid-glass 取向：去掉下坠硬投影，仅用极轻下投影保层级 +
+     双层低透明度 category 柔光晕撑氛围。光晕基本收进 40px 安全区，
+     边缘遮罩裁切不再明显（见 responsive.css 的「阴影异常」说明）。 */
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--category-gradient) 12%, var(--border-highlight)),
-    0 10px 24px -11px color-mix(in srgb, var(--category-gradient) 86%, transparent),
-    0 0 42px -14px color-mix(in srgb, var(--category-gradient) 90%, transparent);
+    inset 0 1px 1px color-mix(in srgb, var(--category-gradient) 14%, var(--border-highlight)),
+    0 3px 12px -8px color-mix(in srgb, var(--category-gradient) 16%, transparent),
+    0 0 30px -16px color-mix(in srgb, var(--category-gradient) 26%, transparent),
+    0 0 14px -10px color-mix(in srgb, var(--category-gradient) 18%, transparent);
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -299,7 +303,7 @@ input[type="date"]:focus {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 0 34px -18px var(--category-gradient),
-    0 12px 26px color-mix(in srgb, var(--category-gradient) 18%, transparent);
+    0 6px 16px -10px color-mix(in srgb, var(--category-gradient) 18%, transparent);
 }
 
 .selectable-category-chip.is-recent:not(.is-selected) {

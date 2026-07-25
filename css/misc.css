@@ -529,7 +529,7 @@ label,
 
 .payer-field legend,
 .category-picker legend {
-  margin-bottom: 8px;
+  margin-bottom: var(--field-inner-gap);
   padding: 0;
   color: var(--muted);
 }
@@ -546,7 +546,12 @@ label,
   min-height: 0;
 }
 
-.date-label {
+.date-label,
+.note-label {
+  display: grid;
+  grid-template-rows: auto auto;
+  row-gap: var(--field-inner-gap);
+  align-content: start;
   min-width: 0;
 }
 
@@ -565,7 +570,7 @@ label,
   overflow: clip;
   gap: 4px;
   /* 圆角已放大到 --radius-xl，内边距需相应加大，避免"金额"标题贴在圆角弧线里显得挤在角落 */
-  padding: 14px 17px 13px;
+  padding: 12px 16px 12px;
   border: var(--stroke-width) solid color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, var(--border-surface));
   border-radius: var(--radius-xl);
   background:
@@ -2901,6 +2906,22 @@ label,
   color: var(--brand-primary);
 }
 
+/* 分享来源感知徽标（首屏，invitedArrival 时由 app.js 显示并填充） */
+.welcome-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 9px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--brand-primary) 14%, var(--surface));
+  color: var(--brand-primary-strong);
+  font-size: 0.78rem;
+  font-weight: var(--fw-bold);
+  box-shadow: var(--glass-edge);
+}
+.welcome-source-badge[hidden] { display: none; }
+.welcome-source-badge svg { width: 15px; height: 15px; flex: none; }
+
 .welcome-copy {
   max-width: 32ch;
   color: var(--muted);
@@ -3183,6 +3204,21 @@ label,
   --submit-text: var(--brand-primary-strong);
   --submit-glow: color-mix(in oklch, var(--brand-primary) 42%, transparent);
   width: 100%;
+}
+
+/* 末屏终端 CTA：进入末屏后 2 秒才淡入，期间不可点击（避免一进来就误点跳过认家）。
+   仅用 opacity 过渡，不碰 transform，避免与按钮 :active 缩放态打架；pending 用 !important
+   压过 .primary-button:disabled 的灰色 opacity，保证悬停前彻底隐藏。 */
+.welcome-next-button.pending-reveal {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity .55s ease;
+}
+.welcome-next-button.is-revealed {
+  transition: opacity .55s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-next-button.pending-reveal { transition: opacity .2s ease; }
 }
 
 /* 自绘滚动动画期间关闭吸附，避免逐帧被拉回吸附点 */
