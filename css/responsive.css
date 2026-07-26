@@ -3149,6 +3149,13 @@
       filter: none !important;
     }
 
+    /* 平账建议是阅读型全屏面板，需要保留背景模糊来隔离底层账本文字。 */
+    .settings-view[data-mode="settlement"] .settings-drawer {
+      background: color-mix(in srgb, var(--glass-bg-strong) 86%, transparent);
+      -webkit-backdrop-filter: blur(19px) saturate(125%);
+      backdrop-filter: blur(19px) saturate(125%);
+    }
+
     .category-picker.is-category-morphing .category-chips-fade {
       filter: none !important;
       will-change: opacity, transform;

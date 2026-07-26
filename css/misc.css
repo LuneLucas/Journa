@@ -1188,6 +1188,13 @@ label,
   animation: settings-drawer-enter var(--motion) var(--spring) both;
 }
 
+/* 平账建议需要隔开底层账本：保留半透明层并模糊背景，避免文字透出叠字。 */
+.settings-view[data-mode="settlement"] .settings-drawer {
+  background: color-mix(in srgb, var(--glass-bg-strong) 86%, transparent);
+  -webkit-backdrop-filter: blur(19px) saturate(125%);
+  backdrop-filter: blur(19px) saturate(125%);
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr;
