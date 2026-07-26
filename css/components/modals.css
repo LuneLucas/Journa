@@ -66,8 +66,10 @@
 }
 
 .settings-backdrop {
-  backdrop-filter: blur(12px) saturate(112%);
-  -webkit-backdrop-filter: blur(12px) saturate(112%);
+  /* 设置与平账抽屉共用的视口遮罩：在保持前景卡片清晰的前提下，
+     将背景失焦从 12px 提到约 60% 更强的 19px。 */
+  backdrop-filter: blur(19px) saturate(125%);
+  -webkit-backdrop-filter: blur(19px) saturate(125%);
 }
 
 .settings-backdrop {

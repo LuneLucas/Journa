@@ -1529,11 +1529,11 @@
        这样滑动中的芯片会先淡出，再进入安全区，不会露出清晰的矩形截断线。 */
     content: "";
     position: absolute;
-    left: -18px;
-    top: -8px;
-    bottom: -8px;
+    left: 0;
+    top: 0;
+    bottom: 0;
     width: 72px;
-    border-radius: 999px;
+    border-radius: 0;
     pointer-events: none;
     /* 起点也保留一层很轻的雾，避免标签栏左端突然变成完全清晰的硬边。 */
     opacity: 0.52;
@@ -1547,6 +1547,7 @@
       transparent 100%
     );
     filter: blur(7px);
+    clip-path: inset(0);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     -webkit-mask-image: none;
@@ -1584,19 +1585,13 @@
 
   .category-control-row.can-fade-start::before {
     opacity: 1;
-    -webkit-backdrop-filter: blur(12px) saturate(120%) brightness(1.01);
-    backdrop-filter: blur(12px) saturate(120%) brightness(1.01);
-    -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.88) 24%, rgba(0, 0, 0, 0.38) 66%, transparent 100%);
-    mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.88) 24%, rgba(0, 0, 0, 0.38) 66%, transparent 100%);
+    /* WebKit 对边缘层的 backdrop-filter + mask 会生成矩形合成块；这里用静态渐变和
+       轻量 blur 保持柔和边界，同时不影响横滑芯片的合成层。 */
   }
 
   .category-control-row.can-fade-end::after {
     opacity: 1;
-    -webkit-backdrop-filter: blur(14px) saturate(125%) brightness(1.01);
-    backdrop-filter: blur(14px) saturate(125%) brightness(1.01);
-    /* + 的水平中心是临界点：右侧保持玻璃厚度，向左连续释放到清晰标签。 */
-    -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.88) 24%, rgba(0, 0, 0, 0.38) 66%, transparent 100%);
-    mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.88) 24%, rgba(0, 0, 0, 0.38) 66%, transparent 100%);
+    /* + 下方沿用静态采样式渐变，避免 backdrop-filter + mask 的 WebKit 矩形伪影。 */
   }
 
   /* 展开/收起 Morph 时，新增胶囊接管整条轨道；此时撤销关闭态的出血，避免

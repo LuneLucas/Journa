@@ -317,8 +317,11 @@ input[type="date"]:focus {
 }
 
 .category-symbol-sf {
-  fill: currentColor;
-  stroke: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .category-symbol-fallback {

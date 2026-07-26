@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-settlement-flow-v12-20260726";
+const APP_VERSION = "journa-category-icons-v15-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -3634,10 +3634,6 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   if (!elements.settlementEntryButton) return;
   const count = summary.settlements.length;
   const hasExpenses = state.expenses.some((expense) => !expense.isDeleted);
-  const routeSummary = summary.settlements
-    .slice(0, 2)
-    .map((settlement) => `${settlement.from} → ${settlement.to}`)
-    .join("、");
   elements.settlementEntrySub.textContent = count
     ? "旅程收尾时查看"
     : "所有家庭当前已两清";
@@ -3646,7 +3642,7 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
 
   if (!elements.mobileSettlementEntryButton) return;
   elements.mobileSettlementEntryButton.hidden = !hasExpenses || count === 0;
-  elements.mobileSettlementEntrySub.textContent = routeSummary || "查看转账方案";
+  elements.mobileSettlementEntrySub.textContent = "查看转账方案";
   renderSoftText(elements.mobileSettlementEntryCount, `${count} 笔`, shouldAnimate);
   if (shouldAnimate && !prefersReducedMotion()) {
     elements.mobileSettlementEntryButton.classList.remove("is-soft-refresh");
@@ -3656,7 +3652,7 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   }
   elements.mobileSettlementEntryButton.setAttribute(
     "aria-label",
-    `平账建议：${count} 笔转账。${routeSummary}`,
+    `平账建议：${count} 笔转账。`,
   );
 }
 
