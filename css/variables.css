@@ -146,8 +146,8 @@
     radial-gradient(135% 95% at 50% 108%, rgba(239, 194, 191, 0.22), transparent 58%),
     var(--bg);
   /* 毛玻璃反射与模糊定义（暖白：纯白玻璃在暖底上会显冷，统一为暖白更调和） */
-  --glass-bg: rgba(255, 252, 248, 0.72);
-  --glass-bg-strong: rgba(255, 253, 250, 0.82);
+  --glass-bg: rgba(255, 252, 248, 0.76);
+  --glass-bg-strong: rgba(255, 253, 250, 0.86);
   --glass-blur: blur(12px) saturate(180%);
   /*
    * 边框层级：所有常驻描边均为 1px。
@@ -325,22 +325,35 @@
   /* 统一 focus-visible 光环：强调绿低透明 */
   --focus-ring: 0 0 0 4px color-mix(in oklch, var(--brand-primary) 20%, transparent);
   /* 阴影三档：从现有强度归纳；玻璃/发光/focus 光环等语义阴影不走 token */
-  --shadow-sm: 0 10px 26px rgba(22, 26, 30, 0.06);
-  --shadow-md: 0 14px 44px rgba(22, 26, 30, 0.08);
-  --shadow-lg: 0 24px 80px rgba(22, 26, 30, 0.12);
+  --shadow-sm:
+    0 2px 5px rgba(22, 26, 30, 0.045),
+    0 10px 24px rgba(22, 26, 30, 0.065);
+  --shadow-md:
+    0 3px 8px rgba(22, 26, 30, 0.045),
+    0 16px 42px rgba(22, 26, 30, 0.09);
+  --shadow-lg:
+    0 4px 12px rgba(22, 26, 30, 0.055),
+    0 26px 76px rgba(22, 26, 30, 0.125);
   /* 阴影合成件：磨砂高光两档 + 常用卡片/英雄阴影组合（1px 模糊让边光柔和，不是刻线） */
   --inset-highlight: inset 0 1px 1px rgba(255, 255, 255, 0.52);
   --inset-highlight-strong: inset 0 1px 1px rgba(255, 255, 255, 0.66);
   /* 自然玻璃边光对：顶部亮边(微模糊) + 底部接触暗边，组合使用替代不透明硬白线 */
-  --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.50);
-  --edge-shade: inset 0 -1px 1px rgba(22, 26, 30, 0.05);
+  --edge-rim: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.58);
+  --edge-shade: inset 0 -1px 1px rgba(22, 26, 30, 0.07);
   /* 控件/强调框用的更强边光：顶边更亮、底边更深，让可交互元素从玻璃面里"浮"出来 */
-  --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.62);
-  --edge-shade-strong: inset 0 -1px 1px rgba(22, 26, 30, 0.09);
+  --edge-rim-strong: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+  --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.68);
+  --edge-shade-strong: inset 0 -1px 1px rgba(22, 26, 30, 0.11);
+  --edge-contact-strong: 0 2px 5px rgba(22, 26, 30, 0.045);
   /* 玻璃边光组合：替换生硬 1px 实线。strong 用于控件/强调；普通用于卡片/容器。
      注意：已带 --inset-highlight 的元素只用 --edge-shade，避免顶部高光叠加过重。 */
-  --glass-edge: var(--edge-light), var(--edge-shade);
-  --glass-edge-strong: var(--edge-light-strong), var(--edge-shade-strong);
+  --glass-edge: var(--edge-rim), var(--edge-light), var(--edge-shade);
+  --glass-edge-strong:
+    var(--edge-rim-strong),
+    var(--edge-light-strong),
+    var(--edge-shade-strong),
+    var(--edge-contact-strong);
   --shadow-chip: var(--inset-highlight), 0 8px 22px rgba(22, 26, 30, 0.07);
   --shadow-card-lift: 0 12px 34px rgba(22, 26, 30, 0.08);
   --shadow-hero: 0 34px 92px rgba(22, 26, 30, 0.14);

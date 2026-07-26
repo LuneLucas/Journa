@@ -57,4 +57,9 @@
   .metric.primary strong.is-scrambling {
     opacity: 1;
   }
+
+  .settings-view .settlement-flow-map .flow-spark {
+    animation: none !important;
+    opacity: 0 !important;
+  }
 }

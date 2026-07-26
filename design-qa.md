@@ -35,6 +35,57 @@ final result: passed
 
 ---
 
+# 类别标签末端玻璃模糊 QA
+
+- 源视觉：沿用参考图一的中线起始、单向衰减模糊语言；实现截图 `/private/tmp/journa-category-blur-both-ends-v3.png`，319×734 CSS 视口。
+- 状态：记账页、类别横滑已滚到末端，`can-fade-start can-fade-end`，`+` 浮动按钮保持可见。
+- 结果：左右活动渐隐层分别在轨道边缘与 `+` 中心附近承接模糊，向内连续衰减；左侧宽度收窄为 72px，标签滚动坐标不变。计算样式为 `backdrop-filter: blur(12px)` / `blur(14px)`，静止态为 `none`。
+- 交互：类别横滑仍可滚动，`+` 控件未被遮罩拦截；未改动选中类别的 radio 状态或新增类别 Morph。
+- 检查：资源版本已同步为 `journa-sf-icons-tags-category-blur-v2-20260726`；`git diff --check`、JS 语法检查和对比度检查继续通过。
+
+## Result
+
+final result: passed
+
+---
+
+# 移动端顶部渐进模糊 QA
+
+- 源视觉真值：参考图一 `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-75e11b71-d230-464d-a8b8-8ad89a92314c.png`（1260×448 px）；问题现状为图二 `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-4a955956-6d7e-4a1c-98ac-4944f684c0d7.png`（622×334 px）。
+- 实现截图：`/private/tmp/journa-header-blur-center-622.jpg`（622×334 px，CSS 视口 622×334，DPR 1）和 `/private/tmp/journa-header-blur-center-390.jpg`（390×844 px，DPR 1）。
+- 同一输入对照：`/private/tmp/journa-header-blur-comparison.png`；参考图一缩放到 622px 宽，与 622×334 的问题截图和实现截图纵向并置。因三者内容状态不同，本轮只比较玻璃模糊的边界、衰减方向和综合色彩，不做文案与卡片位置的像素拟合。
+- 状态：浅色主题、数据面板、首屏展开态；补测滚动中间态、320×568 低矮视口和“数据 / 记账”双向切换。
+
+## Findings 与迭代
+
+- 初始 P1：图二的过渡层透明度和遮罩在中段重新增强，形成一条发白的横带，模糊起点位于切换器下方。
+  - 修复：改为单向衰减的背景与遮罩，主玻璃降低饱和度；过渡层扩展到 88px，并把主玻璃终点和过渡起点共同锚定在切换器水平中线。
+  - 后验：390×844 首屏 `switchCenter=142 / afterTop=142`；滚动中间态 `118.5 / 118.5`；320×568 低矮布局 `85 / 85`。对照图中不再出现中段白色峰值，模糊从控件后方连续向下消散。
+- 缓存回归 P2：首次重载仍读取旧的 48px 过渡层。
+  - 修复：同步 `index.html`、`app.js` 与 `sw.js` 到 `journa-glass-depth-header-blur-v3-20260726`。
+  - 后验：浏览器计算样式为 `height: 88px`，页面版本与资源版本一致。
+
+## 必检视觉面
+
+- 字体与排版：标题、切换器、账目文字的字体、字号、字重与换行规则未修改；模糊层位于内容后方，不改变文本布局。
+- 间距与布局：未改变 header、切换器或内容流几何；390×844 与 320×568 的横向溢出均为 0。
+- 颜色与视觉 token：继续消费 `--glass-bg`，饱和度由 180% 降至 145% / 125%，参考图所需的中性柔雾更接近且没有新增固定主题色。
+- 图片与资产：未新增或替换可见图片、图标或品牌资产。
+- 文案与内容：标题、账本数据、切换器标签和无障碍名称均未修改。
+
+## 交互与技术检查
+
+- “记账”与“数据”标签均可点击，`data-mobile-panel` 和 `aria-selected` 双向更新正确；模糊伪元素保持 `pointer-events: none`。
+- 浏览器控制台 0 条 error / warning；390×844 和 320×568 均无横向溢出。
+- `git diff --check`、`app.js` / `sw.js` 语法检查通过；23 组对比度检查全部 PASS。
+- 真机 iPhone Safari/PWA 的 `backdrop-filter + mask-image` 合成仍应作为发布前实机检查项；桌面 WebKit 模拟不能完全证明原生合成表现。
+
+## Result
+
+final result: passed
+
+---
+
 # 类别尾部渐变遮罩与“+”入口收敛 QA
 
 - 源视觉：用户问题截图 `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-5e95b535-88e5-430f-8567-11e48d9d00f6.png`（600×128 px）与 WebKit 矩形合成异常截图 `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-a07902b0-1f0d-4010-a726-6d9356164e5f.png`（586×178 px）；均为局部裁切且无明确 density 元数据。

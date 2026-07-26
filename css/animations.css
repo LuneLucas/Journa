@@ -1034,31 +1034,23 @@
   view-transition-name: settlement-list;
 }
 
+/*
+ * ── 旅程收尾揭幕：标题定场 → 节点点亮 → 光带贯通 → 卡片与金额落定 ──
+ * 统一由 settings-view 的揭幕状态驱动。揭幕完成后，只有低频光点继续运动。
+ */
 @media (prefers-reduced-motion: no-preference) {
-  .settlement-item.is-entering .settlement-route-node {
-    animation: settlement-step-arrive 480ms var(--spring) both;
-    animation-delay: var(--settlement-delay, 0ms);
-  }
-
-  @keyframes settlement-step-arrive {
+  @keyframes settlement-ceremony-title {
     from {
       opacity: 0;
-      transform: translateY(-6px) scale(0.94);
+      transform: translateY(7px);
     }
 
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
   }
-}
 
-/*
- * ── 资金光流入场：节点亮起 → 光带描画 → 金额浮现 → 光点漂流 ──
- * 光带只在设置抽屉里出现，抽屉关闭时整棵子树 display:none（不绘制、不耗电），
- * 所以流动的光点用无限循环也只在打开设置的短暂时刻运行。
- */
-@media (prefers-reduced-motion: no-preference) {
   @keyframes settlement-ribbon-draw {
     from {
       stroke-dashoffset: 1;
@@ -1069,23 +1061,80 @@
     }
   }
 
-  @keyframes settlement-flow-fade {
+  @keyframes settlement-node-awaken {
     from {
       opacity: 0;
+      transform: scale(0.72);
+      transform-origin: center;
     }
 
     to {
       opacity: 1;
+      transform: scale(1);
+      transform-origin: center;
     }
   }
 
-  @keyframes settlement-spark-in {
+  @keyframes settlement-endpoint-arrive {
+    0% {
+      opacity: 0;
+      transform: scale(0.5);
+      transform-origin: center;
+    }
+
+    68% {
+      opacity: 1;
+      transform: scale(1.42);
+      transform-origin: center;
+    }
+
+    100% {
+      opacity: 0.85;
+      transform: scale(1);
+      transform-origin: center;
+    }
+  }
+
+  @keyframes settlement-card-land {
     from {
       opacity: 0;
+      transform: translateY(12px) scale(0.975);
     }
 
     to {
-      opacity: 0.92;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes settlement-amount-confirm {
+    from {
+      opacity: 0;
+      filter: blur(5px);
+      transform: translateY(5px) scale(0.92);
+    }
+
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes settlement-done-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+
+    65% {
+      opacity: 1;
+      transform: translateY(0) scale(1.012);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 
@@ -1100,40 +1149,74 @@
     }
   }
 
-  .settlement-flow-map .flow-node,
-  .settlement-flow-map .flow-endpoint {
+  .settings-view.is-settlement-revealing .settings-hero > div,
+  .settings-view.is-settlement-revealing .settlement-panel > .settings-panel-title,
+  .settings-view.is-settlement-revealing .settlement-panel > .settings-note {
+    animation: settlement-ceremony-title 300ms var(--settle) both;
+  }
+
+  .settings-view.is-settlement-revealing .settlement-panel > .settings-panel-title {
+    animation-delay: 90ms;
+  }
+
+  .settings-view.is-settlement-revealing .settlement-panel > .settings-note {
+    animation-delay: 150ms;
+  }
+
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-node,
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-endpoint {
     opacity: 0;
   }
 
-  .settlement-flow-map .flow-halo,
-  .settlement-flow-map .flow-ribbon,
-  .settlement-flow-map .flow-core {
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-halo,
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-ribbon,
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-core {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
   }
 
-  .settlement-flow-map.is-live .flow-node {
-    animation: settlement-flow-fade 460ms var(--settle) both;
-    animation-delay: var(--flow-delay, 0ms);
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-node {
+    animation: settlement-node-awaken 400ms var(--spring) both;
+    animation-delay: calc(250ms + var(--flow-delay, 0ms));
   }
 
-  .settlement-flow-map.is-live .flow-halo,
-  .settlement-flow-map.is-live .flow-ribbon,
-  .settlement-flow-map.is-live .flow-core {
-    animation: settlement-ribbon-draw 900ms var(--settle) both;
-    animation-delay: calc(var(--flow-delay, 0ms) + 150ms);
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-halo,
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-ribbon,
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-core {
+    animation: settlement-ribbon-draw 650ms var(--settle) both;
+    animation-delay: calc(450ms + var(--flow-delay, 0ms));
   }
 
-  .settlement-flow-map.is-live .flow-endpoint {
-    animation: settlement-flow-fade 460ms var(--settle) both;
-    animation-delay: calc(var(--flow-delay, 0ms) + 780ms);
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-endpoint {
+    animation: settlement-endpoint-arrive 360ms var(--spring) both;
+    animation-delay: calc(920ms + var(--flow-delay, 0ms));
   }
 
-  .settlement-flow-map.is-live .flow-spark {
-    animation:
-      settlement-spark-in 600ms var(--settle) both,
-      settlement-spark-travel 2.6s linear infinite;
-    animation-delay: calc(var(--flow-delay, 0ms) + 700ms);
+  .settings-view.is-settlement-revealing .settlement-item {
+    animation: settlement-card-land 480ms var(--spring) both;
+    animation-delay: calc(900ms + var(--settlement-delay, 0ms));
+  }
+
+  .settings-view.is-settlement-revealing .settlement-amount {
+    animation: settlement-amount-confirm 360ms var(--settle) both;
+    animation-delay: calc(1100ms + var(--settlement-delay, 0ms));
+  }
+
+  .settings-view.is-settlement-revealing .settlement-done {
+    animation: settlement-done-reveal 700ms var(--spring) both;
+    animation-delay: 520ms;
+  }
+
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-spark {
+    animation: settlement-spark-travel 1050ms var(--settle) both;
+    animation-delay: calc(540ms + var(--flow-delay, 0ms));
+    opacity: 0.72;
+  }
+
+  .settings-view.is-settlement-revealed .settlement-flow-map .flow-spark {
+    animation: settlement-spark-travel 4.8s linear infinite;
+    animation-delay: calc(var(--flow-delay, 0ms) - 1.2s);
+    opacity: 0.28;
   }
 }
 

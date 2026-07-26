@@ -526,30 +526,22 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-surface-hover);
 }
 
-/* In flex contexts like buttons, we want inline-block but let flex alignment handle them */
-.primary-button .sf-icon,
-.secondary-button .sf-icon,
-.ghost-button .sf-icon,
-.icon-button .sf-icon,
-.primary-button .svg-icon,
-.secondary-button .svg-icon,
-.ghost-button .svg-icon,
-.icon-button .svg-icon {
-  display: none;
+.primary-button .ui-icon-host,
+.primary-button .ui-icon-pair,
+.secondary-button .ui-icon-host,
+.secondary-button .ui-icon-pair,
+.ghost-button .ui-icon-host,
+.ghost-button .ui-icon-pair,
+.icon-button .ui-icon-host,
+.icon-button .ui-icon-pair {
+  width: 18px;
+  height: 18px;
 }
 
-.sf-supported .primary-button .sf-icon,
-.sf-supported .secondary-button .sf-icon,
-.sf-supported .ghost-button .sf-icon,
-.sf-supported .icon-button .sf-icon {
-  display: block; /* Use block in flex container */
-}
-
-.sf-unsupported .primary-button .svg-icon,
-.sf-unsupported .secondary-button .svg-icon,
-.sf-unsupported .ghost-button .svg-icon,
-.sf-unsupported .icon-button .svg-icon {
-  display: block;
+.icon-button .ui-icon-host,
+.icon-button .ui-icon-pair {
+  width: 22px;
+  height: 22px;
 }
 
 .compact-button {
@@ -638,8 +630,9 @@ input[type="number"]::-webkit-inner-spin-button {
     background-color var(--motion-fast) var(--spring);
 }
 
-.chip-icon-button .svg-icon {
-  display: block;
+.chip-icon-button .ui-icon-pair {
+  width: 14px;
+  height: 14px;
 }
 
 .chip-icon-button:hover:not(:disabled) {
@@ -667,6 +660,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .ledger-edit-button,
 .delete-button {
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   overflow: hidden;
   width: 0;
   min-width: 0;
@@ -697,6 +693,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .ledger-item.is-expanded .ledger-edit-button,
 .ledger-item.is-expanded .delete-button {
+  display: inline-flex;
   width: 48px;
   min-width: 48px;
   min-height: var(--control-height);
@@ -710,6 +707,12 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .ledger-item.is-expanded .delete-button {
   box-shadow: inset 0 0 0 1px rgba(183, 79, 56, 0.24), var(--glass-edge);
+}
+
+.ledger-edit-button .ui-icon-pair,
+.delete-button .ui-icon-pair {
+  width: 16px;
+  height: 16px;
 }
 
 .ledger-edit-button:hover {

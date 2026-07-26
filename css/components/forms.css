@@ -299,9 +299,17 @@ input[type="date"]:focus {
     transform var(--selection-motion) var(--settle);
 }
 
-.category-symbol {
-  display: block;
+.category-symbol-pair {
+  display: inline-grid;
+  place-items: center;
   flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+}
+
+.category-symbol {
+  display: none;
+  grid-area: 1 / 1;
   width: 15px;
   height: 15px;
   overflow: visible;
@@ -311,6 +319,15 @@ input[type="date"]:focus {
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+
+.category-symbol-fallback {
+  stroke-width: 2;
+}
+
+.apple-platform .category-symbol-sf,
+.non-apple-platform .category-symbol-fallback {
+  display: block;
 }
 
 .selectable-category-chip:hover {

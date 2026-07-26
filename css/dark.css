@@ -10,8 +10,8 @@
       radial-gradient(135% 95% at 50% 108%, rgba(206, 144, 142, 0.20), transparent 58%),
       var(--bg);
     /* 毛玻璃深色微调（暖调玻璃，与暖底一致） */
-    --glass-bg: rgba(30, 28, 26, 0.68);
-    --glass-bg-strong: rgba(38, 36, 33, 0.78);
+    --glass-bg: rgba(30, 28, 26, 0.72);
+    --glass-bg-strong: rgba(38, 36, 33, 0.82);
     --glass-blur: blur(12px) saturate(180%);
     --border-divider: rgba(232, 236, 233, 0.075);
     --border-surface: rgba(232, 236, 233, 0.10);
@@ -21,10 +21,13 @@
     --glass-border: var(--border-surface);
     --glass-border-strong: var(--border-strong);
     /* 暗色玻璃边光：暗底上顶部高光必须压低(0.10)，底部接触暗边必须加重(0.28)才看得出来层次 */
-    --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.10);
-    --edge-shade: inset 0 -1px 1px rgba(0, 0, 0, 0.28);
-    --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.14);
-    --edge-shade-strong: inset 0 -1px 1px rgba(0, 0, 0, 0.34);
+    --edge-rim: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+    --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.13);
+    --edge-shade: inset 0 -1px 1px rgba(0, 0, 0, 0.31);
+    --edge-rim-strong: inset 0 0 0 1px rgba(255, 255, 255, 0.075);
+    --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.17);
+    --edge-shade-strong: inset 0 -1px 1px rgba(0, 0, 0, 0.37);
+    --edge-contact-strong: 0 2px 5px rgba(0, 0, 0, 0.22);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     /* 深色下重定 elevation：亮色阴影是深灰低透明，在暗底直接隐身，
        这里换成真实黑色投影，让静态面板从背景浮起 */
@@ -53,8 +56,8 @@
     --dark-hairline-strong: var(--border-strong);
     --dark-highlight: rgba(255, 255, 255, 0.05);
     /* 暗色下玻璃边光收敛：顶亮压暗、底部接触暗边加深 */
-    --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.12);
-    --edge-shade: inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+    --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.13);
+    --edge-shade: inset 0 -1px 1px rgba(0, 0, 0, 0.31);
     --control-surface: var(--dark-field-strong);
     --control-surface-hover: rgba(255, 255, 255, 0.16);
     --control-surface-strong: rgba(255, 255, 255, 0.14);

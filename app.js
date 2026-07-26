@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-motion-v2-20260726";
+const APP_VERSION = "journa-sf-icons-tags-category-blur-v4-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -120,22 +120,13 @@ const splitModeOptions = [
   { id: "custom", label: "自定金额", description: "逐家填写承担金额" },
 ];
 const categoryVisuals = {
-  "交通": { emoji: "🚄", bg: "#d9e8e2", text: "#486d62", border: "rgba(88, 126, 113, 0.28)", gradient: "#b9d8cc" },
-  "住宿": { emoji: "🛏️", bg: "#dfe5f2", text: "#536782", border: "rgba(92, 112, 145, 0.26)", gradient: "#c1cde2" },
-  "餐饮": { emoji: "🍽️", bg: "#f1dfce", text: "#7a5b3f", border: "rgba(143, 102, 62, 0.24)", gradient: "#e6c7aa" },
-  "门票": { emoji: "🎫", bg: "#eadff0", text: "#69587b", border: "rgba(106, 83, 127, 0.24)", gradient: "#d8c3e3" },
-  "购物": { emoji: "🛒", bg: "#eddcdf", text: "#7b565c", border: "rgba(133, 83, 92, 0.24)", gradient: "#e4bdc5" },
-  "其他": { emoji: "🧩", bg: "#e5e2d8", text: "#696252", border: "rgba(104, 94, 72, 0.24)", gradient: "#d5cfbd" },
+  "交通": { bg: "#d9e8e2", text: "#486d62", border: "rgba(88, 126, 113, 0.28)", gradient: "#b9d8cc" },
+  "住宿": { bg: "#dfe5f2", text: "#536782", border: "rgba(92, 112, 145, 0.26)", gradient: "#c1cde2" },
+  "餐饮": { bg: "#f1dfce", text: "#7a5b3f", border: "rgba(143, 102, 62, 0.24)", gradient: "#e6c7aa" },
+  "门票": { bg: "#eadff0", text: "#69587b", border: "rgba(106, 83, 127, 0.24)", gradient: "#d8c3e3" },
+  "购物": { bg: "#eddcdf", text: "#7b565c", border: "rgba(133, 83, 92, 0.24)", gradient: "#e4bdc5" },
+  "其他": { bg: "#e5e2d8", text: "#696252", border: "rgba(104, 94, 72, 0.24)", gradient: "#d5cfbd" },
 };
-const categoryEmojiRules = [
-  { keywords: ["车", "交通", "高铁", "火车", "机票", "飞机", "打车", "出租", "地铁", "公交", "油", "过路"], emoji: "🚄" },
-  { keywords: ["住", "宿", "酒店", "民宿", "房", "宾馆"], emoji: "🛏️" },
-  { keywords: ["餐", "饭", "吃", "早饭", "午饭", "晚饭", "饮", "咖啡", "奶茶", "小吃", "烧烤"], emoji: "🍽️" },
-  { keywords: ["门票", "票", "景区", "乐园", "展", "馆", "演出"], emoji: "🎫" },
-  { keywords: ["购物", "买", "超市", "礼物", "纪念品", "商场"], emoji: "🛒" },
-  { keywords: ["娃", "孩子", "儿童", "宝宝"], emoji: "🧒" },
-  { keywords: ["药", "医疗", "医院"], emoji: "💊" },
-];
 const categorySymbolRules = [
   { keywords: ["机票", "飞机", "航空"], symbol: "airplane" },
   { keywords: ["车", "交通", "高铁", "火车", "打车", "出租", "地铁", "公交", "油", "过路"], symbol: "tram.fill" },
@@ -157,18 +148,69 @@ const categorySymbolMarkup = {
   "cross.case.fill": `<rect x="4.2" y="7" width="15.6" height="12.2" rx="2.5"/><path d="M9 7V5.6c0-.9.7-1.6 1.6-1.6h2.8c.9 0 1.6.7 1.6 1.6V7M12 10.2V16M9.1 13.1h5.8"/>`,
   "tag.fill": `<path d="M4.5 5.4v6.1l7.7 7.7a2 2 0 0 0 2.8 0l4.2-4.2a2 2 0 0 0 0-2.8l-7.7-7.7H5.4a.9.9 0 0 0-.9.9Z"/><circle cx="8.3" cy="8.3" r="1.2"/>`,
 };
+const categoryFallbackMarkup = {
+  "airplane": `<path d="M2 16 22 7l-7 15-4-7-9 1ZM11 15l4-4"/>`,
+  "tram.fill": `<rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16M8 18l-2 3M16 18l2 3M8 14h.01M16 14h.01"/>`,
+  "bed.double.fill": `<path d="M3 19V9M21 19v-7a2 2 0 0 0-2-2H8a3 3 0 0 0-3 3v2M3 15h18M5 19v-4M19 19v-4M8 10V7h6a3 3 0 0 1 3 3"/>`,
+  "fork.knife": `<path d="M7 3v18M4 3v5a3 3 0 0 0 6 0V3M17 3v18M17 3c3 0 4 2 4 5s-1 5-4 5"/>`,
+  "ticket.fill": `<path d="M3 6h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4V6ZM13 8v2M13 14v2"/>`,
+  "cart.fill": `<path d="M2 3h3l2.4 11h10.8L21 7H6M8 18h.01M18 18h.01"/>`,
+  "figure.child": `<circle cx="12" cy="5" r="2.5"/><path d="M8 11c1-2 2.2-3 4-3s3 1 4 3M12 8v7M8 20l4-5 4 5M8 13l4-2 4 2"/>`,
+  "cross.case.fill": `<rect x="3" y="7" width="18" height="14" rx="3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M12 11v6M9 14h6"/>`,
+  "tag.fill": `<path d="M4 4h7l9 9-7 7-9-9V4Z"/><circle cx="8" cy="8" r="1"/>`,
+};
+const uiIconPaths = {
+  settings: {
+    sf: `<path d="M9.6 2.7h4.8l.6 2.2c.5.2 1 .5 1.5.9l2.2-.6 2.4 4.1-1.6 1.6c.1.7.1 1.3 0 2l1.6 1.6-2.4 4.1-2.2-.6c-.5.4-1 .7-1.5.9l-.6 2.2H9.6L9 18c-.6-.2-1.1-.5-1.5-.9l-2.2.6-2.4-4.1L4.5 12a7 7 0 0 1 0-2L2.9 8.4l2.4-4.1 2.2.6c.4-.4.9-.7 1.5-.9l.6-2.3Zm2.4 5.1a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4Z"/>`,
+    fallback: `<path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.5.3a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.4a2 2 0 0 0 .8 2.7l.1.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.8l-.1.1a2 2 0 0 0-.8 2.7l.3.4a2 2 0 0 0 2.7.7l.1-.1a2 2 0 0 1 2 0l.5.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.5-.3a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.4a2 2 0 0 0-.8-2.7l-.1-.1a2 2 0 0 1-1-1.8v-.5a2 2 0 0 1 1-1.7l.1-.1a2 2 0 0 0 .8-2.7l-.3-.4a2 2 0 0 0-2.7-.7l-.1.1a2 2 0 0 1-2 0l-.5-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/>`,
+  },
+  close: { sf: `<path d="M6.3 4.9 12 10.6l5.7-5.7 1.4 1.4-5.7 5.7 5.7 5.7-1.4 1.4-5.7-5.7-5.7 5.7-1.4-1.4 5.7-5.7-5.7-5.7 1.4-1.4Z"/>`, fallback: `<path d="M18 6 6 18M6 6l12 12"/>` },
+  check: { sf: `<path d="m9.8 17.5-5.1-5.1 1.8-1.8 3.3 3.3 7.7-7.7 1.8 1.8-9.5 9.5Z"/>`, fallback: `<path d="m20 6-11 11-5-5"/>` },
+  "chevron-right": { sf: `<path d="m9.1 4.7 7.3 7.3-7.3 7.3-1.5-1.6 5.7-5.7-5.7-5.7 1.5-1.6Z"/>`, fallback: `<path d="m9 18 6-6-6-6"/>` },
+  "chevron-up": { sf: `<path d="m4.7 14.9 7.3-7.3 7.3 7.3-1.6 1.5-5.7-5.7-5.7 5.7-1.6-1.5Z"/>`, fallback: `<path d="m18 15-6-6-6 6"/>` },
+  "chevron-down": { sf: `<path d="m4.7 9.1 7.3 7.3 7.3-7.3-1.6-1.5-5.7 5.7-5.7-5.7-1.6 1.5Z"/>`, fallback: `<path d="m6 9 6 6 6-6"/>` },
+  plus: { sf: `<path d="M10.8 4h2.4v6.8H20v2.4h-6.8V20h-2.4v-6.8H4v-2.4h6.8V4Z"/>`, fallback: `<path d="M12 5v14M5 12h14"/>` },
+  minus: { sf: `<path d="M4 10.8h16v2.4H4z"/>`, fallback: `<path d="M5 12h14"/>` },
+  edit: { sf: `<path d="m15.7 3.7 4.6 4.6-9.8 9.8-5.7 1.1 1.1-5.7 9.8-9.8Zm-8 10.8-.4 2.2 2.2-.4 7.9-8-1.7-1.7-8 7.9Z"/>`, fallback: `<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>` },
+  trash: { sf: `<path d="M8.2 3.5h7.6l.8 2H21v2H3v-2h4.4l.8-2ZM5.4 9h13.2l-.8 11.5H6.2L5.4 9Z"/>`, fallback: `<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4h8v2M10 11v6M14 11v6"/>` },
+  filter: { sf: `<path d="M3.5 5h17l-6.4 7.2v5.4l-4.2 2.1v-7.5L3.5 5Z"/>`, fallback: `<path d="M4 5h16l-6 7v5l-4 2v-7Z"/>` },
+  book: { sf: `<path d="M4 3.5h12.5A3.5 3.5 0 0 1 20 7v13.5H7.2A3.2 3.2 0 0 1 4 17.3V3.5Zm3.2 12.7a1.3 1.3 0 0 0 0 2.6H18v-2.6H7.2Z"/>`, fallback: `<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>` },
+  cloud: { sf: `<path d="M8.8 19.5a6.3 6.3 0 1 1 5.9-8.5h2a4.3 4.3 0 1 1 0 8.5H8.8Z"/>`, fallback: `<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9Z"/>` },
+  link: { sf: `<path d="M8.3 14.1 6.4 16A2.4 2.4 0 0 1 3 12.6l3.6-3.7A2.4 2.4 0 0 1 10 9l1.7-1.7a4.8 4.8 0 0 0-6.8-.1l-3.6 3.7a4.8 4.8 0 1 0 6.8 6.8l1.9-1.9-1.7-1.7Zm7.4-4.2L17.6 8a2.4 2.4 0 0 1 3.4 3.4l-3.6 3.7A2.4 2.4 0 0 1 14 15l-1.7 1.7a4.8 4.8 0 0 0 6.8.1l3.6-3.7a4.8 4.8 0 1 0-6.8-6.8L14 8.2l1.7 1.7ZM7.9 13.3l5.4-5.4 2.8 2.8-5.4 5.4-2.8-2.8Z"/>`, fallback: `<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7"/>` },
+  download: { sf: `<path d="M10.7 3h2.6v9.4l3-3 1.8 1.8-6.1 6.1-6.1-6.1 1.8-1.8 3 3V3ZM3 18h18v3H3z"/>`, fallback: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>` },
+  database: { sf: `<path d="M3 5c0-2 4-3.5 9-3.5S21 3 21 5v4c0 2-4 3.5-9 3.5S3 11 3 9V5Zm0 7c1.8 1.5 5.2 2.2 9 2.2s7.2-.7 9-2.2v3.5c0 2-4 3.5-9 3.5s-9-1.5-9-3.5V12Z"/>`, fallback: `<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>` },
+  help: { sf: `<path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 14.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Zm0-10.9c-2.2 0-3.8 1.2-4.1 3.2h2.5c.2-.8.8-1.2 1.6-1.2 1 0 1.7.6 1.7 1.5 0 .8-.4 1.2-1.5 1.9-1.2.8-1.7 1.7-1.6 3.2h2.3c0-.9.3-1.3 1.4-2 1.3-.8 2-1.9 2-3.3 0-2-1.8-3.3-4.3-3.3Z"/>`, fallback: `<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>` },
+};
+
+function uiIconSvgHtml(name) {
+  const icon = uiIconPaths[name] || uiIconPaths.help;
+  return `<svg class="ui-icon ui-icon-sf" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icon.sf}</svg><svg class="ui-icon ui-icon-fallback" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icon.fallback}</svg>`;
+}
+
+function uiIconHtml(name, className = "") {
+  return `<span class="ui-icon-pair${className ? ` ${className}` : ""}" aria-hidden="true">${uiIconSvgHtml(name)}</span>`;
+}
+
+function hydrateUiIcons(root = document) {
+  root.querySelectorAll("[data-ui-icon]").forEach((host) => {
+    host.innerHTML = uiIconSvgHtml(host.dataset.uiIcon);
+  });
+}
 const customCategoryVisuals = [
-  { emoji: "🧾", bg: "#dde8df", text: "#506b56", border: "rgba(82, 112, 90, 0.24)", gradient: "#c2d9c7" },
-  { emoji: "📍", bg: "#e0e6ee", text: "#536578", border: "rgba(83, 102, 128, 0.24)", gradient: "#c5d2df" },
-  { emoji: "☕", bg: "#eee0d1", text: "#735d46", border: "rgba(126, 95, 61, 0.24)", gradient: "#dfc7ad" },
-  { emoji: "🎒", bg: "#e8dfed", text: "#65566f", border: "rgba(100, 80, 116, 0.24)", gradient: "#d3c2dc" },
-  { emoji: "🌿", bg: "#dce8e6", text: "#4f6c68", border: "rgba(78, 111, 104, 0.24)", gradient: "#bdd8d4" },
+  { bg: "#dde8df", text: "#506b56", border: "rgba(82, 112, 90, 0.24)", gradient: "#c2d9c7" },
+  { bg: "#e0e6ee", text: "#536578", border: "rgba(83, 102, 128, 0.24)", gradient: "#c5d2df" },
+  { bg: "#eee0d1", text: "#735d46", border: "rgba(126, 95, 61, 0.24)", gradient: "#dfc7ad" },
+  { bg: "#e8dfed", text: "#65566f", border: "rgba(100, 80, 116, 0.24)", gradient: "#d3c2dc" },
+  { bg: "#dce8e6", text: "#4f6c68", border: "rgba(78, 111, 104, 0.24)", gradient: "#bdd8d4" },
 ];
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const elements = {
   ledgerView: document.querySelector("#ledgerView"),
   settingsView: document.querySelector("#settingsView"),
+  settingsDrawer: document.querySelector("#settingsView .settings-drawer"),
+  settingsEyebrow: document.querySelector("#settingsEyebrow"),
+  settingsTitle: document.querySelector("#settingsTitle"),
   currentLedgerTitle: document.querySelector("#currentLedgerTitle"),
   syncStatus: document.querySelector("#syncStatus"),
   syncStatusLabel: document.querySelector("#syncStatusLabel"),
@@ -200,6 +242,7 @@ const elements = {
   totalAmount: document.querySelector("#totalAmount"),
   shareAmount: document.querySelector("#shareAmount"),
   expenseCount: document.querySelector("#expenseCount"),
+  mobileExpenseCount: document.querySelector("#mobileExpenseCount"),
   expenseForm: document.querySelector("#expenseForm"),
   amountInput: document.querySelector("#amountInput"),
   categoryInput: document.querySelector("#categoryInput"),
@@ -268,11 +311,17 @@ const elements = {
   settlementEntryButton: document.querySelector("#settlementEntryButton"),
   settlementEntrySub: document.querySelector("#settlementEntrySub"),
   settlementEntryCount: document.querySelector("#settlementEntryCount"),
+  mobileSettlementEntryButton: document.querySelector("#mobileSettlementEntryButton"),
+  mobileSettlementEntrySub: document.querySelector("#mobileSettlementEntrySub"),
+  mobileSettlementEntryCount: document.querySelector("#mobileSettlementEntryCount"),
+  mobileSettlementTotal: document.querySelector("#mobileSettlementTotal"),
   settlementCountBadge: document.querySelector("#settlementCountBadge"),
   settlementSettingsPanel: document.querySelector("#settlementSettingsPanel"),
   ledgerFamilyFilter: document.querySelector("#ledgerFamilyFilter"),
   ledgerCategoryFilter: document.querySelector("#ledgerCategoryFilter"),
   ledgerFilterSummary: document.querySelector("#ledgerFilterSummary"),
+  ledgerFilterToggle: document.querySelector("#ledgerFilterToggle"),
+  ledgerFilterPanel: document.querySelector("#ledgerFilterPanel"),
   clearLedgerFiltersButton: document.querySelector("#clearLedgerFiltersButton"),
   ledgerSection: document.querySelector(".ledger-section"),
   ledgerList: document.querySelector("#ledgerList"),
@@ -469,10 +518,13 @@ let cloudErrorLabel = "";
 let pendingSettingsSync = 0;
 let confirmResolve = null;
 let confirmCloseTimer = 0;
+let settlementRevealTimer = 0;
 let settingsReturnFocus = null;
 let ledgerManagementReturnFocus = null;
 let confirmReturnFocus = null;
-let activeMobilePanel = "entry";
+let activeMobilePanel = "data";
+let settingsMode = "settings";
+let ledgerFiltersExpanded = false;
 
 function loadState() {
   const storageKeys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
@@ -1541,8 +1593,17 @@ function formatMoney(cents) {
   return new Intl.NumberFormat("zh-CN", {
     style: "currency",
     currency: "CNY",
-    minimumFractionDigits: showDecimals ? 2 : 0,
+    minimumFractionDigits: 0,
     maximumFractionDigits: showDecimals ? 2 : 0,
+  }).format(cents / 100);
+}
+
+function formatTotalMoney(cents) {
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "CNY",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(cents / 100);
 }
 
@@ -1584,20 +1645,15 @@ function getFamilyVisual(familyId) {
 }
 
 function getCategoryVisual(category) {
-  const baseVisual = categoryVisuals[category] || customCategoryVisuals[stringHash(category) % customCategoryVisuals.length];
-  const emoji = getCategoryEmoji(category, baseVisual.emoji);
-  return { ...baseVisual, emoji };
+  return categoryVisuals[category] || customCategoryVisuals[stringHash(category) % customCategoryVisuals.length];
 }
 
 function formatCategoryLabel(category) {
-  const visual = getCategoryVisual(category);
-  return `${visual.emoji} ${category}`;
+  return String(category || "");
 }
 
-// HTML 上下文用：emoji 是装饰，读屏跳过，只读类别名。
 function categoryLabelHtml(category) {
-  const visual = getCategoryVisual(category);
-  return `<span aria-hidden="true">${visual.emoji}</span> ${escapeHtml(category)}`;
+  return `${categorySymbolHtml(category)}<span class="category-label-text">${escapeHtml(category)}</span>`;
 }
 
 function getCategorySymbol(category) {
@@ -1607,13 +1663,7 @@ function getCategorySymbol(category) {
 
 function categorySymbolHtml(category) {
   const symbol = getCategorySymbol(category);
-  return `<svg class="category-symbol" data-symbol="${symbol}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${categorySymbolMarkup[symbol]}</svg>`;
-}
-
-function getCategoryEmoji(category, fallback) {
-  const normalized = String(category || "").trim();
-  const matchedRule = categoryEmojiRules.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)));
-  return matchedRule?.emoji || fallback;
+  return `<span class="category-symbol-pair" data-symbol="${symbol}" aria-hidden="true"><svg class="category-symbol category-symbol-sf" viewBox="0 0 24 24" focusable="false">${categorySymbolMarkup[symbol]}</svg><svg class="category-symbol category-symbol-fallback" viewBox="0 0 24 24" focusable="false">${categoryFallbackMarkup[symbol]}</svg></span>`;
 }
 
 function categoryStyle(category) {
@@ -2063,7 +2113,7 @@ function setMobilePanel(panel, options = {}) {
   window.clearTimeout(mobilePanelIndicatorTimer);
   window.clearTimeout(barMorphTimer);
   elements.ledgerView.classList.remove("is-mobile-panel-switching-out", "is-mobile-panel-switching-in");
-  elements.ledgerView.dataset.switchDirection = nextPanel === "data" ? "forward" : "backward";
+  elements.ledgerView.dataset.switchDirection = nextPanel === "entry" ? "forward" : "backward";
 
   /* liquid-glass indicator slide — cleared after keyframes complete */
   elements.mobilePanelSwitch?.classList.remove("is-indicator-forward", "is-indicator-backward");
@@ -2075,7 +2125,7 @@ function setMobilePanel(panel, options = {}) {
   if (shouldAnimateChrome && elements.mobilePanelSwitch) {
     // force reflow so re-adding the class retriggers the keyframes
     void elements.mobilePanelSwitch.offsetWidth;
-    elements.mobilePanelSwitch.classList.add(nextPanel === "data" ? "is-indicator-forward" : "is-indicator-backward");
+    elements.mobilePanelSwitch.classList.add(nextPanel === "entry" ? "is-indicator-forward" : "is-indicator-backward");
     mobilePanelIndicatorTimer = window.setTimeout(() => {
       elements.mobilePanelSwitch.classList.remove("is-indicator-forward", "is-indicator-backward");
       mobilePanelIndicatorTimer = 0;
@@ -2170,7 +2220,7 @@ function renderMobilePanelState() {
 function handleMobilePanelSwitchKeydown(event) {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
   event.preventDefault();
-  const nextPanel = event.key === "ArrowLeft" || event.key === "Home" ? "entry" : "data";
+  const nextPanel = event.key === "ArrowLeft" || event.key === "Home" ? "data" : "entry";
   setMobilePanel(nextPanel, { animate: true });
   const nextTab = nextPanel === "entry" ? elements.mobileEntryTab : elements.mobileDataTab;
   nextTab.focus();
@@ -2209,6 +2259,13 @@ function renderLedgerFilterSummary() {
   const active = hasActiveLedgerFilters();
   elements.ledgerFilterSummary.hidden = !active;
   elements.clearLedgerFiltersButton.hidden = !active;
+  elements.ledgerSection?.classList.toggle("has-active-filters", active);
+  elements.ledgerSection?.classList.toggle("is-filter-open", ledgerFiltersExpanded);
+  elements.ledgerFilterToggle?.setAttribute("aria-expanded", ledgerFiltersExpanded ? "true" : "false");
+  elements.ledgerFilterToggle?.setAttribute(
+    "aria-label",
+    active ? `${ledgerFiltersExpanded ? "收起" : "展开"}筛选，当前已有筛选条件` : `${ledgerFiltersExpanded ? "收起" : "展开"}筛选`,
+  );
   if (!active) {
     elements.ledgerFilterSummary.textContent = "";
     return;
@@ -2216,6 +2273,16 @@ function renderLedgerFilterSummary() {
 
   const summary = calculateVisibleExpensesSummary();
   elements.ledgerFilterSummary.textContent = `筛选合计 ${formatMoney(summary.totalCents)}（${summary.count} 笔）`;
+}
+
+function toggleLedgerFilters() {
+  ledgerFiltersExpanded = !ledgerFiltersExpanded;
+  renderLedgerFilterSummary();
+  if (ledgerFiltersExpanded) {
+    window.requestAnimationFrame(() => elements.ledgerFamilyFilter?.focus({ preventScroll: true }));
+  } else {
+    elements.ledgerFilterToggle?.focus({ preventScroll: true });
+  }
 }
 
 function classNames(...tokens) {
@@ -2893,8 +2960,8 @@ function renderSettings() {
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
 
-  // 每次打开设置都重建，让资金光流图重新入场（对应「旅行结束时打开看结算」的时刻）
-  elements.settlementList.innerHTML = buildSettlementHtml(summary, " is-entering");
+  // 平账模式使用统一的「旅程收尾揭幕」时间轴，避免旧的子项入场与抽屉动画叠播。
+  elements.settlementList.innerHTML = buildSettlementHtml(summary);
   elements.settlementCountBadge.textContent = summary.settlements.length ? `${summary.settlements.length} 笔转账` : "已两清";
   elements.settlementCountBadge.classList.toggle("is-settled", summary.settlements.length === 0);
 
@@ -2904,9 +2971,9 @@ function renderSettings() {
         <div class="settings-family" style="${familyStyle(family.id)}">
           <span>${escapeHtml(family.name)}<small>已付 ${formatMoney(summary.paidByFamily[family.id] || 0)} · 应承担 ${formatMoney(summary.shareByFamily[family.id] || 0)}</small></span>
           <div class="member-stepper" aria-label="${escapeHtml(family.name)}人数">
-            <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="-1" aria-label="减少${escapeHtml(family.name)}人数">−</button>
+            <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="-1" aria-label="减少${escapeHtml(family.name)}人数">${uiIconHtml("minus")}</button>
             <strong>${state.familyMembers[family.id] || 1} 人</strong>
-            <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="1" aria-label="增加${escapeHtml(family.name)}人数">+</button>
+            <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="1" aria-label="增加${escapeHtml(family.name)}人数">${uiIconHtml("plus")}</button>
           </div>
         </div>
       `,
@@ -2921,10 +2988,10 @@ function renderSettings() {
       const status = isUsed ? "使用中" : isDefault ? "预设" : "可删除";
       const removeButton = isUsed
         ? ""
-        : `<button class="chip-icon-button chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}"><svg class="svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+        : `<button class="chip-icon-button chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}">${uiIconHtml("close")}</button>`;
       const moveControls = `
-        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" aria-label="上移 ${escapeHtml(category)}" ${index === 0 ? "disabled" : ""}><svg class="svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
-        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="1" aria-label="下移 ${escapeHtml(category)}" ${index === state.categories.length - 1 ? "disabled" : ""}><svg class="svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" aria-label="上移 ${escapeHtml(category)}" ${index === 0 ? "disabled" : ""}>${uiIconHtml("chevron-up")}</button>
+        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="1" aria-label="下移 ${escapeHtml(category)}" ${index === state.categories.length - 1 ? "disabled" : ""}>${uiIconHtml("chevron-down")}</button>
       `;
 
       return `
@@ -3258,7 +3325,7 @@ function renderTotalAmount(nextText, shouldAnimate, options = {}) {
 }
 
 function revealInitialTotalAmount() {
-  renderTotalAmount(formatMoney(calculateSummary().totalCents), false, { revealOnEntry: true });
+  renderTotalAmount(formatTotalMoney(calculateSummary().totalCents), false, { revealOnEntry: true });
 }
 
 function playInitialTotalReveal(targetText) {
@@ -3368,15 +3435,17 @@ function renderSoftText(element, nextText, shouldAnimate = false) {
 
 function renderSummary({ animateFinancialChanges = false } = {}) {
   const summary = calculateSummary();
+  const visibleExpenseCount = state.expenses.filter((expense) => !expense.isDeleted).length;
   /* paidByFamily / categorySummary / settlementList 三个容器都带有独立的
      view-transition-name，VT 生效时整块交叉淡变已覆盖刷新；若子项再挂
      is-entering，落定后会“再滑一次”，形成双重动效。故 VT 生效时
      跳过子项 is-entering，仅在不支持 View Transitions 的浏览器用 CSS 兜底。 */
   const vtActive = document.startViewTransition && animateFinancialChanges;
   const enterClass = vtActive ? "" : " is-entering";
-  renderTotalAmount(formatMoney(summary.totalCents), animateFinancialChanges);
+  renderTotalAmount(formatTotalMoney(summary.totalCents), animateFinancialChanges);
   renderSoftText(elements.shareAmount, formatMoney(summary.shareCents), animateFinancialChanges);
-  renderSoftText(elements.expenseCount, String(state.expenses.length), animateFinancialChanges);
+  renderSoftText(elements.expenseCount, String(visibleExpenseCount), animateFinancialChanges);
+  renderSoftText(elements.mobileExpenseCount, String(visibleExpenseCount), animateFinancialChanges);
   renderTotalMetricGradient(summary);
 
   elements.paidByFamily.innerHTML = state.families
@@ -3405,25 +3474,47 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
         .join("")
     : `<div class="empty-state${enterClass}">${emptyStateArt}暂无类别支出<br><small>添加账单后按类别自动汇总。</small></div>`;
 
-  renderSettlementEntry(summary);
+  renderSettlementEntry(summary, animateFinancialChanges);
 }
 
 /* 数据页只保留一个入口摘要，完整的平账建议（资金光流图 + 转账卡）在设置抽屉里 */
-function renderSettlementEntry(summary) {
+function renderSettlementEntry(summary, shouldAnimate = false) {
   if (!elements.settlementEntryButton) return;
   const count = summary.settlements.length;
+  const hasExpenses = state.expenses.some((expense) => !expense.isDeleted);
+  const settlementTotalCents = summary.settlements.reduce((total, settlement) => total + settlement.cents, 0);
+  const routeSummary = summary.settlements
+    .slice(0, 2)
+    .map((settlement) => `${settlement.from} → ${settlement.to}`)
+    .join("、");
   elements.settlementEntrySub.textContent = count
     ? "旅程收尾时查看"
     : "所有家庭当前已两清";
   elements.settlementEntryCount.textContent = count ? `待结算 ${count} 笔` : "已两清";
   elements.settlementEntryButton.classList.toggle("is-settled", count === 0);
+
+  if (!elements.mobileSettlementEntryButton) return;
+  elements.mobileSettlementEntryButton.hidden = !hasExpenses || count === 0;
+  elements.mobileSettlementEntrySub.textContent = routeSummary || "查看转账方案";
+  renderSoftText(elements.mobileSettlementEntryCount, `${count} 笔`, shouldAnimate);
+  renderSoftText(elements.mobileSettlementTotal, formatTotalMoney(settlementTotalCents), shouldAnimate);
+  if (shouldAnimate && !prefersReducedMotion()) {
+    elements.mobileSettlementEntryButton.classList.remove("is-soft-refresh");
+    void elements.mobileSettlementEntryButton.offsetWidth;
+    elements.mobileSettlementEntryButton.classList.add("is-soft-refresh");
+    window.setTimeout(() => elements.mobileSettlementEntryButton.classList.remove("is-soft-refresh"), getCssDurationMs("--number-swap-motion", 980) + 60);
+  }
+  elements.mobileSettlementEntryButton.setAttribute(
+    "aria-label",
+    `平账建议：${count} 笔转账，共 ${formatMoney(settlementTotalCents)}。${routeSummary}`,
+  );
 }
 
 /* 平账建议内容（资金光流图 + 转账卡），供设置抽屉渲染 */
 function buildSettlementHtml(summary, enterClass = "") {
   if (!summary.settlements.length) {
     return `<div class="settlement-done${enterClass}">
-        <span class="settlement-done-mark" aria-hidden="true">✓</span>
+        <span class="settlement-done-mark" aria-hidden="true">${uiIconHtml("check")}</span>
         <span class="settlement-done-kicker">平账建议</span>
         <strong>当前已经两清</strong>
         <small>各家已付金额已经覆盖应承担金额，这趟旅行无需再转账。</small>
@@ -3635,10 +3726,10 @@ function renderLedgerItem(expense) {
   if (isExpanded) {
     let metaItems = "";
     if (createdFamilyId) {
-      metaItems += `<span>✍️ 创建：${escapeHtml(createdFamilyName)}</span>`;
+      metaItems += `<span>${uiIconHtml("plus", "ledger-meta-icon")}创建：${escapeHtml(createdFamilyName)}</span>`;
     }
     if (updatedFamilyId && updatedFamilyId !== createdFamilyId) {
-      metaItems += `<span>✏️ 更新：${escapeHtml(updatedFamilyName)}</span>`;
+      metaItems += `<span>${uiIconHtml("edit", "ledger-meta-icon")}更新：${escapeHtml(updatedFamilyName)}</span>`;
     }
     if (metaItems) {
       metaHtml = `<div class="ledger-meta-info">${metaItems}</div>`;
@@ -3666,8 +3757,8 @@ function renderLedgerItem(expense) {
       <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
       ${expandCue}
       <div class="ledger-item-actions">
-        <button class="ledger-edit-button" type="button" data-edit-id="${escapeHtml(expense.id)}">编辑</button>
-        <button class="delete-button" type="button" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">×</button>
+        <button class="ledger-edit-button" type="button" data-edit-id="${escapeHtml(expense.id)}" aria-label="编辑这笔账">${uiIconHtml("edit")}</button>
+        <button class="delete-button" type="button" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">${uiIconHtml("trash")}</button>
       </div>
     </article>
   `;
@@ -3785,7 +3876,8 @@ function groupExpensesByDate(expenses) {
 function formatLedgerDate(date) {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
-  return new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(parsed);
+  const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(parsed);
+  return `${parsed.getMonth() + 1}/${parsed.getDate()} ${weekday}`;
 }
 
 function formatLedgerCardDate(date) {
@@ -4030,15 +4122,26 @@ function handleExpenseSubmit(event) {
   smoothContainerResize(elements.ledgerSection, () => {
     render({ animateFinancialChanges: true });
   });
-  if (!wasEditing) {
+  const mobileDataFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  if (!wasEditing && !mobileDataFlow) {
     landAddCeremony(payerId, savedExpense.amount, expenseId, addStartRect);
   }
-  if (wasEditing && hasActiveLedgerFilters() && !isExpenseVisible(savedExpense)) {
+  if (hasActiveLedgerFilters() && !isExpenseVisible(savedExpense)) {
     showToast({
       message: "已保存，但不在当前筛选内",
       actionLabel: "清除筛选",
       onAction: clearLedgerFilters,
     });
+  } else if (!wasEditing && mobileDataFlow) {
+    showToast({ message: "已记下，账本状态已更新" });
+  }
+  if (mobileDataFlow) {
+    setMobilePanel("data", { animate: true, scroll: false });
+    window.setTimeout(() => {
+      const card = elements.ledgerList?.querySelector(`[data-expense-id="${cssEscapeId(expenseId)}"]`);
+      if (card && isExpenseVisible(savedExpense)) pulseLedgerCatch(card);
+      triggerTotalBloomEffect(getFamilyVisual(payerId));
+    }, prefersReducedMotion() ? 0 : MOTION_DELAYS.mobilePanelOut + MOTION_DELAYS.mobilePanelIn);
   }
   syncCloudExpenseWithState(expenseId).catch(() => {
     showToast({ message: "云端保存失败，本地已保留，稍后会重试" });
@@ -5047,7 +5150,49 @@ function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, 
   }, delay));
 }
 
-function openSettings() {
+function applySettingsMode(mode = "settings") {
+  settingsMode = mode === "settlement" ? "settlement" : "settings";
+  elements.settingsView.dataset.mode = settingsMode;
+  const settlementMode = settingsMode === "settlement";
+  elements.settingsEyebrow.textContent = settlementMode ? "旅程收尾" : "偏好与数据";
+  elements.settingsTitle.textContent = settlementMode ? "平账建议" : "设置";
+  elements.closeSettingsButton.setAttribute("aria-label", settlementMode ? "关闭平账建议" : "关闭设置");
+  elements.settingsBackdrop.setAttribute("aria-label", settlementMode ? "关闭平账建议" : "关闭设置");
+}
+
+function clearSettlementReveal({ settle = false } = {}) {
+  window.clearTimeout(settlementRevealTimer);
+  settlementRevealTimer = 0;
+  elements.settingsView.classList.remove("is-settlement-revealing");
+  elements.settingsView.classList.toggle("is-settlement-revealed", settle && settingsMode === "settlement");
+}
+
+function startSettlementReveal() {
+  clearSettlementReveal();
+  if (settingsMode !== "settlement" || prefersReducedMotion()) {
+    elements.settingsView.classList.toggle("is-settlement-revealed", settingsMode === "settlement");
+    return;
+  }
+
+  // 强制从干净的初始帧重新开始，使每次展开都有完整且一致的揭幕节奏。
+  void elements.settingsView.offsetWidth;
+  elements.settingsView.classList.add("is-settlement-revealing");
+  settlementRevealTimer = window.setTimeout(() => {
+    settlementRevealTimer = 0;
+    elements.settingsView.classList.remove("is-settlement-revealing");
+    elements.settingsView.classList.add("is-settlement-revealed");
+  }, 1600);
+}
+
+function openSettings(options = {}) {
+  applySettingsMode(options.mode);
+  clearSettlementReveal();
+  if (settingsMode === "settings") {
+    const collapseSecondaryGroups = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+    elements.settingsView.querySelectorAll(".settings-mobile-group").forEach((details) => {
+      details.open = !collapseSecondaryGroups;
+    });
+  }
   openDismissiblePanel({
     view: elements.settingsView,
     bodyClass: "settings-open",
@@ -5062,28 +5207,17 @@ function openSettings() {
       settingsReturnFocus = element;
     },
   });
+  if (elements.settingsDrawer) elements.settingsDrawer.scrollTop = 0;
+  startSettlementReveal();
 }
 
-/* 数据页的平账入口：打开设置并把平账面板滚动到视野中央 */
+/* 数据页的平账入口：复用设置抽屉的框架，但只展示平账任务内容。 */
 function openSettlementInSettings() {
-  openSettings();
-  // 等抽屉滑入动画结束后再滚动定位：原先仅延迟一帧，滚动与抽屉进入动画撞车，
-  // 容器几何未稳定导致 smooth 滚动瞬移，用户感受不到「打开 → 定位」的过渡。
-  const enterMs = prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 80;
-  window.setTimeout(() => {
-    const panel = elements.settlementSettingsPanel;
-    if (!panel) return;
-    panel.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-    // 滚动启动的同时给面板一个柔和的琥珀色脉冲，强化「从平账入口定位到此」的反馈
-    if (!prefersReducedMotion()) {
-      panel.classList.remove("is-spotlit");
-      void panel.offsetWidth; // 重置动画，允许连续触发
-      panel.classList.add("is-spotlit");
-    }
-  }, enterMs);
+  openSettings({ mode: "settlement" });
 }
 
 function closeSettings() {
+  clearSettlementReveal({ settle: true });
   closeDismissiblePanel({
     view: elements.settingsView,
     bodyClass: "settings-open",
@@ -6355,6 +6489,8 @@ elements.syncStatus.addEventListener("click", handleManualCloudSync);
 elements.openSettingsButton.addEventListener("click", openSettings);
 bindAnimatedDetails();
 elements.settlementEntryButton?.addEventListener("click", openSettlementInSettings);
+elements.mobileSettlementEntryButton?.addEventListener("click", openSettlementInSettings);
+elements.ledgerFilterToggle?.addEventListener("click", toggleLedgerFilters);
 elements.closeSettingsButton.addEventListener("click", closeSettings);
 elements.settingsBackdrop.addEventListener("click", closeSettings);
 elements.confirmBackdrop.addEventListener("click", () => closeConfirmDialog(false));
@@ -6661,7 +6797,7 @@ function updateSyncLampDock(force = false) {
     /* 按钮内部图标自身的中心，比按钮盒中心更贴近视觉中心；
        SF Symbol 与 SVG 是互斥的，不能只取 DOM 中排在前面的隐藏 SF 节点，
        否则它的 0 高度会把目标 Y 算到按钮顶部。 */
-    const iconCandidates = elements.openSettingsButton.querySelectorAll(".sf-icon, .sf-symbol, .svg-icon");
+    const iconCandidates = elements.openSettingsButton.querySelectorAll(".ui-icon");
     let iconRect = btnRect;
     for (const iconCandidate of iconCandidates) {
       const candidateRect = iconCandidate.getBoundingClientRect();
@@ -6920,6 +7056,7 @@ function setupSafeAreaMode() {
 }
 
 async function bootstrap() {
+  hydrateUiIcons();
   setupStandaloneMode();
   setupSafeAreaMode();
   syncThemeColorMeta();

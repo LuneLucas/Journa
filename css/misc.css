@@ -496,6 +496,45 @@ h3 {
   white-space: nowrap;
 }
 
+.summary-mobile-meta,
+.mobile-settlement-entry,
+.ledger-filter-toggle,
+.insight-details > summary {
+  display: none;
+}
+
+.insight-details:not([open]) > :not(summary) {
+  display: block;
+}
+
+.ledger-filter-toggle {
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--control-radius-compact);
+  background: var(--surface-soft);
+  color: var(--muted);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: var(--fw-bold);
+}
+
+.ledger-filter-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--muted);
+  opacity: 0.35;
+}
+
+.ledger-section.has-active-filters .ledger-filter-dot {
+  background: var(--theme-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--theme-color) 48%, transparent);
+  opacity: 1;
+}
+
 /* 分账成员芯片带 family-tag 类，压回共享 pop（须位于上一条之后） */
 .split-family-chip.is-activating {
   animation: choice-select-pop var(--selection-motion) var(--settle) both;
@@ -1003,22 +1042,43 @@ label,
   animation: none;
 }
 
-.sf-symbol {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-weight: 400;
-  font-size: 1.25em;
-  font-style: normal;
-  display: inline-block;
+.ui-icon-host,
+.ui-icon-pair {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1.15em;
+  height: 1.15em;
   line-height: 1;
+  vertical-align: -0.14em;
 }
 
-.sf-icon { display: none; }
+.ui-icon {
+  display: none;
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
 
-.svg-icon { display: none; }
+.ui-icon-sf {
+  fill: currentColor;
+  stroke: none;
+}
 
-.sf-supported .sf-icon { display: inline-block; }
+.ui-icon-fallback {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
 
-.sf-unsupported .svg-icon { display: inline-block; }
+.apple-platform .ui-icon-sf,
+.non-apple-platform .ui-icon-fallback {
+  display: block;
+}
 
 .confirm-dialog {
   position: relative;
@@ -1122,6 +1182,35 @@ label,
 }
 
 .settings-panel h3 {
+  margin-bottom: 12px;
+}
+
+.settings-mobile-group > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-mobile-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-mobile-group > summary > span {
+  font-size: 1.05rem;
+  font-weight: var(--fw-cjk-heavy);
+}
+
+.settings-mobile-group > summary > small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: var(--fw-bold);
+}
+
+.settings-mobile-group[open] > summary {
   margin-bottom: 12px;
 }
 
@@ -2046,7 +2135,7 @@ label,
   z-index: 1;
 }
 
-/* 数据页平账入口：一条克制的玻璃行，点按进入设置里的完整平账建议 */
+/* 数据页平账入口：一条克制的玻璃行，点按进入专用的平账任务模式 */
 .settlement-entry {
   display: flex;
   align-items: center;
@@ -2066,6 +2155,18 @@ label,
   transition:
     transform var(--motion-fast) var(--spring),
     box-shadow var(--motion-fast) var(--spring);
+}
+
+.settlement-entry-total {
+  color: color-mix(in srgb, var(--amber) 72%, var(--ink));
+  font-family: var(--font-display);
+  font-size: 1.18rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mobile-settlement-entry.is-soft-refresh {
+  animation: total-number-soft-refresh var(--number-swap-motion) var(--settle) both;
 }
 
 .settlement-entry:hover {
@@ -2129,6 +2230,18 @@ label,
 .settlement-entry.is-settled .settlement-entry-count {
   background: color-mix(in oklch, var(--theme-color) 16%, transparent);
   color: var(--theme-color-strong);
+}
+
+.settings-view[data-mode="settings"] .settlement-panel {
+  display: none;
+}
+
+.settings-view[data-mode="settlement"] .settings-grid > :not(.settlement-panel) {
+  display: none;
+}
+
+.settings-view[data-mode="settlement"] .settlement-panel {
+  margin-top: 4px;
 }
 
 /* 设置抽屉里的平账面板：标题与徽章沿用琥珀色调 */
@@ -2769,22 +2882,40 @@ label,
 }
 
 .category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   max-width: 104px;
+  min-height: 26px;
   min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-pill);
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--category-text) 8%, transparent), var(--glass-edge);
+  box-shadow:
+    inset 0 1px 1px color-mix(in srgb, var(--category-gradient) 14%, var(--border-highlight)),
+    0 3px 12px -8px color-mix(in srgb, var(--category-gradient) 16%, transparent),
+    var(--glass-edge);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.10)),
-    var(--category-bg);
-  color: var(--category-text);
+    radial-gradient(ellipse at 30% 0%, rgba(255, 255, 255, 0.24), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--category-gradient) 56%, white), color-mix(in srgb, var(--category-gradient) 78%, white));
+  color: color-mix(in srgb, var(--category-text) 88%, var(--ink));
   padding: 4px 8px;
   font-size: 0.76rem;
   font-weight: var(--fw-bold);
   flex: 0 1 auto;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.category-pill .category-label-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ledger-meta-icon {
+  width: 1em;
+  height: 1em;
 }
 
 .ledger-amount {

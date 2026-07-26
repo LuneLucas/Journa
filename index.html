@@ -43,25 +43,25 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/base.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-safari-motion-v2-20260726">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-safari-motion-v2-20260726">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/base.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-sf-icons-tags-category-blur-v4-20260726">
     <script>
-      // SF Symbols glyphs live in Apple font Private Use Area codepoints, but
-      // browsers don't expose the SF Symbols font to web content — even Safari
-      // on macOS renders those PUA codepoints as tofu (乱码). Always fall back
-      // to the inline SVG icons, which render reliably everywhere.
-      document.documentElement.classList.add('sf-unsupported');
+      // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
+      // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
+      var applePlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform || "")
+        || /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent || "");
+      document.documentElement.classList.add(applePlatform ? "apple-platform" : "non-apple-platform");
       // 全局主题色早应用：app.js 在 body 尾部才执行，这里先挂 data-theme 防止首帧闪默认色
       try {
         var savedTheme = localStorage.getItem('travel-ledger-theme');
@@ -69,7 +69,7 @@
       } catch (e) {}
     </script>
   </head>
-  <body class="mobile-panel-entry">
+  <body class="mobile-panel-data">
     <main class="app-shell">
       <header class="app-header">
         <div>
@@ -79,22 +79,24 @@
         <div class="header-actions">
           <button class="sync-status" id="syncStatus" type="button" aria-label="同步云账本"><span class="sync-status-shell" aria-hidden="true"></span><span class="sync-status-label" id="syncStatusLabel">本地账本</span></button>
           <button class="icon-button" id="openSettingsButton" type="button" aria-label="设置">
-            <span class="sf-icon sf-symbol">&#x1008B;</span>
-            <svg class="svg-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span class="ui-icon-host" data-ui-icon="settings" aria-hidden="true"></span>
           </button>
         </div>
         <div class="mobile-panel-switch" id="mobilePanelSwitch" role="tablist" aria-label="手机端视图切换">
           <div class="mobile-panel-indicator"></div>
-          <button class="mobile-panel-tab is-active" id="mobileEntryTab" type="button" role="tab" aria-selected="true" aria-controls="expenseForm" data-mobile-panel-target="entry">记账</button>
-          <button class="mobile-panel-tab" id="mobileDataTab" type="button" role="tab" aria-selected="false" aria-controls="ledgerList" data-mobile-panel-target="data">数据</button>
+          <button class="mobile-panel-tab is-active" id="mobileDataTab" type="button" role="tab" aria-selected="true" aria-controls="ledgerList" data-mobile-panel-target="data">数据</button>
+          <button class="mobile-panel-tab" id="mobileEntryTab" type="button" role="tab" aria-selected="false" aria-controls="expenseForm" data-mobile-panel-target="entry">记账</button>
         </div>
       </header>
 
-      <div class="app-view" id="ledgerView" data-mobile-panel="entry">
+      <div class="app-view" id="ledgerView" data-mobile-panel="data">
         <section class="summary-band" aria-label="账本总览">
           <div class="metric primary" id="totalMetric" role="status">
             <span>总支出</span>
             <strong id="totalAmount">¥0.00</strong>
+            <div class="summary-mobile-meta" aria-label="账本状态">
+              <span><strong id="mobileExpenseCount">0</strong> 笔账单</span>
+            </div>
           </div>
           <div class="metric">
             <span>人均费用</span>
@@ -105,6 +107,18 @@
             <strong id="expenseCount">0</strong>
           </div>
         </section>
+
+        <button class="settlement-entry mobile-settlement-entry" id="mobileSettlementEntryButton" type="button" aria-haspopup="dialog" hidden>
+          <span class="settlement-entry-copy">
+            <span class="settlement-entry-title">平账建议</span>
+            <small class="settlement-entry-sub" id="mobileSettlementEntrySub">查看转账方案</small>
+          </span>
+          <span class="settlement-entry-cue" aria-hidden="true">
+            <span class="settlement-entry-total" id="mobileSettlementTotal"></span>
+            <span class="settlement-entry-count" id="mobileSettlementEntryCount"></span>
+            <span class="ui-icon-host" data-ui-icon="chevron-right"></span>
+          </span>
+        </button>
 
         <div class="workspace">
           <section class="entry-panel" aria-label="记一笔账">
@@ -143,8 +157,7 @@
                     </button>
                     <input id="newCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" tabindex="-1" />
                     <button class="category-add-confirm" id="categoryAddConfirm" type="button" aria-label="确认新增类别" aria-disabled="true" disabled>
-                      <span class="sf-icon sf-symbol" aria-hidden="true">&#x10085;</span>
-                      <span class="svg-icon category-add-confirm-fallback" aria-hidden="true">✓</span>
+                      <span class="ui-icon-host" data-ui-icon="check" aria-hidden="true"></span>
                     </button>
                   </div>
                 </div>
@@ -192,19 +205,25 @@
 
           <section class="insights-panel" aria-label="统计和平账">
             <div class="section-heading">
-              <h2>统计和平账</h2>
+              <h2>支出统计</h2>
             </div>
 
             <div class="stats-grid">
-              <section class="stat-block">
-                <h3>各家已付</h3>
+              <details class="stat-block insight-details">
+                <summary>
+                  <span>各家已付</span>
+                  <small>查看承担与垫付</small>
+                </summary>
                 <div id="paidByFamily" class="stack-list"></div>
-              </section>
+              </details>
 
-              <section class="stat-block category-summary-block" id="categorySummaryBlock">
-                <h3>类别汇总</h3>
+              <details class="stat-block category-summary-block insight-details" id="categorySummaryBlock">
+                <summary>
+                  <span>类别汇总</span>
+                  <small>查看支出构成</small>
+                </summary>
                 <div id="categorySummary" class="stack-list"></div>
-              </section>
+              </details>
             </div>
 
             <button class="settlement-entry" id="settlementEntryButton" type="button" aria-haspopup="dialog">
@@ -214,7 +233,7 @@
               </span>
               <span class="settlement-entry-cue" aria-hidden="true">
                 <span class="settlement-entry-count" id="settlementEntryCount"></span>
-                <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                <span class="ui-icon-host" data-ui-icon="chevron-right"></span>
               </span>
             </button>
           </section>
@@ -226,7 +245,12 @@
               <h2>账单列表</h2>
               <span class="ledger-filter-summary" id="ledgerFilterSummary" hidden></span>
             </div>
-            <div class="ledger-controls" aria-label="账单筛选">
+            <button class="ledger-filter-toggle" id="ledgerFilterToggle" type="button" aria-expanded="false" aria-controls="ledgerFilterPanel">
+              <span class="ui-icon-host" data-ui-icon="filter" aria-hidden="true"></span>
+              <span>筛选</span>
+              <span class="ledger-filter-dot" aria-hidden="true"></span>
+            </button>
+            <div class="ledger-controls" id="ledgerFilterPanel" aria-label="账单筛选">
               <select id="ledgerFamilyFilter" aria-label="按家庭筛选"></select>
               <select id="ledgerCategoryFilter" aria-label="按类别筛选"></select>
               <button class="secondary-button compact-button" id="clearLedgerFiltersButton" type="button" hidden>清除筛选</button>
@@ -236,17 +260,16 @@
         </section>
       </div>
 
-      <section class="settings-view" id="settingsView" hidden aria-labelledby="settingsTitle" aria-modal="true" role="dialog">
+      <section class="settings-view" id="settingsView" data-mode="settings" hidden aria-labelledby="settingsTitle" aria-modal="true" role="dialog">
         <button class="settings-backdrop" id="settingsBackdrop" type="button" aria-label="关闭设置"></button>
         <aside class="settings-drawer">
           <div class="settings-hero">
             <div>
-              <p class="eyebrow">偏好与数据</p>
+              <p class="eyebrow" id="settingsEyebrow">偏好与数据</p>
               <h2 id="settingsTitle">设置</h2>
             </div>
             <button class="icon-button" id="closeSettingsButton" type="button" aria-label="关闭">
-              <span class="sf-icon sf-symbol">&#x10190;</span>
-              <svg class="svg-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <span class="ui-icon-host" data-ui-icon="close" aria-hidden="true"></span>
             </button>
           </div>
 
@@ -254,7 +277,7 @@
             <div class="settings-note add-to-home-hint" id="addToHomeHint" hidden>
               <span>用 Safari 分享菜单里的「添加到主屏幕」，可以全屏使用并离线打开账本。</span>
               <button class="icon-button" id="dismissAddToHomeHint" type="button" aria-label="不再提示">
-                <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <span class="ui-icon-host" data-ui-icon="close" aria-hidden="true"></span>
               </button>
             </div>
             <section class="settings-panel settlement-panel" id="settlementSettingsPanel">
@@ -270,8 +293,7 @@
               <div class="settings-panel-title">
                 <h3>当前账本</h3>
                 <button class="secondary-button compact-button" id="openLedgerManagerButton" type="button">
-                  <span class="sf-icon sf-symbol">&#x102F2;</span>
-                  <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                  <span class="ui-icon-host" data-ui-icon="book" aria-hidden="true"></span>
                   <span>账本管理</span>
                 </button>
               </div>
@@ -298,97 +320,94 @@
               </label>
             </section>
 
-            <section class="settings-panel personalization-panel">
-              <div class="settings-panel-title">
-                <h3>个性化</h3>
-                <span class="readonly-badge">家庭主题色</span>
+            <details class="settings-panel personalization-panel settings-mobile-group" open>
+              <summary><span>个性化</span><small>主题与家庭颜色</small></summary>
+              <div class="settings-mobile-group-body">
+                <p class="settings-note">全局主题色：按钮、强调与光环的颜色（仅本机生效）。</p>
+                <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="全局主题色"></div>
+                <p class="settings-note">选择一套家庭主题色；需要时可单独微调某个家庭。</p>
+                <div id="settingsPaletteList" class="settings-palette-list" aria-label="预设调色板"></div>
+                <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="逐家调整主题色"></div>
               </div>
-              <p class="settings-note">全局主题色：按钮、强调与光环的颜色（仅本机生效）。</p>
-              <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="全局主题色"></div>
-              <p class="settings-note">选择一套家庭主题色；需要时可单独微调某个家庭。</p>
-              <div id="settingsPaletteList" class="settings-palette-list" aria-label="预设调色板"></div>
-              <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="逐家调整主题色"></div>
-            </section>
+            </details>
 
-            <section class="settings-panel">
-              <div class="settings-panel-title">
-                <h3>家庭与规则</h3>
-                <span class="readonly-badge">人数可调</span>
-              </div>
-              <p class="settings-note">家庭名称固定，分摊金额按各家庭人数占总人数的比例计算。</p>
-              <div id="settingsFamilyList" class="settings-family-list"></div>
-              <div class="settings-rule-list">
-                <div class="settings-rule">
-                  <span>分摊方式</span>
-                  <strong>按家庭人数</strong>
-                </div>
-                <div class="settings-rule">
-                  <span>货币</span>
-                  <strong>人民币 ¥</strong>
-                </div>
-                <div class="settings-rule">
-                  <span>保存位置</span>
-                  <strong id="storageModeLabel">当前浏览器</strong>
+            <details class="settings-panel settings-mobile-group" open>
+              <summary><span>家庭与规则</span><small>人数、分摊与货币</small></summary>
+              <div class="settings-mobile-group-body">
+                <p class="settings-note">家庭名称固定，分摊金额按各家庭人数占总人数的比例计算。</p>
+                <div id="settingsFamilyList" class="settings-family-list"></div>
+                <div class="settings-rule-list">
+                  <div class="settings-rule">
+                    <span>分摊方式</span>
+                    <strong>按家庭人数</strong>
+                  </div>
+                  <div class="settings-rule">
+                    <span>货币</span>
+                    <strong>人民币 ¥</strong>
+                  </div>
+                  <div class="settings-rule">
+                    <span>保存位置</span>
+                    <strong id="storageModeLabel">当前浏览器</strong>
+                  </div>
                 </div>
               </div>
-            </section>
+            </details>
 
-            <section class="settings-panel">
-              <h3>类别管理</h3>
-              <form id="settingsCategoryForm" class="category-form settings-category-form">
-                <input id="settingsNewCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" />
-                <button class="secondary-button" type="submit">添加</button>
-              </form>
-              <div id="settingsCategoryChips" class="category-chips settings-category-chips"></div>
-            </section>
+            <details class="settings-panel settings-mobile-group" open>
+              <summary><span>类别管理</span><small>新增、排序与删除</small></summary>
+              <div class="settings-mobile-group-body">
+                <form id="settingsCategoryForm" class="category-form settings-category-form">
+                  <input id="settingsNewCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" />
+                  <button class="secondary-button" type="submit">添加</button>
+                </form>
+                <div id="settingsCategoryChips" class="category-chips settings-category-chips"></div>
+              </div>
+            </details>
 
-            <section class="settings-panel">
-              <h3>数据状态</h3>
-              <div id="settingsDataSummary" class="settings-data-summary"></div>
-              <details class="settings-actions-details">
-                <summary>
-                  <span>云同步与备份</span>
-                  <small>分享、导出、清空</small>
-                </summary>
-                <div class="details-body">
-                  <div class="details-body-inner">
-                    <div class="settings-action-stack">
+            <details class="settings-panel settings-mobile-group" open>
+              <summary><span>数据与备份</span><small>状态、同步与导出</small></summary>
+              <div class="settings-mobile-group-body">
+                <div id="settingsDataSummary" class="settings-data-summary"></div>
+                <details class="settings-actions-details">
+                  <summary>
+                    <span>云同步与备份</span>
+                    <small>分享、导出、清空</small>
+                  </summary>
+                  <div class="details-body">
+                    <div class="details-body-inner">
+                      <div class="settings-action-stack">
                       <button class="secondary-button" id="createCloudLedgerButton" type="button">
-                        <span class="sf-icon sf-symbol">&#x101EC;</span>
-                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                        <span class="ui-icon-host" data-ui-icon="cloud" aria-hidden="true"></span>
                         <span>创建云账本</span>
                       </button>
                       <button class="secondary-button" id="copyShareLinkButton" type="button" hidden>
-                        <span class="sf-icon sf-symbol">&#x10263;</span>
-                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span class="ui-icon-host" data-ui-icon="link" aria-hidden="true"></span>
                         <span>复制邀请链接</span>
                       </button>
                       <button class="secondary-button" id="exportCsvButton" type="button">
-                        <span class="sf-icon sf-symbol">&#x10237;</span>
-                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        <span class="ui-icon-host" data-ui-icon="download" aria-hidden="true"></span>
                         <span>导出 CSV</span>
                       </button>
                       <button class="secondary-button" id="exportJsonButton" type="button">
-                        <span class="sf-icon sf-symbol">&#x1064B;</span>
-                        <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+                        <span class="ui-icon-host" data-ui-icon="database" aria-hidden="true"></span>
                         <span>备份 JSON</span>
                       </button>
+                      </div>
+                      <button class="ghost-button danger settings-clear-button" id="settingsClearLedgerButton" type="button">
+                        <span class="ui-icon-host" data-ui-icon="trash" aria-hidden="true"></span>
+                        <span>清空账本</span>
+                      </button>
                     </div>
-                    <button class="ghost-button danger settings-clear-button" id="settingsClearLedgerButton" type="button">
-                      <span class="sf-icon sf-symbol">&#x10211;</span>
-                      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                      <span>清空账本</span>
-                    </button>
                   </div>
-                </div>
-              </details>
-            </section>
+                </details>
+              </div>
+            </details>
 
             <section class="settings-panel">
               <h3>使用指南</h3>
               <p class="settings-note">重温功能介绍：分摊规则、自动平账与云账本邀请。</p>
               <button class="secondary-button" id="openWelcomeButton" type="button">
-                <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                <span class="ui-icon-host" data-ui-icon="help" aria-hidden="true"></span>
                 <span>查看使用指南</span>
               </button>
             </section>
@@ -405,8 +424,7 @@
               <h2 id="ledgerManagerTitle">账本管理</h2>
             </div>
             <button class="icon-button" id="closeLedgerManagerButton" type="button" aria-label="关闭">
-              <span class="sf-icon sf-symbol">&#x10190;</span>
-              <svg class="svg-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <span class="ui-icon-host" data-ui-icon="close" aria-hidden="true"></span>
             </button>
           </div>
 
@@ -528,7 +546,7 @@
               <div class="welcome-art" aria-hidden="true">
                 <div class="welcome-cloud-art">
                   <div class="welcome-mini-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    <span class="ui-icon-host" data-ui-icon="link"></span>
                     <span>…?ledger=一起旅行</span>
                   </div>
                   <div class="welcome-sync-dots"><span class="dot-a"></span><span class="dot-b"></span><span class="dot-c"></span></div>
@@ -561,7 +579,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-safari-motion-v2-20260726"></script>
+    <script src="./app.js?v=journa-sf-icons-tags-category-blur-v4-20260726"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
