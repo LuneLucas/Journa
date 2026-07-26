@@ -59,11 +59,15 @@
 }
 
 /* 遮罩是真正悬浮在滚动内容之上的层，玻璃只留在这里与提交栏/toast */
-.settings-backdrop,
 .ledger-management-backdrop,
 .confirm-backdrop {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+.settings-backdrop {
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
 .settings-backdrop {

@@ -1138,7 +1138,7 @@
     }
   }
 
-  /* 一段亮光沿光带从付款方漂向收款方；周期与路径归一化长度相等，循环无缝衔接 */
+  /* 揭幕：亮点沿光带从付款方漂向收款方。 */
   @keyframes settlement-spark-travel {
     from {
       stroke-dashoffset: 1;
@@ -1146,6 +1146,17 @@
 
     to {
       stroke-dashoffset: 0;
+    }
+  }
+
+  /* 循环从揭幕终点继续向前，避免切换状态时亮点回到光带中段。 */
+  @keyframes settlement-spark-loop {
+    from {
+      stroke-dashoffset: 0;
+    }
+
+    to {
+      stroke-dashoffset: -1;
     }
   }
 
@@ -1214,8 +1225,8 @@
   }
 
   .settings-view.is-settlement-revealed .settlement-flow-map .flow-spark {
-    animation: settlement-spark-travel 4.8s linear infinite;
-    animation-delay: calc(var(--flow-delay, 0ms) - 1.2s);
+    animation: settlement-spark-loop 4.8s linear infinite;
+    animation-delay: 0s;
     opacity: 0.28;
   }
 }

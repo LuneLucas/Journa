@@ -857,6 +857,14 @@
       mobile-panel-fade-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
+  /* 数据页首屏的总支出卡与平账卡直接复用平账卡的刷新路径，
+     不再让上卡走面板淡入、下卡走数字刷新两套轨迹。 */
+  .app-view.is-mobile-panel-switching-in .summary-band,
+  .app-view.is-mobile-panel-switching-in .mobile-settlement-entry {
+    will-change: opacity, transform, filter;
+    animation: total-number-soft-refresh var(--mobile-panel-in-motion, 300ms) var(--settle) both;
+  }
+
   body.mobile-panel-data .mobile-submit-bar {
     /* Explicit square, right-anchored (release the left edge) so the pill radius
        renders as a TRUE circle instead of a 62x64 oval. box-sizing: border-box,

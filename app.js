@@ -1837,7 +1837,8 @@ function render(options = {}) {
     scheduleSaveState();
   };
 
-  if (document.startViewTransition && animateFinancialChanges) {
+  const mobilePanelFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  if (document.startViewTransition && animateFinancialChanges && !mobilePanelFlow) {
     document.startViewTransition(performUpdate);
   } else {
     performUpdate();
@@ -3334,7 +3335,7 @@ function renderTotalAmount(nextText, shouldAnimate, options = {}) {
   totalAmountSwapTimer = window.setTimeout(() => {
     elements.totalAmount.classList.remove("is-soft-refresh");
     elements.totalAmount.textContent = totalAmountText;
-  }, getCssDurationMs("--number-swap-motion", 980) + 60);
+  }, getCssDurationMs("--mobile-panel-in-motion", getCssDurationMs("--number-swap-motion", 980)) + 60);
 }
 
 function revealInitialTotalAmount() {
@@ -3453,7 +3454,10 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
      view-transition-name，VT 生效时整块交叉淡变已覆盖刷新；若子项再挂
      is-entering，落定后会“再滑一次”，形成双重动效。故 VT 生效时
      跳过子项 is-entering，仅在不支持 View Transitions 的浏览器用 CSS 兜底。 */
-  const vtActive = document.startViewTransition && animateFinancialChanges;
+  const mobilePanelFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  /* 移动端数据页的两张首屏卡片走同一条卡片路径；避免总支出额外启动
+     View Transition，和下方平账卡形成两套叠加轨迹。 */
+  const vtActive = document.startViewTransition && animateFinancialChanges && !mobilePanelFlow;
   const enterClass = vtActive ? "" : " is-entering";
   renderTotalAmount(formatTotalMoney(summary.totalCents), animateFinancialChanges);
   renderSoftText(elements.shareAmount, formatMoney(summary.shareCents), animateFinancialChanges);
@@ -3488,6 +3492,13 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
     : `<div class="empty-state${enterClass}">${emptyStateArt}暂无类别支出<br><small>添加账单后按类别自动汇总。</small></div>`;
 
   renderSettlementEntry(summary, animateFinancialChanges);
+
+  if (mobilePanelFlow && animateFinancialChanges && !prefersReducedMotion()) {
+    elements.totalMetric.classList.remove("is-soft-refresh");
+    void elements.totalMetric.offsetWidth;
+    elements.totalMetric.classList.add("is-soft-refresh");
+    window.setTimeout(() => elements.totalMetric.classList.remove("is-soft-refresh"), getCssDurationMs("--mobile-panel-in-motion", 558) + 60);
+  }
 }
 
 /* 数据页只保留一个入口摘要，完整的平账建议（资金光流图 + 转账卡）在设置抽屉里 */
@@ -5201,11 +5212,16 @@ function startSettlementReveal() {
   // 强制从干净的初始帧重新开始，使每次展开都有完整且一致的揭幕节奏。
   void elements.settingsView.offsetWidth;
   elements.settingsView.classList.add("is-settlement-revealing");
+  /* 最后一条光流的亮点也必须完整走到终点，再切换到低频循环；
+     固定 1600ms 会在多笔转账时截断尾部，切状态时还会造成亮点回跳。 */
+  const flowLinks = elements.settingsView.querySelectorAll(".settlement-flow-map .flow-link");
+  const lastFlowDelay = Math.max(0, (flowLinks.length - 1) * 160);
+  const revealDuration = Math.max(1600, 540 + lastFlowDelay + 1050 + 60);
   settlementRevealTimer = window.setTimeout(() => {
     settlementRevealTimer = 0;
     elements.settingsView.classList.remove("is-settlement-revealing");
     elements.settingsView.classList.add("is-settlement-revealed");
-  }, 1600);
+  }, revealDuration);
 }
 
 function openSettings(options = {}) {

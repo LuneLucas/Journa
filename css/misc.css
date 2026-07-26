@@ -421,7 +421,11 @@ h3 {
 }
 
 .metric.primary strong.is-soft-refresh {
-  animation: total-number-soft-refresh var(--number-swap-motion) var(--settle) both;
+  animation: total-number-soft-refresh var(--mobile-panel-in-motion, var(--number-swap-motion)) var(--settle) both;
+}
+
+.metric.primary.is-soft-refresh {
+  animation: total-number-soft-refresh var(--mobile-panel-in-motion, var(--number-swap-motion)) var(--settle) both;
 }
 
 .metric.primary strong.is-scrambling {
@@ -2363,6 +2367,7 @@ label,
   fill: none;
   stroke-linecap: round;
   stroke-dasharray: 0.16 0.84;
+  stroke-dashoffset: 1;
   opacity: 0;
 }
 
