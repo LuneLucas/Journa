@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-button-affordance-v2-20260726";
+const APP_VERSION = "journa-pairwise-settlement-v1-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -1628,6 +1628,12 @@ function stringHash(value) {
 function calculateSummary() {
   const paidByFamily = Object.fromEntries(state.families.map((family) => [family.id, 0]));
   const shareByFamily = Object.fromEntries(state.families.map((family) => [family.id, 0]));
+  const owedByFamily = Object.fromEntries(
+    state.families.map((family) => [
+      family.id,
+      Object.fromEntries(state.families.map((otherFamily) => [otherFamily.id, 0])),
+    ]),
+  );
   const categoryTotals = Object.fromEntries(state.categories.map((category) => [category, 0]));
   let totalCents = 0;
   let scopedExpenseCount = 0;
@@ -1639,17 +1645,17 @@ function calculateSummary() {
     paidByFamily[expense.payerId] = (paidByFamily[expense.payerId] || 0) + cents;
     categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + cents;
     state.families.forEach((family) => {
-      shareByFamily[family.id] = (shareByFamily[family.id] || 0) + (expenseShares[family.id] || 0);
+      const shareCents = expenseShares[family.id] || 0;
+      shareByFamily[family.id] = (shareByFamily[family.id] || 0) + shareCents;
+      if (family.id !== expense.payerId && shareCents > 0) {
+        owedByFamily[family.id][expense.payerId] += shareCents;
+      }
     });
     if (normalizeSplitMode(expense.splitMode) !== "all") scopedExpenseCount += 1;
   }
 
   const totalMembers = getTotalMembers();
   const perPersonCents = totalMembers ? Math.round(totalCents / totalMembers) : 0;
-  const balances = state.families.map((family) => ({
-    family,
-    cents: (paidByFamily[family.id] || 0) - shareByFamily[family.id],
-  }));
 
   return {
     totalCents,
@@ -1659,7 +1665,7 @@ function calculateSummary() {
     paidByFamily,
     categoryTotals,
     scopedExpenseCount,
-    settlements: calculateSettlements(balances),
+    settlements: calculatePairwiseSettlements(owedByFamily),
   };
 }
 
@@ -1729,39 +1735,31 @@ function calculateFamilySharesForIds(totalCents, familyIds) {
   return shares;
 }
 
-function calculateSettlements(balances) {
-  const debtors = balances
-    .filter((item) => item.cents < 0)
-    .map((item) => ({ ...item, cents: Math.abs(item.cents) }))
-    .sort((a, b) => b.cents - a.cents);
-  const creditors = balances.filter((item) => item.cents > 0).sort((a, b) => b.cents - a.cents);
+function calculatePairwiseSettlements(owedByFamily) {
   const settlements = [];
-  let debtorIndex = 0;
-  let creditorIndex = 0;
 
-  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
-    const debtor = debtors[debtorIndex];
-    const creditor = creditors[creditorIndex];
-    const cents = Math.min(debtor.cents, creditor.cents);
+  for (let firstIndex = 0; firstIndex < state.families.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < state.families.length; secondIndex += 1) {
+      const firstFamily = state.families[firstIndex];
+      const secondFamily = state.families[secondIndex];
+      const firstOwesSecond = owedByFamily[firstFamily.id]?.[secondFamily.id] || 0;
+      const secondOwesFirst = owedByFamily[secondFamily.id]?.[firstFamily.id] || 0;
+      const netCents = firstOwesSecond - secondOwesFirst;
 
-    if (cents > 0) {
+      if (netCents === 0) continue;
+      const fromFamily = netCents > 0 ? firstFamily : secondFamily;
+      const toFamily = netCents > 0 ? secondFamily : firstFamily;
       settlements.push({
-        from: debtor.family.name,
-        fromFamilyId: debtor.family.id,
-        to: creditor.family.name,
-        toFamilyId: creditor.family.id,
-        cents,
+        from: fromFamily.name,
+        fromFamilyId: fromFamily.id,
+        to: toFamily.name,
+        toFamilyId: toFamily.id,
+        cents: Math.abs(netCents),
       });
     }
-
-    debtor.cents -= cents;
-    creditor.cents -= cents;
-
-    if (debtor.cents === 0) debtorIndex += 1;
-    if (creditor.cents === 0) creditorIndex += 1;
   }
 
-  return settlements;
+  return settlements.sort((first, second) => second.cents - first.cents);
 }
 
 function render(options = {}) {
