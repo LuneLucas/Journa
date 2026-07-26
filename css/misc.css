@@ -2579,6 +2579,14 @@ label,
   letter-spacing: 0.08em;
 }
 
+.settlement-amount .settlement-amount-digits {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
 .settlement-amount strong {
   color: var(--coral);
   font-size: clamp(1.48rem, 5vw, 1.84rem);

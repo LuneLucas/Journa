@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-category-icons-v15-20260726";
+const APP_VERSION = "journa-settlement-number-scramble-v18-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -521,6 +521,8 @@ let pendingSettingsSync = 0;
 let confirmResolve = null;
 let confirmCloseTimer = 0;
 let settlementRevealTimer = 0;
+let settlementAmountRevealTimer = 0;
+let settlementAmountRevealFrameId = 0;
 let settingsReturnFocus = null;
 let ledgerManagementReturnFocus = null;
 let confirmReturnFocus = null;
@@ -3768,9 +3770,10 @@ function truncateFlowLabel(value, max = 7) {
 function renderSettlementItem(settlement, index, enterClass) {
   const formattedAmount = formatMoney(settlement.cents);
   const amountClass = formattedAmount.length >= 11 ? " is-long" : "";
+  const amountDigits = formattedAmount.startsWith("¥") ? formattedAmount.slice(1) : formattedAmount;
   const amountMarkup = formattedAmount.startsWith("¥")
-    ? `<span class="settlement-currency" aria-hidden="true">¥</span>${escapeHtml(formattedAmount.slice(1))}`
-    : escapeHtml(formattedAmount);
+    ? `<span class="settlement-currency" aria-hidden="true">¥</span><span class="settlement-amount-digits" data-settlement-amount="${escapeHtml(amountDigits)}">${escapeHtml(amountDigits)}</span>`
+    : `<span class="settlement-amount-digits" data-settlement-amount="${escapeHtml(amountDigits)}">${escapeHtml(amountDigits)}</span>`;
   return `
     <article class="settlement-item${enterClass}" aria-label="${escapeHtml(settlement.from)} 付款给 ${escapeHtml(settlement.to)} ${formattedAmount}" style="${familyStyle(settlement.fromFamilyId)} --settlement-target-color: ${getFamilyVisual(settlement.toFamilyId).color}; --settlement-target-text: ${getFamilyVisual(settlement.toFamilyId).text}; --settlement-delay: ${index * MOTION_DELAYS.settlementStagger}ms;">
       <div class="settlement-route-node">
@@ -5318,8 +5321,92 @@ function applySettingsMode(mode = "settings") {
 function clearSettlementReveal({ settle = false } = {}) {
   window.clearTimeout(settlementRevealTimer);
   settlementRevealTimer = 0;
+  cancelSettlementAmountReveal();
   elements.settingsView.classList.remove("is-settlement-revealing");
   elements.settingsView.classList.toggle("is-settlement-revealed", settle && settingsMode === "settlement");
+}
+
+function cancelSettlementAmountReveal() {
+  window.clearTimeout(settlementAmountRevealTimer);
+  settlementAmountRevealTimer = 0;
+  if (settlementAmountRevealFrameId) {
+    window.cancelAnimationFrame(settlementAmountRevealFrameId);
+    settlementAmountRevealFrameId = 0;
+  }
+  elements.settingsView
+    .querySelectorAll("[data-settlement-amount]")
+    .forEach((node) => {
+      node.textContent = node.dataset.settlementAmount || "";
+    });
+}
+
+function startSettlementAmountReveal() {
+  const amountNodes = [...elements.settingsView.querySelectorAll("[data-settlement-amount]")];
+  if (!amountNodes.length) return;
+
+  const glyphs = "0123456789#%*&@";
+  const duration = 900;
+  const sequenceStart = 1410;
+  const characterStagger = 56;
+  const growEvery = 72;
+
+  amountNodes.forEach((node, index) => {
+    node.textContent = glyphs[(index * 5 + 2) % glyphs.length];
+  });
+
+  settlementAmountRevealTimer = window.setTimeout(() => {
+    settlementAmountRevealTimer = 0;
+    const startedAt = window.performance.now();
+    let scrambleFrameCount = 0;
+
+    const renderFrame = (now) => {
+      let allSettled = true;
+      scrambleFrameCount += 1;
+
+      amountNodes.forEach((node, itemIndex) => {
+        const targetText = node.dataset.settlementAmount || "";
+        const targetChars = [...targetText];
+        const elapsed = now - startedAt - itemIndex * MOTION_DELAYS.settlementStagger;
+
+        if (elapsed < 0) {
+          allSettled = false;
+          return;
+        }
+        if (elapsed >= duration) {
+          node.textContent = targetText;
+          return;
+        }
+
+        allSettled = false;
+        if (scrambleFrameCount % 2 !== 0) return;
+
+        const holdWindow = Math.max(240, duration - characterStagger * Math.max(targetChars.length - 1, 0));
+        const visibleLength = Math.min(targetChars.length, Math.max(1, Math.floor(elapsed / growEvery) + 1));
+        node.textContent = targetChars
+          .slice(0, visibleLength)
+          .map((char, charIndex) => {
+            if (char === "," || char === ".") return char;
+            const progress = Math.min(1, Math.max(0, (elapsed - charIndex * characterStagger) / holdWindow));
+            if (progress >= 1) return char;
+            /* 比总支出更早进入减速区，并把末段切换间隔拉长，收尾数字更从容。 */
+            const slowdownProgress = Math.max(0, (progress - 0.38) / 0.62);
+            const slowedProgress = easeOutCubic(slowdownProgress);
+            const glyphInterval = 22 + slowedProgress * 210;
+            const glyphIndex = Math.floor((elapsed / glyphInterval + charIndex * 5 + itemIndex * 3) % glyphs.length);
+            return glyphs[glyphIndex];
+          })
+          .join("");
+      });
+
+      if (!allSettled) {
+        settlementAmountRevealFrameId = window.requestAnimationFrame(renderFrame);
+        return;
+      }
+      settlementAmountRevealFrameId = 0;
+    };
+
+    settlementAmountRevealFrameId = window.requestAnimationFrame(renderFrame);
+  }, sequenceStart);
 }
 
 function startSettlementReveal() {
@@ -5332,13 +5419,14 @@ function startSettlementReveal() {
   // 强制从干净的初始帧重新开始，使每次展开都有完整且一致的揭幕节奏。
   void elements.settingsView.offsetWidth;
   elements.settingsView.classList.add("is-settlement-revealing");
+  startSettlementAmountReveal();
   /* 同时等待最后一条渐变线绘制和最后一笔金额落定，避免收尾截帧。 */
   const flowLinks = elements.settingsView.querySelectorAll(".settlement-flow-map .flow-link");
   const lastFlowDelay = Math.max(0, (flowLinks.length - 1) * 160);
   const settlementItems = elements.settingsView.querySelectorAll(".settlement-item");
   const lastSettlementDelay = Math.max(0, (settlementItems.length - 1) * MOTION_DELAYS.settlementStagger);
   const flowSequenceEnd = flowLinks.length ? 540 + lastFlowDelay + 1050 : 0;
-  const cardSequenceEnd = settlementItems.length ? 1410 + lastSettlementDelay + 360 : 1220;
+  const cardSequenceEnd = settlementItems.length ? 1410 + lastSettlementDelay + 900 : 1220;
   const revealDuration = Math.max(1600, flowSequenceEnd, cardSequenceEnd) + 60;
   settlementRevealTimer = window.setTimeout(() => {
     settlementRevealTimer = 0;
