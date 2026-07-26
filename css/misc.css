@@ -317,6 +317,14 @@ h3 {
   margin-bottom: 0;
 }
 
+/* 下方区块保持在总支出卡的外阴影之上，避免阴影染到卡片内容面。 */
+.summary-band ~ .mobile-settlement-entry,
+.summary-band ~ .workspace,
+.summary-band ~ .ledger-section {
+  position: relative;
+  z-index: 1;
+}
+
 .metric {
   min-height: 120px;
   padding: var(--space-6);
@@ -424,10 +432,6 @@ h3 {
   animation: total-number-soft-refresh var(--mobile-panel-in-motion, var(--number-swap-motion)) var(--settle) both;
 }
 
-.metric.primary.is-soft-refresh {
-  animation: total-number-soft-refresh var(--mobile-panel-in-motion, var(--number-swap-motion)) var(--settle) both;
-}
-
 .metric.primary strong.is-scrambling {
   opacity: 0.92;
   text-shadow:
@@ -439,6 +443,10 @@ h3 {
 .current-ledger-summary strong.is-soft-refresh,
 .ledger-card-stats strong.is-soft-refresh {
   animation: metric-number-soft-refresh var(--motion) var(--settle) both;
+}
+
+.metric:not(.primary) strong.is-scrambling {
+  opacity: 0.92;
 }
 
 .metric.primary.is-blooming {
@@ -509,6 +517,14 @@ h3 {
 
 .insight-details:not([open]) > :not(summary) {
   display: block;
+}
+
+.insight-details > .stack-list {
+  max-height: none;
+  overflow: hidden;
+  transition:
+    max-height var(--motion) var(--settle),
+    opacity var(--motion-fast) var(--settle);
 }
 
 .ledger-filter-toggle {
@@ -1212,6 +1228,14 @@ label,
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: var(--fw-bold);
+}
+
+.settings-mobile-group-body {
+  max-height: none;
+  overflow: hidden;
+  transition:
+    max-height var(--motion) var(--settle),
+    opacity var(--motion-fast) var(--settle);
 }
 
 .settings-mobile-group[open] > summary {
@@ -2161,14 +2185,6 @@ label,
     box-shadow var(--motion-fast) var(--spring);
 }
 
-.settlement-entry-total {
-  color: color-mix(in srgb, var(--amber) 72%, var(--ink));
-  font-family: var(--font-display);
-  font-size: 1.18rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .mobile-settlement-entry.is-soft-refresh {
   animation: total-number-soft-refresh var(--mobile-panel-in-motion, var(--number-swap-motion)) var(--settle) both;
 }
@@ -2214,10 +2230,10 @@ label,
 .settlement-entry-count {
   border-radius: var(--radius-pill);
   background: rgba(217, 164, 65, 0.16);
-  padding: 3px 10px;
+  padding: 4px 11px;
   color: color-mix(in srgb, var(--amber) 72%, var(--ink));
-  font-size: 0.74rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2324,7 +2340,7 @@ label,
 
 .settlement-flow-map .flow-name {
   fill: var(--family-text);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -2334,45 +2350,35 @@ label,
 
 .settlement-flow-map .flow-dot-halo {
   fill: var(--family-color);
-  opacity: 0.5;
+  opacity: 0.22;
 }
 
 .settlement-flow-map .flow-dot-core {
   fill: rgba(255, 255, 255, 0.92);
 }
 
-/* 光流：模糊光晕铺底 */
+/* 轻薄贴边柔光，仅用于把交叉路径从背景中分离。 */
 .settlement-flow-map .flow-halo {
   fill: none;
-  opacity: 0.5;
+  opacity: 0.18;
   stroke-linecap: round;
 }
 
-/* 渐变光带主体 */
+/* 单层家庭色渐变线：保持清楚，但不做霓虹式堆叠。 */
 .settlement-flow-map .flow-ribbon {
   fill: none;
-  opacity: 0.9;
+  opacity: 0.72;
   stroke-linecap: round;
 }
 
-/* 亮芯：让光带中心透出一道亮线 */
-.settlement-flow-map .flow-core {
+/* 短而窄的高饱和高光线沿主线滑过，作为克制的流转指示。 */
+.settlement-flow-map .flow-sheen {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.82);
-  stroke-linecap: round;
-}
-
-/* 流动的光点：一小段亮光沿光带从付款方漂向收款方 */
-.settlement-flow-map .flow-spark {
-  fill: none;
-  stroke-linecap: round;
-  stroke-dasharray: 0.16 0.84;
-  stroke-dashoffset: 1;
+  filter: saturate(2.2) brightness(1.18) contrast(1.16);
   opacity: 0;
-}
-
-.settlement-flow-map .flow-endpoint {
-  opacity: 0.85;
+  stroke-dasharray: 0.13 1.27;
+  stroke-dashoffset: 1;
+  stroke-linecap: round;
 }
 
 .stack-list,

@@ -313,16 +313,20 @@ input[type="date"]:focus {
   width: 15px;
   height: 15px;
   overflow: visible;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
+.category-symbol-sf {
+  fill: currentColor;
+  stroke: none;
+}
+
 .category-symbol-fallback {
+  fill: none;
+  stroke: currentColor;
   stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .apple-platform .category-symbol-sf,

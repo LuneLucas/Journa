@@ -841,14 +841,18 @@
 
   .app-view.is-mobile-panel-switching-out .entry-panel,
   .app-view.is-mobile-panel-switching-out .ledger-section,
-  .app-view.is-mobile-panel-switching-out .insights-panel {
+  .app-view.is-mobile-panel-switching-out .insights-panel,
+  .app-view.is-mobile-panel-switching-out .summary-band,
+  .app-view.is-mobile-panel-switching-out .mobile-settlement-entry {
     will-change: opacity, transform, filter;
     animation: mobile-panel-fade-out var(--mobile-panel-out-motion, 100ms) cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
   .app-view.is-mobile-panel-switching-in .entry-panel,
   .app-view.is-mobile-panel-switching-in .ledger-section,
-  .app-view.is-mobile-panel-switching-in .insights-panel {
+  .app-view.is-mobile-panel-switching-in .insights-panel,
+  .app-view.is-mobile-panel-switching-in .summary-band,
+  .app-view.is-mobile-panel-switching-in .mobile-settlement-entry {
     /* 外阴影不再单独做 keyframes：卡片自身 box-shadow 是多层（浅色双/深色三，
        且黑暗模式各卡片层数不一），none→多层阴影无法插值，会在动画末帧“啪”地
        弹出。改为随 mobile-panel-fade-in 的 opacity 一起淡入，平滑且跨主题/跨卡片安全。 */
@@ -857,12 +861,17 @@
       mobile-panel-fade-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
-  /* 数据页首屏的总支出卡与平账卡直接复用平账卡的刷新路径，
-     不再让上卡走面板淡入、下卡走数字刷新两套轨迹。 */
-  .app-view.is-mobile-panel-switching-in .summary-band,
+  /* 上中下形成轻微级联，保留同一条位移路径，只让后面的卡片稍晚跟上。 */
+  .app-view.is-mobile-panel-switching-in .summary-band {
+    animation-delay: 0ms;
+  }
+
   .app-view.is-mobile-panel-switching-in .mobile-settlement-entry {
-    will-change: opacity, transform, filter;
-    animation: total-number-soft-refresh var(--mobile-panel-in-motion, 300ms) var(--settle) both;
+    animation-delay: 42ms;
+  }
+
+  .app-view.is-mobile-panel-switching-in .ledger-section {
+    animation-delay: 84ms;
   }
 
   body.mobile-panel-data .mobile-submit-bar {
@@ -2410,7 +2419,7 @@
 
   /* viewBox 等比缩小后补偿字号：这些是 SVG 用户单位，窄屏下按约 0.8 的缩放放大回可读大小 */
   .settlement-flow-map .flow-name {
-    font-size: 17px;
+    font-size: 20px;
   }
 
   .settlement-flow-map .flow-col-label {
@@ -2919,20 +2928,11 @@
   }
 
   .mobile-settlement-entry .settlement-entry-cue {
-    display: grid;
-    grid-template-columns: auto auto;
-    justify-items: end;
-    gap: 3px 6px;
-  }
-
-  .mobile-settlement-entry .settlement-entry-cue .ui-icon-host {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    align-self: center;
+    gap: 8px;
   }
 
   .mobile-settlement-entry .settlement-entry-count {
-    padding: 2px 7px;
+    padding: 4px 9px;
   }
 
   .ledger-section {

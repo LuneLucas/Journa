@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-sf-icons-tags-category-blur-v3-20260726";
+const APP_VERSION = "journa-settlement-flow-v12-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -314,7 +314,6 @@ const elements = {
   mobileSettlementEntryButton: document.querySelector("#mobileSettlementEntryButton"),
   mobileSettlementEntrySub: document.querySelector("#mobileSettlementEntrySub"),
   mobileSettlementEntryCount: document.querySelector("#mobileSettlementEntryCount"),
-  mobileSettlementTotal: document.querySelector("#mobileSettlementTotal"),
   settlementCountBadge: document.querySelector("#settlementCountBadge"),
   settlementSettingsPanel: document.querySelector("#settlementSettingsPanel"),
   ledgerFamilyFilter: document.querySelector("#ledgerFamilyFilter"),
@@ -385,6 +384,9 @@ let totalAmountSwapTimer = 0;
 let hasPlayedInitialTotalReveal = false;
 let totalRevealFrameId = 0;
 let totalRevealTargetText = "";
+let hasPlayedInitialExpenseCountReveal = false;
+let expenseCountRevealFrameId = 0;
+let expenseCountRevealTargetText = "";
 let amountLabelScrollFrameId = 0;
 let cloudState = loadCloudState();
 /* 启动瞬间本地是否有数据：Safari ITP 可能清掉 localStorage，
@@ -1230,7 +1232,6 @@ async function pullCloudLedger({ announce = false } = {}) {
     return false;
   } finally {
     leaveCloudBusy();
-    updateLedgerUrl();
   }
 }
 
@@ -3153,7 +3154,7 @@ function renderPersonalizationSettings() {
    播完过渡再真正移除 open；展开则直接加 open 走 CSS 0fr→1fr。*/
 function bindAnimatedDetails(root = document) {
   root
-    .querySelectorAll(".settings-actions-details > summary, .family-color-details > summary")
+    .querySelectorAll(".settings-actions-details > summary, .family-color-details > summary, .settings-mobile-group > summary, .insight-details > summary")
     .forEach((summary) => {
       if (summary.dataset.animatedDetailsBound) return;
       summary.dataset.animatedDetailsBound = "1";
@@ -3163,6 +3164,57 @@ function bindAnimatedDetails(root = document) {
         event.preventDefault();
         if (details.dataset.animating === "1") return;
         const grid = details.querySelector(".details-body, .family-color-detail-body");
+
+        const expandable = details.classList.contains("settings-mobile-group")
+          ? details.querySelector(".settings-mobile-group-body")
+          : details.classList.contains("insight-details")
+            ? details.querySelector(".stack-list")
+            : null;
+        if (expandable) {
+          const opening = !details.hasAttribute("open");
+          if (prefersReducedMotion()) {
+            details.toggleAttribute("open", opening);
+            return;
+          }
+          details.dataset.animating = "1";
+          details.classList.toggle("is-closing", !opening);
+          if (opening) {
+            details.setAttribute("open", "");
+            expandable.style.maxHeight = "0px";
+            expandable.style.opacity = "0";
+            void expandable.offsetHeight;
+            requestAnimationFrame(() => {
+              expandable.style.maxHeight = `${expandable.scrollHeight}px`;
+              expandable.style.opacity = "1";
+            });
+          } else {
+            expandable.style.maxHeight = `${expandable.scrollHeight}px`;
+            expandable.style.opacity = "1";
+            void expandable.offsetHeight;
+            requestAnimationFrame(() => {
+              expandable.style.maxHeight = "0px";
+              expandable.style.opacity = "0";
+            });
+          }
+          let expandableTimer = 0;
+          const finishExpandable = () => {
+            if (!opening) details.removeAttribute("open");
+            details.classList.remove("is-closing");
+            details.dataset.animating = "0";
+            expandable.style.removeProperty("max-height");
+            expandable.style.removeProperty("opacity");
+            expandable.removeEventListener("transitionend", onExpandableEnd);
+            window.clearTimeout(expandableTimer);
+          };
+          const onExpandableEnd = (ev) => {
+            if (ev && ev.propertyName && ev.propertyName !== "max-height") return;
+            finishExpandable();
+          };
+          expandable.addEventListener("transitionend", onExpandableEnd);
+          expandableTimer = window.setTimeout(finishExpandable, prefersReducedMotion() ? 0 : 620);
+          return;
+        }
+
         if (!details.hasAttribute("open")) {
           details.setAttribute("open", "");
           return;
@@ -3429,6 +3481,88 @@ function cancelInitialTotalReveal() {
   elements.totalAmount.classList.remove("is-scrambling");
 }
 
+function renderExpenseCount(nextText, shouldAnimate, options = {}) {
+  if (options.revealOnEntry) {
+    playInitialExpenseCountReveal(nextText);
+    return;
+  }
+
+  const previousText = elements.expenseCount.textContent || nextText;
+  expenseCountRevealTargetText = nextText;
+  cancelExpenseCountReveal();
+
+  if (!shouldAnimate || previousText === nextText || prefersReducedMotion()) {
+    elements.expenseCount.textContent = nextText;
+    return;
+  }
+
+  playExpenseCountScramble(nextText);
+}
+
+function revealInitialExpenseCount() {
+  const visibleExpenseCount = state.expenses.filter((expense) => !expense.isDeleted).length;
+  renderExpenseCount(String(visibleExpenseCount), false, { revealOnEntry: true });
+}
+
+function playInitialExpenseCountReveal(targetText) {
+  if (hasPlayedInitialExpenseCountReveal) {
+    elements.expenseCount.textContent = targetText;
+    return;
+  }
+
+  hasPlayedInitialExpenseCountReveal = true;
+  playExpenseCountScramble(targetText);
+}
+
+function playExpenseCountScramble(targetText) {
+  expenseCountRevealTargetText = targetText;
+  cancelExpenseCountReveal();
+
+  if (prefersReducedMotion()) {
+    elements.expenseCount.textContent = targetText;
+    return;
+  }
+
+  const glyphs = "0123456789";
+  const duration = 980;
+  const startedAt = window.performance.now();
+  const targetChars = [...targetText];
+  elements.expenseCount.classList.add("is-scrambling");
+
+  const renderFrame = (now) => {
+    const elapsed = now - startedAt;
+    const isFinalFrame = elapsed >= duration || expenseCountRevealTargetText !== targetText;
+    const progress = Math.min(1, Math.max(0, elapsed / duration));
+    const eased = easeOutCubic(progress);
+    const nextText = targetChars
+      .map((char, index) => {
+        const charProgress = Math.min(1, Math.max(0, (eased * duration - index * 90) / Math.max(240, duration - index * 90)));
+        if (charProgress >= 1) return char;
+        return glyphs[Math.floor((elapsed / (28 + charProgress * 110) + index * 3) % glyphs.length)];
+      })
+      .join("");
+
+    elements.expenseCount.textContent = isFinalFrame ? targetText : nextText;
+    if (!isFinalFrame) {
+      expenseCountRevealFrameId = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    elements.expenseCount.classList.remove("is-scrambling");
+    expenseCountRevealFrameId = 0;
+  };
+
+  expenseCountRevealFrameId = window.requestAnimationFrame(renderFrame);
+}
+
+function cancelExpenseCountReveal() {
+  if (expenseCountRevealFrameId) {
+    window.cancelAnimationFrame(expenseCountRevealFrameId);
+    expenseCountRevealFrameId = 0;
+  }
+  elements.expenseCount.classList.remove("is-scrambling");
+}
+
 function renderSoftText(element, nextText, shouldAnimate = false) {
   if (!element) return;
   const currentText = element.textContent || "";
@@ -3458,11 +3592,12 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
   /* 移动端数据页的两张首屏卡片走同一条卡片路径；避免总支出额外启动
      View Transition，和下方平账卡形成两套叠加轨迹。 */
   const vtActive = document.startViewTransition && animateFinancialChanges && !mobilePanelFlow;
+  const animateSummaryContents = animateFinancialChanges && !mobilePanelFlow;
   const enterClass = vtActive ? "" : " is-entering";
-  renderTotalAmount(formatTotalMoney(summary.totalCents), animateFinancialChanges);
-  renderSoftText(elements.shareAmount, formatMoney(summary.shareCents), animateFinancialChanges);
-  renderSoftText(elements.expenseCount, String(visibleExpenseCount), animateFinancialChanges);
-  renderSoftText(elements.mobileExpenseCount, String(visibleExpenseCount), animateFinancialChanges);
+  renderTotalAmount(formatTotalMoney(summary.totalCents), animateSummaryContents);
+  renderSoftText(elements.shareAmount, formatMoney(summary.shareCents), animateSummaryContents);
+  renderExpenseCount(String(visibleExpenseCount), animateSummaryContents);
+  renderSoftText(elements.mobileExpenseCount, String(visibleExpenseCount), animateSummaryContents);
   renderTotalMetricGradient(summary);
 
   elements.paidByFamily.innerHTML = state.families
@@ -3491,14 +3626,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
         .join("")
     : `<div class="empty-state${enterClass}">${emptyStateArt}暂无类别支出<br><small>添加账单后按类别自动汇总。</small></div>`;
 
-  renderSettlementEntry(summary, animateFinancialChanges);
-
-  if (mobilePanelFlow && animateFinancialChanges && !prefersReducedMotion()) {
-    elements.totalMetric.classList.remove("is-soft-refresh");
-    void elements.totalMetric.offsetWidth;
-    elements.totalMetric.classList.add("is-soft-refresh");
-    window.setTimeout(() => elements.totalMetric.classList.remove("is-soft-refresh"), getCssDurationMs("--mobile-panel-in-motion", 558) + 60);
-  }
+  renderSettlementEntry(summary, animateSummaryContents);
 }
 
 /* 数据页只保留一个入口摘要，完整的平账建议（资金光流图 + 转账卡）在设置抽屉里 */
@@ -3506,7 +3634,6 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   if (!elements.settlementEntryButton) return;
   const count = summary.settlements.length;
   const hasExpenses = state.expenses.some((expense) => !expense.isDeleted);
-  const settlementTotalCents = summary.settlements.reduce((total, settlement) => total + settlement.cents, 0);
   const routeSummary = summary.settlements
     .slice(0, 2)
     .map((settlement) => `${settlement.from} → ${settlement.to}`)
@@ -3521,7 +3648,6 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   elements.mobileSettlementEntryButton.hidden = !hasExpenses || count === 0;
   elements.mobileSettlementEntrySub.textContent = routeSummary || "查看转账方案";
   renderSoftText(elements.mobileSettlementEntryCount, `${count} 笔`, shouldAnimate);
-  renderSoftText(elements.mobileSettlementTotal, formatTotalMoney(settlementTotalCents), shouldAnimate);
   if (shouldAnimate && !prefersReducedMotion()) {
     elements.mobileSettlementEntryButton.classList.remove("is-soft-refresh");
     void elements.mobileSettlementEntryButton.offsetWidth;
@@ -3530,7 +3656,7 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   }
   elements.mobileSettlementEntryButton.setAttribute(
     "aria-label",
-    `平账建议：${count} 笔转账，共 ${formatMoney(settlementTotalCents)}。${routeSummary}`,
+    `平账建议：${count} 笔转账。${routeSummary}`,
   );
 }
 
@@ -3587,21 +3713,19 @@ function renderSettlementFlowMap(settlements, enterClass) {
       const x2 = rightX - 22;
       const controlX1 = x1 + (x2 - x1) * 0.42;
       const controlX2 = x1 + (x2 - x1) * 0.58;
-      const strokeWidth = 3.5 + 6.5 * (settlement.cents / maxCents);
+      const strokeWidth = 2.6 + 3.8 * (settlement.cents / maxCents);
       const pathD = `M ${x1} ${y1} C ${controlX1} ${y1}, ${controlX2} ${y2}, ${x2} ${y2}`;
       const gradientId = `settlementFlowGradient${index}`;
       gradientDefs.push(
         `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${fromVisual.color}"/><stop offset="1" stop-color="${toVisual.color}"/></linearGradient>`,
       );
 
-      // 光流分三层：模糊光晕铺底、渐变光带主体、亮芯提亮，再叠一道流动的光点
+      // 只用克制的家庭色渐变线表达流向，避免移动光点和多层高亮造成视觉噪音。
       return `
         <g class="flow-link" style="--flow-delay: ${index * 160}ms;">
-          <path class="flow-halo" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth + 7).toFixed(1)}" filter="url(#settlementGlow)"/>
+          <path class="flow-halo" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth + 3.2).toFixed(1)}" filter="url(#settlementGlow)"/>
           <path class="flow-ribbon" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${strokeWidth.toFixed(1)}"/>
-          <path class="flow-core" d="${pathD}" pathLength="1" stroke-width="${Math.max(1.3, strokeWidth * 0.3).toFixed(1)}"/>
-          <path class="flow-spark" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth * 0.72).toFixed(1)}"/>
-          <circle class="flow-endpoint" cx="${x2}" cy="${y2}" r="${(strokeWidth * 0.42 + 1.6).toFixed(1)}" fill="${toVisual.color}" filter="url(#settlementGlow)"/>
+          <path class="flow-sheen" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${Math.max(1.8, strokeWidth * 0.82).toFixed(1)}"/>
         </g>
       `;
     })
@@ -3628,7 +3752,7 @@ function renderSettlementFlowMap(settlements, enterClass) {
       <svg viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false">
         <defs>
           <filter id="settlementGlow" x="-40%" y="-120%" width="180%" height="340%">
-            <feGaussianBlur stdDeviation="3.4"/>
+            <feGaussianBlur stdDeviation="2.2"/>
           </filter>
           ${gradientDefs.join("")}
         </defs>
@@ -5212,11 +5336,14 @@ function startSettlementReveal() {
   // 强制从干净的初始帧重新开始，使每次展开都有完整且一致的揭幕节奏。
   void elements.settingsView.offsetWidth;
   elements.settingsView.classList.add("is-settlement-revealing");
-  /* 最后一条光流的亮点也必须完整走到终点，再切换到低频循环；
-     固定 1600ms 会在多笔转账时截断尾部，切状态时还会造成亮点回跳。 */
+  /* 同时等待最后一条渐变线绘制和最后一笔金额落定，避免收尾截帧。 */
   const flowLinks = elements.settingsView.querySelectorAll(".settlement-flow-map .flow-link");
   const lastFlowDelay = Math.max(0, (flowLinks.length - 1) * 160);
-  const revealDuration = Math.max(1600, 540 + lastFlowDelay + 1050 + 60);
+  const settlementItems = elements.settingsView.querySelectorAll(".settlement-item");
+  const lastSettlementDelay = Math.max(0, (settlementItems.length - 1) * MOTION_DELAYS.settlementStagger);
+  const flowSequenceEnd = flowLinks.length ? 540 + lastFlowDelay + 1050 : 0;
+  const cardSequenceEnd = settlementItems.length ? 1410 + lastSettlementDelay + 360 : 1220;
+  const revealDuration = Math.max(1600, flowSequenceEnd, cardSequenceEnd) + 60;
   settlementRevealTimer = window.setTimeout(() => {
     settlementRevealTimer = 0;
     elements.settingsView.classList.remove("is-settlement-revealing");
@@ -7113,6 +7240,7 @@ async function bootstrap() {
   syncRealtimeSubscription();
   checkOperatorFamilyPrompt();
   revealInitialTotalAmount();
+  revealInitialExpenseCount();
 }
 
 bootstrap();

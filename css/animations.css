@@ -1061,6 +1061,26 @@
     }
   }
 
+  @keyframes settlement-sheen-travel {
+    0% {
+      stroke-dashoffset: 1;
+      opacity: 0;
+    }
+
+    12% {
+      opacity: var(--flow-sheen-opacity, 0.18);
+    }
+
+    88% {
+      opacity: var(--flow-sheen-opacity, 0.18);
+    }
+
+    100% {
+      stroke-dashoffset: -0.4;
+      opacity: 0;
+    }
+  }
+
   @keyframes settlement-node-awaken {
     from {
       opacity: 0;
@@ -1075,26 +1095,6 @@
     }
   }
 
-  @keyframes settlement-endpoint-arrive {
-    0% {
-      opacity: 0;
-      transform: scale(0.5);
-      transform-origin: center;
-    }
-
-    68% {
-      opacity: 1;
-      transform: scale(1.42);
-      transform-origin: center;
-    }
-
-    100% {
-      opacity: 0.85;
-      transform: scale(1);
-      transform-origin: center;
-    }
-  }
-
   @keyframes settlement-card-land {
     from {
       opacity: 0;
@@ -1104,6 +1104,46 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes settlement-payer-enter {
+    from {
+      opacity: 0;
+      filter: blur(3px);
+      transform: translateX(-5px);
+    }
+
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes settlement-arrow-enter {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scaleX(0.42);
+    }
+
+    to {
+      opacity: 0.16;
+      transform: translate(-50%, -50%) scaleX(1);
+    }
+  }
+
+  @keyframes settlement-payee-enter {
+    from {
+      opacity: 0;
+      filter: blur(3px);
+      transform: translateX(-5px);
+    }
+
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateX(0);
     }
   }
 
@@ -1138,28 +1178,6 @@
     }
   }
 
-  /* 揭幕：亮点沿光带从付款方漂向收款方。 */
-  @keyframes settlement-spark-travel {
-    from {
-      stroke-dashoffset: 1;
-    }
-
-    to {
-      stroke-dashoffset: 0;
-    }
-  }
-
-  /* 循环从揭幕终点继续向前，避免切换状态时亮点回到光带中段。 */
-  @keyframes settlement-spark-loop {
-    from {
-      stroke-dashoffset: 0;
-    }
-
-    to {
-      stroke-dashoffset: -1;
-    }
-  }
-
   .settings-view.is-settlement-revealing .settings-hero > div,
   .settings-view.is-settlement-revealing .settlement-panel > .settings-panel-title,
   .settings-view.is-settlement-revealing .settlement-panel > .settings-note {
@@ -1174,14 +1192,12 @@
     animation-delay: 150ms;
   }
 
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-node,
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-endpoint {
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-node {
     opacity: 0;
   }
 
   .settings-view.is-settlement-revealing .settlement-flow-map .flow-halo,
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-ribbon,
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-core {
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-ribbon {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
   }
@@ -1192,15 +1208,15 @@
   }
 
   .settings-view.is-settlement-revealing .settlement-flow-map .flow-halo,
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-ribbon,
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-core {
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-ribbon {
     animation: settlement-ribbon-draw 650ms var(--settle) both;
     animation-delay: calc(450ms + var(--flow-delay, 0ms));
   }
 
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-endpoint {
-    animation: settlement-endpoint-arrive 360ms var(--spring) both;
-    animation-delay: calc(920ms + var(--flow-delay, 0ms));
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-sheen {
+    --flow-sheen-opacity: 1;
+    animation: settlement-sheen-travel 1050ms linear both;
+    animation-delay: calc(540ms + var(--flow-delay, 0ms));
   }
 
   .settings-view.is-settlement-revealing .settlement-item {
@@ -1208,9 +1224,24 @@
     animation-delay: calc(900ms + var(--settlement-delay, 0ms));
   }
 
+  .settings-view.is-settlement-revealing .settlement-node-from strong {
+    animation: settlement-payer-enter 280ms var(--settle) both;
+    animation-delay: calc(1020ms + var(--settlement-delay, 0ms));
+  }
+
+  .settings-view.is-settlement-revealing .settlement-route-watermark {
+    animation: settlement-arrow-enter 260ms var(--settle) both;
+    animation-delay: calc(1130ms + var(--settlement-delay, 0ms));
+  }
+
+  .settings-view.is-settlement-revealing .settlement-node-to strong {
+    animation: settlement-payee-enter 280ms var(--settle) both;
+    animation-delay: calc(1240ms + var(--settlement-delay, 0ms));
+  }
+
   .settings-view.is-settlement-revealing .settlement-amount {
     animation: settlement-amount-confirm 360ms var(--settle) both;
-    animation-delay: calc(1100ms + var(--settlement-delay, 0ms));
+    animation-delay: calc(1410ms + var(--settlement-delay, 0ms));
   }
 
   .settings-view.is-settlement-revealing .settlement-done {
@@ -1218,17 +1249,12 @@
     animation-delay: 520ms;
   }
 
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-spark {
-    animation: settlement-spark-travel 1050ms var(--settle) both;
-    animation-delay: calc(540ms + var(--flow-delay, 0ms));
-    opacity: 0.72;
+  .settings-view.is-settlement-revealed .settlement-flow-map .flow-sheen {
+    --flow-sheen-opacity: 0.96;
+    animation: settlement-sheen-travel 4s linear infinite;
+    animation-delay: var(--flow-delay, 0ms);
   }
 
-  .settings-view.is-settlement-revealed .settlement-flow-map .flow-spark {
-    animation: settlement-spark-loop 4.8s linear infinite;
-    animation-delay: 0s;
-    opacity: 0.28;
-  }
 }
 
 /* 新增和删除卡片的自定义视图过渡 */

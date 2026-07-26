@@ -58,8 +58,9 @@
     opacity: 1;
   }
 
-  .settings-view .settlement-flow-map .flow-spark {
+  .settings-view .settlement-flow-map .flow-sheen {
     animation: none !important;
     opacity: 0 !important;
   }
+
 }

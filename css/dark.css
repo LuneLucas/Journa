@@ -697,10 +697,6 @@
     fill: rgba(232, 236, 233, 0.58);
   }
 
-  .settlement-flow-map .flow-core {
-    stroke: rgba(255, 255, 255, 0.7);
-  }
-
   .settlement-flow-map .flow-dot-core {
     fill: rgba(255, 255, 255, 0.85);
   }
