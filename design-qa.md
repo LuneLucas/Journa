@@ -37,9 +37,9 @@ final result: passed
 
 # 类别标签末端玻璃模糊 QA
 
-- 源视觉：沿用参考图一的中线起始、单向衰减模糊语言；实现截图 `/private/tmp/journa-category-blur-both-ends-v3.png`，319×734 CSS 视口。
+- 源视觉：沿用参考图一的中线起始、单向衰减模糊语言；实现截图 `/private/tmp/journa-category-blur-end-v2.png`，319×734 CSS 视口。
 - 状态：记账页、类别横滑已滚到末端，`can-fade-start can-fade-end`，`+` 浮动按钮保持可见。
-- 结果：左右活动渐隐层分别在轨道边缘与 `+` 中心附近承接模糊，向内连续衰减；左侧宽度收窄为 72px，标签滚动坐标不变。计算样式为 `backdrop-filter: blur(12px)` / `blur(14px)`，静止态为 `none`。
+- 结果：右侧活动渐隐层在 `+` 中心附近承接模糊，向左连续衰减；计算样式为 `backdrop-filter: blur(14px) saturate(1.25) brightness(1.01)`，静止态为 `none`。
 - 交互：类别横滑仍可滚动，`+` 控件未被遮罩拦截；未改动选中类别的 radio 状态或新增类别 Morph。
 - 检查：资源版本已同步为 `journa-sf-icons-tags-category-blur-v2-20260726`；`git diff --check`、JS 语法检查和对比度检查继续通过。
 

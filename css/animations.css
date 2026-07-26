@@ -1014,7 +1014,7 @@
 
 /* ── View Transitions API 动效 ── */
 ::view-transition-group(root) {
-  animation-duration: var(--motion);
+  animation-duration: var(--mobile-panel-in-motion, var(--motion));
   animation-timing-function: var(--spring);
 }
 
@@ -1239,11 +1239,11 @@
 
 /* 数字微动刷新效果 */
 ::view-transition-old(total-amount) {
-  animation: text-slide-out var(--motion-fast) var(--settle) forwards;
+  animation: text-slide-out var(--mobile-panel-in-motion, var(--motion-fast)) var(--settle) forwards;
 }
 
 ::view-transition-new(total-amount) {
-  animation: text-slide-in var(--motion) var(--spring) both;
+  animation: text-slide-in var(--mobile-panel-in-motion, var(--motion)) var(--spring) both;
 }
 
 /* 欢迎引导插画：三圆轻漂浮 + 云同步三点脉冲 */

@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-sf-icons-tags-category-blur-v4-20260726";
+const APP_VERSION = "journa-sf-icons-tags-category-blur-v3-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -1900,6 +1900,10 @@ function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
   return { values, duration };
 }
 
+function getBarMorphDuration(nextPanel) {
+  return springSamples(nextPanel === "data" ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND).duration;
+}
+
 function cancelBarFlip() {
   barFlipRunId += 1;
   barFlipAnimations.forEach((animation) => animation.cancel());
@@ -2108,6 +2112,15 @@ function setMobilePanel(panel, options = {}) {
   const canAnimate = options.animate && !prefersReducedMotion();
   const shouldAnimatePanel = panelChanged && canAnimate;
   const shouldAnimateChrome = (panelChanged || visualChanged) && canAnimate;
+  const panelMotionDuration = shouldAnimateChrome ? getBarMorphDuration(nextPanel) : 0;
+
+  if (shouldAnimateChrome) {
+    /* 页面卡片、总支出/平账与底部悬浮栏共用本次悬浮栏的实际弹簧时长，
+       避免固定 300ms 的面板淡入提前结束。 */
+    const motionValue = `${panelMotionDuration}ms`;
+    document.documentElement.style.setProperty("--mobile-panel-in-motion", motionValue);
+    elements.ledgerView.style.setProperty("--mobile-panel-in-motion", motionValue);
+  }
 
   window.clearTimeout(mobilePanelSwitchTimer);
   window.clearTimeout(mobilePanelIndicatorTimer);
@@ -2188,7 +2201,7 @@ function setMobilePanel(panel, options = {}) {
     mobilePanelSwitchTimer = window.setTimeout(() => {
       elements.ledgerView.classList.remove("is-mobile-panel-switching-in");
       mobilePanelSwitchTimer = 0;
-    }, MOTION_DELAYS.mobilePanelIn);
+    }, panelMotionDuration || MOTION_DELAYS.mobilePanelIn);
   };
 
   if (!shouldAnimatePanel) {
@@ -4096,6 +4109,18 @@ function handleExpenseSubmit(event) {
     updatedAt: new Date().toISOString(),
   };
 
+  const mobileDataFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  if (mobileDataFlow && !prefersReducedMotion()) {
+    /* 先于 render() 写入，确保总支出 VT 与平账卡的数字刷新在创建动画
+       的瞬间就拿到与底部悬浮栏相同的时长。 */
+    const mobilePanelMotion = `${getBarMorphDuration("data")}ms`;
+    document.documentElement.style.setProperty("--mobile-panel-in-motion", mobilePanelMotion);
+    elements.ledgerView.style.setProperty("--mobile-panel-in-motion", mobilePanelMotion);
+  } else if (!mobileDataFlow) {
+    document.documentElement.style.removeProperty("--mobile-panel-in-motion");
+    elements.ledgerView.style.removeProperty("--mobile-panel-in-motion");
+  }
+
   if (wasEditing) {
     state.expenses = state.expenses.map((expense) => (expense.id === editingExpenseId ? savedExpense : expense));
     editingExpenseId = "";
@@ -4122,7 +4147,6 @@ function handleExpenseSubmit(event) {
   smoothContainerResize(elements.ledgerSection, () => {
     render({ animateFinancialChanges: true });
   });
-  const mobileDataFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
   if (!wasEditing && !mobileDataFlow) {
     landAddCeremony(payerId, savedExpense.amount, expenseId, addStartRect);
   }

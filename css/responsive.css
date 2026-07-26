@@ -1512,11 +1512,11 @@
        这样滑动中的芯片会先淡出，再进入安全区，不会露出清晰的矩形截断线。 */
     content: "";
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    left: -18px;
+    top: -8px;
+    bottom: -8px;
     width: 72px;
-    border-radius: 0;
+    border-radius: 999px;
     pointer-events: none;
     /* 起点也保留一层很轻的雾，避免标签栏左端突然变成完全清晰的硬边。 */
     opacity: 0.52;

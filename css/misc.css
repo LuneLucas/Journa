@@ -2166,7 +2166,7 @@ label,
 }
 
 .mobile-settlement-entry.is-soft-refresh {
-  animation: total-number-soft-refresh var(--number-swap-motion) var(--settle) both;
+  animation: total-number-soft-refresh var(--mobile-panel-in-motion, var(--number-swap-motion)) var(--settle) both;
 }
 
 .settlement-entry:hover {
