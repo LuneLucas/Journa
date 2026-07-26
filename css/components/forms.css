@@ -155,7 +155,7 @@ input[type="date"]:focus {
   height: 64px;
   border: 0;
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.56);
+  background: rgba(255, 255, 255, 0.38);
   box-shadow: inset 0 1px 0 var(--border-highlight);
   color: var(--selected-family-text);
   font-size: clamp(1.8rem, 5.2vw, 3.4rem);

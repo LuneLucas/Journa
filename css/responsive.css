@@ -642,21 +642,18 @@
     gap: 4px;
     overflow: hidden;
     isolation: isolate;
-    border: var(--stroke-width) solid color-mix(in oklch, var(--theme-color) 14%, var(--border-surface));
+    border: var(--stroke-width) solid color-mix(in srgb, var(--border-control) 78%, transparent);
     border-radius: var(--radius-pill);
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.06) 46%, rgba(255, 255, 255, 0.18)),
-      radial-gradient(ellipse at 16% -36%, rgba(255, 255, 255, 0.88), transparent 55%),
-      radial-gradient(ellipse at 86% 128%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 24%, transparent), transparent 64%),
-      rgba(247, 249, 248, 0.12);
+      linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.07) 48%, rgba(255, 255, 255, 0.14)),
+      rgba(255, 252, 248, 0.16);
     padding: 4px;
     box-shadow:
-      var(--inset-highlight-strong),
-      inset 0 -1px 1px rgba(22, 26, 30, 0.06),
-      0 0 28px -16px color-mix(in srgb, var(--submit-color, var(--theme-color)) 68%, transparent),
-      0 8px 22px rgba(22, 26, 30, 0.08);
-    -webkit-backdrop-filter: blur(12px) saturate(170%) brightness(1.03);
-    backdrop-filter: blur(12px) saturate(170%) brightness(1.03);
+      inset 0 1px 1px rgba(255, 255, 255, 0.52),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.045),
+      0 10px 24px -20px rgba(22, 26, 30, 0.20);
+    -webkit-backdrop-filter: blur(12px) saturate(150%) brightness(1.015);
+    backdrop-filter: blur(12px) saturate(150%) brightness(1.015);
   }
 
   /* .app-header.is-collapsed .mobile-panel-switch {
@@ -675,10 +672,10 @@
   .mobile-panel-switch::before {
     z-index: -1;
     background:
-      linear-gradient(110deg, rgba(255, 255, 255, 0.72), transparent 26%),
-      radial-gradient(ellipse at 50% -42%, rgba(255, 255, 255, 0.78), transparent 50%);
-    filter: blur(2px);
-    opacity: 0.52;
+      linear-gradient(110deg, rgba(255, 255, 255, 0.46), transparent 28%),
+      radial-gradient(ellipse at 50% -42%, rgba(255, 255, 255, 0.40), transparent 50%);
+    filter: none;
+    opacity: 0.32;
   }
 
   .mobile-panel-switch::after {
@@ -705,7 +702,7 @@
   }
 
   .mobile-panel-tab.is-active {
-    color: var(--submit-text, var(--theme-color-strong));
+    color: color-mix(in srgb, var(--submit-text, var(--theme-color-strong)) 46%, var(--ink));
   }
 
   .mobile-panel-tab:active {
@@ -721,13 +718,13 @@
     width: calc(50% - 6px);
     border-radius: var(--radius-pill);
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, white), rgba(255, 255, 255, 0.72)),
-      color-mix(in srgb, var(--submit-color, var(--theme-color)) 5%, white);
+      linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.30)),
+      color-mix(in srgb, var(--submit-color, var(--theme-color)) 5%, rgba(255, 252, 248, 0.54));
     box-shadow:
-      inset 0 1px 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 14%, white),
-      inset 0 -1px 1px rgba(22, 26, 30, 0.04),
-      0 2px 8px -2px rgba(22, 26, 30, 0.12),
-      0 4px 16px -4px color-mix(in srgb, var(--submit-color, var(--theme-color)) 18%, rgba(22, 26, 30, 0.08));
+      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, transparent),
+      inset 0 1px 1px rgba(255, 255, 255, 0.64),
+      inset 0 -1px 1px rgba(22, 26, 30, 0.035),
+      0 6px 14px -12px rgba(22, 26, 30, 0.22);
     border: 0;
     transform-origin: center;
     /* resting fallback (keyboard/no-anim); real switches use the keyframes below */
@@ -793,8 +790,9 @@
   }
 
   .mobile-panel-tab:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--submit-color, var(--theme-color)) 28%, transparent);
-    outline-offset: 2px;
+    outline: 2px solid color-mix(in srgb, var(--submit-color, var(--theme-color)) 12%, rgba(22, 26, 30, 0.38));
+    outline-offset: 1px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, rgba(22, 26, 30, 0.18));
   }
 
   .workspace {
@@ -1509,14 +1507,11 @@
     z-index: 3;
     background: linear-gradient(
       to right,
-      color-mix(in srgb, var(--cat-left-fade-tint) 96%, transparent) 0%,
-      color-mix(in srgb, var(--cat-left-fade-tint) 68%, transparent) 22%,
-      color-mix(in srgb, var(--cat-left-fade-tint) 28%, transparent) 58%,
+      color-mix(in srgb, var(--cat-left-fade-tint) 88%, transparent) 0%,
+      color-mix(in srgb, var(--cat-left-fade-tint) 42%, transparent) 38%,
       transparent 100%
     );
-    -webkit-backdrop-filter: blur(10px) saturate(1.06);
-    backdrop-filter: blur(10px) saturate(1.06);
-    filter: blur(8px);
+    filter: blur(7px);
   }
 
   /* 右端同样只保留无边界的雾化过渡；+ 自身的玻璃层承担实际背景模糊。 */
@@ -1536,14 +1531,11 @@
     z-index: 3;
     background: linear-gradient(
       to left,
-      color-mix(in srgb, var(--cat-fade-tint) 98%, transparent) 0%,
-      color-mix(in srgb, var(--cat-fade-tint) 72%, transparent) 24%,
-      color-mix(in srgb, var(--cat-fade-tint) 30%, transparent) 62%,
+      color-mix(in srgb, var(--cat-fade-tint) 92%, transparent) 0%,
+      color-mix(in srgb, var(--cat-fade-tint) 46%, transparent) 44%,
       transparent 100%
     );
-    -webkit-backdrop-filter: blur(12px) saturate(1.06);
-    backdrop-filter: blur(12px) saturate(1.06);
-    filter: blur(10px);
+    filter: blur(9px);
   }
 
   .category-control-row.can-fade-start::before {
@@ -1857,6 +1849,26 @@
       0 18px 52px rgba(22, 26, 30, 0.09);
   }
 
+  .mobile-submit-bar[data-state="success"] {
+    border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 42%, rgba(255, 255, 255, 0.68));
+    background:
+      radial-gradient(120% 140% at 86% 50%, color-mix(in srgb, var(--submit-color, var(--theme-color)) 24%, transparent), transparent 62%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.30)),
+      rgba(247, 249, 248, 0.28);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.74),
+      0 0 38px -16px color-mix(in srgb, var(--submit-color, var(--theme-color)) 72%, transparent),
+      0 18px 52px rgba(22, 26, 30, 0.10);
+  }
+
+  .mobile-submit-bar[data-state="error"] {
+    border-color: color-mix(in srgb, #b24f42 40%, rgba(255, 255, 255, 0.62));
+    background:
+      radial-gradient(120% 140% at 86% 50%, rgba(178, 79, 66, 0.16), transparent 62%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.28)),
+      rgba(247, 249, 248, 0.24);
+  }
+
   .mobile-submit-summary,
   .mobile-submit-button {
     position: relative;
@@ -1881,6 +1893,14 @@
 
   .mobile-submit-bar[data-state="needs-input"] .mobile-submit-summary {
     color: color-mix(in srgb, var(--ink) 72%, var(--muted));
+  }
+
+  .mobile-submit-bar[data-state="success"] .mobile-submit-summary {
+    color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 86%, var(--ink));
+  }
+
+  .mobile-submit-bar[data-state="error"] .mobile-submit-summary {
+    color: #9f463c;
   }
 
   .mobile-submit-button {
@@ -2644,17 +2664,17 @@
     transform: none;
   }
 
-  /* 鼠标位置追随光只在 fine pointer 上有意义；触屏使用稳定的居中高光。 */
+  /* 触屏不使用中央白色热点；以顶部边缘反光和色面层级表达可点击。 */
   .primary-button::before {
     background:
-      radial-gradient(circle 140px at 50% 20%, rgba(255, 255, 255, 0.20), transparent 82%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.20), transparent 40%),
       linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--submit-color, var(--theme-color)) 58%, transparent),
-        color-mix(in srgb, var(--submit-color, var(--theme-color)) 44%, transparent) 52%,
-        color-mix(in srgb, var(--submit-color, var(--theme-color)) 52%, transparent)
-      ),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 64%);
+        110deg,
+        rgba(255, 255, 255, 0.14),
+        transparent 24%,
+        transparent 76%,
+        color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, transparent)
+      );
   }
 
   /* 基础规则若没有 transform 过渡，松开会瞬间跳回；触摸端统一用 190ms 单调缓出，
@@ -2690,7 +2710,12 @@
   .selectable-category-chip:active,
   .family-tag:active {
     background-color: rgba(22, 26, 30, 0.08); /* 按下即时填色 */
-    transform: scale(0.975);
+    transform: scale(0.975) translateY(1px);
+    box-shadow:
+      inset 0 2px 5px rgba(22, 26, 30, 0.13),
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      var(--glass-edge),
+      0 3px 10px -8px rgba(22, 26, 30, 0.20);
     transition-duration: var(--press-motion);
     transition-timing-function: var(--lamp-quick);
   }
@@ -2743,7 +2768,9 @@
 
   .primary-button:active,
   .mobile-submit-button:active {
-    box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.10);
+    box-shadow:
+      inset 0 0 0 999px rgba(22, 26, 30, 0.08),
+      0 6px 14px -10px rgba(22, 26, 30, 0.24);
     transform: scale(0.985);
     transition-duration: var(--press-motion);
     transition-timing-function: var(--lamp-quick);

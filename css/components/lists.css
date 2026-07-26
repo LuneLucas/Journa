@@ -103,6 +103,19 @@
     color-mix(in srgb, var(--family-color) 13%, transparent);
 }
 
+/* 轻拟物按压：只补触感，不覆盖 is-activating 的原有高光闪烁。 */
+.family-tag:active {
+  transform: scale(0.985) translateY(1px);
+  box-shadow:
+    inset 0 2px 5px rgba(22, 26, 30, 0.13),
+    inset 0 1px 0 color-mix(in srgb, var(--family-color) 12%, rgba(255, 255, 255, 0.42)),
+    var(--glass-edge),
+    0 3px 10px -8px rgba(22, 26, 30, 0.20);
+  filter: brightness(0.985);
+  transition-duration: var(--press-motion);
+  transition-timing-function: var(--lamp-quick);
+}
+
 .family-tag.is-activating {
   animation: choice-select-pop var(--selection-motion) var(--settle) both;
 }

@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-header-flow-v1-20260726";
+const APP_VERSION = "journa-button-affordance-v2-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -299,6 +299,7 @@ let splitScopeOpen = false;
 let splitScopeCloseTimer = 0;
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
+let mobileSubmitFeedbackTimer = 0;
 let activatingSplitMode = "";
 let deactivatingSplitMode = "";
 const activatingSplitFamilyIds = new Set();
@@ -792,6 +793,7 @@ function normalizeOperator(val) {
 
 function normalizeExpense(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
+  const updatedAt = expense.updatedAt || new Date().toISOString();
   return {
     id: expense.id,
     amount: Math.round(Number(expense.amount) * 100) / 100,
@@ -806,7 +808,9 @@ function normalizeExpense(expense) {
     updatedBy: normalizeOperator(expense.updatedBy),
     syncState: normalizeExpenseSyncState(expense.syncState),
     isDeleted: Boolean(expense.isDeleted),
-    updatedAt: expense.updatedAt || new Date().toISOString(),
+    // 旧账单没有 createdAt 时，用现有更新时间兼容回填；后续编辑不会改变时间线位置。
+    createdAt: expense.createdAt || updatedAt,
+    updatedAt,
   };
 }
 
@@ -3688,7 +3692,14 @@ function formatExpenseSyncBadge(syncState) {
 function getVisibleExpenses() {
   return state.expenses
     .filter(isExpenseVisible)
-    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    .sort(compareExpensesNewestFirst);
+}
+
+function compareExpensesNewestFirst(a, b) {
+  if (a.date !== b.date) return b.date.localeCompare(a.date);
+  return (b.createdAt || b.updatedAt || "").localeCompare(a.createdAt || a.updatedAt || "")
+    || (b.updatedAt || "").localeCompare(a.updatedAt || "")
+    || b.id.localeCompare(a.id);
 }
 
 function isExpenseVisible(expense) {
@@ -3850,6 +3861,7 @@ function getExpenseMissingState() {
 }
 
 function renderMobileSubmitBar() {
+  window.clearTimeout(mobileSubmitFeedbackTimer);
   const family = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "未选家庭";
   const category = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "未选类别";
   const date = state.activeDate === todayIso() ? "今天" : state.activeDate.slice(5);
@@ -3865,6 +3877,27 @@ function renderMobileSubmitBar() {
   elements.mobileSubmitButton.classList.toggle("is-blocked", blocked);
   elements.mobileSubmitButton.setAttribute("aria-disabled", "false");
   elements.mobileSubmitButton.setAttribute("aria-label", blocked ? missing.summary : action);
+}
+
+function showMobileSubmitFeedback(kind, label, summary) {
+  const bar = elements.mobileSubmitBar;
+  const button = elements.mobileSubmitButton;
+  const buttonLabel = button?.querySelector(".button-label");
+  if (!bar || !button || !buttonLabel) return;
+
+  window.clearTimeout(mobileSubmitFeedbackTimer);
+  bar.dataset.state = kind;
+  bar.dataset.missingTarget = "";
+  bar.classList.toggle("submit-themed", kind === "success");
+  elements.mobileSubmitSummary.textContent = summary;
+  buttonLabel.textContent = label;
+  button.classList.remove("is-blocked");
+  button.setAttribute("aria-disabled", "false");
+  button.setAttribute("aria-label", label);
+
+  mobileSubmitFeedbackTimer = window.setTimeout(() => {
+    renderMobileSubmitBar();
+  }, kind === "error" ? 2200 : 1200);
 }
 
 function getSplitDetailsForSubmit() {
@@ -3969,6 +4002,7 @@ function handleExpenseSubmit(event) {
     updatedBy: wasEditing ? operator : null,
     syncState: isCloudLedgerActive() ? "pending" : "synced",
     isDeleted: false,
+    createdAt: wasEditing ? (originalExpense?.createdAt || originalExpense?.updatedAt || new Date().toISOString()) : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -4010,7 +4044,15 @@ function handleExpenseSubmit(event) {
   }
   syncCloudExpenseWithState(expenseId).catch(() => {
     showToast({ message: "云端保存失败，本地已保留，稍后会重试" });
+    showMobileSubmitFeedback("error", "稍后重试", "本地已保留 · 云端稍后重试");
   });
+  window.setTimeout(() => {
+    showMobileSubmitFeedback(
+      "success",
+      wasEditing ? "已保存 ✓" : "已记下 ✓",
+      wasEditing ? "这笔账已更新" : `${getFamilyName(payerId)} · ${formatCategoryLabel(category)}`,
+    );
+  }, 32);
   if (wasEditing) {
     elements.amountInput.focus();
   } else if (elements.expenseForm.contains(document.activeElement) && typeof document.activeElement.blur === "function") {

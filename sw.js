@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-safari-header-flow-v1-20260726";
+const APP_VERSION = "journa-button-affordance-v2-20260726";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 /* CSS/JS 条目带与 index.html 引用一致的 ?v= 版本戳：Cache API 按完整 URL
    （含 query）匹配，不带戳的预缓存条目永远命中不了带戳请求，等于白缓存。 */
