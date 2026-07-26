@@ -3226,22 +3226,18 @@ label,
   scroll-snap-type: none;
 }
 
-/* 类别与新增控件共用同一行：关闭态为「横滑带 + 圆形入口」，展开态让新增胶囊
+/* 类别与新增控件共用同一行：关闭态让横滑标签从 + 的玻璃层下方通过，展开态让新增胶囊
    覆盖整条轨道。几何切换由 app.js 的 FLIP 弹簧承担，稳定态不依赖动画内联值。 */
 .category-control-row {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  grid-template-rows: 44px;
-  align-items: center;
-  gap: 8px;
+  display: block;
   height: 44px;
   min-width: 0;
 }
 
 .category-chips-fade {
-  grid-column: 1;
-  grid-row: 1;
+  position: relative;
+  display: block;
   min-width: 0;
   height: 44px;
   opacity: 1;
@@ -3259,9 +3255,10 @@ label,
 }
 
 .category-add-control {
-  grid-column: 2;
-  grid-row: 1;
-  z-index: 2;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 0;
@@ -3274,10 +3271,10 @@ label,
   margin: 0;
   padding: 0;
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--theme-color) 18%, var(--line));
+  border: 1px solid color-mix(in oklch, var(--theme-color) 20%, var(--line));
   border-radius: var(--radius-pill);
-  background: color-mix(in oklch, var(--theme-color) 3%, rgba(255, 255, 255, 0.18));
-  box-shadow: none;
+  background: color-mix(in oklch, var(--theme-color) 4%, rgba(255, 255, 255, 0.22));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   opacity: 1;
   pointer-events: auto;
   transform: none;
@@ -3305,7 +3302,7 @@ label,
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
-  color: color-mix(in oklch, var(--theme-color-strong) 58%, var(--muted));
+  color: color-mix(in oklch, var(--theme-color-strong) 62%, var(--muted));
   box-shadow: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -3328,9 +3325,12 @@ label,
 
 .category-add-fab-icon {
   position: relative;
-  display: inline-block;
+  display: block;
+  flex: 0 0 14px;
   width: 14px;
   height: 14px;
+  margin: 0;
+  line-height: 0;
   transition: transform var(--motion-fast) var(--spring);
 }
 
@@ -3427,7 +3427,6 @@ label,
 
 .category-picker.is-adding .category-chips-fade,
 .category-picker.is-category-morph-closing .category-chips-fade {
-  grid-column: 1 / -1;
   opacity: 0;
   transform: translateX(-12px);
   pointer-events: none;
@@ -3444,7 +3443,8 @@ label,
 }
 
 .category-picker.is-adding .category-add-control {
-  grid-column: 1 / -1;
+  left: 0;
+  right: 0;
   width: 100%;
   border-color: color-mix(in oklch, var(--theme-color) 32%, var(--line));
   background: color-mix(in oklch, var(--theme-color) 5%, rgba(255, 255, 255, 0.28));

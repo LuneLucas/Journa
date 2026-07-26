@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-control-layout-v4-20260722";
+const APP_VERSION = "journa-safari-header-flow-v1-20260726";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -136,6 +136,27 @@ const categoryEmojiRules = [
   { keywords: ["娃", "孩子", "儿童", "宝宝"], emoji: "🧒" },
   { keywords: ["药", "医疗", "医院"], emoji: "💊" },
 ];
+const categorySymbolRules = [
+  { keywords: ["机票", "飞机", "航空"], symbol: "airplane" },
+  { keywords: ["车", "交通", "高铁", "火车", "打车", "出租", "地铁", "公交", "油", "过路"], symbol: "tram.fill" },
+  { keywords: ["住", "宿", "酒店", "民宿", "房", "宾馆"], symbol: "bed.double.fill" },
+  { keywords: ["餐", "饭", "吃", "早饭", "午饭", "晚饭", "饮", "咖啡", "奶茶", "小吃", "烧烤"], symbol: "fork.knife" },
+  { keywords: ["门票", "票", "景区", "乐园", "展", "馆", "演出"], symbol: "ticket.fill" },
+  { keywords: ["购物", "买", "超市", "礼物", "纪念品", "商场"], symbol: "cart.fill" },
+  { keywords: ["娃", "孩子", "儿童", "宝宝"], symbol: "figure.child" },
+  { keywords: ["药", "医疗", "医院"], symbol: "cross.case.fill" },
+];
+const categorySymbolMarkup = {
+  "airplane": `<path d="M3.5 13.2 20.2 5.6c.8-.4 1.5.4 1 1.2l-4.8 5.7 2.4 4.4-1.7.8-3.3-3.3-3.5 3.9.2 2.2-1.5.7-1.5-4.1-3.1-1.7c-1.3-.7-1.6-1.7-.5-2.2Z"/>`,
+  "tram.fill": `<path d="M8 3.8h8a3 3 0 0 1 3 3v7.7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6.8a3 3 0 0 1 3-3Z"/><path d="M5.8 10.7h12.4M9 18l-1.8 2.2M15 18l1.8 2.2"/><circle cx="8.4" cy="14.1" r=".9" fill="currentColor" stroke="none"/><circle cx="15.6" cy="14.1" r=".9" fill="currentColor" stroke="none"/>`,
+  "bed.double.fill": `<path d="M4 18.5V9.2M20 18.5v-6.2a2.3 2.3 0 0 0-2.3-2.3H9.4A2.4 2.4 0 0 0 7 12.4v2.1"/><path d="M4 14.5h16M4 18.5h16"/><path d="M7 10V7.8c0-.7.6-1.3 1.3-1.3h4.4c.7 0 1.3.6 1.3 1.3V10"/>`,
+  "fork.knife": `<path d="M7 3.8v6.4M4.8 3.8v3.8A2.2 2.2 0 0 0 7 9.8a2.2 2.2 0 0 0 2.2-2.2V3.8M7 10v10.2M15 3.8v16.4M15 11c2.8 0 4.2-1.4 4.2-3.6S17.8 3.8 15 3.8V11Z"/>`,
+  "ticket.fill": `<path d="M4.2 6.5h15.6v3.1a2.7 2.7 0 0 0 0 5.4v2.5H4.2V15a2.7 2.7 0 0 0 0-5.4V6.5Z"/><path d="M12 7.3v2M12 11.1v2M12 14.9v1.8"/>`,
+  "cart.fill": `<path d="M3.5 5.2h2.1l2.1 9.1h9.5l2.1-6.5H6.2"/><circle cx="9" cy="18.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.3" cy="18.4" r="1.2" fill="currentColor" stroke="none"/>`,
+  "figure.child": `<circle cx="12" cy="5.4" r="2.1"/><path d="M8.2 11.2c.9-1.7 2.1-2.6 3.8-2.6s2.9.9 3.8 2.6M12 8.8v6.1M8.8 19.8l3.2-4.9 3.2 4.9M8 13.2l4-1.4 4 1.4"/>`,
+  "cross.case.fill": `<rect x="4.2" y="7" width="15.6" height="12.2" rx="2.5"/><path d="M9 7V5.6c0-.9.7-1.6 1.6-1.6h2.8c.9 0 1.6.7 1.6 1.6V7M12 10.2V16M9.1 13.1h5.8"/>`,
+  "tag.fill": `<path d="M4.5 5.4v6.1l7.7 7.7a2 2 0 0 0 2.8 0l4.2-4.2a2 2 0 0 0 0-2.8l-7.7-7.7H5.4a.9.9 0 0 0-.9.9Z"/><circle cx="8.3" cy="8.3" r="1.2"/>`,
+};
 const customCategoryVisuals = [
   { emoji: "🧾", bg: "#dde8df", text: "#506b56", border: "rgba(82, 112, 90, 0.24)", gradient: "#c2d9c7" },
   { emoji: "📍", bg: "#e0e6ee", text: "#536578", border: "rgba(83, 102, 128, 0.24)", gradient: "#c5d2df" },
@@ -1575,6 +1596,16 @@ function categoryLabelHtml(category) {
   return `<span aria-hidden="true">${visual.emoji}</span> ${escapeHtml(category)}`;
 }
 
+function getCategorySymbol(category) {
+  const normalized = String(category || "").trim();
+  return categorySymbolRules.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)))?.symbol || "tag.fill";
+}
+
+function categorySymbolHtml(category) {
+  const symbol = getCategorySymbol(category);
+  return `<svg class="category-symbol" data-symbol="${symbol}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${categorySymbolMarkup[symbol]}</svg>`;
+}
+
 function getCategoryEmoji(category, fallback) {
   const normalized = String(category || "").trim();
   const matchedRule = categoryEmojiRules.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)));
@@ -2266,7 +2297,7 @@ function renderCategories() {
       const deactivating = !selected && category === deactivatingCategory;
       return `
         <button class="${classNames("chip", "category-chip", "selectable-category-chip", selected && "is-selected", recent && "is-recent", isNew && "is-entering", activating && "is-activating", deactivating && "is-deactivating")}" type="button" data-category="${escapeHtml(category)}" style="${categoryStyle(category)}" role="radio" aria-checked="${selected}">
-          <span>${categoryLabelHtml(category)}</span>
+          <span>${categorySymbolHtml(category)}${escapeHtml(category)}</span>
         </button>
       `;
     })
@@ -2535,8 +2566,8 @@ function scheduleCategoryEdgeFades() {
 }
 
 // 按横滚位置切换两侧渐隐：只在该侧仍有内容可滚时显示（iOS 边缘行为）。
-// can-fade-* 同时打到 .category-chips-fade（左端 ::before 在此）和
-// .category-control-row（右端 ::after 已搬到 row 上、跨到 + 按钮列），
+// can-fade-* 同时打到 .category-chips-fade 和 .category-control-row；
+// 左右遮罩都由 row 的 ::before / ::after 承担，避免 chips 的负 margin 干扰定位。
 // 避免用 :has() 选择器——iOS Safari 每次 style recalc 会遍历子树匹配，
 // 触发 header 区域滚动卡顿（见 responsive.css :has 注释）。
 function updateCategoryEdgeFades() {
@@ -6549,130 +6580,14 @@ function attachCollapseOnScroll(
   sync();
 }
 
-let mobileHeaderLayoutFlipRunId = 0;
-let mobileHeaderLayoutFlipTimer = 0;
-let mobileHeaderScrollAnchorTimer = 0;
-let mobileHeaderScrollAnchorRestore = null;
-
-/* Safari 在 sticky 头部向下展开时，可能为了维持正文锚点而同步抬高 scrollY。
-   这会把本应只有一次的布局 FLIP 拆成“展开 + 浏览器补偿”两次位移。
-   展开补间期间临时关闭滚动锚定，结束后原样恢复页面已有的内联设置。 */
-function holdMobileHeaderScrollAnchor() {
-  window.clearTimeout(mobileHeaderScrollAnchorTimer);
-  mobileHeaderScrollAnchorTimer = 0;
-  if (mobileHeaderScrollAnchorRestore) return;
-  mobileHeaderScrollAnchorRestore = {
-    root: document.documentElement.style.overflowAnchor,
-    body: document.body?.style.overflowAnchor ?? ""
-  };
-  document.documentElement.style.overflowAnchor = "none";
-  if (document.body) document.body.style.overflowAnchor = "none";
-}
-
-function releaseMobileHeaderScrollAnchor(delay = 0) {
-  window.clearTimeout(mobileHeaderScrollAnchorTimer);
-  mobileHeaderScrollAnchorTimer = 0;
-  if (!mobileHeaderScrollAnchorRestore) return;
-  const restore = () => {
-    if (!mobileHeaderScrollAnchorRestore) return;
-    document.documentElement.style.overflowAnchor = mobileHeaderScrollAnchorRestore.root;
-    if (document.body) document.body.style.overflowAnchor = mobileHeaderScrollAnchorRestore.body;
-    mobileHeaderScrollAnchorRestore = null;
-    mobileHeaderScrollAnchorTimer = 0;
-  };
-  if (delay > 0) {
-    mobileHeaderScrollAnchorTimer = window.setTimeout(restore, delay);
-  } else {
-    restore();
-  }
-}
-
-/* 头部收起会同时改变切换器和下方页面的文档流位置。只补切换器会让 Safari
-   在同一帧把 .app-view 瞬移到新位置，视觉上仍像“tab 带着页面跳了一下”。
-   这里让两者共用同一次 FLIP：先冻结到各自旧屏幕坐标，再同步落到新布局。 */
-function settleMobileHeaderLayout(layoutItems, { pinScrollTop = null } = {}) {
-  const items = (layoutItems || []).filter((item) => item?.element && item?.beforeRect);
-  const runId = ++mobileHeaderLayoutFlipRunId;
-  window.clearTimeout(mobileHeaderLayoutFlipTimer);
-  mobileHeaderLayoutFlipTimer = 0;
-
-  /* 快速反向滚动时，先摘掉上一轮的过渡和反向 transform，再量当前布局终点。
-     beforeRect 已记录上一帧真实可见坐标；同步重置不会在浏览器绘制前泄露。 */
-  items.forEach(({ element }) => {
-    element.style.transition = "none";
-    element.style.transform = "";
-    element.style.willChange = "";
-  });
-  if (!items.length) return;
-  void items[0].element.offsetWidth;
-
-  /* 强制布局可能正好触发 Safari 的滚动锚定。此处仍在同一个 scroll 回调任务内，
-     用户手势不可能插入；只在展开方向把浏览器自动改写的 scrollY 还原，避免
-     FLIP 起点之后又多出一段整页位移。 */
-  if (Number.isFinite(pinScrollTop) && Math.abs(window.scrollY - pinScrollTop) >= 0.5) {
-    window.scrollTo(window.scrollX, pinScrollTop);
-  }
-  if (prefersReducedMotion()) {
-    items.forEach(({ element }) => { element.style.transition = ""; });
-    return;
-  }
-
-  const flips = items
-    .map(({ element, beforeRect }) => {
-      const afterRect = element.getBoundingClientRect();
-      return { element, deltaY: beforeRect.top - afterRect.top };
-    })
-    .filter(({ deltaY }) => Math.abs(deltaY) >= 0.5);
-  const flipElements = new Set(flips.map(({ element }) => element));
-  items
-    .filter(({ element }) => !flipElements.has(element))
-    .forEach(({ element }) => {
-      element.style.transition = "";
-      element.style.transform = "";
-      element.style.willChange = "";
-    });
-  if (!flips.length) {
-    return;
-  }
-
-  flips.forEach(({ element, deltaY }) => {
-    element.style.willChange = "transform";
-    element.style.transform = `translate3d(0, ${deltaY}px, 0)`;
-  });
-  void flips[0].element.offsetWidth;
-
-  /* CSS transition 比 WAAPI 更稳：iOS Safari 曾对 sticky + contain 的切换器
-     静默跳过 WAAPI。两层使用完全相同的 220ms 单调缓出，避免一前一后落位。 */
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      if (runId !== mobileHeaderLayoutFlipRunId) return;
-      flips.forEach(({ element }) => {
-        element.style.transition = "transform var(--mobile-panel-flip-motion, 220ms) cubic-bezier(0.22, 0.74, 0.24, 1)";
-        element.style.transform = "";
-      });
-      mobileHeaderLayoutFlipTimer = window.setTimeout(() => {
-        if (runId !== mobileHeaderLayoutFlipRunId) return;
-        flips.forEach(({ element }) => {
-          element.style.transition = "";
-          element.style.transform = "";
-          element.style.willChange = "";
-        });
-        mobileHeaderLayoutFlipTimer = 0;
-      }, 280);
-    });
-  });
-}
-
-/* 收起态指示灯停靠点：量出账本标题文字的右缘，把胶囊（此时壳已熔掉只剩灯）平移成「账本名 ●」。
-   h1 以 left/bottom 为原点做缩放过渡，收起触发瞬间量到的是过渡前的宽高，
-   需按 --header-title-collapse-scale 折算终值；胶囊原位用 offset*（不受 transform 影响）。 */
+/* 指示灯停靠点：移动端 header 的真实几何始终保持收起态，胶囊、标题与 tab
+   只由 --mobile-header-progress 在合成层移动。这里用 offset* 量未变换的起点，
+   因而坐标不受当前滚动进度影响，也不需要等待 grid 重排。 */
 function updateSyncLampDock(force = false) {
   const header = document.querySelector(".app-header");
   const capsule = elements.syncStatus;
   const title = elements.currentLedgerTitle;
   if (!header || !capsule || !title) return;
-  /* 默认仅在收起态算停靠点；scroll 联动需要展开态也先量出终值坐标，
-     故 force=true 时跳过收起态门槛（仍保留 grid 布局守卫）。 */
   if (!force && !header.classList.contains("is-collapsed")) return;
   if (window.getComputedStyle(header).display !== "grid") return; // 仅移动端 grid 布局参与熔化
 
@@ -6715,158 +6630,101 @@ function updateSyncLampDock(force = false) {
         break;
       }
     }
+    const btnTransform = window.getComputedStyle(elements.openSettingsButton).transform;
+    const btnTranslateY =
+      btnTransform === "none" ? 0 : new DOMMatrixReadOnly(btnTransform).f || 0;
     targetX = Math.min(targetX, btnRect.left - 10 - lampHalf);
-    targetY = iconRect.top + iconRect.height / 2;
+    targetY = iconRect.top + iconRect.height / 2 - btnTranslateY;
   }
 
-  /* 收起态胶囊收成 padding 0 11px 的小圆（边框在壳层不占位），灯芯在盒内 x≈16（11px padding + 半径）。
-     纵向基准直接取胶囊自身的 offset 位置：切换条可能仍在 grid 第 3 行，不能拿它的
-     offsetTop 推算灯位，否则会把停靠目标算到视口外。布局收缩延迟到淡出后才落地，
-     但此处算的是收缩后的胶囊基准与目标之间的位移，与延迟无关。 */
-  const dotFinalX = headerRect.left + capsule.offsetLeft + 16;
-  const dotFinalY = headerRect.top + capsule.offsetTop + capsule.offsetHeight / 2;
+  const capsuleStyle = window.getComputedStyle(capsule);
+  const paddingLeft = Number.parseFloat(capsuleStyle.paddingLeft) || 0;
+  const dotLayoutX = headerRect.left + capsule.offsetLeft + paddingLeft + lampHalf;
+  const dotLayoutY = headerRect.top + capsule.offsetTop + capsule.offsetHeight / 2;
 
-  header.style.setProperty("--sync-dock-x", `${targetX - dotFinalX}px`);
-  header.style.setProperty("--sync-dock-y", `${targetY - dotFinalY}px`);
+  header.style.setProperty("--sync-dock-x", `${targetX - dotLayoutX}px`);
+  header.style.setProperty("--sync-dock-y", `${targetY - dotLayoutY}px`);
 }
 
 function setupScrollCollapse() {
-  // 主页面头部滚动监听
   const appHeader = document.querySelector(".app-header");
-  const mobilePanelSwitch = document.getElementById("mobilePanelSwitch");
-  const appView = document.querySelector(".app-view");
   const isMobile = () => window.matchMedia?.("(max-width: 820px), (pointer: coarse)").matches ?? false;
-  let headerLayoutBefore = null;
-  let headerScrollBefore = null;
-  let suppressRecollapseUntil = 0;
-  attachCollapseOnScroll(window, appHeader, {
-    onThreshold: 56,
-    offThreshold: 24,
-    /* 展开后的首个 Safari scroll 事件可能只是页头增高产生的锚定补偿。
-       仅跳过极短的反向重触发；真实的后续下滑会在下一帧窗口后正常响应。 */
-    shouldSkipChange: ({ shouldCollapse }) =>
-      isMobile() && shouldCollapse && performance.now() < suppressRecollapseUntil,
-    /* 在 layout 改变前同时记录切换器和页面位置，用同一轮 FLIP 补间纵向位移。
-       之前靠 CSS grid-template-rows transition 做平滑，但在 iOS Safari
-       上布局属性逐帧插值会触发重排，导致切换器滚动时明显跳动。 */
-    onBeforeChange: (willCollapse) => {
-      if (!isMobile()) {
-        headerLayoutBefore = null;
-        headerScrollBefore = null;
-        return;
-      }
-      if (willCollapse) {
-        releaseMobileHeaderScrollAnchor();
-      } else {
-        holdMobileHeaderScrollAnchor();
-      }
-      headerScrollBefore = window.scrollY;
-      headerLayoutBefore = [mobilePanelSwitch, appView]
-        .filter(Boolean)
-        .map((element) => ({ element, beforeRect: element.getBoundingClientRect() }));
-    },
-    /* 收起先等 grid 行高落地后再算停靠点再起飞；展开时 transform 回落到 none 自然反演，无需重算。
-       layout 改变后触发同步 FLIP，让切换器与页面从旧位置一起平滑落到新位置。 */
-    onChange: (collapsed) => {
-      if (collapsed) {
-        /* classList 刚切换时 offsetTop 仍可能是旧 grid 行的值；下一帧再量，
-           确保灯的基准中心和收缩后的胶囊位置一致，避免灯飞出视口。 */
-        window.requestAnimationFrame(() => {
-          if (appHeader.classList.contains("is-collapsed")) updateSyncLampDock(true);
-        });
-      }
-      if (!collapsed) suppressRecollapseUntil = performance.now() + 96;
-      settleMobileHeaderLayout(headerLayoutBefore, {
-        pinScrollTop: collapsed ? null : headerScrollBefore
-      });
-      if (!collapsed) releaseMobileHeaderScrollAnchor(300);
-      headerLayoutBefore = null;
-      headerScrollBefore = null;
-    }
-  });
+  let headerFrame = 0;
+  let lastProgress = -1;
+  let wasCollapsed = false;
 
-  /* 指示灯随滚动进度飞向账本名称：进度 p∈[0,1] 把胶囊里原位的灯
-     平移到标题右缘，p 由滚动量连续驱动（而非到阈值才一次性过渡），
-     所以“胶囊随滑动过程，指示灯移到账本名称旁边”。坐标在进 zone 或
-     旋屏/改名时标脏后一次性重算，每帧只写进度比例，不强制重排。 */
-  const DOCK_ON = 56;
-  const DOCK_OFF = 24;
-  let dockFrame = 0;
-  let lastDockP = -1;
-  let isDocking = false;
-  const applyDockProgress = () => {
-    dockFrame = 0;
+  const playDockFlash = () => {
+    if (!elements.syncStatus || elements.syncStatus.classList.contains("is-syncing") || prefersReducedMotion()) return;
+    window.clearTimeout(syncLampDockFlashTimer);
+    elements.syncStatus.classList.remove("is-dock-flash");
+    void elements.syncStatus.offsetWidth;
+    elements.syncStatus.classList.add("is-dock-flash");
+    syncLampDockFlashTimer = window.setTimeout(() => {
+      elements.syncStatus.classList.remove("is-dock-flash");
+      syncLampDockFlashTimer = 0;
+    }, 760);
+  };
+
+  /* 唯一的主页面滚动协调器：header 的文档流高度从不变化。展开所需的 47px
+     由 .app-view 静态预留并随页面自然滚走；这里每帧只写合成层视觉进度。 */
+  const applyHeaderProgress = () => {
+    headerFrame = 0;
     const y = isMobile() ? (window.scrollY || window.pageYOffset || 0) : 0;
     if (!isMobile()) {
-      /* 非移动端：确保进度归零、类摘掉即可，且只在尚未归零时写一次，
-         避免每帧都无谓触达 .app-header 子树 recalc。 */
-      if (lastDockP !== 0) {
-        lastDockP = 0;
-        appHeader.style.setProperty("--sync-dock-progress", "0");
-      }
-      if (isDocking) {
-        isDocking = false;
-        appHeader.classList.remove("is-docking");
-      }
+      lastProgress = 0;
+      wasCollapsed = false;
+      appHeader.style.setProperty("--mobile-header-progress", "0");
+      appHeader.classList.remove("is-docking", "is-collapsed");
       return;
     }
     if (dockCoordsDirty) {
       updateSyncLampDock(true);
       dockCoordsDirty = false;
     }
-    const p = Math.min(1, Math.max(0, (y - DOCK_OFF) / (DOCK_ON - DOCK_OFF)));
-    const inZone = p > 0.001 && p < 0.999;
-    /* 量化写入：滚动时 p 近每帧变化，但若没跨过 1% 步进就跳过写入，
-       避免每帧触达 .app-header 整棵子树 style recalc；zone 外只确保落位到
-       0/1 端点一次。这是“滚动时切换器被动重算”的隐性卡顿来源之一。 */
-    if (inZone) {
-      const pQuant = Math.round(p * 100) / 100;
-      if (pQuant !== lastDockP) {
-        lastDockP = pQuant;
-        appHeader.style.setProperty("--sync-dock-progress", String(pQuant));
-      }
-    } else if (lastDockP !== (p <= 0.001 ? 0 : 1)) {
-      lastDockP = p <= 0.001 ? 0 : 1;
-      appHeader.style.setProperty("--sync-dock-progress", String(lastDockP));
+    const headerStyle = window.getComputedStyle(appHeader);
+    const collapseEnabled =
+      (Number.parseFloat(headerStyle.getPropertyValue("--mobile-header-collapse-enabled")) || 0) >= 0.5;
+    const collapseDistance =
+      Number.parseFloat(headerStyle.getPropertyValue("--mobile-header-expand-offset")) || 47;
+    if (!collapseEnabled) {
+      lastProgress = 0;
+      wasCollapsed = false;
+      appHeader.style.setProperty("--mobile-header-progress", "0");
+      appHeader.classList.remove("is-docking", "is-collapsed");
+      return;
     }
-    /* 只在“进入/离开 docking 区间”时才 toggle is-docking，不每帧操作 classList，
-       两端贴边时交给 .is-collapsed 的稳态规则（避免类反复横跳）。 */
-    if (inZone !== isDocking) {
-      isDocking = inZone;
-      appHeader.classList.toggle("is-docking", inZone);
+    const rawProgress = Math.min(1, Math.max(0, y / collapseDistance));
+    const progress = Math.round(rawProgress * 1000) / 1000;
+    if (progress !== lastProgress) {
+      lastProgress = progress;
+      appHeader.style.setProperty("--mobile-header-progress", String(progress));
     }
+    const isDocking = progress > 0.001 && progress < 0.999;
+    const isCollapsed = progress >= 0.999;
+    appHeader.classList.toggle("is-docking", isDocking);
+    appHeader.classList.toggle("is-collapsed", isCollapsed);
+    if (isCollapsed && !wasCollapsed) {
+      playDockFlash();
+    }
+    wasCollapsed = isCollapsed;
   };
+
   window.addEventListener("scroll", () => {
-    if (dockFrame) return;
-    dockFrame = window.requestAnimationFrame(applyDockProgress);
+    if (headerFrame) return;
+    headerFrame = window.requestAnimationFrame(applyHeaderProgress);
   }, { passive: true });
 
-  /* 收起态下窗口尺寸变化（旋屏/键盘）时重算停靠点（rAF 节流；展开态也强制重算） */
-  let dockResizeFrame = 0;
+  let headerResizeFrame = 0;
   window.addEventListener("resize", () => {
-    if (dockResizeFrame) return;
-    dockResizeFrame = window.requestAnimationFrame(() => {
-      dockResizeFrame = 0;
+    if (headerResizeFrame) return;
+    headerResizeFrame = window.requestAnimationFrame(() => {
+      headerResizeFrame = 0;
       dockCoordsDirty = true;
-      applyDockProgress();
+      applyHeaderProgress();
     });
   });
 
-  /* 灯飞到位后一次性轻量点亮闪光；同步中让呼吸动画独占 filter，不叠加 */
-  elements.syncStatus?.addEventListener("transitionend", (event) => {
-    if (event.target !== elements.syncStatus || event.propertyName !== "transform") return;
-    if (!appHeader?.classList.contains("is-collapsed")) return;
-    if (elements.syncStatus.classList.contains("is-syncing") || prefersReducedMotion()) return;
-    window.clearTimeout(syncLampDockFlashTimer);
-    elements.syncStatus.classList.remove("is-dock-flash");
-    void elements.syncStatus.offsetWidth;
-    elements.syncStatus.classList.add("is-dock-flash");
-    /* 760ms > sync-lamp-dock-flash 720ms，播完摘类回到收起稳态过曝 */
-    syncLampDockFlashTimer = window.setTimeout(() => {
-      elements.syncStatus.classList.remove("is-dock-flash");
-      syncLampDockFlashTimer = 0;
-    }, 760);
-  });
+  applyHeaderProgress();
 
   // 设置侧边栏滚动监听
   const settingsDrawer = document.querySelector(".settings-drawer");

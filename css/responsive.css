@@ -107,17 +107,23 @@
 
   .app-header {
     --header-title-collapse-scale: 0.96;
+    --mobile-header-expand-offset: 47px;
+    --mobile-header-progress: 0;
+    --mobile-header-collapse-enabled: 1;
+    --sync-expanded-y: 19px;
     position: sticky;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto auto;
+    /* 固定为收起态的真实流式几何；中间 0px 行只提供胶囊的定位锚点。
+       展开空间由 .app-view 的静态 margin 和子元素 transform 共同呈现。 */
+    grid-template-rows: auto 0px auto;
     align-items: center;
     column-gap: 12px;
-    row-gap: 8px;
+    row-gap: 7px;
     width: 100%;
     margin-inline: 0;
-    margin-bottom: 12px;
-    padding: var(--mobile-header-top) 14px 16px;
+    margin-bottom: 10px;
+    padding: var(--mobile-header-collapsed-top) 14px 12px;
     box-sizing: border-box;
     overflow: visible;
     border-bottom: 0;
@@ -127,19 +133,20 @@
     -webkit-mask-image: none;
     mask-image: none;
     box-shadow: none;
-    /* iOS Safari: 收起/展开时头部若过渡 padding/row-gap/grid-template-rows 等布局属性，
-       滚动过程中会逐帧触发重排，导致切换器及页面内容明显跳动。布局变化改由
-       FLIP 即时+WAAPI 补间，视觉仍平滑但不再占用主线程布局。
-       注意：绝对不在 sticky 的 header 上加 contain:layout——
-       它会改变 containing block，iOS 地址栏伸缩时 sticky 偏移计算会跳变，
-       反而让整块顶栏跳动（之前这一项正是"还是存在"的元凶之一）。 */
+    /* Safari：sticky 容器的 grid/padding/gap/margin 全程不变，禁止任何真实
+       header 高度突变。只允许子元素 transform/opacity 随滚动进度变化。 */
     transition: none;
   }
 
   .app-header::before {
     position: absolute;
     z-index: 0;
-    inset: 0 -14px 0;
+    top: 0;
+    right: -14px;
+    bottom: calc(
+      0px - var(--mobile-header-expand-offset) * (1 - var(--mobile-header-progress))
+    );
+    left: -14px;
     border-bottom: 0;
     /* 一个稳定的取景层负责整块毛玻璃；下缘淡出交给无滤镜的 ::after。
        避免 sticky + isolation + 负层级 + mask + backdrop-filter 的复合路径。 */
@@ -155,9 +162,9 @@
     position: absolute;
     z-index: 0;
     right: -14px;
-    bottom: -18px;
+    bottom: -16px;
     left: -14px;
-    height: 18px;
+    height: 16px;
     background: linear-gradient(
       to bottom,
       color-mix(in srgb, var(--glass-bg) 34%, transparent),
@@ -171,7 +178,7 @@
     grid-template-rows: auto 0px auto;
     row-gap: 7px;
     margin-bottom: 10px;
-    padding-block: var(--mobile-header-collapsed-top) 12px;
+    padding: var(--mobile-header-collapsed-top) 14px 12px;
     border-color: transparent;
     background: transparent;
     -webkit-backdrop-filter: none;
@@ -181,13 +188,7 @@
   }
 
   .app-header.is-collapsed::before {
-    inset: 0 -14px 0;
     background: color-mix(in srgb, var(--glass-bg) 62%, transparent);
-  }
-
-  .app-header.is-collapsed::after {
-    bottom: -16px;
-    height: 16px;
   }
 
   .app-header > *,
@@ -202,6 +203,15 @@
     min-width: 0;
   }
 
+  .app-header h1,
+  .app-header.is-collapsed h1 {
+    transform: translate3d(0, calc(1px * var(--mobile-header-progress)), 0)
+      scale(calc(1 - (1 - var(--header-title-collapse-scale)) * var(--mobile-header-progress)));
+    transform-origin: left bottom;
+    transition: none;
+    will-change: transform;
+  }
+
   .header-actions {
     display: contents;
   }
@@ -210,15 +220,21 @@
     grid-column: 1 / -1;
     grid-row: 2;
     justify-self: start;
-    /* 收起时与移入 row 2 的切换条重叠，飞行途中保持在其上层 */
     z-index: 2;
-    /* 独立合成层：飞行 transform 不再连带 header 毛玻璃层重栅格化（iOS 卡顿主因之一） */
     will-change: transform;
-    /* 只过渡 transform/opacity/颜色——布局属性（min-height/padding/gap）不参与逐帧动画，
-       展开方向瞬时恢复（壳淡入把切换盖住），避免每帧 relayout + 毛玻璃重绘 */
+    overflow: visible;
+    /* p=0 时向下半个胶囊高度，复原原来 38px grid 行的视觉中心；
+       p=1 时只把同一个稳定盒子移到标题旁，不改变自身或 header 的尺寸。 */
+    transform: translate3d(
+      calc(var(--sync-dock-x, 0px) * var(--mobile-header-progress)),
+      calc(
+        var(--sync-expanded-y) * (1 - var(--mobile-header-progress)) +
+        var(--sync-dock-y, 0px) * var(--mobile-header-progress)
+      ),
+      0
+    );
     transition:
       opacity var(--motion-fast) var(--settle),
-      transform var(--motion) var(--settle),
       color var(--motion) var(--settle),
       --status-dot var(--motion) var(--settle),
       --status-dot-glow var(--motion) var(--settle),
@@ -226,75 +242,35 @@
       --status-dot-bloom var(--motion) var(--settle);
   }
 
-  /* 文字只做 opacity 淡出；max-width 归零改为离散切换（见收起态），不再逐帧驱动宽度 */
   .sync-status .sync-status-label {
     display: inline-block;
     overflow: hidden;
     max-width: 60vw;
     white-space: nowrap;
-    transition: opacity var(--motion-fast) var(--settle);
+    opacity: calc(1 - var(--mobile-header-progress));
+    transition: none;
   }
 
-  /* 收起：壳（.sync-status-shell）与文字原地淡出，指示灯随本体 translate 飞到标题右侧
-     （坐标由 JS 写入 --sync-dock-*）。布局收缩（min-height/padding/gap/max-width）统一
-     延迟到淡出完成后一次性切换：全程只有 1 次 relayout，且发生在壳已不可见时。 */
   .app-header.is-collapsed .sync-status {
-    min-height: 30px;
-    padding: 0 11px;
-    gap: 0;
     overflow: visible;
-    transform: translate(var(--sync-dock-x, 0px), var(--sync-dock-y, 0px));
-    transition:
-      opacity var(--motion-fast) var(--settle),
-      transform var(--motion) var(--settle),
-      color var(--motion) var(--settle),
-      min-height 0s linear var(--motion-fast),
-      padding 0s linear var(--motion-fast),
-      gap 0s linear var(--motion-fast),
-      --status-dot var(--motion) var(--settle),
-      --status-dot-glow var(--motion) var(--settle),
-      --status-dot-core var(--motion) var(--settle),
-      --status-dot-bloom var(--motion) var(--settle);
   }
 
-  .app-header.is-collapsed .sync-status .sync-status-shell {
-    opacity: 0;
+  .sync-status .sync-status-shell {
+    opacity: calc(1 - var(--mobile-header-progress));
+    transition: none;
   }
 
   .app-header.is-collapsed .sync-status .sync-status-label {
-    max-width: 0;
     opacity: 0;
-    transition:
-      opacity var(--motion-fast) var(--settle),
-      max-width 0s linear var(--motion-fast);
   }
 
-  /* 滚动联动态：进度 p(=--sync-dock-progress) 由滚动量逐帧写入，
-     指示灯随滑动从胶囊原位平移到账本名称旁，壳/文字同步淡出——
-     不再等阈值触发的一次性过渡，而是“胶囊随滑动过程，指示灯移到账本名称旁边”。
-     无 transform 过渡（逐帧由 JS 驱动），贴两端时回到 .is-collapsed 稳态规则。 */
-  .app-header.is-docking .sync-status {
-    /* 进度由 JS 逐帧驱动，transform 不能带 500ms+ 过渡，否则指示灯会滞后滚动。 */
-    transition: none;
-    transform: translate(
-      calc(var(--sync-dock-x, 0px) * var(--sync-dock-progress, 0)),
-      calc(var(--sync-dock-y, 0px) * var(--sync-dock-progress, 0))
-    );
-  }
-
-  .app-header.is-docking .sync-status .sync-status-shell,
-  .app-header.is-docking .sync-status .sync-status-label {
-    opacity: calc(1 - var(--sync-dock-progress, 0));
-    transition: none;
-  }
-
-  /* hover/active 的 transform 会覆盖 dock 位移，收起态显式带上 translate */
+  /* hover 不覆盖滚动定位；active 仅在灯的自身中心做轻微缩放。 */
   .app-header.is-collapsed .sync-status[aria-disabled="false"]:hover {
-    transform: translate(var(--sync-dock-x, 0px), var(--sync-dock-y, 0px));
+    transform: translate3d(var(--sync-dock-x, 0px), var(--sync-dock-y, 0px), 0);
   }
 
   .app-header.is-collapsed .sync-status[aria-disabled="false"]:active {
-    transform: translate(var(--sync-dock-x, 0px), var(--sync-dock-y, 0px)) scale(0.92);
+    transform: translate3d(var(--sync-dock-x, 0px), var(--sync-dock-y, 0px), 0) scale(0.92);
   }
 
   /* 收起态热区：启用空闲的 ::after 把可点范围扩到 ~44px（收起态 overflow: visible 才不被裁掉） */
@@ -309,7 +285,7 @@
     filter: brightness(1.14);
   }
 
-  /* 灯到位点亮：一次性轻量闪光（JS 在 transform transitionend 时挂类） */
+  /* 灯到位点亮：滚动进度首次抵达 1 时由 JS 一次性挂类。 */
   .app-header.is-collapsed .sync-status.is-dock-flash::before {
     /* var(--settle)：单调衰减无回弹平台，避免多段缓动叠出"阶跃感" */
     animation: sync-lamp-dock-flash 0.72s var(--settle) both;
@@ -317,9 +293,17 @@
 
   #openSettingsButton {
     grid-column: 2;
-    grid-row: 1 / 3;
+    grid-row: 1;
     align-self: center;
     justify-self: end;
+    z-index: 3;
+    transform: translate3d(
+      0,
+      calc(var(--sync-expanded-y) * (1 - var(--mobile-header-progress))),
+      0
+    );
+    transition: none;
+    will-change: transform;
   }
 
   .app-header.is-collapsed #openSettingsButton {
@@ -621,6 +605,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+    /* 真实 header 永远保持收起高度；这段静态空间复原首屏展开布局，
+       并随着正常页面滚动离开视口，不在收缩终点改变任何文档坐标。 */
+    margin-top: 47px;
   }
 
   /* 移动端单栏由 app-view 的 gap 统一把控节奏，取消 ledger-section 自身 margin-top
@@ -642,14 +629,14 @@
     z-index: 1;
     /* iOS Safari: 与 header 的 backdrop-filter 分离到独立 compositor layer,
        避免 header 背景每帧重绘时把切换器也拖顿。 */
-    transform: translateZ(0);
+    transform: translate3d(
+      0,
+      calc(var(--mobile-header-expand-offset) * (1 - var(--mobile-header-progress))),
+      0
+    );
     backface-visibility: hidden;
     contain: layout;
-    /* FLIP 补间：折叠/展开时切换器位置变化改由 transform 过渡平滑。
-       之前用 WAAPI animate() 在 iOS Safari 上对 sticky+contain 元素静默不播，
-       导致切换器瞬时跳（"突然卡上去"）。CSS transition 在本设备已被胶囊
-       熔化证明可靠，故改用之。 */
-    transition: transform var(--mobile-panel-flip-motion, 220ms) cubic-bezier(0.22, 0.74, 0.24, 1);
+    transition: none;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
@@ -751,7 +738,7 @@
 
   /* 之前用 :has(#mobileEntryTab.is-active) 定位滑块，但 :has() 在 iOS Safari
      上每次 style recalc 都会重新遍历子树匹配；滚动时 header 区域因
-     --sync-dock-progress 每帧写入而频繁 recalc，滑块定位被反复重算，
+     --mobile-header-progress 每帧写入而频繁 recalc，滑块定位被反复重算，
      正是切换器滚动卡顿的持续元凶。改用切换器上的 data-active 属性选择器
      （无子树遍历），视觉完全一致、零额外开销。JS 在 renderMobilePanelState 写。 */
   .mobile-panel-switch[data-active="entry"] .mobile-panel-indicator {
@@ -1483,73 +1470,56 @@
     overflow: visible;
   }
 
-  /* 类别横滑带与 + 共用面板内容宽度；按钮沿用其他控件的 16px 内容边界，
-     不再向父卡片圆角外沿出血。 */
+  /* 横滑带铺满整行，标签可从 + 的透明玻璃层下方通过；+ 仍沿用面板内容边界。 */
   .category-control-row {
+    --cat-fade-tint: rgba(255, 252, 248, 0.2);
+    --cat-left-fade-tint: rgba(255, 252, 248, 0.12);
     margin: 0;
   }
 
-  /* 外层只负责两端渐隐覆盖层 + 占满行内剩余宽度；它本身不滚动，渐隐在静止元素上
+  /* 外层只负责两端渐隐覆盖层 + 占满整行；它本身不滚动，渐隐在静止元素上
      只合成一次。内部滚动走 GPU 合成层，避免「滚动容器直接挂 mask」导致 macOS
      触控板横向滑动逐帧主线程重绘、不跟手的问题。 */
   .category-chips-fade {
     position: relative;
-    /* 关键：grid 子项默认 min-width:auto 会被内部 nowrap 芯片的 max-content 撑大
+    /* 关键：横滑外层不能被内部 nowrap 芯片的 max-content 撑大
        （本应 330 的轨道被撑到 512），导致滚动容器"按内容宽度贴合"而不溢出——
        横滑永远无法触发。min-width:0 让它回到轨道宽度，内部芯片才会溢出并滚动。 */
     min-width: 0;
-    /* 标签内容在自己的网格列内结束，不伸进 + 下方，避免文字叠穿按钮。 */
     margin-right: 0;
-    /* 左侧渐隐保留轻量色块，右侧改用透明 backdrop-filter + mask：
+    /* 遮罩挂在静止的兄弟层，不挂到滚动子树本身。
        iOS/WebKit 上「mask 祖先 + 合成层滚动子元素(translateZ(0))」会让横滑容器
-       彻底无法滚动（mask 把子树钉成单层光栅，scroll 不重绘）；且 mask 的 alpha
-       会把选中芯片的光晕在边缘裁切/扭曲（即「阴影异常」）。右侧伪元素只负责
-       采样并模糊标签，不绘制实体底色。 */
-    --cat-edge-fade: 24px;
-    --cat-fade-color: rgba(255, 252, 248, 0.94);
+       彻底无法滚动，且会把选中芯片的光晕裁成直角。 */
   }
 
-  .category-chips-fade::before {
-    /* 左端 fade：只覆盖 chip 行本身（44px）+ 少量光晕缓冲，不再向上侵入
-       "类别" label、向下侵入「分摊范围」等文字区域。垂直 mask 仍让上下
-       ±18% 渐入渐出，消除矩形截断。 */
+  .category-control-row::before {
+    /* 两端的“雾”从轨道外开始，而不是贴着可见内容起一块毛玻璃。
+       这样滑动中的芯片会先淡出，再进入安全区，不会露出清晰的矩形截断线。 */
     content: "";
     position: absolute;
-    left: 0;
-    top: -10px;
-    bottom: -10px;
-    width: var(--cat-edge-fade);
-    /* 圆掉外（左）侧上下直角，避免遮罩矩形在 row 上下形成直角截断；
-       右（芯片侧）朝向透明渐隐端，不圆也不会露直角。 */
-    border-radius: 22px 0 0 22px;
+    left: -24px;
+    top: -6px;
+    bottom: -6px;
+    width: 82px;
+    border-radius: 999px;
     pointer-events: none;
-    opacity: 0;
+    /* 起点也保留一层很轻的雾，避免标签栏左端突然变成完全清晰的硬边。 */
+    opacity: 0.52;
     transition: opacity 220ms var(--settle);
     z-index: 3;
-    background: linear-gradient(to right, var(--cat-fade-color), transparent);
-    -webkit-mask-image: linear-gradient(
-      to bottom,
-      transparent 0%,
-      black 18%,
-      black 82%,
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--cat-left-fade-tint) 96%, transparent) 0%,
+      color-mix(in srgb, var(--cat-left-fade-tint) 68%, transparent) 22%,
+      color-mix(in srgb, var(--cat-left-fade-tint) 28%, transparent) 58%,
       transparent 100%
     );
-    mask-image: linear-gradient(
-      to bottom,
-      transparent 0%,
-      black 18%,
-      black 82%,
-      transparent 100%
-    );
+    -webkit-backdrop-filter: blur(10px) saturate(1.06);
+    backdrop-filter: blur(10px) saturate(1.06);
+    filter: blur(8px);
   }
 
-  /* 右端 fade：仅覆盖 chips 末端 + 8px gap，不再覆盖 + 按钮本体。
-     + 按钮（44px）完整浮于 fade 右侧，按钮左侧与 fade 透明端衔接，
-     消除之前「遮罩切到按钮左边」的直角截断。
-     行层级 ::after 仍能跨过 gap 到按钮左边缘，保证 chips 尾部渐隐连续。
-     上下范围只扩到 chip 行 ±10px 缓冲，不侵入 label/文字区域。
-     水平 gradient 从 chip 侧不透明渐变到按钮侧透明；filter:blur(2px)
-     保留 iOS 26 渐变模糊质感；垂直 mask 消除矩形截断。 */
+  /* 右端同样只保留无边界的雾化过渡；+ 自身的玻璃层承担实际背景模糊。 */
   .category-control-row::after {
     content: "";
     position: absolute;
@@ -1557,41 +1527,26 @@
     top: -10px;
     bottom: -10px;
     left: auto;
-    right: 44px;
-    width: 126px;
-    /* 四角全圆：右侧透明端贴合按钮圆形轮廓，左（不透明端）在 chips 内部
-       被 mask 渐隐，不会露出直角。 */
-    border-radius: 22px;
+    right: -24px;
+    width: 136px;
+    border-radius: 999px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 220ms var(--settle);
     z-index: 3;
     background: linear-gradient(
-      to right,
-      var(--cat-fade-color) 0%,
-      color-mix(in srgb, var(--cat-fade-color) 85%, transparent) 25%,
-      color-mix(in srgb, var(--cat-fade-color) 58%, transparent) 50%,
-      color-mix(in srgb, var(--cat-fade-color) 28%, transparent) 75%,
+      to left,
+      color-mix(in srgb, var(--cat-fade-tint) 98%, transparent) 0%,
+      color-mix(in srgb, var(--cat-fade-tint) 72%, transparent) 24%,
+      color-mix(in srgb, var(--cat-fade-tint) 30%, transparent) 62%,
       transparent 100%
     );
-    -webkit-mask-image: linear-gradient(
-      to bottom,
-      transparent 0%,
-      black 18%,
-      black 82%,
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to bottom,
-      transparent 0%,
-      black 18%,
-      black 82%,
-      transparent 100%
-    );
-    filter: blur(2px);
+    -webkit-backdrop-filter: blur(12px) saturate(1.06);
+    backdrop-filter: blur(12px) saturate(1.06);
+    filter: blur(10px);
   }
 
-  .category-chips-fade.can-fade-start::before {
+  .category-control-row.can-fade-start::before {
     opacity: 1;
   }
 
@@ -1604,6 +1559,15 @@
   .category-picker.is-adding .category-chips-fade,
   .category-picker.is-category-morph-closing .category-chips-fade {
     margin-right: 0;
+  }
+
+  .category-picker.is-adding .category-control-row::before,
+  .category-picker.is-adding .category-control-row::after,
+  .category-picker.is-category-morph-closing .category-control-row::before,
+  .category-picker.is-category-morph-closing .category-control-row::after {
+    opacity: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .category-control-row .selectable-category-chips {
@@ -1620,8 +1584,10 @@
        干净，再用负外边距抵消新增空间，保持类别行仍是 44px 布局高度。 */
     height: auto;
     margin: -40px 0;
-    padding: 40px 20px;
-    scroll-padding-inline: 20px;
+    /* 默认首项只留一个小呼吸位；端点回弹可把整条带再拉出约 22px，
+       让标签在安全区边缘自然出入，而非被过早挤到右侧。 */
+    padding: 40px 68px 40px 8px;
+    scroll-padding-inline: 8px 68px;
     scrollbar-width: none;
     overscroll-behavior-x: contain; /* 横滚到头不带动页面；桌面浏览器原生橡皮筋由此接管 */
     -webkit-overflow-scrolling: touch;
@@ -1631,25 +1597,54 @@
     -webkit-transform: translateZ(0);
   }
 
-  /* + 是类别尾部入口：与 chip 共用玻璃边光，稳定关闭态弱化描边和图标；
-     展开/关闭 Morph 期间仍使用原有胶囊样式。 */
+  /* + 是横滑带上方的透明玻璃入口；标签经过下方时由这里做最后一级模糊。 */
   .category-add-control {
-    position: relative;
     z-index: 5;
+    overflow: visible;
+    -webkit-backdrop-filter: blur(12px) saturate(1.08);
+    backdrop-filter: blur(12px) saturate(1.08);
+  }
+
+  /* 按钮右侧到页面安全区也属于同一块玻璃取景，避免圆形按钮边缘外残留一小条
+     未模糊的背景。左端藏在按钮自身下方、右端延伸出内容边界，因此不会形成新切线。 */
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -8px;
+    right: -34px;
+    bottom: -8px;
+    left: 30px;
+    border-radius: 0 999px 999px 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--cat-fade-tint) 38%, transparent),
+      color-mix(in srgb, var(--cat-fade-tint) 74%, transparent)
+    );
+    -webkit-backdrop-filter: blur(12px) saturate(1.08);
+    backdrop-filter: blur(12px) saturate(1.08);
   }
 
   .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control {
-    border-color: transparent;
-    background: color-mix(in srgb, var(--theme-color) 6%, rgba(255, 255, 255, 0.34));
-    -webkit-backdrop-filter: blur(12px) saturate(1.12);
-    backdrop-filter: blur(12px) saturate(1.12);
-    box-shadow: var(--glass-edge);
+    border-color: color-mix(in srgb, var(--theme-color) 16%, var(--line));
+    background: color-mix(in srgb, var(--theme-color) 4%, rgba(255, 255, 255, 0.13));
+    -webkit-backdrop-filter: blur(12px) saturate(1.08);
+    backdrop-filter: blur(12px) saturate(1.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 8px 18px -16px color-mix(in srgb, var(--theme-color) 38%, transparent);
+  }
+
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control:hover {
+    border-color: color-mix(in srgb, var(--theme-color) 26%, var(--line));
+    background: color-mix(in srgb, var(--theme-color) 7%, rgba(255, 255, 255, 0.17));
   }
 
   .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-fab {
     position: relative;
     z-index: 1;
-    color: color-mix(in oklch, var(--theme-color-strong) 42%, var(--muted));
+    color: color-mix(in oklch, var(--theme-color-strong) 58%, var(--muted));
   }
 
   .category-control-row .selectable-category-chips::-webkit-scrollbar {
@@ -2532,6 +2527,9 @@
 @media (max-width: 520px) and (max-height: 620px) {
   .app-header,
   .app-header.is-collapsed {
+    --mobile-header-expand-offset: 0px;
+    --mobile-header-collapse-enabled: 0;
+    --sync-expanded-y: 0px;
     grid-template-columns: minmax(0, 1fr) 44px auto;
     grid-template-rows: auto auto;
     column-gap: 8px;
@@ -2578,15 +2576,22 @@
   .app-header #openSettingsButton {
     grid-column: 3;
     grid-row: 1;
+    transform: none;
   }
 
   .app-header .mobile-panel-switch {
     grid-column: 1 / -1;
     grid-row: 2;
+    transform: none;
   }
 
   .app-view {
     gap: 12px;
+    margin-top: 0;
+  }
+
+  .app-header h1 {
+    transform: none;
   }
 
   .metric.primary {

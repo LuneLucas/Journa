@@ -287,7 +287,9 @@ input[type="date"]:focus {
 .selectable-category-chip > span {
   position: relative;
   z-index: 1;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
   max-width: 100%;
   text-overflow: ellipsis;
@@ -295,6 +297,20 @@ input[type="date"]:focus {
   transition:
     color calc(var(--selection-motion) * 0.74) var(--settle),
     transform var(--selection-motion) var(--settle);
+}
+
+.category-symbol {
+  display: block;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
 .selectable-category-chip:hover {
