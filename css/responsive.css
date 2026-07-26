@@ -2796,3 +2796,56 @@
     transform: translateY(1px);
   }
 }
+
+/*
+ * iOS WebKit 会在动画元素同时携带 filter/backdrop-filter 时逐帧重栅格化。
+ * 保留位移、透明度与按压回弹，只把动态毛玻璃换成更实的半透明材质，让
+ * 切换过程稳定落在 opacity/transform 的合成路径上。
+ */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 820px), (pointer: coarse) {
+    :root {
+      --soft-transition-blur: 0px;
+    }
+
+    .app-header::before {
+      background: color-mix(in srgb, var(--glass-bg) 88%, transparent);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    .mobile-panel-switch {
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.16) 48%, rgba(255, 255, 255, 0.24)),
+        color-mix(in srgb, var(--glass-bg) 84%, transparent);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    .app-view.is-mobile-panel-switching-out .entry-panel,
+    .app-view.is-mobile-panel-switching-out .ledger-section,
+    .app-view.is-mobile-panel-switching-out .insights-panel,
+    .app-view.is-mobile-panel-switching-in .entry-panel,
+    .app-view.is-mobile-panel-switching-in .ledger-section,
+    .app-view.is-mobile-panel-switching-in .insights-panel {
+      filter: none !important;
+      will-change: opacity, transform;
+    }
+
+    .settings-drawer,
+    .ledger-management-drawer {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    .settings-view .settings-drawer,
+    .ledger-management-view .ledger-management-drawer {
+      filter: none !important;
+    }
+
+    .category-picker.is-category-morphing .category-chips-fade {
+      filter: none !important;
+      will-change: opacity, transform;
+    }
+  }
+}
