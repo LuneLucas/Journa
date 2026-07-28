@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-glass-soft-progressive-v37-20260728";
+const APP_VERSION = "journa-natural-entry-motion-v46-20260729";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -47,9 +47,9 @@ const MOTION_DELAYS = {
   tokenFlight: 680,
   totalBloom: 460,
   catchPulse: 420,
-  naturalEntryStageShrink: 360,
-  naturalEntryStageDissolveStart: 280,
-  naturalEntryStageFade: 160,
+  naturalEntryStageOpen: 480,
+  naturalEntryStageClose: 400,
+  naturalEntryStageSwap: 420,
   toast: 2600,
   toastWithAction: 5200,
 };
@@ -384,9 +384,10 @@ let activeEntryEditor = "amount";
 let naturalEntryStageOpen = false;
 let naturalEntryStageEditor = null;
 let naturalEntryStageAnchor = null;
-let naturalEntryStageCloseTimer = 0;
 let naturalEntryStagePositionFrame = 0;
 let naturalEntryStageRunId = 0;
+let naturalEntryMotionAnims = [];
+let naturalEntryFrozenAnchor = null;
 const naturalEntryEditorHomes = new Map();
 let splitScopeCloseTimer = 0;
 let splitScopeSwitching = false;
@@ -2375,6 +2376,22 @@ function scheduleNaturalEntryStagePosition() {
   naturalEntryStagePositionFrame = window.requestAnimationFrame(positionNaturalEntryStage);
 }
 
+function freezeNaturalEntryAnchor(anchor) {
+  if (!anchor || naturalEntryFrozenAnchor === anchor) return;
+  unfreezeNaturalEntryAnchor();
+  const rect = anchor.getBoundingClientRect();
+  anchor.style.inlineSize = `${rect.width}px`;
+  anchor.style.flex = `0 0 ${rect.width}px`;
+  naturalEntryFrozenAnchor = anchor;
+}
+
+function unfreezeNaturalEntryAnchor() {
+  if (!naturalEntryFrozenAnchor) return;
+  naturalEntryFrozenAnchor.style.inlineSize = "";
+  naturalEntryFrozenAnchor.style.flex = "";
+  naturalEntryFrozenAnchor = null;
+}
+
 function syncNaturalEntryStageToken() {
   if (!naturalEntryStageOpen || !naturalEntryStageAnchor) return;
   elements.naturalEntryStageToken.textContent = naturalEntryStageAnchor.textContent;
@@ -2385,8 +2402,10 @@ function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
   const editor = naturalEntryStageEditor;
   const anchor = naturalEntryStageAnchor;
   restoreNaturalEntryEditorHome(editor);
-  anchor?.classList.remove("is-stage-anchor", "is-stage-handoff");
+  unfreezeNaturalEntryAnchor();
+  anchor?.classList.remove("is-stage-anchor", "is-stage-handoff", "is-value-settling");
   elements.naturalEntryStage.classList.remove("is-preparing", "is-closing", "is-fading");
+  elements.naturalEntryStage.style.height = "";
   elements.naturalEntryStage.hidden = true;
   elements.naturalEntryFocusBackdrop.hidden = true;
   elements.naturalEntryStage.dataset.editor = "";
@@ -2397,46 +2416,102 @@ function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
   if (restoreFocus && anchor?.isConnected) anchor.focus({ preventScroll: true });
 }
 
+function cancelNaturalEntryMotion() {
+  for (const anim of naturalEntryMotionAnims) {
+    try { anim.cancel(); } catch (_) {}
+  }
+  naturalEntryMotionAnims = [];
+  document.querySelectorAll(".natural-entry-flight-token").forEach((node) => node.remove());
+}
+
+function makeNaturalEntryFlightToken(sourceRect, destinationRect, text, isAmount, sourceScale = 1) {
+  const ghost = document.createElement("span");
+  ghost.className = "natural-entry-flight-token";
+  ghost.classList.toggle("is-amount", isAmount);
+  ghost.textContent = text;
+  const baseWidth = sourceRect.width / sourceScale;
+  const baseHeight = sourceRect.height / sourceScale;
+  const baseLeft = sourceRect.left + (sourceRect.width - baseWidth) / 2;
+  const baseTop = sourceRect.top + (sourceRect.height - baseHeight) / 2;
+  ghost.style.left = `${baseLeft}px`;
+  ghost.style.top = `${baseTop}px`;
+  ghost.style.width = `${Math.max(baseWidth, destinationRect.width)}px`;
+  ghost.style.height = `${baseHeight}px`;
+  ghost.style.transformOrigin = "center center";
+  document.body.append(ghost);
+  return { ghost, baseLeft, baseTop };
+}
+
+function getNaturalEntryFlightSourceRect(stage) {
+  const tokenRect = elements.naturalEntryStageToken.getBoundingClientRect();
+  if (tokenRect.width > 0 && tokenRect.height > 0) return tokenRect;
+  return stage.getBoundingClientRect();
+}
+
 function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}) {
   if (!naturalEntryStageOpen && !naturalEntryStageEditor) return;
   naturalEntryStageOpen = false;
   const runId = ++naturalEntryStageRunId;
-  window.clearTimeout(naturalEntryStageCloseTimer);
   window.cancelAnimationFrame(naturalEntryStagePositionFrame);
   naturalEntryStagePositionFrame = 0;
-  elements.naturalEntryStage.classList.add("is-closing");
-  elements.naturalEntryStage.classList.remove("is-fading");
-  elements.naturalEntryStage.classList.remove("is-open");
-  elements.naturalEntryFocusBackdrop.classList.remove("is-open");
-  renderNaturalEntry();
 
-  if (immediate || prefersReducedMotion()) {
-    naturalEntryStageCloseTimer = window.setTimeout(() => {
-      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
-      finishNaturalEntryStageClose({ restoreFocus });
-    }, 0);
+  const stage = elements.naturalEntryStage;
+  const token = elements.naturalEntryStageToken;
+  const anchor = naturalEntryStageAnchor;
+  const isAmount = activeEntryEditor === "amount";
+
+  // Commit the final value behind the backdrop, then measure its true layout
+  // destination before the flight begins. This prevents a text-width change
+  // from moving the landing point half way through the animation.
+  unfreezeNaturalEntryAnchor();
+  renderNaturalEntry();
+  if (anchor && token) token.textContent = anchor.textContent;
+
+  if (immediate || prefersReducedMotion() || !stage || !anchor || typeof stage.animate !== "function") {
+    elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+    finishNaturalEntryStageClose({ restoreFocus });
     return;
   }
 
-  naturalEntryStageCloseTimer = window.setTimeout(() => {
+  const anchorRect = anchor.getBoundingClientRect();
+  const sourceRect = getNaturalEntryFlightSourceRect(stage);
+  cancelNaturalEntryMotion();
+  const sourceScale = 1.018;
+  const { ghost, baseLeft, baseTop } = makeNaturalEntryFlightToken(sourceRect, anchorRect, anchor.textContent, isAmount, sourceScale);
+  const flight = ghost.animate(
+    [
+      { transform: `scale(${sourceScale})`, opacity: 1 },
+      { transform: `translate(${anchorRect.left - baseLeft}px, ${anchorRect.top - baseTop}px) scale(1)`, opacity: 1 },
+    ],
+    { duration: MOTION_DELAYS.naturalEntryStageClose, easing: "cubic-bezier(0.18, 0.78, 0.30, 1)", fill: "forwards" }
+  );
+
+  // The shell and flight begin in the same frame. The real anchor remains
+  // hidden until both have finished, so there is no handoff flash.
+  stage.classList.add("is-closing");
+  stage.classList.remove("is-open");
+  elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+  naturalEntryMotionAnims.push(flight);
+  flight.finished.catch(() => {}).then(() => {
     if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
-    naturalEntryStageAnchor?.classList.add("is-stage-handoff");
-    elements.naturalEntryStage.classList.add("is-fading");
-    naturalEntryStageCloseTimer = window.setTimeout(() => {
-      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
-      finishNaturalEntryStageClose({ restoreFocus });
-    }, MOTION_DELAYS.naturalEntryStageFade);
-  }, MOTION_DELAYS.naturalEntryStageDissolveStart);
+    cancelNaturalEntryMotion();
+    finishNaturalEntryStageClose({ restoreFocus });
+  });
 }
 
 function openNaturalEntryStage(editor) {
+  cancelNaturalEntryMotion();
   const anchor = getNaturalEntryToken(editor);
   const panel = getNaturalEntryEditor(editor);
   if (!anchor || !panel) return false;
 
   ++naturalEntryStageRunId;
-  window.clearTimeout(naturalEntryStageCloseTimer);
-
+  if (!naturalEntryStageOpen && naturalEntryStageEditor) {
+    restoreNaturalEntryEditorHome(naturalEntryStageEditor);
+    unfreezeNaturalEntryAnchor();
+    naturalEntryStageAnchor?.classList.remove("is-stage-anchor", "is-stage-handoff");
+    elements.naturalEntryStage.classList.remove("is-closing", "is-fading");
+  }
   // Stage already open on this exact editor: keep it, no re-trigger.
   if (naturalEntryStageOpen && naturalEntryStageEditor === panel) {
     scheduleNaturalEntryStagePosition();
@@ -2447,11 +2522,15 @@ function openNaturalEntryStage(editor) {
   // cut. The stage slides to the new anchor while clip-path re-anchors and the
   // content cross-fades, so the editor reads as having moved between words.
   if (naturalEntryStageOpen && naturalEntryStageEditor && naturalEntryStageEditor !== panel) {
+    const stage = elements.naturalEntryStage;
+    const oldHeight = stage.getBoundingClientRect().height;
     restoreNaturalEntryEditorHome(naturalEntryStageEditor);
+    unfreezeNaturalEntryAnchor();
     naturalEntryStageAnchor?.classList.remove("is-stage-anchor");
     naturalEntryStageEditor = panel;
     naturalEntryStageAnchor = anchor;
     rememberNaturalEntryEditorHome(panel);
+    freezeNaturalEntryAnchor(anchor);
     anchor.classList.add("is-stage-anchor");
     elements.naturalEntryStage.dataset.editor = editor;
     elements.naturalEntryStageContent.append(panel);
@@ -2460,6 +2539,13 @@ function openNaturalEntryStage(editor) {
     void elements.naturalEntryStageContent.offsetWidth;
     elements.naturalEntryStageContent.classList.remove("is-swapping");
     positionNaturalEntryStage();
+    const nextHeight = stage.scrollHeight;
+    stage.style.height = `${oldHeight}px`;
+    void stage.offsetHeight;
+    stage.style.height = `${nextHeight}px`;
+    stage.addEventListener("transitionend", (event) => {
+      if (event.propertyName === "height" && naturalEntryStageOpen) stage.style.height = "";
+    }, { once: true });
     window.requestAnimationFrame(scheduleNaturalEntryStagePosition);
     return true;
   }
@@ -2471,6 +2557,7 @@ function openNaturalEntryStage(editor) {
   elements.naturalEntryStage.classList.add("is-preparing");
   elements.naturalEntryStage.classList.remove("is-open", "is-closing", "is-fading");
   anchor.classList.remove("is-stage-handoff");
+  freezeNaturalEntryAnchor(anchor);
   anchor.classList.add("is-stage-anchor");
   elements.naturalEntryStage.dataset.editor = editor;
   elements.naturalEntryStageContent.append(panel);
@@ -2507,13 +2594,21 @@ function formatNaturalEntryDate(date) {
   return `${Number(month)}月${Number(day)}日`;
 }
 
+function formatNaturalFamilyCount(count) {
+  const chinese = ["零", "一", "两", "三", "四", "五", "六", "七", "八", "九", "十"];
+  return chinese[count] || String(count);
+}
+
 function formatNaturalEntrySplit() {
   if (activeSplitMode === "custom") return "按自定金额分摊";
   if (activeSplitMode === "families") {
     const names = activeSplitFamilyIds.map(getFamilyName).filter(Boolean);
-    return names.length ? `${names.join("、")}按人数分摊` : "指定家庭按人数分摊";
+    if (!names.length) return "指定家庭按人数";
+    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家按人数`;
+    return `${names.join("、")}按人数`;
   }
-  return "全部家庭按人数分摊";
+  const familyCount = state.families.length;
+  return familyCount >= 3 ? `${formatNaturalFamilyCount(familyCount)}家按人数` : "全部家庭按人数";
 }
 
 function formatNaturalEntryAmount(cents) {
@@ -4824,7 +4919,7 @@ function handleCategorySelection(event) {
   renderMobileSubmitBar();
   saveState();
   if (naturalEntryStageOpen && activeEntryEditor === "category") {
-    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 150);
+    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 120);
   }
 }
 

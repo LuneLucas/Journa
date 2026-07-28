@@ -1536,13 +1536,15 @@
       color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, var(--dark-panel));
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.17),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.42),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.50),
       inset 18px 0 32px -30px var(--total-edge-left),
       inset -18px 0 32px -30px var(--total-edge-right),
       0 0 0 1px color-mix(in srgb, var(--total-edge-soft) 62%, rgba(255, 255, 255, 0.08)),
+      0 2px 0 rgba(0, 0, 0, 0.28),
       -14px 0 44px -30px var(--total-glow-left),
       14px 0 44px -30px var(--total-glow-right),
-      0 18px 54px rgba(0, 0, 0, 0.46);
+      0 10px 20px -8px rgba(0, 0, 0, 0.34),
+      0 26px 64px rgba(0, 0, 0, 0.54);
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage::before {
@@ -1551,7 +1553,8 @@
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage::after {
-    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.48), transparent);
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.58), transparent);
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage-token {

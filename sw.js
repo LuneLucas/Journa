@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-glass-soft-progressive-v37-20260728";
+const APP_VERSION = "journa-natural-entry-motion-v46-20260729";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 /* CSS/JS 条目带与 index.html 引用一致的 ?v= 版本戳：Cache API 按完整 URL
    （含 query）匹配，不带戳的预缓存条目永远命中不了带戳请求，等于白缓存。 */
