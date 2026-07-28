@@ -13,6 +13,9 @@
     --glass-bg: rgba(30, 28, 26, 0.72);
     --glass-bg-strong: rgba(38, 36, 33, 0.82);
     --glass-blur: blur(12px) saturate(180%);
+    /* 暗色 soft 档（iOS26-soft 增强）；与亮色同由 data-blur="soft" 拨档，这里给暗色调优值 */
+    --glass-blur-soft: blur(22px) saturate(160%) brightness(1.02);
+    --glass-blur-strong-soft: blur(30px) saturate(185%) brightness(1.03);
     --border-divider: rgba(232, 236, 233, 0.075);
     --border-surface: rgba(232, 236, 233, 0.10);
     --border-control: rgba(232, 236, 233, 0.14);
@@ -1514,5 +1517,85 @@
   .welcome-settle-party.dot-c {
     background: rgba(239, 194, 191, 0.24);
     color: #eec5c2;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-focus-backdrop {
+    background: rgba(12, 11, 10, 0.16);
+    -webkit-backdrop-filter: blur(11px) saturate(76%) brightness(0.78);
+    backdrop-filter: blur(11px) saturate(76%) brightness(0.78);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-shell {
+    background:
+      radial-gradient(
+        circle at 12% -8%,
+        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 24%, rgba(255, 255, 255, 0.08)),
+        transparent 50%
+      ),
+      linear-gradient(148deg, rgba(52, 50, 47, 0.94), rgba(32, 31, 29, 0.91) 58%, rgba(22, 22, 21, 0.88)),
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, var(--dark-panel));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.17),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.42),
+      inset 18px 0 32px -30px var(--total-edge-left),
+      inset -18px 0 32px -30px var(--total-edge-right),
+      0 0 0 1px color-mix(in srgb, var(--total-edge-soft) 62%, rgba(255, 255, 255, 0.08)),
+      -14px 0 44px -30px var(--total-glow-left),
+      14px 0 44px -30px var(--total-glow-right),
+      0 18px 54px rgba(0, 0, 0, 0.46);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.025) 58%, transparent);
+    opacity: 0.82;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage::after {
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.48), transparent);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-token {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .amount-field {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .amount-field:focus-within {
+    box-shadow: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] input {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+/* 暗色下同步系统降级：降低透明度 / 不支持 backdrop-filter 时退实色。
+   置于暗色 :root 定义之后，靠源码顺序覆盖暗色默认玻璃 token。 */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-blur: none;
+    --glass-blur-strong: none;
+    --glass-blur-soft: none;
+    --glass-blur-strong-soft: none;
+    --glass-bg: var(--glass-bg-strong);
+    --surface: var(--glass-bg-strong);
+    --surface-strong: var(--glass-bg-strong);
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root {
+    --glass-blur: none;
+    --glass-blur-strong: none;
+    --glass-blur-soft: none;
+    --glass-blur-strong-soft: none;
+    --glass-bg: var(--glass-bg-strong);
+    --surface: var(--glass-bg-strong);
+    --surface-strong: var(--glass-bg-strong);
   }
 }

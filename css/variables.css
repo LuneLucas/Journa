@@ -164,6 +164,10 @@
   --glass-border-strong: var(--border-strong);
   --glass-shadow: 0 8px 32px 0 rgba(22, 26, 30, 0.08);
   --glass-blur-strong: blur(20px) saturate(190%);
+  /* iOS26-soft 渐进增强档：默认不启用。app.js 能力探测通过后才给 <html> 加 data-blur="soft" 生效。
+     只作用于非渐隐的整块玻璃（面板/弹层/头部主玻璃/切换器）；渐隐与遮罩层不消费此 token，保持安全渐变兜底。 */
+  --glass-blur-soft: blur(22px) saturate(165%) brightness(1.04);
+  --glass-blur-strong-soft: blur(30px) saturate(185%) brightness(1.045);
 
   --surface: var(--glass-bg);
   --surface-strong: var(--glass-bg-strong);
@@ -437,3 +441,38 @@
 :root[data-theme="harbor"] { --theme-h: 212; --theme-s: 34%; --theme-l: 43%; }
 :root[data-theme="lotus"]  { --theme-h: 284; --theme-s: 21%; --theme-l: 45%; }
 :root[data-theme="malt"]   { --theme-h: 34; --theme-s: 37%; --theme-l: 39%; }
+
+/* ── 渐进增强：iOS26-soft 玻璃档 ──
+   data-blur="soft" 仅在 app.js 能力探测通过（支持 backdrop-filter、非 reduced-transparency、
+   桌面或 iOS≥16）后由 JS 写入 <html>。把整块玻璃模糊从基线拨到 soft 档；
+   渐隐层与遮罩层不消费此 token，保持安全渐变兜底。 */
+:root[data-blur="soft"] {
+  --glass-blur: var(--glass-blur-soft);
+  --glass-blur-strong: var(--glass-blur-strong-soft);
+}
+
+/* 系统级降级：用户开启「降低透明度」（iOS 低电量 / 无障碍）或浏览器不支持 backdrop-filter 时，
+   玻璃退为实色、模糊置空。同时把 soft 档 token 也置空，确保 data-blur="soft" 的别名不会重新点亮模糊。 */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-blur: none;
+    --glass-blur-strong: none;
+    --glass-blur-soft: none;
+    --glass-blur-strong-soft: none;
+    --glass-bg: var(--glass-bg-strong);
+    --surface: var(--glass-bg-strong);
+    --surface-strong: var(--glass-bg-strong);
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root {
+    --glass-blur: none;
+    --glass-blur-strong: none;
+    --glass-blur-soft: none;
+    --glass-blur-strong-soft: none;
+    --glass-bg: var(--glass-bg-strong);
+    --surface: var(--glass-bg-strong);
+    --surface-strong: var(--glass-bg-strong);
+  }
+}

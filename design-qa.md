@@ -14,6 +14,17 @@ final result: passed
 
 ---
 
+# Natural-entry text-path and flash QA
+
+- Root cause: the reused stage could carry the previous editor's computed transition state into the next opening frame, while removing `.is-open` on close could briefly restore the amount mirror token.
+- Opening now commits a transition-free `.is-preparing` frame after the new text and anchor geometry are installed. A forced style boundary precedes the animated frame, so WebKit cannot merge the source and destination states.
+- Closing now holds the stage token at opacity 0 with no transition for the entire shrink/fade sequence. Only the empty glass frame returns to the source field.
+- Browser sampling confirms the closing source token remains hidden, the stage token is opacity 0 with a 0s transition, and the source token is restored only after the stage becomes hidden.
+- Reopening a different field reports the correct current text and finishes at the new stage center rather than inheriting the previous field path.
+- Browser console has 0 warnings/errors; syntax, `git diff --check`, and cache-version synchronization pass.
+
+final result: passed
+
 # 移动端自然语言记账 QA
 
 - 视觉基准：`/Users/Lucas/.codex/generated_images/019fa68d-f370-7060-ba81-383985888ad0/call_dV4J6eCVOtWlhwdM6eaxIgrk.png`（853×1843）。
@@ -251,5 +262,138 @@ final result: passed
 - 真机 iPhone Safari/PWA 仍应保留常规发布前触摸与合成检查，桌面浏览器模拟不能完全证明原生手势行为。
 
 ## Result
+
+final result: passed
+
+---
+
+# Natural-entry anchored popover design QA
+
+- Source visual truth: `/Users/Lucas/.codex/generated_images/019fa711-357f-7d21-86e2-19f61dcfc299/exec-62550d42-288e-4657-b1a2-8bf81ea199d6.png`
+- Implementation screenshot: `/tmp/journa-natural-popover-qa/07-final-category-open.jpg`
+- Combined comparison: `/tmp/journa-natural-popover-qa/08-design-comparison.jpg`
+- Additional states: `/tmp/journa-natural-popover-qa/03-payer-open.jpg`, `/tmp/journa-natural-popover-qa/04-note-open.jpg`, `/tmp/journa-natural-popover-qa/05-custom-split.jpg`, `/tmp/journa-natural-popover-qa/06-short-custom-split.jpg`
+- Browser URL: `http://127.0.0.1:4317/`
+- Implementation viewport: 390 × 844 CSS px at device scale 1
+- Short-screen viewport: 320 × 568 CSS px at device scale 1
+- Source pixels: 1122 × 1402
+- Implementation pixels: 390 × 844
+- Normalization: the source board's third interaction frame was cropped and contained into 390 × 844 before being placed beside the 390 × 844 implementation capture.
+- State: light theme, natural-entry mobile view, category token expanded from its original coordinates, backdrop blur active.
+
+## Full-view comparison evidence
+
+The rendered interaction preserves Journa's existing card, typography, category visuals, and natural-language sentence. The inactive page is visibly blurred while the active token and selector stay sharp. The fixed stage does not change the entry-card height or move the remaining sentence.
+
+## Focused region comparison evidence
+
+The active-token rectangles were measured in the browser after the final border fix. The hidden source token and sharp stage token have identical `x`, `y`, `width`, and `height` values (all deltas are 0 px). The stage reports `backdrop-filter: blur(11px) saturate(0.82) brightness(1.035)`. The focused side-by-side comparison confirms that the selected word remains the visual origin while the material grows outward.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing Journa font families, optical weights, number font, line height, and token letter spacing are reused; no new font drift.
+- Spacing and layout rhythm: the token remains fixed, the editor is removed from document flow, and the 390 × 844 entry card keeps its closed-state height. The stage uses the confirmed compact/expanded hierarchy.
+- Colors and visual tokens: existing family/category colors and control surfaces are reused. The focus veil is a light blur rather than a dark modal scrim. Dark-mode surfaces have a dedicated warm-dark override.
+- Image quality and asset fidelity: this interaction contains no raster imagery or new icons. Existing category and family icon systems are preserved.
+- Copy and content: all existing Journa labels and the natural-language sentence remain unchanged; dialog and close labels were added for assistive technology.
+
+## Interaction and responsive checks
+
+- Closed natural-entry state shows no inline editor.
+- Payer and category selectors open from the exact source-token rectangle and close after a choice.
+- Amount input opens in place; Enter changes the anchored editor to note and preserves the entered amount.
+- Date retains the native date control and closes after change.
+- Basic split choices remain compact; custom split expands in the same material.
+- At 320 × 568, custom split becomes internally scrollable. Focusing the third family amount scrolls it into view.
+- Outside dismissal, Escape dismissal, focus return, dialog focus trapping, reduced motion, and mobile-submit-bar suppression are wired.
+- Browser console: no warnings or errors.
+- Static verification: `app.js` and `sw.js` syntax passed, `git diff --check` passed, and all 23 contrast combinations passed.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+P3 follow-up: the category rail intentionally preserves the existing horizontal-scroll behavior, so a narrow viewport shows a subset of categories at once. This matches the current product convention and does not block the interaction.
+
+## Comparison history
+
+- Initial capture: the stage's physical border offset the sharp token by 1 px on both axes.
+- Fix: replaced the physical border with an inset edge in the stage shadow.
+- Post-fix evidence: browser geometry reports 0 px delta for x, y, width, and height.
+- No P0/P1/P2 iteration was required.
+
+final result: passed
+
+---
+
+# Natural-entry popover depth and amount-shadow QA
+
+- Scope: visual-material refinement only; token origin, stage geometry, content, and interaction behavior remain unchanged.
+- The expanded stage now combines a brighter inner rim, top specular wash, lower-edge shade, near contact shadow, distant lift shadow, and a restrained family-color aura.
+- Backdrop material increased from 24px / 145% to 30px / 160% blur and saturation; the page veil remains unchanged so the focused card gains depth without becoming a dark modal.
+- The amount editor now has one shadow owner per layer: the stage owns elevation, while `.amount-field` owns the inset glass edge and focus ring.
+- Removed the inherited active-state scale from the staged amount label, input, and currency mark. `#amountInput` now reports `transform: none` and `box-shadow: none`, eliminating the clipped/doubled shadow.
+- Verified at 390 × 844 and 320 × 568. At 320px the stage remains within 12px side margins, and the amount input remains fully inside the stage.
+- Light and dark materials both have dedicated surface, rim, and shadow rules.
+- Browser console has 0 warnings/errors; `app.js`, `sw.js`, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
+
+final result: passed
+
+---
+
+# Natural-entry unified field-and-stage QA
+
+- Visual issue reproduced from the user screenshot: the active source token read as a separate tinted rectangle, while the amount editor read as a fully rounded card nested inside a faint outer card.
+- The stage now has a clearer family-tinted perimeter, denser lower surface, and stronger near/far elevation shadows, so the complete card remains legible against a blurred white page.
+- The active token now uses the same glass gradient, edge highlight, family tint, and soft aura as the stage. Its dashed rectangular underline was replaced by a short, rounded family-color indicator.
+- The amount editor is now the lower section of the stage: it spans the stage width, shares the outer bottom corners, and uses only a top divider plus inset tint. It no longer draws a second four-sided border, outer shadow, or independent rounded card.
+- `#amountInput` remains shadowless; its active character scale is documented in the later clarification QA. The stage token still reports 0px x/y delta from the hidden source token.
+- Verified at 390 × 844 and 320 × 568. At 320px the stage stays within 12px margins and the document has no horizontal overflow.
+- Browser console has 0 warnings/errors; syntax, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
+
+final result: passed
+
+---
+
+# Natural-entry centered token and single-amount QA
+
+- Amount duplication fixed: the source-token mirror fades to opacity 0 after expansion, leaving `#amountInput` as the only visible amount.
+- The amount editor now occupies one 72px stage with no reserved header row, no nested border, and no inner shadow. The currency-plus-input group is centered as one visual unit.
+- Every non-amount active token still begins at its measured source position, then transitions to the stage center. The long split label ends at an exact 0px center delta.
+- Active-token styling no longer uses a tinted capsule or a surrounding shadow. It is transparent text with a short 1px family-color underline.
+- The stage edge now reuses the total-amount card language: left/right inset family edges, one soft 1px perimeter, restrained side glow, and one low-elevation shadow.
+- Verified at 390 × 844 and 320 × 568. The 320px amount stage stays inside 12px margins and the document has no horizontal overflow.
+- Browser console has 0 warnings/errors; syntax, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
+
+final result: passed
+
+---
+
+# Natural-entry amount character-scale clarification QA
+
+- Clarification applied: “下沉效果” referred to the original character scaling, not a recessed input surface.
+- Removed the added inset surface shadows, vertical shade, reflected edge, and 1px content translation.
+- Restored the existing amount motion language: active `#amountInput` scales to `1.018`, while `.currency-mark` scales to `1.035`.
+- The amount remains single, centered, borderless, and free of its own shadow.
+- Browser console has 0 warnings/errors; syntax, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
+
+final result: passed
+
+---
+
+# Natural-entry close-tail continuity QA
+
+- First-pass root cause: the stage token and clip-path close transitions ran for 420ms, while JS removed and restored the stage at 280ms.
+- Final close model is explicitly staged: content fades immediately, the stage token retraces its opening path while the glass frame shrinks for 360ms to an 18px rounded anchor frame, then the frame fades for 120ms before cleanup.
+- Timing is centralized in `MOTION_DELAYS.naturalEntryStageShrink` and `MOTION_DELAYS.naturalEntryStageFade`.
+- Reduced-motion and immediate-close paths remain at 0ms.
+- The existing run-id guard still prevents stale close callbacks from removing a newly reopened stage.
+- Browser sampling during close confirms the stage token remains visible and returns to the source token geometry while content opacity reaches 0; after the 120ms frame fade, the stage is hidden and the source token remains continuously visible.
+- Close handoff geometry now matches at both levels: the stage/source boxes share the same bounds, and their text ranges share the same baseline after the closing token adopts the source token's flex centering and transparent 1px border slot.
+- The stage token now keeps that flex-centering box for the entire open/close lifecycle, so centering is driven only by the existing `left`/`transform` transitions and no longer loses continuity to a discrete display-mode change.
+- The 120ms dissolve now starts at 300ms, overlapping the final 60ms of the 360ms shrink. The source token cross-fades in under `is-stage-handoff`, and cleanup completes at 420ms instead of holding a stationary anchor shell until 480ms.
+- The final rounded glass is now a dedicated `.natural-entry-stage-shell` compositor layer. Its 160ms dissolve starts at 280ms and completes before the stage is hidden at 440ms, while token and specular layers fade independently; the cleanup no longer removes a still-painted WebKit backdrop layer.
+- Motion curves are now role-specific CSS variables: the stage opens with a quick lift and soft settle, the token uses a restrained overshooting center curve, close uses a slightly elastic return, and the shell dissolve keeps its own softer opacity curve.
+- Browser console has 0 warnings/errors; syntax, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
 
 final result: passed

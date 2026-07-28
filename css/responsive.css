@@ -188,6 +188,27 @@
     pointer-events: none;
   }
 
+  /* 渐进增强：data-blur="soft" 时只加强非渐隐的常驻玻璃（主玻璃与切换器）。
+     刻意不碰 ::after（它带 mask，iOS 上 mask+blur 会出矩形伪影，保持渐变兜底）。 */
+  :root[data-blur="soft"] .app-header::before {
+    -webkit-backdrop-filter: blur(22px) saturate(150%) brightness(1.02);
+    backdrop-filter: blur(22px) saturate(150%) brightness(1.02);
+  }
+  :root[data-blur="soft"] .mobile-panel-switch {
+    -webkit-backdrop-filter: blur(18px) saturate(160%) brightness(1.02);
+    backdrop-filter: blur(18px) saturate(160%) brightness(1.02);
+  }
+
+  /* 系统降级：开启「降低透明度」时，常驻玻璃去掉模糊、保留渐变遮罩（::after 仍单向羽化） */
+  @media (prefers-reduced-transparency: reduce) {
+    .app-header::before,
+    .app-header::after,
+    .mobile-panel-switch {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
   .app-header.is-collapsed {
     grid-template-rows: auto 0px auto;
     row-gap: 7px;
@@ -3377,4 +3398,389 @@
   html[data-entry-mode="natural"] .expense-form .form-error {
     grid-column: 1 / -1;
   }
+
+  /* 自然语言原位编辑：token 自身是展开原点。编辑器脱离文档流，
+     独立 backdrop 只模糊背景，stage 与当前 token 保持清晰。 */
+  html[data-entry-mode="natural"] .natural-entry-focus-backdrop {
+    appearance: none;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-confirm) - 2);
+    border: 0;
+    background: rgba(252, 251, 249, 0.18);
+    opacity: 0;
+    cursor: default;
+    -webkit-backdrop-filter: blur(11px) saturate(82%) brightness(1.035);
+    backdrop-filter: blur(11px) saturate(82%) brightness(1.035);
+    transition: opacity 360ms cubic-bezier(0.20, 0.72, 0.24, 1);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-focus-backdrop.is-open {
+    opacity: 1;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-token.is-stage-anchor {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-token.is-stage-anchor.is-stage-handoff {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 160ms ease;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage {
+    --natural-stage-anchor-x: 0px;
+    --natural-stage-anchor-width: 72px;
+    --natural-stage-anchor-height: 44px;
+    --natural-stage-open-curve: cubic-bezier(0.16, 0.92, 0.24, 1);
+    --natural-stage-close-curve: cubic-bezier(0.34, 0.02, 0.18, 1);
+    --natural-token-open-curve: cubic-bezier(0.18, 1.12, 0.28, 1);
+    --natural-token-close-curve: cubic-bezier(0.34, 0.02, 0.16, 1.04);
+    --natural-stage-dissolve-curve: cubic-bezier(0.20, 0.62, 0.24, 1);
+    box-sizing: border-box;
+    position: fixed;
+    top: var(--natural-stage-top, 20px);
+    left: var(--natural-stage-left, 20px);
+    z-index: calc(var(--z-confirm) - 1);
+    width: var(--natural-stage-width, min(356px, calc(100vw - 24px)));
+    max-width: calc(100vw - 24px);
+    max-height: var(--natural-stage-max-height, calc(100dvh - 40px));
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-radius: 22px;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    clip-path: inset(
+      0
+      calc(100% - var(--natural-stage-anchor-x) - var(--natural-stage-anchor-width))
+      calc(100% - var(--natural-stage-anchor-height))
+      var(--natural-stage-anchor-x)
+      round 8px
+    );
+    opacity: 0.98;
+    pointer-events: none;
+    isolation: isolate;
+    transform: translateZ(0);
+    transform-origin: var(--natural-stage-origin-x, 36px) 22px;
+    transition:
+      clip-path 420ms var(--natural-stage-open-curve),
+      border-radius 420ms var(--natural-stage-open-curve),
+      left 420ms var(--natural-stage-open-curve),
+      top 420ms var(--natural-stage-open-curve),
+      width 420ms var(--natural-stage-open-curve),
+      max-height 420ms var(--natural-stage-open-curve),
+      opacity 120ms ease;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-shell {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background:
+      radial-gradient(
+        circle at 13% -10%,
+        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 22%, rgba(255, 255, 255, 0.78)),
+        transparent 52%
+      ),
+      linear-gradient(148deg, rgba(255, 255, 255, 0.93), rgba(242, 243, 240, 0.84) 58%, rgba(234, 235, 232, 0.78)),
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 7%, rgba(246, 246, 243, 0.88));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.88),
+      inset 0 -1px 0 rgba(22, 26, 30, 0.06),
+      inset 18px 0 32px -30px var(--total-edge-left),
+      inset -18px 0 32px -30px var(--total-edge-right),
+      0 0 0 1px var(--total-edge-soft),
+      -14px 0 44px -30px var(--total-glow-left),
+      14px 0 44px -30px var(--total-glow-right),
+      0 18px 54px rgba(22, 26, 30, 0.13);
+    -webkit-backdrop-filter: blur(30px) saturate(160%) brightness(1.045);
+    backdrop-filter: blur(30px) saturate(160%) brightness(1.045);
+    opacity: 1;
+    pointer-events: none;
+    transform: translateZ(0);
+    will-change: opacity;
+    transition: opacity 160ms var(--natural-stage-dissolve-curve);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open {
+    clip-path: inset(0 round 22px);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-preparing,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-preparing .natural-entry-stage-token,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-preparing .natural-entry-stage-content {
+    transition: none !important;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing {
+    border-radius: 18px;
+    clip-path: inset(
+      0
+      calc(100% - var(--natural-stage-anchor-x) - var(--natural-stage-anchor-width))
+      calc(100% - var(--natural-stage-anchor-height))
+      var(--natural-stage-anchor-x)
+      round 18px
+    );
+    opacity: 1;
+    transition:
+      clip-path 360ms var(--natural-stage-close-curve),
+      border-radius 360ms var(--natural-stage-close-curve);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading {
+    opacity: 1;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading .natural-entry-stage-shell,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading .natural-entry-stage-token {
+    opacity: 0;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing .natural-entry-stage-token {
+    opacity: 1;
+    overflow: visible;
+    text-overflow: clip;
+    transition:
+      left 360ms var(--natural-token-close-curve),
+      transform 360ms var(--natural-token-close-curve),
+      opacity 160ms ease;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage::before,
+  html[data-entry-mode="natural"] .natural-entry-stage::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    transition: opacity 160ms var(--natural-stage-dissolve-curve);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage::before {
+    inset: 1px 1px auto;
+    height: 48%;
+    border-radius: 21px 21px 45% 45%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.08) 56%, transparent);
+    opacity: 0.72;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage::after {
+    right: 18px;
+    bottom: 1px;
+    left: 18px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(62, 57, 52, 0.14), transparent);
+    opacity: 1;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading::before,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading::after {
+    opacity: 0;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-token {
+    position: absolute;
+    top: 0;
+    left: var(--natural-stage-anchor-x);
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    width: var(--natural-stage-anchor-width);
+    min-height: var(--natural-stage-anchor-height);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: color-mix(in srgb, var(--selected-family-text, var(--theme-color)) 88%, var(--ink));
+    padding: 2px 3px 0;
+    font-size: clamp(1.36rem, 6.3vw, 1.78rem);
+    font-weight: var(--fw-cjk-heavy);
+    letter-spacing: -0.035em;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(0);
+    transition:
+      left 420ms var(--natural-token-open-curve),
+      transform 420ms var(--natural-token-open-curve),
+      opacity 150ms ease;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open .natural-entry-stage-token {
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: calc(100% - 24px);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-token::after {
+    content: "";
+    position: absolute;
+    right: 9px;
+    bottom: 3px;
+    left: 9px;
+    height: 1px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 52%, transparent);
+    opacity: 0.48;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-token.is-amount {
+    font-family: var(--font-number);
+    font-weight: var(--fw-medium);
+    letter-spacing: -0.045em;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"].is-open .natural-entry-stage-token {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.94);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-content {
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    padding:
+      calc(var(--natural-stage-anchor-height) + 9px)
+      12px
+      12px;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition:
+      opacity 180ms ease 90ms,
+      transform 300ms var(--natural-stage-open-curve) 70ms;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open .natural-entry-stage-content {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* 切换编辑器时内容瞬时离场再淡入，配合舞台滑动形成连续形变。 */
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open .natural-entry-stage-content.is-swapping {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage [data-entry-editor] {
+    display: grid !important;
+    width: 100%;
+    margin: 0;
+    animation: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage [data-entry-editor] > legend,
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage [data-entry-editor] > .amount-heading,
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor] > span,
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] > span {
+    display: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .payer-field[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-picker[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-scope[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] {
+    grid-template-rows: minmax(60px, auto);
+    overflow: visible;
+    --amount-scale: 1;
+    transform: none;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .natural-entry-stage-content {
+    padding: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .amount-field {
+    justify-content: center;
+    min-height: 72px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 22px;
+    background: transparent;
+    box-shadow: none;
+    transition:
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .amount-field:focus-within {
+    box-shadow: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] input {
+    flex: 0 1 220px;
+    width: min(220px, calc(100% - 38px));
+    --input-scale: 1;
+    height: 70px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+    transform: scale(var(--input-scale));
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .currency-mark {
+    transform: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label.amount-active[data-entry-editor] input {
+    --input-scale: 1.018;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label.amount-active[data-entry-editor] .currency-mark {
+    transform: scale(1.035);
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .payer-field[data-entry-editor] {
+    gap: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-picker[data-entry-editor] {
+    gap: 0;
+    margin-inline: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-control-row {
+    margin-inline: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-scope-panel {
+    max-height: none;
+    margin-top: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor] input,
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] input {
+    min-height: 52px;
+    border-radius: 17px;
+  }
+
+  body.natural-entry-focus-open .mobile-submit-bar {
+    opacity: 0;
+    pointer-events: none;
+  }
+
 }

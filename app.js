@@ -2,10 +2,30 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-entry-mode-v20-20260728";
+const APP_VERSION = "journa-glass-soft-progressive-v37-20260728";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
+
+/* 渐进增强：能力探测通过后给 <html> 打 data-blur="soft"，把整块玻璃模糊拨到 iOS26-soft 档。
+   命中「降低透明度」偏好或不支持 backdrop-filter 时不开启（CSS 另有 reduced-transparency / @supports 兜底）。 */
+(function setupGlassEnhancement() {
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-transparency: reduce)").matches) return;
+    if (!window.CSS || !CSS.supports || !CSS.supports("backdrop-filter", "blur(1px)")) return;
+    var ua = navigator.userAgent;
+    var iOS = /iP(ad|hone|od)/.test(ua);
+    var iOSVer = 0;
+    if (iOS) {
+      var m = ua.match(/OS (\d+)_/);
+      if (m) iOSVer = parseInt(m[1], 10);
+    }
+    /* 桌面端直接上 soft；iOS 16+ 整块面板模糊稳定，仅增强非渐隐玻璃（渐隐层不消费 soft token） */
+    if (!iOS || iOSVer >= 16) {
+      document.documentElement.setAttribute("data-blur", "soft");
+    }
+  } catch (e) { /* 静默降级为基线玻璃 */ }
+})();
 const MOTION_DELAYS = {
   ledgerSettle: 1783,
   ledgerClearBase: 580,
@@ -27,6 +47,9 @@ const MOTION_DELAYS = {
   tokenFlight: 680,
   totalBloom: 460,
   catchPulse: 420,
+  naturalEntryStageShrink: 360,
+  naturalEntryStageDissolveStart: 280,
+  naturalEntryStageFade: 160,
   toast: 2600,
   toastWithAction: 5200,
 };
@@ -252,6 +275,10 @@ const elements = {
   naturalCategoryToken: document.querySelector("#naturalCategoryToken"),
   naturalNoteToken: document.querySelector("#naturalNoteToken"),
   naturalSplitToken: document.querySelector("#naturalSplitToken"),
+  naturalEntryFocusBackdrop: document.querySelector("#naturalEntryFocusBackdrop"),
+  naturalEntryStage: document.querySelector("#naturalEntryStage"),
+  naturalEntryStageToken: document.querySelector("#naturalEntryStageToken"),
+  naturalEntryStageContent: document.querySelector("#naturalEntryStageContent"),
   amountInput: document.querySelector("#amountInput"),
   categoryInput: document.querySelector("#categoryInput"),
   dateInput: document.querySelector("#dateInput"),
@@ -354,6 +381,13 @@ let activeSplitFamilyIds = state.families.map((family) => family.id);
 let activeSplitAmounts = {};
 let splitScopeOpen = false;
 let activeEntryEditor = "amount";
+let naturalEntryStageOpen = false;
+let naturalEntryStageEditor = null;
+let naturalEntryStageAnchor = null;
+let naturalEntryStageCloseTimer = 0;
+let naturalEntryStagePositionFrame = 0;
+let naturalEntryStageRunId = 0;
+const naturalEntryEditorHomes = new Map();
 let splitScopeCloseTimer = 0;
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
@@ -2275,6 +2309,193 @@ function isNaturalEntryLayout() {
     && window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
 }
 
+function getNaturalEntryToken(editor) {
+  return elements.naturalEntryFlow?.querySelector(`[data-entry-target="${editor}"]`) || null;
+}
+
+function getNaturalEntryEditor(editor) {
+  if (naturalEntryStageEditor?.dataset.entryEditor === editor) return naturalEntryStageEditor;
+  return elements.expenseForm.querySelector(`[data-entry-editor="${editor}"]`);
+}
+
+function rememberNaturalEntryEditorHome(editor) {
+  if (!editor || naturalEntryEditorHomes.has(editor)) return;
+  const marker = document.createComment(`natural-entry-${editor.dataset.entryEditor || "editor"}-home`);
+  editor.before(marker);
+  naturalEntryEditorHomes.set(editor, marker);
+}
+
+function restoreNaturalEntryEditorHome(editor) {
+  if (!editor) return;
+  const marker = naturalEntryEditorHomes.get(editor);
+  if (marker?.parentNode) marker.parentNode.insertBefore(editor, marker.nextSibling);
+}
+
+function getNaturalEntryStageWidth(editor, anchorWidth) {
+  const viewportWidth = window.visualViewport?.width || window.innerWidth;
+  const preferred = editor === "split" ? 370 : editor === "payer" || editor === "category" ? 356 : 328;
+  return Math.max(anchorWidth, Math.min(preferred, viewportWidth - 24));
+}
+
+function positionNaturalEntryStage() {
+  naturalEntryStagePositionFrame = 0;
+  if (!naturalEntryStageOpen || !naturalEntryStageAnchor || elements.naturalEntryStage.hidden) return;
+  if (!isNaturalEntryLayout()) {
+    closeNaturalEntryStage({ immediate: true });
+    return;
+  }
+
+  const anchorRect = naturalEntryStageAnchor.getBoundingClientRect();
+  const viewport = window.visualViewport;
+  const viewportLeft = viewport?.offsetLeft || 0;
+  const viewportTop = viewport?.offsetTop || 0;
+  const viewportWidth = viewport?.width || window.innerWidth;
+  const viewportHeight = viewport?.height || window.innerHeight;
+  const edge = 12;
+  const width = getNaturalEntryStageWidth(activeEntryEditor, anchorRect.width);
+  const left = Math.min(
+    Math.max(anchorRect.left, viewportLeft + edge),
+    viewportLeft + viewportWidth - width - edge,
+  );
+  const top = Math.max(anchorRect.top, viewportTop + edge);
+  const maxHeight = Math.max(132, viewportTop + viewportHeight - top - edge);
+
+  elements.naturalEntryStage.style.setProperty("--natural-stage-left", `${left}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-top", `${top}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-width", `${width}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-max-height", `${maxHeight}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-anchor-x", `${Math.max(0, anchorRect.left - left)}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-anchor-width", `${anchorRect.width}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-anchor-height", `${anchorRect.height}px`);
+  elements.naturalEntryStage.style.setProperty("--natural-stage-origin-x", `${Math.max(0, anchorRect.left - left) + (anchorRect.width / 2)}px`);
+}
+
+function scheduleNaturalEntryStagePosition() {
+  if (naturalEntryStagePositionFrame || !naturalEntryStageOpen) return;
+  naturalEntryStagePositionFrame = window.requestAnimationFrame(positionNaturalEntryStage);
+}
+
+function syncNaturalEntryStageToken() {
+  if (!naturalEntryStageOpen || !naturalEntryStageAnchor) return;
+  elements.naturalEntryStageToken.textContent = naturalEntryStageAnchor.textContent;
+  elements.naturalEntryStageToken.classList.toggle("is-amount", activeEntryEditor === "amount");
+}
+
+function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
+  const editor = naturalEntryStageEditor;
+  const anchor = naturalEntryStageAnchor;
+  restoreNaturalEntryEditorHome(editor);
+  anchor?.classList.remove("is-stage-anchor", "is-stage-handoff");
+  elements.naturalEntryStage.classList.remove("is-preparing", "is-closing", "is-fading");
+  elements.naturalEntryStage.hidden = true;
+  elements.naturalEntryFocusBackdrop.hidden = true;
+  elements.naturalEntryStage.dataset.editor = "";
+  naturalEntryStageEditor = null;
+  naturalEntryStageAnchor = null;
+  document.body.classList.remove("natural-entry-focus-open");
+  renderNaturalEntry();
+  if (restoreFocus && anchor?.isConnected) anchor.focus({ preventScroll: true });
+}
+
+function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}) {
+  if (!naturalEntryStageOpen && !naturalEntryStageEditor) return;
+  naturalEntryStageOpen = false;
+  const runId = ++naturalEntryStageRunId;
+  window.clearTimeout(naturalEntryStageCloseTimer);
+  window.cancelAnimationFrame(naturalEntryStagePositionFrame);
+  naturalEntryStagePositionFrame = 0;
+  elements.naturalEntryStage.classList.add("is-closing");
+  elements.naturalEntryStage.classList.remove("is-fading");
+  elements.naturalEntryStage.classList.remove("is-open");
+  elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+  renderNaturalEntry();
+
+  if (immediate || prefersReducedMotion()) {
+    naturalEntryStageCloseTimer = window.setTimeout(() => {
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      finishNaturalEntryStageClose({ restoreFocus });
+    }, 0);
+    return;
+  }
+
+  naturalEntryStageCloseTimer = window.setTimeout(() => {
+    if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+    naturalEntryStageAnchor?.classList.add("is-stage-handoff");
+    elements.naturalEntryStage.classList.add("is-fading");
+    naturalEntryStageCloseTimer = window.setTimeout(() => {
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      finishNaturalEntryStageClose({ restoreFocus });
+    }, MOTION_DELAYS.naturalEntryStageFade);
+  }, MOTION_DELAYS.naturalEntryStageDissolveStart);
+}
+
+function openNaturalEntryStage(editor) {
+  const anchor = getNaturalEntryToken(editor);
+  const panel = getNaturalEntryEditor(editor);
+  if (!anchor || !panel) return false;
+
+  ++naturalEntryStageRunId;
+  window.clearTimeout(naturalEntryStageCloseTimer);
+
+  // Stage already open on this exact editor: keep it, no re-trigger.
+  if (naturalEntryStageOpen && naturalEntryStageEditor === panel) {
+    scheduleNaturalEntryStagePosition();
+    return true;
+  }
+
+  // Stage open on a different editor: morph to the new token instead of a hard
+  // cut. The stage slides to the new anchor while clip-path re-anchors and the
+  // content cross-fades, so the editor reads as having moved between words.
+  if (naturalEntryStageOpen && naturalEntryStageEditor && naturalEntryStageEditor !== panel) {
+    restoreNaturalEntryEditorHome(naturalEntryStageEditor);
+    naturalEntryStageAnchor?.classList.remove("is-stage-anchor");
+    naturalEntryStageEditor = panel;
+    naturalEntryStageAnchor = anchor;
+    rememberNaturalEntryEditorHome(panel);
+    anchor.classList.add("is-stage-anchor");
+    elements.naturalEntryStage.dataset.editor = editor;
+    elements.naturalEntryStageContent.append(panel);
+    syncNaturalEntryStageToken();
+    elements.naturalEntryStageContent.classList.add("is-swapping");
+    void elements.naturalEntryStageContent.offsetWidth;
+    elements.naturalEntryStageContent.classList.remove("is-swapping");
+    positionNaturalEntryStage();
+    window.requestAnimationFrame(scheduleNaturalEntryStagePosition);
+    return true;
+  }
+
+  rememberNaturalEntryEditorHome(panel);
+  naturalEntryStageOpen = true;
+  naturalEntryStageEditor = panel;
+  naturalEntryStageAnchor = anchor;
+  elements.naturalEntryStage.classList.add("is-preparing");
+  elements.naturalEntryStage.classList.remove("is-open", "is-closing", "is-fading");
+  anchor.classList.remove("is-stage-handoff");
+  anchor.classList.add("is-stage-anchor");
+  elements.naturalEntryStage.dataset.editor = editor;
+  elements.naturalEntryStageContent.append(panel);
+  elements.naturalEntryStage.hidden = false;
+  elements.naturalEntryFocusBackdrop.hidden = false;
+  document.body.classList.add("natural-entry-focus-open");
+  syncNaturalEntryStageToken();
+  positionNaturalEntryStage();
+
+  elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+  // The stage is reused between editors. Commit its new anchor geometry as a
+  // transition-free frame first so WebKit cannot interpolate from the previous
+  // editor or coalesce the source and destination into one flashing frame.
+  void elements.naturalEntryStage.offsetWidth;
+  elements.naturalEntryStage.classList.remove("is-preparing");
+  void elements.naturalEntryStage.offsetWidth;
+  window.requestAnimationFrame(() => {
+    if (!naturalEntryStageOpen || naturalEntryStageEditor !== panel) return;
+    elements.naturalEntryStage.classList.add("is-open");
+    elements.naturalEntryFocusBackdrop.classList.add("is-open");
+    scheduleNaturalEntryStagePosition();
+  });
+  return true;
+}
+
 function getEntryMode() {
   return localStorage.getItem(ENTRY_MODE_STORAGE_KEY) === "standard" ? "standard" : "natural";
 }
@@ -2312,7 +2533,7 @@ function renderNaturalEntry() {
   const note = elements.noteInput.value.trim();
   const date = normalizeDate(elements.dateInput.value, state.activeDate);
 
-  elements.expenseForm.dataset.activeEntryEditor = activeEntryEditor;
+  elements.expenseForm.dataset.activeEntryEditor = naturalEntryStageOpen ? activeEntryEditor : "";
   elements.naturalDateToken.textContent = formatNaturalEntryDate(date);
   elements.naturalPayerToken.textContent = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭";
   elements.naturalAmountToken.textContent = amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00";
@@ -2322,10 +2543,12 @@ function renderNaturalEntry() {
   elements.naturalSplitToken.textContent = formatNaturalEntrySplit();
 
   elements.naturalEntryFlow.querySelectorAll("[data-entry-target]").forEach((button) => {
-    const expanded = button.dataset.entryTarget === activeEntryEditor;
+    const expanded = naturalEntryStageOpen && button.dataset.entryTarget === activeEntryEditor;
     button.classList.toggle("is-active", expanded);
     button.setAttribute("aria-expanded", String(expanded));
   });
+  syncNaturalEntryStageToken();
+  scheduleNaturalEntryStagePosition();
 }
 
 function getNaturalEntryFocusTarget(editor) {
@@ -2356,17 +2579,13 @@ function setActiveEntryEditor(editor, { focus = false, scroll = false } = {}) {
     splitScopeOpen = true;
     renderSplitScope();
   }
+  if (isNaturalEntryLayout()) openNaturalEntryStage(requestedEditor);
   renderNaturalEntry();
   if (!isNaturalEntryLayout() || (!focus && !scroll)) return;
 
   window.requestAnimationFrame(() => {
-    const panel = elements.expenseForm.querySelector(`[data-entry-editor="${requestedEditor}"]`);
-    if (scroll) {
-      panel?.scrollIntoView({
-        block: "nearest",
-        behavior: prefersReducedMotion() ? "auto" : "smooth",
-      });
-    }
+    const panel = getNaturalEntryEditor(requestedEditor);
+    if (scroll && !naturalEntryStageOpen) panel?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
     if (focus) getNaturalEntryFocusTarget(requestedEditor)?.focus({ preventScroll: true });
   });
 }
@@ -3935,6 +4154,7 @@ function handleEntryModeSelection(event) {
   const nextMode = button.dataset.entryModeChoice === "standard" ? "standard" : "natural";
   if (nextMode === getEntryMode()) return;
 
+  closeNaturalEntryStage({ immediate: true });
   localStorage.setItem(ENTRY_MODE_STORAGE_KEY, nextMode);
   document.documentElement.dataset.entryMode = nextMode;
   activeEntryEditor = "amount";
@@ -4112,19 +4332,20 @@ function clearLedgerFilters() {
 
 function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
   const scrollOptions = { block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" };
-  if (isNaturalEntryLayout() && naturalEntryEditors.has(target)) {
+  const usesNaturalStage = isNaturalEntryLayout() && naturalEntryEditors.has(target);
+  if (usesNaturalStage) {
     setActiveEntryEditor(target);
   }
 
   if (target === "payer") {
-    elements.payerField.scrollIntoView(scrollOptions);
+    if (!usesNaturalStage) elements.payerField.scrollIntoView(scrollOptions);
     elements.familyRoster.querySelector(".family-tag")?.focus();
     elements.payerError.textContent = "请选择付款家庭。";
     return;
   }
 
   if (target === "amount") {
-    elements.amountLabel.scrollIntoView({ block: "center", behavior: "auto" });
+    if (!usesNaturalStage) elements.amountLabel.scrollIntoView({ block: "center", behavior: "auto" });
     elements.amountInput.focus();
     elements.formError.textContent = "请输入金额。";
     return;
@@ -4135,7 +4356,7 @@ function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
       splitScopeOpen = true;
       smoothSplitScopeResize(renderSplitScope);
     }
-    elements.splitScope.scrollIntoView(scrollOptions);
+    if (!usesNaturalStage) elements.splitScope.scrollIntoView(scrollOptions);
     window.setTimeout(() => {
       const splitInput = elements.splitCustomAmounts.querySelector("[data-split-amount]");
       if (splitInput) {
@@ -4149,7 +4370,7 @@ function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
   }
 
   if (target === "category") {
-    elements.categoryChips.scrollIntoView(scrollOptions);
+    if (!usesNaturalStage) elements.categoryChips.scrollIntoView(scrollOptions);
     elements.categoryChips.querySelector(".selectable-category-chip")?.focus();
     elements.formError.textContent = "请选择类别。";
   }
@@ -4369,6 +4590,7 @@ function handleExpenseSubmit(event) {
     return;
   }
 
+  closeNaturalEntryStage({ immediate: true });
   const expenseId = editingExpenseId || createId("expense");
   const operatorFamilyId = getOperatorFamilyId();
   const operator = operatorFamilyId ? { familyId: operatorFamilyId } : null;
@@ -4601,6 +4823,9 @@ function handleCategorySelection(event) {
   renderNaturalEntry();
   renderMobileSubmitBar();
   saveState();
+  if (naturalEntryStageOpen && activeEntryEditor === "category") {
+    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 150);
+  }
 }
 
 function handleSplitScopeToggle() {
@@ -4628,6 +4853,10 @@ function handleSplitScopeClick(event) {
     applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? previousMode : "", "is-deactivating");
     renderNaturalEntry();
     renderMobileSubmitBar();
+    scheduleNaturalEntryStagePosition();
+    if (naturalEntryStageOpen && activeEntryEditor === "split" && activeSplitMode === "all") {
+      window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 150);
+    }
     return;
   }
 
@@ -4648,6 +4877,7 @@ function handleSplitScopeClick(event) {
   applyChoiceStateClass("[data-split-family]", "data-split-family", familyId, activeSplitFamilyIds.includes(familyId) ? "is-activating" : "is-deactivating");
   renderNaturalEntry();
   renderMobileSubmitBar();
+  scheduleNaturalEntryStagePosition();
 }
 
 // 高度动画直接做在面板自己身上：面板逐帧变高/变矮，
@@ -6152,6 +6382,9 @@ function handleFamilySelection(event) {
   renderMobileSubmitBar();
   updateAmountMotionState();
   saveState();
+  if (naturalEntryStageOpen && activeEntryEditor === "payer") {
+    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 150);
+  }
 }
 
 function markPayerActivating(payerId) {
@@ -6837,6 +7070,7 @@ function escapeHtml(value) {
 
 elements.expenseForm.addEventListener("submit", handleExpenseSubmit);
 elements.naturalEntryFlow?.addEventListener("click", handleNaturalEntryClick);
+elements.naturalEntryFocusBackdrop?.addEventListener("click", () => closeNaturalEntryStage({ restoreFocus: true }));
 elements.categoryAddConfirm?.addEventListener("click", handleInlineCategoryAdd);
 elements.newCategoryInput.addEventListener("input", updateCategoryAddConfirmState);
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
@@ -6845,6 +7079,10 @@ elements.categoryAddFab?.addEventListener("click", toggleCategoryAdd);
 elements.categoryChips.addEventListener("scroll", scheduleCategoryEdgeFades, { passive: true });
 setupCategoryOverscroll(elements.categoryChips);
 window.addEventListener("resize", scheduleCategoryEdgeFades);
+window.addEventListener("resize", scheduleNaturalEntryStagePosition);
+window.addEventListener("scroll", scheduleNaturalEntryStagePosition, { passive: true });
+window.visualViewport?.addEventListener("resize", scheduleNaturalEntryStagePosition);
+window.visualViewport?.addEventListener("scroll", scheduleNaturalEntryStagePosition);
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
 elements.splitScopePanel.addEventListener("input", handleSplitAmountInput);
@@ -6975,6 +7213,9 @@ elements.dateInput.addEventListener("change", () => {
   renderNaturalEntry();
   renderMobileSubmitBar();
   saveState();
+  if (naturalEntryStageOpen && activeEntryEditor === "date") {
+    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 120);
+  }
 });
 elements.ledgerFamilyFilter.addEventListener("change", () => {
   state.ledgerFamilyFilter = normalizePayerId(elements.ledgerFamilyFilter.value);
@@ -7003,6 +7244,10 @@ window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
+    if (naturalEntryStageOpen) {
+      trapFocus(event, elements.naturalEntryStage);
+      return;
+    }
     if (!elements.operatorModalView.hidden) {
       trapFocus(event, elements.operatorModalView);
       return;
@@ -7026,6 +7271,10 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (event.key !== "Escape") return;
+  if (naturalEntryStageOpen) {
+    closeNaturalEntryStage({ restoreFocus: true });
+    return;
+  }
   if (!elements.operatorModalView.hidden) return;
   if (!elements.confirmView.hidden) {
     closeConfirmDialog(false);
