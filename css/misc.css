@@ -1426,6 +1426,74 @@ label,
   box-shadow: var(--focus-ring);
 }
 
+.settings-entry-mode {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.settings-entry-mode > span {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-entry-mode > span strong,
+.settings-entry-mode-choice strong {
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.settings-entry-mode > span small,
+.settings-entry-mode-choice small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: var(--fw-bold);
+}
+
+.settings-entry-mode-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-entry-mode-choice {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: var(--control-radius-large);
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--glass-bg-strong) 70%, transparent);
+  box-shadow: var(--glass-edge), 0 9px 22px -20px rgba(22, 26, 30, 0.30);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--settle),
+    background-color var(--motion-fast) var(--settle),
+    box-shadow var(--motion-fast) var(--settle),
+    transform var(--motion-fast) var(--settle);
+}
+
+.settings-entry-mode-choice.is-selected {
+  border-color: color-mix(in srgb, var(--theme-color) 32%, var(--line));
+  background: color-mix(in srgb, var(--theme-color) 10%, var(--glass-bg-strong));
+  box-shadow:
+    var(--glass-edge),
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 12%, transparent),
+    0 12px 26px -20px color-mix(in srgb, var(--theme-color) 56%, transparent);
+}
+
+.settings-entry-mode-choice:active {
+  transform: scale(0.985);
+}
+
+.settings-entry-mode-choice:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
 .ledger-manager-list {
   display: grid;
   gap: 10px;

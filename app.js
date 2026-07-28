@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-natural-entry-v19-20260728";
+const APP_VERSION = "journa-entry-mode-v20-20260728";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -55,6 +55,7 @@ const defaultFamilyVisuals = {
    这里只存 id/名称/亮色 swatch 供设置面板渲染。偏好设备级存 localStorage。 */
 const THEME_STORAGE_KEY = "travel-ledger-theme";
 const MONEY_DECIMALS_STORAGE_KEY = "travel-ledger-show-money-decimals";
+const ENTRY_MODE_STORAGE_KEY = "travel-ledger-entry-mode";
 const THEME_PRESETS = [
   { id: "clay", name: "陶土橙粉", color: "#9d5745" },
   { id: "pine", name: "墨松绿", color: "#176c5f" },
@@ -287,6 +288,7 @@ const elements = {
   settingsOperatorForm: document.querySelector("#settingsOperatorForm"),
   settingsOperatorFamilyList: document.querySelector("#settingsOperatorFamilyList"),
   settingsMoneyDecimalsInput: document.querySelector("#settingsMoneyDecimalsInput"),
+  settingsEntryModeList: document.querySelector("#settingsEntryModeList"),
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
   operatorModalFamilyList: document.querySelector("#operatorModalFamilyList"),
@@ -2269,7 +2271,12 @@ function renderFormOptions() {
 const naturalEntryEditors = new Set(["date", "payer", "amount", "category", "note", "split"]);
 
 function isNaturalEntryLayout() {
-  return window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  return getEntryMode() === "natural"
+    && window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+}
+
+function getEntryMode() {
+  return localStorage.getItem(ENTRY_MODE_STORAGE_KEY) === "standard" ? "standard" : "natural";
 }
 
 function formatNaturalEntryDate(date) {
@@ -3087,6 +3094,7 @@ function renderSettings() {
   elements.currentLedgerNameInput.value = state.name;
   renderOperatorFamilyChoices(elements.settingsOperatorFamilyList);
   elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) !== "false";
+  renderEntryModeSettings();
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
 
@@ -3161,6 +3169,16 @@ function renderSettings() {
       <strong>${escapeHtml(syncSummary.detail)}</strong>
     </div>
   `;
+}
+
+function renderEntryModeSettings() {
+  const activeMode = getEntryMode();
+  document.documentElement.dataset.entryMode = activeMode;
+  elements.settingsEntryModeList?.querySelectorAll("[data-entry-mode-choice]").forEach((button) => {
+    const isSelected = button.dataset.entryModeChoice === activeMode;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-checked", String(isSelected));
+  });
 }
 
 function getActiveThemeId() {
@@ -3908,6 +3926,21 @@ function renderSettlementItem(settlement, index, enterClass) {
 function handleMoneyDecimalsChange() {
   localStorage.setItem(MONEY_DECIMALS_STORAGE_KEY, String(elements.settingsMoneyDecimalsInput.checked));
   render();
+}
+
+function handleEntryModeSelection(event) {
+  const button = event.target.closest("[data-entry-mode-choice]");
+  if (!button) return;
+
+  const nextMode = button.dataset.entryModeChoice === "standard" ? "standard" : "natural";
+  if (nextMode === getEntryMode()) return;
+
+  localStorage.setItem(ENTRY_MODE_STORAGE_KEY, nextMode);
+  document.documentElement.dataset.entryMode = nextMode;
+  activeEntryEditor = "amount";
+  renderEntryModeSettings();
+  renderNaturalEntry();
+  showToast({ message: nextMode === "natural" ? "已切换为自然语言录入" : "已切换为标准录入" });
 }
 
 function renderLedger({ animateFinancialChanges = false } = {}) {
@@ -6830,6 +6863,7 @@ elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryC
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
 elements.settingsOperatorFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
+elements.settingsEntryModeList?.addEventListener("click", handleEntryModeSelection);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.operatorModalFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 /* Operator modal 背景 点击可关闭：原实现无关闭路径，用户被强制选家庭才能退出。

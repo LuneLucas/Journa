@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/base.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-natural-entry-v19-20260728">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/base.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-entry-mode-v20-20260728">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-entry-mode-v20-20260728">
     <script>
       // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
       // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
@@ -66,7 +66,11 @@
       try {
         var savedTheme = localStorage.getItem('travel-ledger-theme');
         if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-      } catch (e) {}
+        var savedEntryMode = localStorage.getItem('travel-ledger-entry-mode');
+        document.documentElement.dataset.entryMode = savedEntryMode === 'standard' ? 'standard' : 'natural';
+      } catch (e) {
+        document.documentElement.dataset.entryMode = 'natural';
+      }
     </script>
   </head>
   <body class="mobile-panel-data">
@@ -338,6 +342,22 @@
                 </span>
                 <input id="settingsMoneyDecimalsInput" type="checkbox" role="switch" checked />
               </label>
+              <div class="settings-entry-mode">
+                <span>
+                  <strong>录入方式</strong>
+                  <small>自然语言更轻量，标准模式一次展示全部字段</small>
+                </span>
+                <div class="settings-entry-mode-list" id="settingsEntryModeList" role="radiogroup" aria-label="选择记账录入方式">
+                  <button class="settings-entry-mode-choice" type="button" role="radio" data-entry-mode-choice="natural" aria-checked="true">
+                    <strong>自然语言</strong>
+                    <small>点按句子修改</small>
+                  </button>
+                  <button class="settings-entry-mode-choice" type="button" role="radio" data-entry-mode-choice="standard" aria-checked="false">
+                    <strong>标准</strong>
+                    <small>完整表单</small>
+                  </button>
+                </div>
+              </div>
             </section>
 
             <details class="settings-panel personalization-panel settings-mobile-group" open>
@@ -599,7 +619,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-natural-entry-v19-20260728"></script>
+    <script src="./app.js?v=journa-entry-mode-v20-20260728"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

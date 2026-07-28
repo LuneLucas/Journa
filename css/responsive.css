@@ -3165,7 +3165,7 @@
 
 /* ── 移动端自然语言记账：摘要常驻，一次只展开一组原有控件 ── */
 @media (max-width: 820px), (pointer: coarse) {
-  .app-view[data-mobile-panel="entry"] .entry-panel {
+  html[data-entry-mode="natural"] .app-view[data-mobile-panel="entry"] .entry-panel {
     padding: 18px 16px 16px;
     background:
       linear-gradient(155deg, rgba(255, 255, 255, 0.88), rgba(249, 248, 246, 0.74)),
@@ -3175,7 +3175,7 @@
       0 24px 70px -42px rgba(22, 26, 30, 0.30);
   }
 
-  .entry-panel .section-heading {
+  html[data-entry-mode="natural"] .entry-panel .section-heading {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -3183,12 +3183,12 @@
     margin-bottom: 20px;
   }
 
-  .entry-panel .section-heading h2 {
+  html[data-entry-mode="natural"] .entry-panel .section-heading h2 {
     font-size: clamp(1.46rem, 6.4vw, 1.82rem);
     letter-spacing: -0.03em;
   }
 
-  .natural-entry-hint {
+  html[data-entry-mode="natural"] .natural-entry-hint {
     display: block;
     margin: 0;
     color: color-mix(in srgb, var(--muted) 78%, transparent);
@@ -3198,19 +3198,19 @@
     white-space: nowrap;
   }
 
-  .expense-form {
+  html[data-entry-mode="natural"] .expense-form {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
 
-  .natural-entry-flow {
+  html[data-entry-mode="natural"] .natural-entry-flow {
     display: grid;
     grid-column: 1 / -1;
     gap: clamp(14px, 4.8vw, 22px);
     padding: 2px 0 8px;
   }
 
-  .natural-entry-line {
+  html[data-entry-mode="natural"] .natural-entry-line {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -3224,7 +3224,7 @@
     line-height: 1.42;
   }
 
-  .natural-entry-token {
+  html[data-entry-mode="natural"] .natural-entry-token {
     appearance: none;
     display: inline-flex;
     align-items: center;
@@ -3248,53 +3248,53 @@
       transform var(--motion-fast) var(--settle);
   }
 
-  .natural-entry-token:active {
+  html[data-entry-mode="natural"] .natural-entry-token:active {
     transform: scale(0.98);
   }
 
-  .natural-entry-token.is-active {
+  html[data-entry-mode="natural"] .natural-entry-token.is-active {
     border-bottom-color: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 82%, transparent);
     background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 8%, transparent);
     color: color-mix(in srgb, var(--selected-family-text, var(--theme-color)) 88%, var(--ink));
   }
 
-  .natural-entry-token:focus-visible {
+  html[data-entry-mode="natural"] .natural-entry-token:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 28%, transparent);
     outline-offset: 3px;
   }
 
-  .natural-entry-amount {
+  html[data-entry-mode="natural"] .natural-entry-amount {
     font-family: var(--font-number);
     font-weight: var(--fw-medium);
     letter-spacing: -0.045em;
   }
 
-  .natural-entry-note {
+  html[data-entry-mode="natural"] .natural-entry-note {
     max-width: min(12ch, 52vw);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .natural-entry-split {
+  html[data-entry-mode="natural"] .natural-entry-split {
     max-width: calc(100% - 2.2rem);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .expense-form [data-entry-editor] {
+  html[data-entry-mode="natural"] .expense-form [data-entry-editor] {
     display: none;
     grid-column: 1 / -1;
     min-width: 0;
   }
 
-  .expense-form[data-active-entry-editor="payer"] [data-entry-editor="payer"],
-  .expense-form[data-active-entry-editor="amount"] [data-entry-editor="amount"],
-  .expense-form[data-active-entry-editor="category"] [data-entry-editor="category"],
-  .expense-form[data-active-entry-editor="split"] [data-entry-editor="split"],
-  .expense-form[data-active-entry-editor="date"] [data-entry-editor="date"],
-  .expense-form[data-active-entry-editor="note"] [data-entry-editor="note"] {
+  html[data-entry-mode="natural"] .expense-form[data-active-entry-editor="payer"] [data-entry-editor="payer"],
+  html[data-entry-mode="natural"] .expense-form[data-active-entry-editor="amount"] [data-entry-editor="amount"],
+  html[data-entry-mode="natural"] .expense-form[data-active-entry-editor="category"] [data-entry-editor="category"],
+  html[data-entry-mode="natural"] .expense-form[data-active-entry-editor="split"] [data-entry-editor="split"],
+  html[data-entry-mode="natural"] .expense-form[data-active-entry-editor="date"] [data-entry-editor="date"],
+  html[data-entry-mode="natural"] .expense-form[data-active-entry-editor="note"] [data-entry-editor="note"] {
     display: grid;
     animation: natural-entry-editor-in 260ms var(--settle) both;
   }
@@ -3311,14 +3311,14 @@
     }
   }
 
-  .expense-form [data-entry-editor] > legend,
-  .expense-form [data-entry-editor] > .amount-heading,
-  .expense-form .date-label[data-entry-editor] > span,
-  .expense-form .note-label[data-entry-editor] > span {
+  html[data-entry-mode="natural"] .expense-form [data-entry-editor] > legend,
+  html[data-entry-mode="natural"] .expense-form [data-entry-editor] > .amount-heading,
+  html[data-entry-mode="natural"] .expense-form .date-label[data-entry-editor] > span,
+  html[data-entry-mode="natural"] .expense-form .note-label[data-entry-editor] > span {
     display: none;
   }
 
-  .expense-form .amount-label[data-entry-editor] {
+  html[data-entry-mode="natural"] .expense-form .amount-label[data-entry-editor] {
     grid-template-rows: minmax(72px, 1fr);
     min-height: 102px;
     margin: 2px 0 0;
@@ -3326,46 +3326,46 @@
     border-radius: 28px;
   }
 
-  .expense-form .amount-label[data-entry-editor] .amount-field {
+  html[data-entry-mode="natural"] .expense-form .amount-label[data-entry-editor] .amount-field {
     min-height: 72px;
   }
 
-  .expense-form .payer-field[data-entry-editor] {
+  html[data-entry-mode="natural"] .expense-form .payer-field[data-entry-editor] {
     gap: 0;
     padding-top: 2px;
   }
 
-  .expense-form .payer-field[data-entry-editor] .field-error {
+  html[data-entry-mode="natural"] .expense-form .payer-field[data-entry-editor] .field-error {
     margin-top: 4px;
   }
 
-  .expense-form .category-picker[data-entry-editor] {
+  html[data-entry-mode="natural"] .expense-form .category-picker[data-entry-editor] {
     gap: 0;
     padding-top: 2px;
   }
 
-  .expense-form .split-scope[data-entry-editor] {
+  html[data-entry-mode="natural"] .expense-form .split-scope[data-entry-editor] {
     padding-top: 0;
   }
 
-  .expense-form .split-scope[data-entry-editor] > .split-scope-toggle {
+  html[data-entry-mode="natural"] .expense-form .split-scope[data-entry-editor] > .split-scope-toggle {
     display: none;
   }
 
-  .expense-form .split-scope[data-entry-editor] > .split-scope-panel {
+  html[data-entry-mode="natural"] .expense-form .split-scope[data-entry-editor] > .split-scope-panel {
     margin-top: 0;
   }
 
-  .expense-form .date-label[data-entry-editor],
-  .expense-form .note-label[data-entry-editor] {
+  html[data-entry-mode="natural"] .expense-form .date-label[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .note-label[data-entry-editor] {
     grid-template-rows: auto;
     grid-column: 1 / -1;
     gap: 0;
     padding-top: 2px;
   }
 
-  .expense-form .date-label[data-entry-editor] input,
-  .expense-form .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .expense-form .date-label[data-entry-editor] input,
+  html[data-entry-mode="natural"] .expense-form .note-label[data-entry-editor] input {
     width: 100%;
     min-height: 50px;
     max-height: none;
@@ -3373,8 +3373,8 @@
     padding-inline: 15px;
   }
 
-  .expense-form .edit-banner,
-  .expense-form .form-error {
+  html[data-entry-mode="natural"] .expense-form .edit-banner,
+  html[data-entry-mode="natural"] .expense-form .form-error {
     grid-column: 1 / -1;
   }
 }
