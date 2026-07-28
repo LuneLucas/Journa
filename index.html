@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/base.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-settlement-number-scramble-v18-20260726">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-settlement-number-scramble-v18-20260726">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/base.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-natural-entry-v19-20260728">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-natural-entry-v19-20260728">
     <script>
       // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
       // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
@@ -122,17 +122,38 @@
         <div class="workspace">
           <section class="entry-panel" aria-label="记一笔账">
             <div class="section-heading">
-              <h2>记一笔账</h2>
+              <h2>这笔账</h2>
+              <p class="natural-entry-hint">点按高亮文字修改</p>
             </div>
 
-            <form id="expenseForm" class="expense-form" novalidate>
-              <fieldset class="payer-field full-row" id="payerField">
+            <form id="expenseForm" class="expense-form" data-active-entry-editor="amount" novalidate>
+              <div class="natural-entry-flow full-row" id="naturalEntryFlow" aria-label="账单内容摘要">
+                <p class="natural-entry-line">
+                  <button class="natural-entry-token" id="naturalDateToken" type="button" data-entry-target="date" aria-expanded="false">今天</button>
+                  <span aria-hidden="true">，</span>
+                  <button class="natural-entry-token" id="naturalPayerToken" type="button" data-entry-target="payer" aria-expanded="false">付款家庭</button>
+                  <span>付了</span>
+                  <button class="natural-entry-token natural-entry-amount" id="naturalAmountToken" type="button" data-entry-target="amount" aria-expanded="true">¥ 0.00</button>
+                </p>
+                <p class="natural-entry-line">
+                  <span>用于</span>
+                  <button class="natural-entry-token" id="naturalCategoryToken" type="button" data-entry-target="category" aria-expanded="false">类别</button>
+                  <span aria-hidden="true">·</span>
+                  <button class="natural-entry-token natural-entry-note" id="naturalNoteToken" type="button" data-entry-target="note" aria-expanded="false">备注可选</button>
+                </p>
+                <p class="natural-entry-line">
+                  <span>由</span>
+                  <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" aria-expanded="false">全部家庭按人数分摊</button>
+                </p>
+              </div>
+
+              <fieldset class="payer-field full-row" id="payerField" data-entry-editor="payer">
                 <legend>付款家庭</legend>
                 <div id="familyRoster" class="family-roster" role="radiogroup" aria-label="选择付款家庭"></div>
                 <p class="field-error" id="payerError" role="alert"></p>
               </fieldset>
 
-              <label class="amount-label full-row" id="amountLabel">
+              <label class="amount-label full-row" id="amountLabel" data-entry-editor="amount">
                 <span class="amount-heading">
                   <span>金额</span>
                   <small class="amount-auto-badge">自动汇总分摊金额</small>
@@ -143,7 +164,7 @@
                 </span>
               </label>
 
-              <fieldset class="category-picker full-row">
+              <fieldset class="category-picker full-row" data-entry-editor="category">
                 <legend>类别</legend>
                 <input id="categoryInput" name="category" type="hidden" />
                 <div class="category-control-row">
@@ -162,7 +183,7 @@
                 </div>
               </fieldset>
 
-              <section class="split-scope full-row" id="splitScope" aria-label="分摊范围">
+              <section class="split-scope full-row" id="splitScope" data-entry-editor="split" aria-label="分摊范围">
                 <button class="split-scope-toggle" id="splitScopeToggle" type="button" aria-expanded="false" aria-controls="splitScopePanel">
                   <span>分摊范围</span>
                   <strong id="splitScopeSummary">全部家庭 · 按人数</strong>
@@ -176,12 +197,12 @@
                 </div>
               </section>
 
-              <label class="date-label">
+              <label class="date-label" data-entry-editor="date">
                 <span>日期</span>
                 <input id="dateInput" name="date" type="date" />
               </label>
 
-              <label class="note-label">
+              <label class="note-label" data-entry-editor="note">
                 <span>备注</span>
                 <input id="noteInput" name="note" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" placeholder="例如：高铁票、晚餐、酒店" />
               </label>
@@ -578,7 +599,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-settlement-number-scramble-v18-20260726"></script>
+    <script src="./app.js?v=journa-natural-entry-v19-20260728"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

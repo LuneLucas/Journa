@@ -55,6 +55,11 @@
   gap: var(--field-gap);
 }
 
+.natural-entry-flow,
+.natural-entry-hint {
+  display: none;
+}
+
 .expense-form > * {
   min-width: 0;
 }

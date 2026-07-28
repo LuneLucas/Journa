@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-settlement-number-scramble-v18-20260726";
+const APP_VERSION = "journa-natural-entry-v19-20260728";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -244,6 +244,13 @@ const elements = {
   expenseCount: document.querySelector("#expenseCount"),
   mobileExpenseCount: document.querySelector("#mobileExpenseCount"),
   expenseForm: document.querySelector("#expenseForm"),
+  naturalEntryFlow: document.querySelector("#naturalEntryFlow"),
+  naturalDateToken: document.querySelector("#naturalDateToken"),
+  naturalPayerToken: document.querySelector("#naturalPayerToken"),
+  naturalAmountToken: document.querySelector("#naturalAmountToken"),
+  naturalCategoryToken: document.querySelector("#naturalCategoryToken"),
+  naturalNoteToken: document.querySelector("#naturalNoteToken"),
+  naturalSplitToken: document.querySelector("#naturalSplitToken"),
   amountInput: document.querySelector("#amountInput"),
   categoryInput: document.querySelector("#categoryInput"),
   dateInput: document.querySelector("#dateInput"),
@@ -344,6 +351,7 @@ let activeSplitMode = "all";
 let activeSplitFamilyIds = state.families.map((family) => family.id);
 let activeSplitAmounts = {};
 let splitScopeOpen = false;
+let activeEntryEditor = "amount";
 let splitScopeCloseTimer = 0;
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
@@ -1826,6 +1834,7 @@ function render(options = {}) {
     renderFamilyRoster();
     renderCategories();
     renderSplitScope();
+    renderNaturalEntry();
     renderLedgerFilters();
     renderSummary({ animateFinancialChanges });
     renderLedger({ animateFinancialChanges });
@@ -2255,6 +2264,110 @@ function renderFormOptions() {
   elements.dateInput.value = state.activeDate;
   state.activeCategory = normalizeCategorySelection(state.activeCategory, state.categories);
   elements.categoryInput.value = state.activeCategory;
+}
+
+const naturalEntryEditors = new Set(["date", "payer", "amount", "category", "note", "split"]);
+
+function isNaturalEntryLayout() {
+  return window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+}
+
+function formatNaturalEntryDate(date) {
+  if (!date || date === todayIso()) return "今天";
+  const [, month, day] = String(date).split("-");
+  if (!month || !day) return date;
+  return `${Number(month)}月${Number(day)}日`;
+}
+
+function formatNaturalEntrySplit() {
+  if (activeSplitMode === "custom") return "按自定金额分摊";
+  if (activeSplitMode === "families") {
+    const names = activeSplitFamilyIds.map(getFamilyName).filter(Boolean);
+    return names.length ? `${names.join("、")}按人数分摊` : "指定家庭按人数分摊";
+  }
+  return "全部家庭按人数分摊";
+}
+
+function formatNaturalEntryAmount(cents) {
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "CNY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+function renderNaturalEntry() {
+  if (!elements.naturalEntryFlow) return;
+
+  const amount = parseAmountInput(elements.amountInput.value);
+  const amountCents = Number.isFinite(amount) && amount > 0 ? amountToCents(amount) : 0;
+  const note = elements.noteInput.value.trim();
+  const date = normalizeDate(elements.dateInput.value, state.activeDate);
+
+  elements.expenseForm.dataset.activeEntryEditor = activeEntryEditor;
+  elements.naturalDateToken.textContent = formatNaturalEntryDate(date);
+  elements.naturalPayerToken.textContent = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭";
+  elements.naturalAmountToken.textContent = amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00";
+  elements.naturalCategoryToken.textContent = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别";
+  elements.naturalNoteToken.textContent = note || "备注可选";
+  elements.naturalNoteToken.title = note;
+  elements.naturalSplitToken.textContent = formatNaturalEntrySplit();
+
+  elements.naturalEntryFlow.querySelectorAll("[data-entry-target]").forEach((button) => {
+    const expanded = button.dataset.entryTarget === activeEntryEditor;
+    button.classList.toggle("is-active", expanded);
+    button.setAttribute("aria-expanded", String(expanded));
+  });
+}
+
+function getNaturalEntryFocusTarget(editor) {
+  if (editor === "date") return elements.dateInput;
+  if (editor === "payer") {
+    return elements.familyRoster.querySelector(".family-tag.is-selected")
+      || elements.familyRoster.querySelector(".family-tag");
+  }
+  if (editor === "amount") return elements.amountInput.disabled ? null : elements.amountInput;
+  if (editor === "category") {
+    return elements.categoryChips.querySelector(".selectable-category-chip.is-selected")
+      || elements.categoryChips.querySelector(".selectable-category-chip");
+  }
+  if (editor === "note") return elements.noteInput;
+  if (editor === "split") {
+    return elements.splitModeButtons.querySelector(".split-mode-button.is-selected")
+      || elements.splitModeButtons.querySelector(".split-mode-button");
+  }
+  return null;
+}
+
+function setActiveEntryEditor(editor, { focus = false, scroll = false } = {}) {
+  const requestedEditor = editor === "amount" && activeSplitMode === "custom" ? "split" : editor;
+  if (!naturalEntryEditors.has(requestedEditor)) return;
+
+  activeEntryEditor = requestedEditor;
+  if (requestedEditor === "split" && !splitScopeOpen) {
+    splitScopeOpen = true;
+    renderSplitScope();
+  }
+  renderNaturalEntry();
+  if (!isNaturalEntryLayout() || (!focus && !scroll)) return;
+
+  window.requestAnimationFrame(() => {
+    const panel = elements.expenseForm.querySelector(`[data-entry-editor="${requestedEditor}"]`);
+    if (scroll) {
+      panel?.scrollIntoView({
+        block: "nearest",
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+      });
+    }
+    if (focus) getNaturalEntryFocusTarget(requestedEditor)?.focus({ preventScroll: true });
+  });
+}
+
+function handleNaturalEntryClick(event) {
+  const button = event.target.closest("[data-entry-target]");
+  if (!button) return;
+  setActiveEntryEditor(button.dataset.entryTarget, { focus: true, scroll: true });
 }
 
 function renderLedgerFilters() {
@@ -3966,6 +4079,9 @@ function clearLedgerFilters() {
 
 function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
   const scrollOptions = { block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" };
+  if (isNaturalEntryLayout() && naturalEntryEditors.has(target)) {
+    setActiveEntryEditor(target);
+  }
 
   if (target === "payer") {
     elements.payerField.scrollIntoView(scrollOptions);
@@ -4102,7 +4218,7 @@ function renderMobileSubmitBar() {
   const family = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "未选家庭";
   const category = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "未选类别";
   const date = state.activeDate === todayIso() ? "今天" : state.activeDate.slice(5);
-  const action = editingExpenseId ? "保存修改" : "添加账单";
+  const action = editingExpenseId ? "保存修改" : "记下这笔";
   const split = activeSplitMode === "all" ? "" : ` · ${formatActiveSplitSummary()}`;
   // 信息未填齐时按钮呈中性引导态，点击会跳到对应缺项。
   const missing = getExpenseMissingState();
@@ -4449,6 +4565,7 @@ function handleCategorySelection(event) {
   renderCategories();
   applyChoiceStateClass("[data-category]", "data-category", categorySwitched ? nextCategory : "", "is-activating");
   applyChoiceStateClass("[data-category]", "data-category", categorySwitched ? previousCategory : "", "is-deactivating");
+  renderNaturalEntry();
   renderMobileSubmitBar();
   saveState();
 }
@@ -4476,6 +4593,7 @@ function handleSplitScopeClick(event) {
     smoothSplitScopeResize(renderSplitScope);
     applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? nextMode : "", "is-activating");
     applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? previousMode : "", "is-deactivating");
+    renderNaturalEntry();
     renderMobileSubmitBar();
     return;
   }
@@ -4495,6 +4613,7 @@ function handleSplitScopeClick(event) {
   // 勾选家庭不改变面板高度，直接增量渲染，跳过测量流程（否则会闪一帧）
   renderSplitScope();
   applyChoiceStateClass("[data-split-family]", "data-split-family", familyId, activeSplitFamilyIds.includes(familyId) ? "is-activating" : "is-deactivating");
+  renderNaturalEntry();
   renderMobileSubmitBar();
 }
 
@@ -4632,6 +4751,7 @@ function handleSplitAmountInput(event) {
   elements.splitScopeSummary.textContent = formatActiveSplitSummary();
   const totalLine = elements.splitCustomAmounts.querySelector(".split-total-line");
   if (totalLine) totalLine.textContent = formatCustomSplitTotalLine();
+  renderNaturalEntry();
   renderMobileSubmitBar();
   updateAmountMotionState();
 }
@@ -4641,6 +4761,7 @@ function resetSplitScope() {
   activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = {};
   splitScopeOpen = false;
+  activeEntryEditor = "amount";
 }
 
 function setSplitScopeFromExpense(expense) {
@@ -5994,6 +6115,7 @@ function handleFamilySelection(event) {
   applyChoiceStateClass("[data-payer-id]", "data-payer-id", payerSwitched ? nextPayerId : "", "is-activating");
   applyChoiceStateClass("[data-payer-id]", "data-payer-id", payerSwitched ? previousPayerId : "", "is-deactivating");
   applySubmitButtonTheme();
+  renderNaturalEntry();
   renderMobileSubmitBar();
   updateAmountMotionState();
   saveState();
@@ -6363,11 +6485,16 @@ function lockAmountLabelScroll() {
 
 function formatAmountFieldOnBlur() {
   updateAmountMotionState();
-  if (activeSplitMode === "custom") return;
+  if (activeSplitMode === "custom") {
+    renderNaturalEntry();
+    return;
+  }
 
   const amount = parseAmountInput(elements.amountInput.value);
-  if (!Number.isFinite(amount) || amount <= 0) return;
-  elements.amountInput.value = (Math.round(amount * 100) / 100).toFixed(2).replace(/\.00$/, "");
+  if (Number.isFinite(amount) && amount > 0) {
+    elements.amountInput.value = (Math.round(amount * 100) / 100).toFixed(2).replace(/\.00$/, "");
+  }
+  renderNaturalEntry();
 }
 
 function pulseAmountField() {
@@ -6413,11 +6540,13 @@ function startEditExpense(expenseId) {
   state.activeCategory = expense.category;
   state.activeDate = expense.date;
   setSplitScopeFromExpense(expense);
+  activeEntryEditor = activeSplitMode === "custom" ? "split" : "amount";
   smoothContainerResize(elements.entryPanel, () => {
     render();
   });
   elements.amountInput.value = activeSplitMode === "custom" ? formatAmountInput(getActiveCustomSplitTotalCents()) : String(expense.amount);
   elements.noteInput.value = expense.note;
+  renderNaturalEntry();
   editFormSnapshot = captureExpenseFormSnapshot();
   elements.expenseForm.scrollIntoView({ block: "start", behavior: "auto" });
   elements.amountInput.focus();
@@ -6428,6 +6557,7 @@ function cancelEdit() {
   editingExpenseId = "";
   elements.expenseForm.reset();
   restoreEntryPreferenceState();
+  activeEntryEditor = "amount";
   smoothContainerResize(elements.entryPanel, () => {
     render();
   });
@@ -6673,6 +6803,7 @@ function escapeHtml(value) {
 }
 
 elements.expenseForm.addEventListener("submit", handleExpenseSubmit);
+elements.naturalEntryFlow?.addEventListener("click", handleNaturalEntryClick);
 elements.categoryAddConfirm?.addEventListener("click", handleInlineCategoryAdd);
 elements.newCategoryInput.addEventListener("input", updateCategoryAddConfirmState);
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
@@ -6774,7 +6905,11 @@ elements.mobileSubmitButton.addEventListener("click", () => {
 elements.amountInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || event.isComposing) return;
   event.preventDefault();
-  elements.noteInput.focus();
+  if (isNaturalEntryLayout()) {
+    setActiveEntryEditor("note", { focus: true, scroll: true });
+  } else {
+    elements.noteInput.focus();
+  }
 });
 elements.noteInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || event.isComposing) return;
@@ -6787,16 +6922,23 @@ elements.amountInput.addEventListener("input", () => {
   elements.formError.textContent = "";
   updateAmountMotionState();
   pulseAmountField();
+  renderNaturalEntry();
   renderMobileSubmitBar();
+});
+elements.noteInput.addEventListener("input", () => {
+  elements.formError.textContent = "";
+  renderNaturalEntry();
 });
 elements.categoryInput.addEventListener("change", () => {
   state.activeCategory = elements.categoryInput.value || state.activeCategory;
+  renderNaturalEntry();
   renderMobileSubmitBar();
   saveState();
 });
 elements.dateInput.addEventListener("change", () => {
   state.activeDate = normalizeDate(elements.dateInput.value, state.activeDate);
   elements.dateInput.value = state.activeDate;
+  renderNaturalEntry();
   renderMobileSubmitBar();
   saveState();
 });
