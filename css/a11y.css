@@ -1,6 +1,8 @@
 @media (prefers-reduced-motion: reduce) {
   html[data-entry-mode="natural"] .natural-entry-focus-backdrop,
   html[data-entry-mode="natural"] .natural-entry-stage,
+  html[data-entry-mode="natural"] .natural-entry-stage-shell,
+  html[data-entry-mode="natural"] .natural-entry-stage-token,
   html[data-entry-mode="natural"] .natural-entry-stage-content {
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;
@@ -22,8 +24,13 @@
   .selectable-category-chip,
   .split-mode-button,
   .ledger-item,
+  .pointer-sink-target,
   .primary-button {
     transform: none !important;
+  }
+
+  .pointer-sink-sheen {
+    display: none !important;
   }
 
   .settings-drawer,

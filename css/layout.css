@@ -21,9 +21,7 @@
     radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.16), transparent 48%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(247, 251, 249, 0.78)),
     rgba(255, 255, 255, 0.86);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.54),
-    0 26px 86px rgba(22, 26, 30, 0.13);
+  box-shadow: var(--glass-edge), var(--shadow-lg);
 }
 
 .entry-panel.is-resizing,

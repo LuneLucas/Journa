@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-natural-entry-motion-v46-20260729";
+const APP_VERSION = "journa-natural-entry-text-handoff-v92-20260730";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -47,8 +47,12 @@ const MOTION_DELAYS = {
   tokenFlight: 680,
   totalBloom: 460,
   catchPulse: 420,
-  naturalEntryStageOpen: 480,
-  naturalEntryStageClose: 400,
+  naturalEntryStageOpen: 420,
+  naturalEntryStageClose: 380,
+  naturalEntryStageDissolveStart: 380,
+  naturalEntryStageHandoffStart: 320,
+  naturalEntryStageCleanup: 500,
+  naturalEntryStageFade: 120,
   naturalEntryStageSwap: 420,
   toast: 2600,
   toastWithAction: 5200,
@@ -227,7 +231,11 @@ const customCategoryVisuals = [
   { bg: "#e8dfed", text: "#65566f", border: "rgba(100, 80, 116, 0.24)", gradient: "#d3c2dc" },
   { bg: "#dce8e6", text: "#4f6c68", border: "rgba(78, 111, 104, 0.24)", gradient: "#bdd8d4" },
 ];
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => {
+  const today = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+};
 
 const elements = {
   ledgerView: document.querySelector("#ledgerView"),
@@ -267,6 +275,10 @@ const elements = {
   shareAmount: document.querySelector("#shareAmount"),
   expenseCount: document.querySelector("#expenseCount"),
   mobileExpenseCount: document.querySelector("#mobileExpenseCount"),
+  journeyStateLabel: document.querySelector("#journeyStateLabel"),
+  journeyLedgerName: document.querySelector("#journeyLedgerName"),
+  journeyDateRange: document.querySelector("#journeyDateRange"),
+  journeyFamilyTrack: document.querySelector("#journeyFamilyTrack"),
   expenseForm: document.querySelector("#expenseForm"),
   naturalEntryFlow: document.querySelector("#naturalEntryFlow"),
   naturalDateToken: document.querySelector("#naturalDateToken"),
@@ -390,6 +402,8 @@ let naturalEntryMotionAnims = [];
 let naturalEntryFrozenAnchor = null;
 const naturalEntryEditorHomes = new Map();
 let splitScopeCloseTimer = 0;
+let naturalEntryStageCloseTimer = 0;
+let naturalEntryStageFadeTimer = 0;
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
 let mobileSubmitFeedbackTimer = 0;
@@ -433,6 +447,12 @@ let hasPlayedInitialExpenseCountReveal = false;
 let expenseCountRevealFrameId = 0;
 let expenseCountRevealTargetText = "";
 let amountLabelScrollFrameId = 0;
+let desktopPointerSinkFrame = 0;
+let desktopPointerSinkTarget = null;
+let desktopPointerSinkFocusTarget = null;
+let desktopPointerSinkPoint = null;
+let desktopInsightsTouched = false;
+const desktopPointerQuery = window.matchMedia("(min-width: 1180px) and (hover: hover) and (pointer: fine)");
 let cloudState = loadCloudState();
 /* 启动瞬间本地是否有数据：Safari ITP 可能清掉 localStorage，
    为空且 IndexedDB 里还留有云凭据备份时走自动恢复（见 bootstrap）。 */
@@ -1864,6 +1884,7 @@ function render(options = {}) {
   const { animateFinancialChanges = false } = options;
 
   const performUpdate = () => {
+    resetDesktopPointerSink({ preserveFocus: true });
     renderCurrentLedgerLabel();
     updateClearLedgerButton();
     updateCloudControls();
@@ -2399,6 +2420,10 @@ function syncNaturalEntryStageToken() {
 }
 
 function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
+  window.clearTimeout(naturalEntryStageCloseTimer);
+  naturalEntryStageCloseTimer = 0;
+  window.clearTimeout(naturalEntryStageFadeTimer);
+  naturalEntryStageFadeTimer = 0;
   const editor = naturalEntryStageEditor;
   const anchor = naturalEntryStageAnchor;
   restoreNaturalEntryEditorHome(editor);
@@ -2448,8 +2473,27 @@ function getNaturalEntryFlightSourceRect(stage) {
   return stage.getBoundingClientRect();
 }
 
+function getNaturalEntryTextRect(element) {
+  const textNode = Array.from(element?.childNodes || [])
+    .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+  if (!textNode) return null;
+  const range = document.createRange();
+  range.selectNodeContents(textNode);
+  return range.getBoundingClientRect();
+}
+
 function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}) {
-  if (!naturalEntryStageOpen && !naturalEntryStageEditor) return;
+  // Blur, backdrop, and choice handlers can converge on the same close. Once
+  // the staged close has started, do not reset its timers or launch a second
+  // flight; only an explicit immediate close may interrupt it.
+  if (!naturalEntryStageOpen) {
+    if (!naturalEntryStageEditor) return;
+    if (!immediate) return;
+  }
+  window.clearTimeout(naturalEntryStageCloseTimer);
+  naturalEntryStageCloseTimer = 0;
+  window.clearTimeout(naturalEntryStageFadeTimer);
+  naturalEntryStageFadeTimer = 0;
   naturalEntryStageOpen = false;
   const runId = ++naturalEntryStageRunId;
   window.cancelAnimationFrame(naturalEntryStagePositionFrame);
@@ -2476,30 +2520,101 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   const anchorRect = anchor.getBoundingClientRect();
   const sourceRect = getNaturalEntryFlightSourceRect(stage);
   cancelNaturalEntryMotion();
-  const sourceScale = 1.018;
+  const sourceScale = 1.006;
   const { ghost, baseLeft, baseTop } = makeNaturalEntryFlightToken(sourceRect, anchorRect, anchor.textContent, isAmount, sourceScale);
+  // 飞行 token 被挂到 body，无法继承 expenseForm 上的家庭色变量；直接复用锚点的最终计算色，
+  // 避免深色模式收回时短暂回落为白色。
+  ghost.style.color = getComputedStyle(anchor).color;
+  const anchorTextRect = getNaturalEntryTextRect(anchor);
+  const ghostTextRect = getNaturalEntryTextRect(ghost);
+  const landingX = anchorRect.left - baseLeft;
+  // Align the actual glyph box at the handoff, not only the outer button box.
+  // The transparent bottom border makes those differ by about one CSS pixel.
+  const landingY = anchorTextRect && ghostTextRect
+    ? anchorTextRect.top - ghostTextRect.top
+    : anchorRect.top - baseTop;
   const flight = ghost.animate(
     [
-      { transform: `scale(${sourceScale})`, opacity: 1 },
-      { transform: `translate(${anchorRect.left - baseLeft}px, ${anchorRect.top - baseTop}px) scale(1)`, opacity: 1 },
+      {
+        transform: `scale(${sourceScale})`,
+        opacity: 1,
+        easing: "cubic-bezier(0.20, 0.72, 0.25, 1)",
+      },
+      {
+        offset: MOTION_DELAYS.naturalEntryStageHandoffStart / MOTION_DELAYS.naturalEntryStageClose,
+        transform: `translate(${landingX}px, ${landingY}px) scale(0.996)`,
+        opacity: 1,
+        easing: "cubic-bezier(0.20, 0.72, 0.25, 1)",
+      },
+      {
+        transform: `translate(${landingX}px, ${landingY}px) scale(1)`,
+        opacity: 0,
+      },
     ],
-    { duration: MOTION_DELAYS.naturalEntryStageClose, easing: "cubic-bezier(0.18, 0.78, 0.30, 1)", fill: "forwards" }
+    {
+      duration: MOTION_DELAYS.naturalEntryStageClose,
+      easing: "linear",
+      fill: "forwards",
+    }
   );
+  const handoff = anchor.animate(
+    [
+      {
+        opacity: 0,
+      },
+      {
+        offset: MOTION_DELAYS.naturalEntryStageHandoffStart / MOTION_DELAYS.naturalEntryStageClose,
+        opacity: 0,
+        easing: "cubic-bezier(0.20, 0.72, 0.25, 1)",
+      },
+      {
+        opacity: 1,
+      },
+    ],
+    {
+      duration: MOTION_DELAYS.naturalEntryStageClose,
+      easing: "linear",
+      fill: "forwards",
+    }
+  );
+  // Keep source and flight opacity on the same document timeline. A timer plus
+  // CSS transition can begin one paint late on WebKit, leaving a visible dip
+  // when the flight layer is removed at the end of the close.
+  anchor.classList.add("is-stage-handoff");
 
-  // The shell and flight begin in the same frame. The real anchor remains
-  // hidden until both have finished, so there is no handoff flash.
+  // Treat the source underline as the card's hinge: the outer stage preserves
+  // the text landing box while the glass shell itself folds into the exact
+  // border geometry of the source token. Its endpoints travel three pixels
+  // beyond that line, then the same material yields back to the exact source
+  // underline after the flight has reached its anchor.
   stage.classList.add("is-closing");
   stage.classList.remove("is-open");
   elements.naturalEntryFocusBackdrop.classList.remove("is-open");
-  naturalEntryMotionAnims.push(flight);
+  naturalEntryMotionAnims.push(flight, handoff);
+
+  naturalEntryStageFadeTimer = window.setTimeout(() => {
+    naturalEntryStageFadeTimer = 0;
+    if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+    stage.classList.add("is-fading");
+
+    naturalEntryStageFadeTimer = window.setTimeout(() => {
+      naturalEntryStageFadeTimer = 0;
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      finishNaturalEntryStageClose({ restoreFocus });
+    }, MOTION_DELAYS.naturalEntryStageCleanup - MOTION_DELAYS.naturalEntryStageDissolveStart);
+  }, MOTION_DELAYS.naturalEntryStageDissolveStart);
+
   flight.finished.catch(() => {}).then(() => {
     if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
     cancelNaturalEntryMotion();
-    finishNaturalEntryStageClose({ restoreFocus });
   });
 }
 
 function openNaturalEntryStage(editor) {
+  window.clearTimeout(naturalEntryStageCloseTimer);
+  naturalEntryStageCloseTimer = 0;
+  window.clearTimeout(naturalEntryStageFadeTimer);
+  naturalEntryStageFadeTimer = 0;
   cancelNaturalEntryMotion();
   const anchor = getNaturalEntryToken(editor);
   const panel = getNaturalEntryEditor(editor);
@@ -2603,12 +2718,16 @@ function formatNaturalEntrySplit() {
   if (activeSplitMode === "custom") return "按自定金额分摊";
   if (activeSplitMode === "families") {
     const names = activeSplitFamilyIds.map(getFamilyName).filter(Boolean);
-    if (!names.length) return "指定家庭按人数";
-    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家按人数`;
-    return `${names.join("、")}按人数`;
+    if (!names.length) return "指定家庭按人数分摊";
+    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家按人数分摊`;
+    if (names.length === 2) {
+      const compactNames = names.map((name) => name.replace(/家$/, ""));
+      return `${compactNames.join("&")}家按人数分摊`;
+    }
+    return `${names.join("、")}按人数分摊`;
   }
   const familyCount = state.families.length;
-  return familyCount >= 3 ? `${formatNaturalFamilyCount(familyCount)}家按人数` : "全部家庭按人数";
+  return familyCount >= 3 ? `${formatNaturalFamilyCount(familyCount)}家按人数分摊` : "全部家庭按人数分摊";
 }
 
 function formatNaturalEntryAmount(cents) {
@@ -2688,7 +2807,18 @@ function setActiveEntryEditor(editor, { focus = false, scroll = false } = {}) {
 function handleNaturalEntryClick(event) {
   const button = event.target.closest("[data-entry-target]");
   if (!button) return;
-  setActiveEntryEditor(button.dataset.entryTarget, { focus: true, scroll: true });
+  const editor = button.dataset.entryTarget;
+  setActiveEntryEditor(editor, { focus: true, scroll: true });
+  if (editor === "date" && isNaturalEntryLayout()) {
+    const dateInput = elements.dateInput;
+    dateInput.focus({ preventScroll: true });
+    try {
+      if (typeof dateInput.showPicker === "function") dateInput.showPicker();
+      else dateInput.click();
+    } catch (_) {
+      /* 某些 WebKit 版本拒绝脚本唤起时，保留已聚焦的原生日期输入。 */
+    }
+  }
 }
 
 function renderLedgerFilters() {
@@ -3355,12 +3485,11 @@ function formatActiveSplitSummary() {
   }
 
   if (activeSplitMode === "families") {
-    if (!activeSplitFamilyIds.length) return "规则：指定家庭";
-    const names = activeSplitFamilyIds.map(getFamilyName);
-    return names.length > 2 ? `规则：${names.length}家按人数` : `规则：${names.join("、")}按人数`;
+    if (!activeSplitFamilyIds.length) return "规则：指定家庭分摊";
+    return `规则：${activeSplitFamilyIds.length}家按人数分摊`;
   }
 
-  return "规则：全部家庭按人数";
+  return "规则：全部家庭按人数分摊";
 }
 
 function formatExpenseSplitSummary(expense) {
@@ -4046,11 +4175,12 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
   renderExpenseCount(String(visibleExpenseCount), animateSummaryContents);
   renderSoftText(elements.mobileExpenseCount, String(visibleExpenseCount), animateSummaryContents);
   renderTotalMetricGradient(summary);
+  renderJourneyHero(summary);
 
   elements.paidByFamily.innerHTML = state.families
     .map(
       (family) => `
-        <div class="row-item family-row${enterClass}" style="${familyStyle(family.id)}">
+        <div class="row-item family-row${enterClass}" data-summary-family-id="${escapeHtml(family.id)}" style="${familyStyle(family.id)}">
           <span>${escapeHtml(family.name)}<small>${state.familyMembers[family.id] || 1} 人 · 应承担 ${formatMoney(summary.shareByFamily[family.id] || 0)}</small></span>
           <strong>${formatMoney(summary.paidByFamily[family.id] || 0)}</strong>
         </div>
@@ -4064,7 +4194,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
     ? activeCategoryRows
         .map(
           (category) => `
-            <div class="row-item category-row${enterClass}" style="${categoryStyle(category)}">
+            <div class="row-item category-row${enterClass}" data-summary-category="${escapeHtml(category)}" style="${categoryStyle(category)}">
               <span>${categoryLabelHtml(category)}</span>
               <strong>${formatMoney(summary.categoryTotals[category])}</strong>
             </div>
@@ -4074,6 +4204,56 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
     : `<div class="empty-state${enterClass}">${emptyStateArt}暂无类别支出<br><small>添加账单后按类别自动汇总。</small></div>`;
 
   renderSettlementEntry(summary, animateSummaryContents);
+}
+
+function renderJourneyHero(summary) {
+  if (!elements.journeyLedgerName || !elements.journeyFamilyTrack) return;
+  const expenses = getActiveExpenses()
+    .slice()
+    .sort((first, second) => first.date.localeCompare(second.date));
+  const firstDate = expenses[0]?.date || "";
+  const lastDate = expenses.at(-1)?.date || "";
+  const dayCount = firstDate && lastDate
+    ? Math.max(1, Math.round((Date.parse(`${lastDate}T00:00:00Z`) - Date.parse(`${firstDate}T00:00:00Z`)) / 86400000) + 1)
+    : 0;
+
+  elements.journeyLedgerName.textContent = state.name;
+  elements.journeyStateLabel.textContent = expenses.length
+    ? `旅程已展开 · ${dayCount} 天`
+    : "旅程尚未开始";
+  elements.journeyDateRange.textContent = expenses.length
+    ? formatJourneyDateRange(firstDate, lastDate)
+    : "记下第一笔，旅程就会在这里展开";
+
+  const totalPaid = state.families.reduce((sum, family) => sum + (summary.paidByFamily[family.id] || 0), 0);
+  elements.journeyFamilyTrack.innerHTML = state.families
+    .map((family) => {
+      const paid = summary.paidByFamily[family.id] || 0;
+      const share = totalPaid > 0 ? paid / totalPaid : 1 / Math.max(1, state.families.length);
+      const displayedPercent = totalPaid > 0 ? Math.round(share * 100) : 0;
+      return `
+        <div class="journey-family-segment" data-journey-family-id="${escapeHtml(family.id)}"
+          style="${familyStyle(family.id)} --journey-share:${Math.max(0.08, share).toFixed(4)}">
+          <span><i aria-hidden="true"></i>${escapeHtml(family.name)}</span>
+          <strong>${displayedPercent}%</strong>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function formatJourneyDateRange(firstDate, lastDate) {
+  const formatPart = (value, includeYear) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return `${includeYear ? `${year}年` : ""}${month}月${day}日`;
+  };
+  if (!firstDate || !lastDate) return "";
+  if (firstDate === lastDate) return `${formatPart(firstDate, true)} · 一天的旅程`;
+  const firstYear = firstDate.slice(0, 4);
+  const lastYear = lastDate.slice(0, 4);
+  return firstYear === lastYear
+    ? `${formatPart(firstDate, true)}—${formatPart(lastDate, false)}`
+    : `${formatPart(firstDate, true)}—${formatPart(lastDate, true)}`;
 }
 
 /* 数据页只保留一个入口摘要，完整的平账建议（资金光流图 + 转账卡）在设置抽屉里 */
@@ -4292,7 +4472,7 @@ function renderLedgerEmptyState(message, suffix = "", enterClass = "", { include
 
 function renderLedgerDayGroup(group, enterClass = "") {
   return `
-    <section class="ledger-day-group${enterClass}">
+    <section class="ledger-day-group${enterClass}" data-ledger-date="${escapeHtml(group.date)}">
       <div class="ledger-day-heading">
         <time datetime="${escapeHtml(group.date)}">${escapeHtml(formatLedgerDate(group.date))}</time>
         <strong>${formatLedgerMoney(group.totalCents)}</strong>
@@ -4348,7 +4528,13 @@ function renderLedgerItem(expense) {
   const combinedStyle = [familyStyle(expense.payerId), transitionStyle].filter(Boolean).join(";");
 
   return `
-    <article class="${itemClass}" style="${combinedStyle}" data-expense-id="${escapeHtml(expense.id)}" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
+    <article class="${itemClass} pointer-sink-target" style="${combinedStyle}"
+      data-expense-id="${escapeHtml(expense.id)}"
+      data-pointer-family-id="${escapeHtml(expense.payerId)}"
+      data-pointer-category="${escapeHtml(expense.category)}"
+      data-pointer-date="${escapeHtml(expense.date)}"
+      tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
+      <span class="pointer-sink-sheen" aria-hidden="true"></span>
       <div class="ledger-main">
         <div class="ledger-title">
           <span class="ledger-family">${escapeHtml(getFamilyName(expense.payerId))}</span>
@@ -4944,6 +5130,9 @@ function handleSplitScopeClick(event) {
       }
     }
     smoothSplitScopeResize(renderSplitScope);
+    if (activeSplitMode === "custom" && !isNaturalEntryLayout()) {
+      scheduleCustomSplitViewportSettle();
+    }
     applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? nextMode : "", "is-activating");
     applyChoiceStateClass("[data-split-mode]", "data-split-mode", modeSwitched ? previousMode : "", "is-deactivating");
     renderNaturalEntry();
@@ -4973,6 +5162,16 @@ function handleSplitScopeClick(event) {
   renderNaturalEntry();
   renderMobileSubmitBar();
   scheduleNaturalEntryStagePosition();
+  if (naturalEntryStageOpen && activeEntryEditor === "split" && isNaturalEntryLayout()) {
+    window.clearTimeout(naturalEntryStageCloseTimer);
+    const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--selection-motion", 520) + 40;
+    naturalEntryStageCloseTimer = window.setTimeout(() => {
+      naturalEntryStageCloseTimer = 0;
+      if (naturalEntryStageOpen && activeEntryEditor === "split") {
+        closeNaturalEntryStage({ restoreFocus: true });
+      }
+    }, delay);
+  }
 }
 
 // 高度动画直接做在面板自己身上：面板逐帧变高/变矮，
@@ -5043,6 +5242,24 @@ function createSplitScopeAnchorRestorer() {
     const delta = nextTop - startTop;
     if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
   };
+}
+
+function scheduleCustomSplitViewportSettle() {
+  if (!window.matchMedia("(max-width: 820px), (pointer: coarse)").matches) return;
+  const settle = () => {
+    const customAmounts = elements.splitCustomAmounts;
+    if (!customAmounts || customAmounts.hidden) return;
+    const rect = customAmounts.getBoundingClientRect();
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const targetTop = Math.max(92, viewportHeight * 0.22);
+    const delta = rect.top - targetTop;
+    if (delta > 2) window.scrollBy({ top: delta, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  };
+
+  window.requestAnimationFrame(() => {
+    settle();
+    window.setTimeout(settle, prefersReducedMotion() ? 0 : 180);
+  });
 }
 
 function markSplitScopeSwitching() {
@@ -7165,6 +7382,7 @@ function escapeHtml(value) {
 
 elements.expenseForm.addEventListener("submit", handleExpenseSubmit);
 elements.naturalEntryFlow?.addEventListener("click", handleNaturalEntryClick);
+elements.naturalEntryFocusBackdrop?.addEventListener("pointerdown", () => closeNaturalEntryStage({ restoreFocus: true }));
 elements.naturalEntryFocusBackdrop?.addEventListener("click", () => closeNaturalEntryStage({ restoreFocus: true }));
 elements.categoryAddConfirm?.addEventListener("click", handleInlineCategoryAdd);
 elements.newCategoryInput.addEventListener("input", updateCategoryAddConfirmState);
@@ -7414,6 +7632,155 @@ function setupSubmitButtonSpotlight() {
   finePointer.addEventListener?.("change", reset);
 }
 
+function setupDesktopImmersiveDetails() {
+  const details = [...document.querySelectorAll(".insights-panel .insight-details")];
+  const sync = () => {
+    details.forEach((item) => {
+      if (desktopPointerQuery.matches && !desktopInsightsTouched) {
+        item.setAttribute("open", "");
+        item.dataset.desktopAutoOpened = "1";
+        return;
+      }
+      if (!desktopPointerQuery.matches && item.dataset.desktopAutoOpened === "1") {
+        item.removeAttribute("open");
+        delete item.dataset.desktopAutoOpened;
+      }
+    });
+  };
+
+  details.forEach((item) => {
+    item.querySelector(":scope > summary")?.addEventListener("click", () => {
+      if (!desktopPointerQuery.matches) return;
+      desktopInsightsTouched = true;
+      details.forEach((detail) => delete detail.dataset.desktopAutoOpened);
+    }, { capture: true });
+  });
+  desktopPointerQuery.addEventListener?.("change", sync);
+  sync();
+}
+
+function getDesktopPointerSinkTarget(node) {
+  if (!(node instanceof Element) || !desktopPointerQuery.matches) return null;
+  const target = node.closest(".pointer-sink-target");
+  return target && elements.ledgerView.contains(target) ? target : null;
+}
+
+function clearPointerRelatedHighlights() {
+  elements.ledgerView.querySelectorAll(".is-pointer-related").forEach((item) => {
+    item.classList.remove("is-pointer-related");
+  });
+}
+
+function syncPointerRelatedHighlights(source) {
+  clearPointerRelatedHighlights();
+  if (!source?.isConnected || !source.matches(".ledger-item")) return;
+  const familyId = source.dataset.pointerFamilyId || "";
+  const category = source.dataset.pointerCategory || "";
+  const date = source.dataset.pointerDate || "";
+  const selectors = [
+    familyId && `[data-journey-family-id="${cssEscapeId(familyId)}"]`,
+    familyId && `[data-summary-family-id="${cssEscapeId(familyId)}"]`,
+    category && `[data-summary-category="${cssEscapeId(category)}"]`,
+    date && `[data-ledger-date="${cssEscapeId(date)}"]`,
+  ].filter(Boolean);
+  selectors.forEach((selector) => {
+    elements.ledgerView.querySelectorAll(selector).forEach((item) => item.classList.add("is-pointer-related"));
+  });
+}
+
+function clearDesktopPointerTarget(target) {
+  if (!target) return;
+  target.classList.remove("is-pointer-sunk", "is-pointer-pressed");
+  [
+    "--pointer-sink-x",
+    "--pointer-sink-y",
+    "--pointer-rotate-x",
+    "--pointer-rotate-y",
+  ].forEach((property) => target.style.removeProperty(property));
+}
+
+function deactivateDesktopPointerSink() {
+  if (desktopPointerSinkFrame) {
+    window.cancelAnimationFrame(desktopPointerSinkFrame);
+    desktopPointerSinkFrame = 0;
+  }
+  clearDesktopPointerTarget(desktopPointerSinkTarget);
+  desktopPointerSinkTarget = null;
+  desktopPointerSinkPoint = null;
+  syncPointerRelatedHighlights(desktopPointerSinkFocusTarget);
+}
+
+function resetDesktopPointerSink({ preserveFocus = false } = {}) {
+  deactivateDesktopPointerSink();
+  if (!preserveFocus) desktopPointerSinkFocusTarget = null;
+  if (desktopPointerSinkFocusTarget && !desktopPointerSinkFocusTarget.isConnected) {
+    desktopPointerSinkFocusTarget = null;
+  }
+  syncPointerRelatedHighlights(desktopPointerSinkFocusTarget);
+}
+
+function flushDesktopPointerSink() {
+  desktopPointerSinkFrame = 0;
+  const target = desktopPointerSinkTarget;
+  const point = desktopPointerSinkPoint;
+  if (!target?.isConnected || !point || !desktopPointerQuery.matches || prefersReducedMotion()) return;
+  const rect = target.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = Math.max(0, Math.min(rect.width, point.x - rect.left));
+  const y = Math.max(0, Math.min(rect.height, point.y - rect.top));
+  const normalizedX = (x / rect.width - 0.5) * 2;
+  const normalizedY = (y / rect.height - 0.5) * 2;
+  target.style.setProperty("--pointer-sink-x", `${x.toFixed(1)}px`);
+  target.style.setProperty("--pointer-sink-y", `${y.toFixed(1)}px`);
+  target.style.setProperty("--pointer-rotate-x", `${(-normalizedY * 1.2).toFixed(3)}deg`);
+  target.style.setProperty("--pointer-rotate-y", `${(normalizedX * 1.2).toFixed(3)}deg`);
+}
+
+function scheduleDesktopPointerSink(point) {
+  desktopPointerSinkPoint = point;
+  if (desktopPointerSinkFrame) return;
+  desktopPointerSinkFrame = window.requestAnimationFrame(flushDesktopPointerSink);
+}
+
+function setupDesktopPointerSink() {
+  elements.ledgerView.addEventListener("pointermove", (event) => {
+    if (event.pointerType && event.pointerType !== "mouse") {
+      deactivateDesktopPointerSink();
+      return;
+    }
+    const target = getDesktopPointerSinkTarget(event.target);
+    if (target !== desktopPointerSinkTarget) {
+      clearDesktopPointerTarget(desktopPointerSinkTarget);
+      desktopPointerSinkTarget = target;
+      if (target) target.classList.add("is-pointer-sunk");
+      syncPointerRelatedHighlights(target || desktopPointerSinkFocusTarget);
+    }
+    if (target) scheduleDesktopPointerSink({ x: event.clientX, y: event.clientY });
+    else deactivateDesktopPointerSink();
+  }, { passive: true });
+
+  elements.ledgerView.addEventListener("pointerdown", (event) => {
+    if (event.pointerType && event.pointerType !== "mouse") return;
+    getDesktopPointerSinkTarget(event.target)?.classList.add("is-pointer-pressed");
+  });
+  window.addEventListener("pointerup", () => desktopPointerSinkTarget?.classList.remove("is-pointer-pressed"), { passive: true });
+  window.addEventListener("pointercancel", deactivateDesktopPointerSink, { passive: true });
+  elements.ledgerView.addEventListener("pointerleave", deactivateDesktopPointerSink, { passive: true });
+  window.addEventListener("blur", () => resetDesktopPointerSink());
+  desktopPointerQuery.addEventListener?.("change", () => resetDesktopPointerSink());
+
+  elements.ledgerView.addEventListener("focusin", (event) => {
+    desktopPointerSinkFocusTarget = getDesktopPointerSinkTarget(event.target);
+    syncPointerRelatedHighlights(desktopPointerSinkTarget || desktopPointerSinkFocusTarget);
+  });
+  elements.ledgerView.addEventListener("focusout", () => {
+    window.requestAnimationFrame(() => {
+      desktopPointerSinkFocusTarget = getDesktopPointerSinkTarget(document.activeElement);
+      syncPointerRelatedHighlights(desktopPointerSinkTarget || desktopPointerSinkFocusTarget);
+    });
+  });
+}
+
 function spawnButtonParticles(btn, visual, themedGlow) {
   if (prefersReducedMotion()) return;
   const rect = btn.getBoundingClientRect();
@@ -7612,8 +7979,17 @@ function setupScrollCollapse() {
     }, 760);
   };
 
-  /* 唯一的主页面滚动协调器：header 的文档流高度从不变化。展开所需的 47px
-     由 .app-view 静态预留并随页面自然滚走；这里每帧只写合成层视觉进度。 */
+  /* 唯一的主页面滚动协调器：header 的文档流高度从不变化。展开所需的 58px
+     由 .app-view 静态预留并随页面自然滚走；这里每帧只写合成层视觉进度。
+     以 smootherstep 为主，轻混 18% 七阶 smootheststep：两端起步的加速度
+     再柔和一点，但中段仍跟手、末端减速仍清楚；不引入独立补间或滚动回写。 */
+  const easeHeaderProgress = (value) => {
+    const smoother = value * value * value * (value * (value * 6 - 15) + 10);
+    const smoothest =
+      value * value * value * value * (35 + value * (-84 + value * (70 - 20 * value)));
+    return smoother * 0.82 + smoothest * 0.18;
+  };
+
   const applyHeaderProgress = () => {
     headerFrame = 0;
     const y = isMobile() ? (window.scrollY || window.pageYOffset || 0) : 0;
@@ -7641,7 +8017,7 @@ function setupScrollCollapse() {
       return;
     }
     const rawProgress = Math.min(1, Math.max(0, y / collapseDistance));
-    const progress = Math.round(rawProgress * 1000) / 1000;
+    const progress = Math.round(easeHeaderProgress(rawProgress) * 1000) / 1000;
     if (progress !== lastProgress) {
       lastProgress = progress;
       appHeader.style.setProperty("--mobile-header-progress", String(progress));
@@ -7834,6 +8210,8 @@ async function bootstrap() {
   /* 请求持久化存储：降低 Safari ITP 主动清空 localStorage/IndexedDB 的概率 */
   navigator.storage?.persist?.().catch(() => {});
   setupSubmitButtonSpotlight();
+  setupDesktopImmersiveDetails();
+  setupDesktopPointerSink();
   setupScrollCollapse();
   render();
   maybeShowWelcome();

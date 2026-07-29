@@ -50,8 +50,8 @@ body::before {
   padding: 16px 20px;
   margin-inline: -20px;
   background: linear-gradient(to bottom, var(--glass-bg) 58%, transparent 100%);
-  -webkit-backdrop-filter: blur(14px) saturate(170%);
-  backdrop-filter: blur(14px) saturate(170%);
+  -webkit-backdrop-filter: var(--blur-header);
+  backdrop-filter: var(--blur-header);
   -webkit-mask-image: linear-gradient(to bottom, black 52%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 52%, transparent 100%);
   border-bottom: 1px solid var(--line);
@@ -317,6 +317,11 @@ h3 {
   margin-bottom: 0;
 }
 
+.journey-hero-copy,
+.journey-family-track {
+  display: none;
+}
+
 /* 下方区块保持在总支出卡的外阴影之上，避免阴影染到卡片内容面。 */
 .summary-band ~ .mobile-settlement-entry,
 .summary-band ~ .workspace,
@@ -466,17 +471,27 @@ h3 {
 .workspace {
   display: grid;
   grid-template-columns: minmax(380px, 1.08fr) minmax(0, 0.92fr);
+  grid-template-areas:
+    "entry insights"
+    "ledger ledger";
   gap: var(--space-6);
   align-items: start;
 }
 
+.entry-panel {
+  grid-area: entry;
+}
+
+.workspace > .ledger-section {
+  grid-area: ledger;
+}
+
 .insights-panel {
+  grid-area: insights;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.50)),
     rgba(255, 255, 255, 0.60);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.40),
-    0 18px 58px rgba(22, 26, 30, 0.08);
+  box-shadow: var(--glass-edge), var(--shadow-md);
 }
 
 .section-heading {
@@ -495,9 +510,13 @@ h3 {
   min-width: 0;
 }
 
+.desktop-ledger-title {
+  display: none;
+}
+
 .ledger-filter-summary {
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 9%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
   border-radius: var(--radius-pill);
   background: color-mix(in oklch, var(--theme-color) 7%, rgba(255, 255, 255, 0.64));
   color: var(--theme-color-strong);
@@ -728,7 +747,7 @@ label,
   min-height: 20px;
   padding: 0 8px;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-selected-subtle), var(--glass-edge);
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 8%, rgba(255, 255, 255, 0.44));
   color: color-mix(in srgb, var(--selected-family-text) 58%, var(--muted));
@@ -820,9 +839,9 @@ label,
 }
 
 .split-scope {
-  --split-outer-radius: var(--control-radius-large);
-  --split-inner-radius: var(--control-radius);
-  --split-control-radius: var(--control-radius-compact);
+  --split-outer-radius: var(--radius-lg);
+  --split-inner-radius: var(--radius-md);
+  --split-control-radius: var(--radius-sm);
   display: grid;
   gap: 0;
   overflow-anchor: none;
@@ -910,7 +929,7 @@ label,
     linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.50)),
     rgba(255, 255, 255, 0.54);
   padding: var(--split-panel-padding);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), var(--edge-shade);
+  box-shadow: var(--glass-edge), var(--shadow-md);
   transform-origin: top center;
 }
 
@@ -933,7 +952,7 @@ label,
   min-height: 0;
   overflow: visible;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 6%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
   border-radius: var(--split-inner-radius);
   background: color-mix(in srgb, var(--submit-color, var(--theme-color)) 5%, rgba(255, 255, 255, 0.42));
   padding: 10px 10px 12px;
@@ -1019,7 +1038,7 @@ label,
   justify-content: space-between;
   gap: 10px;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color) 10%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-selected-subtle), var(--glass-edge);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--selected-family-wash) 75%, rgba(255, 255, 255, 0.46));
   color: var(--selected-family-text);
@@ -1100,6 +1119,16 @@ label,
   display: block;
 }
 
+/* 顶部设置按钮使用与其余线性操作图标一致的描边齿轮，避免 SF 填充齿轮显得过重。 */
+.ui-icon-line .ui-icon-sf {
+  display: none;
+}
+
+.ui-icon-line .ui-icon-fallback {
+  display: block;
+  stroke-width: 1.85;
+}
+
 .confirm-dialog {
   position: relative;
   z-index: 1;
@@ -1113,10 +1142,7 @@ label,
     linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
     rgba(247, 249, 248, 0.94);
   padding: 22px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    var(--edge-shade),
-    0 28px 90px rgba(22, 26, 30, 0.20);
+  box-shadow: var(--shadow-popover);
   animation: confirm-dialog-enter var(--motion) var(--spring) both;
 }
 
@@ -1180,7 +1206,7 @@ label,
   overflow: auto;
   height: 100dvh;
   padding: 0 0 18px 0;
-  background: var(--glass-bg);
+  background: var(--glass-grain), var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-left: var(--stroke-width) solid var(--border-surface);
@@ -1190,9 +1216,9 @@ label,
 
 /* 平账建议需要隔开底层账本：保留半透明层并模糊背景，避免文字透出叠字。 */
 .settings-view[data-mode="settlement"] .settings-drawer {
-  background: color-mix(in srgb, var(--glass-bg-strong) 86%, transparent);
-  -webkit-backdrop-filter: blur(19px) saturate(125%);
-  backdrop-filter: blur(19px) saturate(125%);
+  background: var(--glass-fade-strong-86);
+  -webkit-backdrop-filter: var(--blur-settings);
+  backdrop-filter: var(--blur-settings);
 }
 
 .settings-grid {
@@ -1415,7 +1441,7 @@ label,
     radial-gradient(circle at 30px 50%, white 0 8px, transparent 8.5px),
     var(--theme-color);
   box-shadow:
-    inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 30%, transparent),
+    inset 0 0 0 1px var(--ring-strong),
     var(--glass-edge),
     inset 0 1px 2px rgba(22, 26, 30, 0.08),
     0 0 16px color-mix(in oklch, var(--theme-color) 24%, transparent);
@@ -1465,7 +1491,7 @@ label,
   border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
   border-radius: var(--control-radius-large);
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--glass-bg-strong) 70%, transparent);
+  background: var(--glass-fade-strong-70);
   box-shadow: var(--glass-edge), 0 9px 22px -20px rgba(22, 26, 30, 0.30);
   text-align: left;
   cursor: pointer;
@@ -1481,7 +1507,7 @@ label,
   background: color-mix(in srgb, var(--theme-color) 10%, var(--glass-bg-strong));
   box-shadow:
     var(--glass-edge),
-    inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 12%, transparent),
+    inset 0 0 0 1px var(--ring-subtle),
     0 12px 26px -20px color-mix(in srgb, var(--theme-color) 56%, transparent);
 }
 
@@ -1764,7 +1790,7 @@ label,
   width: 100%;
   min-height: 58px;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 9%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.38);
   padding: 10px 12px;
@@ -1789,7 +1815,7 @@ label,
     linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 10%, transparent), rgba(255, 255, 255, 0.54)),
     rgba(255, 255, 255, 0.46);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 14%, transparent),
+    inset 0 0 0 1px var(--ring-soft),
     var(--edge-shade),
     0 12px 30px -22px color-mix(in srgb, var(--palette-accent, var(--brand-primary)) 46%, transparent);
 }
@@ -1848,7 +1874,7 @@ label,
 
 .family-color-details {
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-primary) 6%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.28);
   overflow: clip;
@@ -2029,7 +2055,7 @@ label,
   overflow: clip;
   margin-top: 14px;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-primary) 6%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.28);
 }
@@ -2190,7 +2216,7 @@ label,
 
 .stat-block {
   border-radius: var(--radius-lg);
-  background: var(--surface-soft);
+  background: var(--glass-grain), var(--surface-soft);
   padding: 16px;
 }
 
@@ -2285,6 +2311,7 @@ label,
   color: color-mix(in srgb, var(--amber) 54%, var(--ink));
   font-size: 1rem;
   font-weight: 600;
+  transition: color var(--motion-fast) var(--spring);
 }
 
 .settlement-entry-sub {
@@ -2300,6 +2327,7 @@ label,
   gap: 6px;
   flex: 0 0 auto;
   color: var(--amber);
+  transition: color var(--motion-fast) var(--spring);
 }
 
 .settlement-entry-count {
@@ -2311,6 +2339,14 @@ label,
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--spring), color var(--motion-fast) var(--spring);
+}
+
+/* 已两清：inset 细线边框与文字/计数芯片一起平滑过渡到家庭色，避免整块秒变 */
+.settlement-entry.is-settled {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 34%, transparent),
+    var(--glass-edge);
 }
 
 .settlement-entry.is-settled .settlement-entry-title,
@@ -2318,13 +2354,16 @@ label,
   color: var(--theme-color-strong);
 }
 
-.settlement-entry.is-settled {
-  border-color: color-mix(in oklch, var(--theme-color) 22%, transparent);
-}
-
 .settlement-entry.is-settled .settlement-entry-count {
   background: color-mix(in oklch, var(--theme-color) 16%, transparent);
   color: var(--theme-color-strong);
+}
+
+/* hover 时保留家庭色细线，避免在已两清态下主题边框骤然消失 */
+.settlement-entry.is-settled:hover {
+  box-shadow:
+    var(--shadow-md),
+    inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 34%, transparent);
 }
 
 .settings-view[data-mode="settings"] .settlement-panel {
@@ -2687,7 +2726,7 @@ label,
   gap: 6px;
   overflow: hidden;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 9%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
   border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 50% 18%, color-mix(in oklch, var(--theme-color) 28%, transparent), transparent 44%),
@@ -2707,7 +2746,7 @@ label,
   border-radius: var(--radius-pill);
   background: color-mix(in oklch, var(--theme-color) 18%, rgba(255, 255, 255, 0.78));
   font-size: 1.35rem;
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--theme-color) 16%, transparent), var(--glass-edge), 0 12px 34px color-mix(in oklch, var(--theme-color) 20%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ring-soft), var(--glass-edge), 0 12px 34px color-mix(in oklch, var(--theme-color) 20%, transparent);
 }
 
 .settlement-done-kicker {
@@ -2729,7 +2768,7 @@ label,
 }
 
 .empty-state {
-  border: 1px dashed var(--line);
+  border: solid var(--border-divider);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.28);
   color: var(--muted);
@@ -2768,6 +2807,11 @@ label,
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  /* 筛选控件收进统一玻璃卡片，与全站卡片语言一致（原为裸 pill 工具栏） */
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--glass-edge);
 }
 
 .ledger-list {
@@ -2965,7 +3009,7 @@ label,
   flex: 0 0 auto;
   min-height: 22px;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent), var(--glass-edge);
+  box-shadow: inset 0 0 0 1px var(--ring-family-subtle), var(--glass-edge);
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--family-color) 10%, rgba(255, 255, 255, 0.64));
   color: color-mix(in srgb, var(--family-text) 78%, var(--muted));
@@ -3073,10 +3117,7 @@ label,
     radial-gradient(ellipse at 86% 6%, rgba(185, 201, 230, 0.15), transparent 44%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
     rgba(247, 249, 248, 0.94);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    var(--edge-shade),
-    0 28px 90px rgba(22, 26, 30, 0.20);
+  box-shadow: var(--shadow-popover);
   animation: confirm-dialog-enter var(--motion) var(--spring) both;
 }
 
@@ -3822,4 +3863,405 @@ label,
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* 后声明的通用 .settlement-entry 会把 display 改回 flex；桌面必须再次收住，
+   移动端由随后加载的 responsive.css 在数据页显式开启。 */
+.mobile-settlement-entry {
+  display: none;
+}
+
+/* ── 宽屏精细指针：让账目、日期和家庭关系成为桌面主叙事 ───────────── */
+@media (min-width: 1180px) and (hover: hover) and (pointer: fine) {
+  .app-shell {
+    width: min(1320px, calc(100% - 48px));
+  }
+
+  .app-view {
+    gap: 18px;
+  }
+
+  .summary-band {
+    position: relative;
+    isolation: isolate;
+    grid-template-columns:
+      minmax(230px, 0.92fr)
+      minmax(270px, 1.12fr)
+      minmax(150px, 0.62fr)
+      minmax(126px, 0.52fr);
+    gap: 14px;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    padding: 18px;
+    background:
+      var(--glass-grain),
+      radial-gradient(80% 130% at 3% -18%, color-mix(in srgb, var(--theme-color) 18%, transparent), transparent 64%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
+      var(--surface);
+    box-shadow: var(--glass-edge), var(--shadow-lg);
+  }
+
+  .journey-hero-copy {
+    display: flex;
+    min-width: 0;
+    min-height: 118px;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8px 8px 8px 4px;
+  }
+
+  .journey-state-label {
+    margin-bottom: 8px;
+    color: var(--theme-color-strong);
+    font-size: var(--label-sm);
+    font-weight: var(--fw-cjk-heavy);
+    letter-spacing: 0.04em;
+  }
+
+  .journey-hero-copy > strong {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: clamp(1.55rem, 2.2vw, 2.35rem);
+    font-weight: var(--fw-bold);
+    line-height: 1.08;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .journey-date-range {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: var(--fw-bold);
+  }
+
+  .summary-band .metric {
+    min-height: 118px;
+    padding: 20px;
+  }
+
+  .summary-band .metric.primary strong {
+    font-size: clamp(2.4rem, 4.1vw, 3.85rem);
+  }
+
+  .journey-family-track {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+    height: 48px;
+  }
+
+  .journey-family-segment {
+    position: relative;
+    display: flex;
+    min-width: 82px;
+    flex: var(--journey-share) 1 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    padding: 0 13px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--family-color) 15%, rgba(255, 255, 255, 0.70)), rgba(255, 255, 255, 0.34));
+    color: color-mix(in srgb, var(--family-text) 82%, var(--ink));
+    box-shadow: inset 0 0 0 1px var(--ring-family-subtle), var(--edge-light), var(--shadow-sm);
+    transition:
+      background-color 180ms ease,
+      box-shadow 180ms ease,
+      opacity 180ms ease;
+  }
+
+  .journey-family-segment span {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+    overflow: hidden;
+    font-size: 0.78rem;
+    font-weight: var(--fw-cjk-heavy);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .journey-family-segment i {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--family-color);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--family-color) 50%, transparent);
+  }
+
+  .journey-family-segment strong {
+    color: color-mix(in srgb, var(--family-text) 76%, var(--ink));
+    font-family: var(--font-number);
+    font-size: 0.78rem;
+    font-weight: var(--fw-medium);
+  }
+
+  .workspace {
+    grid-template-columns: minmax(380px, 400px) minmax(420px, 1fr) minmax(280px, 300px);
+    grid-template-areas: "entry ledger insights";
+    gap: 18px;
+  }
+
+  .entry-panel,
+  .insights-panel {
+    position: sticky;
+    top: 96px;
+  }
+
+  .entry-panel {
+    padding: 20px;
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.12), transparent 46%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 249, 0.72)),
+      rgba(255, 255, 255, 0.80);
+    box-shadow: var(--glass-edge), var(--shadow-md);
+  }
+
+  .entry-panel .expense-form {
+    gap: 12px;
+  }
+
+  .workspace > .ledger-section {
+    min-width: 0;
+    padding: 20px 18px 18px;
+  }
+
+  .default-ledger-title {
+    display: none;
+  }
+
+  .desktop-ledger-title {
+    display: inline;
+  }
+
+  .ledger-section > .section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .ledger-section .ledger-controls {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .ledger-section .ledger-controls select {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+
+  .ledger-list {
+    gap: 18px;
+  }
+
+  .ledger-day-group {
+    --timeline-axis: 8px;
+    --timeline-content-offset: 20px;
+    gap: 9px;
+  }
+
+  .ledger-day-group::before {
+    width: 2px;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--theme-color) 48%, transparent),
+        color-mix(in srgb, var(--theme-color) 10%, transparent)
+      );
+  }
+
+  .ledger-day-heading {
+    min-height: 26px;
+    border-radius: var(--radius-sm);
+    padding: 3px 6px 3px 0;
+    transition:
+      color 180ms ease,
+      background-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .ledger-day-group.is-pointer-related .ledger-day-heading {
+    background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+    color: var(--theme-color-strong);
+    box-shadow: inset 0 0 0 1px var(--ring-subtle);
+  }
+
+  .insights-panel {
+    padding: 18px;
+  }
+
+  .insights-panel .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .insight-details > summary {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .insight-details > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .insight-details > summary span {
+    color: var(--ink);
+    font-weight: var(--fw-cjk-heavy);
+  }
+
+  .insight-details > summary small {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: var(--fw-bold);
+  }
+
+  .insight-details > .stack-list {
+    margin-top: 12px;
+  }
+
+  .row-item,
+  .journey-family-segment {
+    transition:
+      background-color 180ms ease,
+      box-shadow 180ms ease,
+      color 180ms ease,
+      opacity 180ms ease;
+  }
+
+  .row-item.is-pointer-related {
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--family-color, var(--category-gradient, var(--theme-color))) 9%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--family-color, var(--category-gradient, var(--theme-color))) 22%, transparent);
+  }
+
+  .journey-family-segment.is-pointer-related {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--family-color) 24%, rgba(255, 255, 255, 0.72)), rgba(255, 255, 255, 0.40));
+    box-shadow:
+      inset 0 0 0 1px var(--ring-family-soft),
+      0 8px 20px -14px color-mix(in srgb, var(--family-color) 48%, transparent);
+  }
+}
+
+@media (min-width: 1180px) and (hover: hover) and (pointer: fine) and (max-height: 760px) {
+  .entry-panel,
+  .insights-panel {
+    position: static;
+  }
+}
+
+/* 精细指针卡片：光标落点压低悬浮平面，点击只加深，不触发悬停展开。 */
+@media (min-width: 1180px) and (hover: hover) and (pointer: fine) {
+  .pointer-sink-target {
+    --pointer-sink-x: 50%;
+    --pointer-sink-y: 50%;
+    --pointer-rotate-x: 0deg;
+    --pointer-rotate-y: 0deg;
+    position: relative;
+    isolation: isolate;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition:
+      transform 240ms var(--settle),
+      box-shadow 180ms ease,
+      background-color 180ms ease,
+      opacity var(--motion-fast) var(--settle);
+  }
+
+  .pointer-sink-target > :not(.pointer-sink-sheen) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .pointer-sink-sheen {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .pointer-sink-sheen::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 176px;
+    height: 176px;
+    border-radius: 50%;
+    background:
+      radial-gradient(
+        circle,
+        color-mix(in srgb, var(--family-color, var(--theme-color)) 18%, rgba(255, 255, 255, 0.34)) 0%,
+        color-mix(in srgb, var(--family-color, var(--theme-color)) 7%, transparent) 42%,
+        transparent 72%
+      );
+    content: "";
+    opacity: 0;
+    transform:
+      translate3d(var(--pointer-sink-x), var(--pointer-sink-y), 0)
+      translate(-50%, -50%);
+    transition: opacity 180ms ease;
+    will-change: transform;
+  }
+
+  .pointer-sink-target.is-pointer-sunk {
+    transform:
+      perspective(900px)
+      rotateX(var(--pointer-rotate-x))
+      rotateY(var(--pointer-rotate-y))
+      translateY(1.25px)
+      scale(0.998);
+    box-shadow:
+      inset 0 0 0 1px var(--ring-subtle),
+      var(--edge-light),
+      0 5px 14px rgba(22, 26, 30, 0.08);
+    transition:
+      transform 76ms linear,
+      box-shadow 150ms ease,
+      background-color 150ms ease,
+      opacity var(--motion-fast) var(--settle);
+    will-change: transform;
+  }
+
+  .ledger-item.pointer-sink-target.is-pointer-sunk {
+    box-shadow:
+      inset 0 0 0 1px var(--ring-family-soft),
+      var(--edge-light),
+      0 5px 14px color-mix(in srgb, var(--family-color) 14%, rgba(22, 26, 30, 0.07));
+  }
+
+  .pointer-sink-target.is-pointer-sunk .pointer-sink-sheen::before {
+    opacity: 0.58;
+  }
+
+  .pointer-sink-target.is-pointer-pressed {
+    transform:
+      perspective(900px)
+      rotateX(var(--pointer-rotate-x))
+      rotateY(var(--pointer-rotate-y))
+      translateY(2px)
+      scale(0.994);
+    box-shadow:
+      inset 0 0 0 1px var(--ring-soft),
+      var(--edge-shade),
+      0 2px 8px rgba(22, 26, 30, 0.07);
+    transition-duration: 70ms;
+  }
+
+  .pointer-sink-target:focus-visible {
+    outline: 0;
+    box-shadow: var(--focus-ring), var(--shadow-md);
+  }
 }

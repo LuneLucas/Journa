@@ -43,19 +43,19 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/base.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-natural-entry-motion-v46-20260729">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-natural-entry-motion-v46-20260729">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/base.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-natural-entry-text-handoff-v92-20260730">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-natural-entry-text-handoff-v92-20260730">
     <script>
       // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
       // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
@@ -83,7 +83,7 @@
         <div class="header-actions">
           <button class="sync-status" id="syncStatus" type="button" aria-label="同步云账本"><span class="sync-status-shell" aria-hidden="true"></span><span class="sync-status-label" id="syncStatusLabel">本地账本</span></button>
           <button class="icon-button" id="openSettingsButton" type="button" aria-label="设置">
-            <span class="ui-icon-host" data-ui-icon="settings" aria-hidden="true"></span>
+            <span class="ui-icon-host ui-icon-line" data-ui-icon="settings" aria-hidden="true"></span>
           </button>
         </div>
         <div class="mobile-panel-switch" id="mobilePanelSwitch" role="tablist" aria-label="手机端视图切换">
@@ -95,6 +95,11 @@
 
       <div class="app-view" id="ledgerView" data-mobile-panel="data">
         <section class="summary-band" aria-label="账本总览">
+          <div class="journey-hero-copy" aria-live="polite">
+            <span class="journey-state-label" id="journeyStateLabel">旅程尚未开始</span>
+            <strong id="journeyLedgerName">旅行账本</strong>
+            <span class="journey-date-range" id="journeyDateRange">记下第一笔，旅程就会在这里展开</span>
+          </div>
           <div class="metric primary" id="totalMetric" role="status">
             <span>总支出</span>
             <strong id="totalAmount">¥0.00</strong>
@@ -110,6 +115,7 @@
             <span>账单笔数</span>
             <strong id="expenseCount">0</strong>
           </div>
+          <div class="journey-family-track" id="journeyFamilyTrack" aria-label="各家实际垫付比例"></div>
         </section>
 
         <button class="settlement-entry mobile-settlement-entry" id="mobileSettlementEntryButton" type="button" aria-haspopup="dialog" hidden>
@@ -147,7 +153,7 @@
                 </p>
                 <p class="natural-entry-line">
                   <span>由</span>
-                  <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" aria-expanded="false">全部家庭按人数分摊</button>
+                  <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" aria-expanded="false">三家按人数分摊</button>
                 </p>
               </div>
 
@@ -234,30 +240,53 @@
 
           </section>
 
+          <section class="ledger-section" aria-label="账单列表">
+            <div class="section-heading">
+              <div class="ledger-heading-copy">
+                <h2><span class="default-ledger-title">账单列表</span><span class="desktop-ledger-title">账单时间线</span></h2>
+                <span class="ledger-filter-summary" id="ledgerFilterSummary" hidden></span>
+              </div>
+              <button class="ledger-filter-toggle" id="ledgerFilterToggle" type="button" aria-expanded="false" aria-controls="ledgerFilterPanel">
+                <span class="ui-icon-host" data-ui-icon="filter" aria-hidden="true"></span>
+                <span>筛选</span>
+                <span class="ledger-filter-dot" aria-hidden="true"></span>
+              </button>
+              <div class="ledger-controls" id="ledgerFilterPanel" aria-label="账单筛选">
+                <select id="ledgerFamilyFilter" aria-label="按家庭筛选"></select>
+                <select id="ledgerCategoryFilter" aria-label="按类别筛选"></select>
+                <button class="secondary-button compact-button" id="clearLedgerFiltersButton" type="button" hidden>清除筛选</button>
+              </div>
+            </div>
+            <div id="ledgerList" class="ledger-list"></div>
+          </section>
+
           <section class="insights-panel" aria-label="统计和平账">
             <div class="section-heading">
               <h2>支出统计</h2>
             </div>
 
             <div class="stats-grid">
-              <details class="stat-block insight-details">
+              <details class="stat-block insight-details pointer-sink-target">
                 <summary>
                   <span>各家已付</span>
                   <small>查看承担与垫付</small>
                 </summary>
+                <span class="pointer-sink-sheen" aria-hidden="true"></span>
                 <div id="paidByFamily" class="stack-list"></div>
               </details>
 
-              <details class="stat-block category-summary-block insight-details" id="categorySummaryBlock">
+              <details class="stat-block category-summary-block insight-details pointer-sink-target" id="categorySummaryBlock">
                 <summary>
                   <span>类别汇总</span>
                   <small>查看支出构成</small>
                 </summary>
+                <span class="pointer-sink-sheen" aria-hidden="true"></span>
                 <div id="categorySummary" class="stack-list"></div>
               </details>
             </div>
 
-            <button class="settlement-entry" id="settlementEntryButton" type="button" aria-haspopup="dialog">
+            <button class="settlement-entry pointer-sink-target" id="settlementEntryButton" type="button" aria-haspopup="dialog">
+              <span class="pointer-sink-sheen" aria-hidden="true"></span>
               <span class="settlement-entry-copy">
                 <span class="settlement-entry-title">平账建议</span>
                 <small class="settlement-entry-sub" id="settlementEntrySub">旅程收尾时查看</small>
@@ -269,26 +298,6 @@
             </button>
           </section>
         </div>
-
-        <section class="ledger-section" aria-label="账单列表">
-          <div class="section-heading">
-            <div class="ledger-heading-copy">
-              <h2>账单列表</h2>
-              <span class="ledger-filter-summary" id="ledgerFilterSummary" hidden></span>
-            </div>
-            <button class="ledger-filter-toggle" id="ledgerFilterToggle" type="button" aria-expanded="false" aria-controls="ledgerFilterPanel">
-              <span class="ui-icon-host" data-ui-icon="filter" aria-hidden="true"></span>
-              <span>筛选</span>
-              <span class="ledger-filter-dot" aria-hidden="true"></span>
-            </button>
-            <div class="ledger-controls" id="ledgerFilterPanel" aria-label="账单筛选">
-              <select id="ledgerFamilyFilter" aria-label="按家庭筛选"></select>
-              <select id="ledgerCategoryFilter" aria-label="按类别筛选"></select>
-              <button class="secondary-button compact-button" id="clearLedgerFiltersButton" type="button" hidden>清除筛选</button>
-            </div>
-          </div>
-          <div id="ledgerList" class="ledger-list"></div>
-        </section>
       </div>
 
       <section class="settings-view" id="settingsView" data-mode="settings" hidden aria-labelledby="settingsTitle" aria-modal="true" role="dialog">
@@ -626,7 +635,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-natural-entry-motion-v46-20260729"></script>
+    <script src="./app.js?v=journa-natural-entry-text-handoff-v92-20260730"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

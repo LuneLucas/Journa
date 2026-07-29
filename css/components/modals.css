@@ -61,15 +61,15 @@
 /* 遮罩是真正悬浮在滚动内容之上的层，玻璃只留在这里与提交栏/toast */
 .ledger-management-backdrop,
 .confirm-backdrop {
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: var(--blur-confirm);
+  -webkit-backdrop-filter: var(--blur-confirm);
 }
 
 .settings-backdrop {
   /* 设置与平账抽屉共用的视口遮罩：在保持前景卡片清晰的前提下，
      将背景失焦从 12px 提到约 60% 更强的 19px。 */
-  backdrop-filter: blur(19px) saturate(125%);
-  -webkit-backdrop-filter: blur(19px) saturate(125%);
+  backdrop-filter: var(--blur-settings);
+  -webkit-backdrop-filter: var(--blur-settings);
 }
 
 .settings-backdrop {
@@ -99,7 +99,7 @@
   overflow: auto;
   height: 100dvh;
   padding: 0 0 18px 0;
-  background: var(--glass-bg);
+  background: var(--glass-grain), var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-left: 1px solid var(--glass-border);
@@ -151,7 +151,7 @@ body.ledger-management-open .mobile-submit-bar {
 .ledger-manager-card {
   border: none;
   /* 抽屉内面板坐在近实底抽屉上，玻璃不可见，改实底（--surface）省性能 */
-  background: var(--surface);
+  background: var(--glass-grain), var(--surface);
   box-shadow: var(--glass-edge), var(--shadow-md);
 }
 
@@ -169,8 +169,8 @@ body.ledger-management-open .mobile-submit-bar {
   border-radius: 0;
   border-bottom: var(--stroke-width) solid var(--border-divider);
   background: linear-gradient(to bottom, var(--glass-bg) 65%, transparent 100%);
-  -webkit-backdrop-filter: blur(20px) saturate(190%);
-  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  backdrop-filter: var(--glass-blur-strong);
   -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   box-shadow: var(--shadow-sm);

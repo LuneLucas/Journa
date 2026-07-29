@@ -41,7 +41,7 @@
   font-size: var(--label-md);
   font-weight: var(--fw-bold);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent),
+    inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
     var(--shadow-sm);
   transition:
@@ -158,7 +158,7 @@
     linear-gradient(145deg, color-mix(in srgb, var(--family-color) 8%, rgba(255, 255, 255, 0.58)), color-mix(in srgb, var(--settlement-target-color) 8%, rgba(255, 255, 255, 0.44)));
   padding: 14px 16px 14px 14px;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent),
+    inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
     0 10px 26px rgba(22, 26, 30, 0.07);
   animation-delay: var(--settlement-delay, 0ms);
@@ -170,7 +170,7 @@
 .settlement-item:hover {
   transform: var(--hover-lift-card);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 12%, transparent),
+    inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
     var(--hover-lift-card-shadow);
 }
@@ -198,7 +198,7 @@
     color-mix(in srgb, var(--family-color) 7%, rgba(255, 255, 255, 0.68));
   padding: 8px 12px;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, transparent),
+    inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
     0 10px 28px rgba(22, 26, 30, 0.06);
   contain: layout paint;
@@ -251,7 +251,7 @@
   min-height: 124px;
   max-height: 280px;
   border-radius: var(--radius-lg);
-  background: var(--surface-strong);
+  background: var(--glass-grain), var(--surface-strong);
   padding: 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.42),
@@ -261,7 +261,7 @@
 
 .ledger-item.is-editing {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 18%, transparent),
+    inset 0 0 0 1px var(--ring-family-soft),
     var(--edge-shade),
     0 0 34px -20px var(--family-soft),
     var(--shadow-lg);
@@ -288,7 +288,7 @@
   transform: var(--hover-lift-card);
   background: rgba(255, 255, 255, 0.84);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, transparent),
+    inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
     var(--hover-lift-card-shadow);
 }
@@ -451,7 +451,7 @@
   font-size: 0.72rem;
   color: var(--muted);
   margin-top: 8px;
-  border-top: 1px dashed var(--line);
+  border-top: solid var(--border-divider);
   padding-top: 6px;
   width: 100%;
 }

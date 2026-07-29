@@ -162,16 +162,65 @@
   --border-highlight: rgba(255, 255, 255, 0.46);
   --glass-border: var(--border-surface);
   --glass-border-strong: var(--border-strong);
+  /* ── 主题色描边环：统一替代散落的 inset 0 0 0 1px color-mix(...) 写法 ──
+     全站容器/控件的主题色细描边只走这三档(静置/悬浮激活/选中强调)，
+     家庭态与选中家庭态各有一套同形环；不再内联 color-mix。
+     暗色在 dark.css 用同名 token 重映射为暗底合适的透明度。 */
+  --ring-subtle:  color-mix(in oklch, var(--brand-primary) 10%, transparent);
+  --ring-soft:    color-mix(in oklch, var(--brand-primary) 20%, transparent);
+  --ring-strong:  color-mix(in oklch, var(--brand-primary) 34%, transparent);
+  --ring-family-subtle:  color-mix(in oklch, var(--family-color) 14%, transparent);
+  --ring-family-soft:    color-mix(in oklch, var(--family-color) 26%, transparent);
+  --ring-family-strong:  color-mix(in oklch, var(--family-color) 40%, transparent);
+  --ring-selected-subtle:  color-mix(in oklch, var(--selected-family-color, var(--theme-color)) 14%, transparent);
+  --ring-selected-soft:    color-mix(in oklch, var(--selected-family-color, var(--theme-color)) 26%, transparent);
+  --ring-selected-strong:  color-mix(in oklch, var(--selected-family-color, var(--theme-color)) 40%, transparent);
   --glass-shadow: 0 8px 32px 0 rgba(22, 26, 30, 0.08);
   --glass-blur-strong: blur(20px) saturate(190%);
   /* iOS26-soft 渐进增强档：默认不启用。app.js 能力探测通过后才给 <html> 加 data-blur="soft" 生效。
      只作用于非渐隐的整块玻璃（面板/弹层/头部主玻璃/切换器）；渐隐与遮罩层不消费此 token，保持安全渐变兜底。 */
   --glass-blur-soft: blur(22px) saturate(165%) brightness(1.04);
   --glass-blur-strong-soft: blur(30px) saturate(185%) brightness(1.045);
+  /* ── 具名模糊预设：收敛散落的裸写 backdrop-filter(blur/saturate/brightness)。
+     初值为各面板当前真实值，零视觉回归；后续统一在此调。软增强档 [data-blur="soft"]
+     已另有 --glass-blur-soft/-strong-soft，此处只覆盖非软增强的常驻玻璃。 ── */
+  --blur-confirm: blur(6px);                                       /* 确认弹层遮罩 */
+  --blur-toast: blur(6px) saturate(160%);                          /* 轻提示 */
+  --blur-settings: blur(19px) saturate(125%);                      /* 设置/账本抽屉遮罩 */
+  --blur-header: blur(14px) saturate(170%);                        /* 顶部主玻璃 */
+  --blur-header-before: blur(16px) saturate(145%) brightness(1.015); /* 头部高光层 */
+  --blur-header-after: blur(14px) saturate(125%) brightness(1.01);   /* 头部渐隐层 */
+  --blur-header-soft: blur(22px) saturate(150%) brightness(1.02);    /* [data-blur=soft] 头部 */
+  --blur-panel-switch: blur(12px) saturate(150%) brightness(1.015);  /* 移动端面板切换器 */
+  --blur-panel-switch-soft: blur(18px) saturate(160%) brightness(1.02); /* [data-blur=soft] 切换器 */
+  --blur-category: blur(12px) saturate(1.08);                      /* 类别添加控件(明/暗同值) */
+  --blur-submit: blur(14px) saturate(185%) brightness(1.06);       /* 移动端提交按钮玻璃 */
+  --blur-focus-dim: blur(12px) saturate(0.72) brightness(0.74);    /* 暗色记账焦点遮罩(压暗) */
+  --blur-dim: blur(10px) saturate(0.82) brightness(0.96);          /* 暗色全屏压暗层 */
+  --blur-overlay-strong: blur(24px) saturate(145%) brightness(1.04); /* 移动端强模糊面板 */
+  /* 玻璃表面颗粒：与 body::before 同一套 feTurbulence 灰度噪点，作为玻璃面板自身的背景层，
+     让面板表面（而非身后被 backdrop-filter 抹平的页面背景）具备可触摸的物理质感。只挂在实底
+     玻璃面板上；渐隐/遮罩层不消费，避免透明区浮出游离颗粒。明暗主题共用（灰度、与底色无关）。
+     注意：不可并入 --glass-bg，后者被大量 color-mix() 当颜色参数使用。 */
+  --glass-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 0.045'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E") left top / 150px 150px repeat;
 
   --surface: var(--glass-bg);
   --surface-strong: var(--glass-bg-strong);
   --surface-soft: rgba(255, 252, 248, 0.60);
+  /* ── 玻璃渐隐档：原散落的 color-mix(in srgb, var(--glass-bg) NN%, transparent)。
+     按当前百分比具名，颜色源复用 --glass-bg/-strong（随主题自适应），零视觉回归。 ── */
+  --glass-fade-12: color-mix(in srgb, var(--glass-bg) 12%, transparent);
+  --glass-fade-15: color-mix(in srgb, var(--glass-bg) 15%, transparent);
+  --glass-fade-30: color-mix(in srgb, var(--glass-bg) 30%, transparent);
+  --glass-fade-38: color-mix(in srgb, var(--glass-bg) 38%, transparent);
+  --glass-fade-46: color-mix(in srgb, var(--glass-bg) 46%, transparent);
+  --glass-fade-54: color-mix(in srgb, var(--glass-bg) 54%, transparent);
+  --glass-fade-56: color-mix(in srgb, var(--glass-bg) 56%, transparent);
+  --glass-fade-60: color-mix(in srgb, var(--glass-bg) 60%, transparent);
+  --glass-fade-84: color-mix(in srgb, var(--glass-bg) 84%, transparent);
+  --glass-fade-88: color-mix(in srgb, var(--glass-bg) 88%, transparent);
+  --glass-fade-strong-70: color-mix(in srgb, var(--glass-bg-strong) 70%, transparent);
+  --glass-fade-strong-86: color-mix(in srgb, var(--glass-bg-strong) 86%, transparent);
   --ink: #202427;
   --muted: #5b625f;
   --line: var(--border-divider);
@@ -277,13 +326,14 @@
   --button-secondary-text: var(--brand-primary-strong);
   --danger-soft: rgba(183, 79, 56, 0.10);
   --danger-soft-hover: rgba(183, 79, 56, 0.16);
-  /* 各浏览器统一使用普通圆弧，避免 Chrome 的实验性连续圆角产生偏方轮廓；控件统一使用 --control-radius，只有胶囊形标签使用 --radius-pill。 */
-  --radius-sm: 13px;
-  --radius-md: 19px;
-  --radius-lg: 25px;
-  --radius-xl: 34px;
+  /* 圆角阶梯：页面 32 / 卡片 24 / 常规控件 16 / 紧凑控件 12；
+     各浏览器统一使用普通圆弧，只有标签、状态点和头像使用全圆胶囊/圆形。 */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
   --radius-pill: 999px;
-  --radius-hero: 42px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
+  --radius-hero: 36px; /* 总支出等英雄卡片放大态，与 --radius-xl 成对 */
   /* 控件几何：常规输入/按钮、紧凑操作和面板排版共用同一套节奏。 */
   --control-height: 52px;
   --control-height-compact: 44px;
@@ -291,8 +341,8 @@
   --panel-padding: 22px;
   /* soft 过渡只在短时状态切换中使用，避免常态大面积模糊带来的重绘。 */
   --soft-transition-blur: 2px;
-  --control-radius: var(--radius-lg);
-  --control-radius-compact: var(--radius-md);
+  --control-radius: var(--radius-md);
+  --control-radius-compact: var(--radius-sm);
   --control-radius-large: var(--radius-lg);
   --control-padding-x: 16px;
   --spring: cubic-bezier(0.14, 0.98, 0.12, 1);
@@ -361,6 +411,9 @@
   --shadow-chip: var(--inset-highlight), 0 8px 22px rgba(22, 26, 30, 0.07);
   --shadow-card-lift: 0 12px 34px rgba(22, 26, 30, 0.08);
   --shadow-hero: 0 34px 92px rgba(22, 26, 30, 0.14);
+  /* 浮层/弹窗统一投影：与静态卡片共享同一套玻璃边光(--glass-edge)，仅把抬升档提到 lg，
+     让自然编辑弹层、分摊面板、确认/欢迎弹窗与卡片同一视觉语言。明暗主题自动适配。 */
+  --shadow-popover: var(--glass-edge), var(--shadow-lg);
   /* 分层 hover 位移：卡片/行级抬升 translateY(-2px) + 更深投影；
      胶囊/标签级只点灯不变位（transform: none），token 化便于全局微调 */
   --hover-lift-card: translateY(-2px);
@@ -459,6 +512,20 @@
     --glass-blur-strong: none;
     --glass-blur-soft: none;
     --glass-blur-strong-soft: none;
+    --blur-confirm: none;
+    --blur-toast: none;
+    --blur-settings: none;
+    --blur-header: none;
+    --blur-header-before: none;
+    --blur-header-after: none;
+    --blur-header-soft: none;
+    --blur-panel-switch: none;
+    --blur-panel-switch-soft: none;
+    --blur-category: none;
+    --blur-submit: none;
+    --blur-focus-dim: none;
+    --blur-dim: none;
+    --blur-overlay-strong: none;
     --glass-bg: var(--glass-bg-strong);
     --surface: var(--glass-bg-strong);
     --surface-strong: var(--glass-bg-strong);
@@ -471,6 +538,20 @@
     --glass-blur-strong: none;
     --glass-blur-soft: none;
     --glass-blur-strong-soft: none;
+    --blur-confirm: none;
+    --blur-toast: none;
+    --blur-settings: none;
+    --blur-header: none;
+    --blur-header-before: none;
+    --blur-header-after: none;
+    --blur-header-soft: none;
+    --blur-panel-switch: none;
+    --blur-panel-switch-soft: none;
+    --blur-category: none;
+    --blur-submit: none;
+    --blur-focus-dim: none;
+    --blur-dim: none;
+    --blur-overlay-strong: none;
     --glass-bg: var(--glass-bg-strong);
     --surface: var(--glass-bg-strong);
     --surface-strong: var(--glass-bg-strong);

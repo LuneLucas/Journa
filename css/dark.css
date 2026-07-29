@@ -3,11 +3,11 @@
   :root {
     color-scheme: dark;
     --bg: #141210;
-    /* 深色环境光网格：三家庭色以更高不透明度柔染，避免暗底发死 */
+    /* 深色环境光只保留极弱的层次，不让整张数据页被家庭色染成绿色。 */
     --page-bg:
-      radial-gradient(120% 80% at 6% -4%, rgba(122, 170, 140, 0.22), transparent 55%),
-      radial-gradient(110% 75% at 98% 2%, rgba(120, 150, 205, 0.20), transparent 55%),
-      radial-gradient(135% 95% at 50% 108%, rgba(206, 144, 142, 0.20), transparent 58%),
+      radial-gradient(120% 80% at 6% -4%, rgba(150, 154, 151, 0.09), transparent 55%),
+      radial-gradient(110% 75% at 98% 2%, rgba(148, 151, 158, 0.08), transparent 55%),
+      radial-gradient(135% 95% at 50% 108%, rgba(158, 150, 150, 0.08), transparent 58%),
       var(--bg);
     /* 毛玻璃深色微调（暖调玻璃，与暖底一致） */
     --glass-bg: rgba(30, 28, 26, 0.72);
@@ -23,6 +23,20 @@
     --border-highlight: rgba(255, 255, 255, 0.10);
     --glass-border: var(--border-surface);
     --glass-border-strong: var(--border-strong);
+    /* ── 暗色描边环：同名 token 重映射为暗底合适的透明度 ── */
+    --ring-subtle:  color-mix(in oklch, var(--brand-primary) 14%, transparent);
+    --ring-soft:    color-mix(in oklch, var(--brand-primary) 24%, transparent);
+    --ring-strong:  color-mix(in oklch, var(--brand-primary) 40%, transparent);
+    --ring-family-subtle:  color-mix(in oklch, var(--family-color) 18%, transparent);
+    --ring-family-soft:    color-mix(in oklch, var(--family-color) 30%, transparent);
+    --ring-family-strong:  color-mix(in oklch, var(--family-color) 44%, transparent);
+    --ring-selected-subtle:  color-mix(in oklch, var(--selected-family-color, var(--theme-color)) 18%, transparent);
+    --ring-selected-soft:    color-mix(in oklch, var(--selected-family-color, var(--theme-color)) 30%, transparent);
+    --ring-selected-strong:  color-mix(in oklch, var(--selected-family-color, var(--theme-color)) 44%, transparent);
+    /* 暗色发丝线并入亮色 border 词表（保留旧名做兼容别名，旧选择器无需逐个改） */
+    --dark-hairline: var(--border-surface);
+    --dark-hairline-strong: var(--border-strong);
+    --dark-highlight: var(--border-highlight);
     /* 暗色玻璃边光：暗底上顶部高光必须压低(0.10)，底部接触暗边必须加重(0.28)才看得出来层次 */
     --edge-rim: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
     --edge-light: inset 0 1px 1px rgba(255, 255, 255, 0.13);
@@ -43,6 +57,11 @@
     --surface-soft: rgba(22, 22, 24, 0.58);
     --ink: #f0f0f0;
     --muted: #a1a1a6;
+    --ledger-primary-text: color-mix(in srgb, var(--family-text, var(--ink)) 48%, white);
+    --ledger-secondary-text: rgba(232, 236, 233, 0.62);
+    --ledger-card-background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+      color-mix(in srgb, var(--family-color) 4%, rgba(20, 20, 22, 0.76));
     --line: var(--border-divider);
     --line-dark: var(--border-surface);
 
@@ -79,10 +98,11 @@
     --hover-lift-card-shadow: 0 18px 46px -16px rgba(0, 0, 0, 0.55), 0 4px 14px -8px rgba(0, 0, 0, 0.45);
   }
 
-  /* 深色层次感：静态面板补真实投影 + 顶亮底暗的玻璃边光，从背景浮起 */
+  /* 深色层次感：静态面板补真实投影 + 顶亮底暗的玻璃边光，从背景浮起。
+     与亮色基线(.glass/.metric/... -> --glass-edge, --shadow-md)同形，含 1px 高光描边(--edge-rim)。 */
   .glass, .metric, .entry-panel, .insights-panel,
   .ledger-section, .stat-block, .settlement-block, .ledger-item {
-    box-shadow: var(--shadow-md), var(--edge-light), var(--edge-shade);
+    box-shadow: var(--glass-edge), var(--shadow-md);
   }
 
   /* ── 全局主题色预设的暗色对（暗色模式自适应 HSL 对齐） ── */
@@ -121,7 +141,7 @@
       linear-gradient(135deg, color-mix(in srgb, var(--palette-accent, var(--theme-color)) 11%, transparent), rgba(255, 255, 255, 0.045)),
       rgba(255, 255, 255, 0.04);
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--palette-accent, var(--theme-color)) 14%, transparent),
+      inset 0 0 0 1px var(--ring-soft),
       0 0 34px -22px color-mix(in srgb, var(--palette-accent, var(--theme-color)) 46%, transparent);
   }
 
@@ -163,7 +183,7 @@
   /* 抽屉与确认框的白色渐变改暗面 */
   .settings-drawer,
   .ledger-management-drawer {
-    background: var(--glass-bg);
+    background: var(--glass-grain), var(--glass-bg);
   }
 
   .confirm-dialog {
@@ -239,6 +259,37 @@
     -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
   }
 
+  /* 金额字段容器：浅色为白玻璃，深色下整片转暗玻璃。
+     此前只覆盖了 .input 的背景，容器仍吃浅色 linear-gradient，深色模式会留下一块大白底。 */
+  .amount-label {
+    border-color: var(--border-control);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 7%, rgba(28, 28, 30, 0.62));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 16px 36px -28px rgba(0, 0, 0, 0.55);
+  }
+
+  .amount-label.amount-active {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 0 3px color-mix(in srgb, var(--submit-color, var(--theme-color)) 12%, transparent),
+      0 20px 50px -38px var(--selected-family-glow, transparent),
+      0 18px 44px -30px rgba(0, 0, 0, 0.6);
+  }
+
+  /* 自动汇总徽章：浅色白药丸 → 暗玻璃小药丸，文字提亮保证可读性 */
+  .amount-auto-badge {
+    background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 18%, rgba(255, 255, 255, 0.08));
+    color: color-mix(in srgb, var(--selected-family-text) 64%, rgba(232, 236, 233, 0.7));
+  }
+
+  /* 编辑横幅（正在编辑这笔账单）：浅色白底 → 暗玻璃 */
+  .edit-banner {
+    background: color-mix(in srgb, var(--selected-family-wash, rgba(127, 160, 143, 0.18)) 60%, rgba(28, 28, 30, 0.66));
+  }
+
   .settlement-to strong {
     color: color-mix(in srgb, var(--settlement-target-text, var(--ink)) 50%, white);
   }
@@ -283,7 +334,7 @@
       linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055)),
       color-mix(in srgb, var(--submit-color, var(--theme-color)) 6%, rgba(255, 255, 255, 0.06));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--submit-color, var(--theme-color)) 9%, rgba(255, 255, 255, 0.06)),
+      inset 0 0 0 1px var(--ring-subtle),
       inset 0 1px 1px rgba(255, 255, 255, 0.10),
       inset 0 -1px 1px rgba(0, 0, 0, 0.20),
       0 8px 18px -14px rgba(0, 0, 0, 0.58);
@@ -435,18 +486,14 @@
       radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.03), transparent 48%),
       linear-gradient(145deg, rgba(32, 32, 34, 0.94), rgba(22, 22, 24, 0.80)),
       rgba(17, 17, 17, 0.88);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 26px 86px rgba(0, 0, 0, 0.32);
+    box-shadow: var(--glass-edge), var(--shadow-lg);
   }
 
   .insights-panel {
     background:
       linear-gradient(145deg, rgba(32, 32, 34, 0.82), rgba(22, 22, 24, 0.62)),
       rgba(17, 17, 17, 0.72);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      var(--shadow-md);
+    box-shadow: var(--glass-edge), var(--shadow-md);
   }
 
   input,
@@ -652,8 +699,8 @@
 
   .ledger-section {
     background:
-      linear-gradient(145deg, rgba(36, 43, 40, 0.82), rgba(28, 34, 31, 0.62)),
-      rgba(24, 29, 27, 0.72);
+      linear-gradient(145deg, rgba(38, 38, 41, 0.84), rgba(29, 29, 32, 0.66)),
+      rgba(24, 24, 27, 0.76);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
       var(--shadow-md);
@@ -662,9 +709,9 @@
   .settlement-entry {
     border-color: rgba(217, 164, 65, 0.22);
     background:
-      linear-gradient(135deg, rgba(40, 46, 42, 0.82), rgba(28, 34, 31, 0.60)),
+      linear-gradient(135deg, rgba(42, 42, 40, 0.84), rgba(30, 30, 31, 0.64)),
       radial-gradient(ellipse at 100% 120%, rgba(217, 164, 65, 0.12), transparent 60%),
-      rgba(24, 29, 27, 0.68);
+      rgba(24, 24, 26, 0.72);
   }
 
   .settlement-entry-title {
@@ -801,9 +848,7 @@
 
   .ledger-item {
     border-color: color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline));
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
-      color-mix(in srgb, var(--family-color) 8%, rgba(20, 24, 22, 0.68));
+    background: var(--ledger-card-background);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
       0 10px 28px rgba(0, 0, 0, 0.20);
@@ -815,7 +860,7 @@
       linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
       color-mix(in srgb, var(--family-color) 10%, rgba(20, 24, 22, 0.70));
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 10%, transparent),
+      inset 0 0 0 1px var(--ring-family-subtle),
       var(--glass-edge),
       var(--hover-lift-card-shadow),
       0 0 28px -14px color-mix(in oklch, var(--theme-color) 36%, transparent);
@@ -823,9 +868,7 @@
 
   .ledger-item.is-expanded {
     border-color: color-mix(in srgb, var(--family-color) 34%, var(--dark-hairline));
-    background:
-      linear-gradient(135deg, rgba(40, 47, 44, 0.82), rgba(28, 34, 31, 0.66)),
-      color-mix(in srgb, var(--family-color) 8%, rgba(20, 24, 22, 0.72));
+    background: var(--ledger-card-background);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
       0 16px 42px rgba(0, 0, 0, 0.26);
@@ -839,7 +882,14 @@
   .ledger-family,
   .ledger-amount,
   .ledger-edit-button {
-    color: color-mix(in srgb, var(--family-text, var(--ink)) 48%, white);
+    color: var(--ledger-primary-text);
+    transition: color var(--motion-fast) var(--spring);
+  }
+
+  .ledger-note,
+  .ledger-scope,
+  .ledger-sync-state {
+    color: var(--ledger-secondary-text);
   }
 
   .ledger-expand-cue {
@@ -970,8 +1020,8 @@
   .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control {
     border-color: color-mix(in srgb, var(--theme-color) 18%, var(--dark-hairline));
     background: color-mix(in srgb, var(--theme-color) 5%, rgba(255, 255, 255, 0.024));
-    -webkit-backdrop-filter: blur(12px) saturate(1.08);
-    backdrop-filter: blur(12px) saturate(1.08);
+    -webkit-backdrop-filter: var(--blur-category);
+    backdrop-filter: var(--blur-category);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 8px 18px -16px rgba(0, 0, 0, 0.5);
@@ -1030,7 +1080,7 @@
       radial-gradient(ellipse at 18% 8%, var(--theme-aura-soft), transparent 48%),
       linear-gradient(135deg, rgba(40, 47, 44, 0.60), rgba(30, 36, 33, 0.40)),
       rgba(20, 24, 22, 0.50);
-    box-shadow: inset 0 1px 0 var(--dark-highlight);
+    box-shadow: var(--glass-edge), var(--shadow-md);
   }
 
   .split-mode-button {
@@ -1072,6 +1122,15 @@
   .split-detail-area {
     border-color: color-mix(in srgb, var(--submit-color, var(--theme-color)) 20%, var(--dark-hairline));
     background: color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, rgba(20, 24, 22, 0.46));
+  }
+
+  /* 自然语言移动端把舞台壳作为唯一玻璃层，避免深色主题在后加载时恢复嵌套底框。 */
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-scope-panel,
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-detail-area {
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .split-amount-row input {
@@ -1520,9 +1579,9 @@
   }
 
   html[data-entry-mode="natural"] .natural-entry-focus-backdrop {
-    background: rgba(12, 11, 10, 0.16);
-    -webkit-backdrop-filter: blur(11px) saturate(76%) brightness(0.78);
-    backdrop-filter: blur(11px) saturate(76%) brightness(0.78);
+    background: rgba(12, 11, 10, 0.18);
+    -webkit-backdrop-filter: var(--blur-focus-dim);
+    backdrop-filter: var(--blur-focus-dim);
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage-shell {
@@ -1532,29 +1591,40 @@
         color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 24%, rgba(255, 255, 255, 0.08)),
         transparent 50%
       ),
-      linear-gradient(148deg, rgba(52, 50, 47, 0.94), rgba(32, 31, 29, 0.91) 58%, rgba(22, 22, 21, 0.88)),
-      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, var(--dark-panel));
+      linear-gradient(148deg, rgba(60, 58, 55, 0.95), rgba(40, 39, 36, 0.91) 58%, rgba(28, 28, 27, 0.87)),
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, rgba(18, 18, 20, 0.96));
+    box-shadow: var(--shadow-popover);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage {
+    filter:
+      drop-shadow(0 12px 24px rgba(0, 0, 0, 0.28))
+      drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18));
+  }
+
+  /* 移动端自然语言记账主面板：覆盖 responsive.css 中的浅色纸面渐变。 */
+  html[data-entry-mode="natural"] .app-view[data-mobile-panel="entry"] .entry-panel {
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.03), transparent 48%),
+      linear-gradient(145deg, rgba(32, 32, 34, 0.94), rgba(22, 22, 24, 0.80)),
+      rgba(17, 17, 17, 0.88);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.17),
-      inset 0 -2px 0 rgba(0, 0, 0, 0.50),
-      inset 18px 0 32px -30px var(--total-edge-left),
-      inset -18px 0 32px -30px var(--total-edge-right),
-      0 0 0 1px color-mix(in srgb, var(--total-edge-soft) 62%, rgba(255, 255, 255, 0.08)),
-      0 2px 0 rgba(0, 0, 0, 0.28),
-      -14px 0 44px -30px var(--total-glow-left),
-      14px 0 44px -30px var(--total-glow-right),
-      0 10px 20px -8px rgba(0, 0, 0, 0.34),
-      0 26px 64px rgba(0, 0, 0, 0.54);
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 18px 52px -30px rgba(0, 0, 0, 0.58);
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage::before {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.025) 58%, transparent);
-    opacity: 0.82;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02) 62%, transparent);
+    opacity: 0.2;
   }
 
-  html[data-entry-mode="natural"] .natural-entry-stage::after {
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.58), transparent);
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open::before,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing::before {
+    opacity: 0.5;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading::before {
+    opacity: 0;
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage-token {
@@ -1600,5 +1670,123 @@
     --glass-bg: var(--glass-bg-strong);
     --surface: var(--glass-bg-strong);
     --surface-strong: var(--glass-bg-strong);
+  }
+}
+
+/* 深色圆形收缩态：光晕贴近按钮，避免外圈像霓虹灯。 */
+@media (prefers-color-scheme: dark) and (max-width: 820px),
+  (prefers-color-scheme: dark) and (pointer: coarse) {
+  body.mobile-panel-data .mobile-submit-bar {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.025) 58%),
+      rgba(43, 45, 46, 0.82);
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.12),
+      inset 0 -1px 6px rgba(0, 0, 0, 0.30),
+      0 0 18px -12px color-mix(in srgb, var(--submit-color, var(--theme-color)) 28%, transparent),
+      0 10px 28px -12px rgba(0, 0, 0, 0.48);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar.submit-themed {
+    background:
+      radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.18), transparent 44%),
+      linear-gradient(135deg, color-mix(in srgb, var(--submit-color) 12%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.025) 62%),
+      rgba(43, 45, 46, 0.82);
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.16),
+      inset 0 -1px 6px rgba(0, 0, 0, 0.32),
+      0 0 20px -12px color-mix(in srgb, var(--submit-glow) 54%, transparent),
+      0 10px 28px -12px rgba(0, 0, 0, 0.48);
+  }
+
+  body.mobile-panel-data .mobile-submit-bar::after {
+    opacity: 0.48;
+  }
+}
+
+@media (prefers-color-scheme: dark) and (min-width: 1180px) and (hover: hover) and (pointer: fine) {
+  .summary-band {
+    background:
+      var(--glass-grain),
+      radial-gradient(80% 130% at 3% -18%, color-mix(in srgb, var(--theme-color) 14%, transparent), transparent 64%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+      rgba(20, 21, 21, 0.88);
+    box-shadow: var(--glass-edge), 0 28px 70px rgba(0, 0, 0, 0.34);
+  }
+
+  .journey-hero-copy > strong {
+    color: rgba(244, 246, 245, 0.94);
+  }
+
+  .journey-family-segment {
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--family-color) 13%, rgba(255, 255, 255, 0.055)),
+        rgba(255, 255, 255, 0.025)
+      );
+    color: color-mix(in srgb, var(--family-color) 28%, rgba(238, 242, 240, 0.88));
+    box-shadow: inset 0 0 0 1px var(--ring-family-subtle), var(--edge-light), 0 8px 20px rgba(0, 0, 0, 0.18);
+  }
+
+  .journey-family-segment strong {
+    color: color-mix(in srgb, var(--family-color) 22%, rgba(238, 242, 240, 0.82));
+  }
+
+  .journey-family-segment.is-pointer-related {
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--family-color) 22%, rgba(255, 255, 255, 0.065)),
+        rgba(255, 255, 255, 0.035)
+      );
+  }
+
+  .entry-panel {
+    background:
+      radial-gradient(ellipse at 18% 0%, color-mix(in srgb, var(--theme-color) 9%, transparent), transparent 46%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+      rgba(20, 21, 21, 0.88);
+  }
+
+  .pointer-sink-target.is-pointer-sunk {
+    box-shadow:
+      inset 0 0 0 1px var(--ring-soft),
+      var(--edge-light),
+      0 5px 15px rgba(0, 0, 0, 0.28);
+  }
+
+  .ledger-item.pointer-sink-target.is-pointer-sunk {
+    box-shadow:
+      inset 0 0 0 1px var(--ring-family-soft),
+      var(--edge-light),
+      0 5px 15px color-mix(in srgb, var(--family-color) 12%, rgba(0, 0, 0, 0.26));
+  }
+}
+
+/* 深色移动端引导按钮：玻璃底保持可见，边框只做暗底轮廓，发光退为柔和的悬浮光。 */
+@media (prefers-color-scheme: dark) and (max-width: 820px),
+  (prefers-color-scheme: dark) and (pointer: coarse) {
+  .mobile-submit-button.is-blocked {
+    border-color: rgba(232, 238, 236, 0.24);
+    background:
+      radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.16), transparent 44%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035) 62%),
+      rgba(44, 47, 47, 0.78);
+    color: rgba(239, 244, 242, 0.90);
+    text-shadow: none;
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.14),
+      inset 0 -1px 8px rgba(0, 0, 0, 0.28),
+      0 0 18px -10px color-mix(in srgb, var(--submit-color, var(--theme-color)) 28%, transparent),
+      0 10px 30px -12px rgba(0, 0, 0, 0.44);
+  }
+
+  .mobile-submit-button.is-blocked:active {
+    box-shadow:
+      inset 0 0 0 999px rgba(255, 255, 255, 0.06),
+      inset 0 1px 2px rgba(255, 255, 255, 0.10),
+      0 0 22px -7px color-mix(in srgb, var(--submit-color, var(--theme-color)) 40%, transparent),
+      0 6px 18px -9px rgba(0, 0, 0, 0.52);
   }
 }
