@@ -388,6 +388,9 @@ const elements = {
 let appState = loadState();
 activateLedgerFromUrl();
 let state = getActiveLedger();
+// 每次重新打开应用都从今天开始填写新账单；进入编辑已有账单时，
+// startEditExpense() 会用账单原日期覆盖这个默认值。
+state.activeDate = todayIso();
 let activeSplitMode = "all";
 let activeSplitFamilyIds = state.families.map((family) => family.id);
 let activeSplitAmounts = {};
@@ -2422,9 +2425,19 @@ function unfreezeNaturalEntryAnchor() {
   naturalEntryFrozenAnchor = null;
 }
 
-function syncNaturalEntryStageToken() {
+function syncNaturalEntryStageToken({ animate = false, text = null } = {}) {
   if (!naturalEntryStageOpen || !naturalEntryStageAnchor) return;
-  elements.naturalEntryStageToken.textContent = naturalEntryStageAnchor.textContent;
+  const nextText = text == null ? naturalEntryStageAnchor.textContent : String(text);
+  const stageToken = elements.naturalEntryStageToken;
+  if (animate && !prefersReducedMotion()) {
+    const duration = activeEntryEditor === "date" ? 240 : activeEntryEditor === "split" ? 300 : 280;
+    animateNaturalEntryToken(stageToken, nextText, { duration });
+  } else {
+    const previous = naturalEntryTokenAnimations.get(stageToken);
+    previous?.cancel();
+    naturalEntryTokenAnimations.delete(stageToken);
+    stageToken.textContent = nextText;
+  }
   elements.naturalEntryStageToken.classList.toggle("is-amount", activeEntryEditor === "amount");
 }
 
@@ -2436,6 +2449,10 @@ function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
   const editor = naturalEntryStageEditor;
   const anchor = naturalEntryStageAnchor;
   restoreNaturalEntryEditorHome(editor);
+  if (editor === elements.splitScope) {
+    splitScopeOpen = false;
+    renderSplitScope();
+  }
   unfreezeNaturalEntryAnchor();
   anchor?.classList.remove("is-stage-anchor", "is-stage-handoff", "is-value-settling");
   elements.naturalEntryStage.classList.remove("is-preparing", "is-closing", "is-fading");
@@ -2483,12 +2500,11 @@ function getNaturalEntryFlightSourceRect(stage) {
 }
 
 function getNaturalEntryTextRect(element) {
-  const textNode = Array.from(element?.childNodes || [])
-    .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
-  if (!textNode) return null;
+  if (!element) return null;
   const range = document.createRange();
-  range.selectNodeContents(textNode);
-  return range.getBoundingClientRect();
+  range.selectNodeContents(element);
+  const rect = range.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0 ? rect : null;
 }
 
 function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}) {
@@ -2518,7 +2534,11 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   // from moving the landing point half way through the animation.
   unfreezeNaturalEntryAnchor();
   renderNaturalEntry();
-  if (anchor && token) token.textContent = anchor.textContent;
+  if (anchor && token) {
+    naturalEntryTokenAnimations.get(token)?.cancel();
+    naturalEntryTokenAnimations.delete(token);
+    token.textContent = anchor.textContent;
+  }
 
   if (immediate || prefersReducedMotion() || !stage || !anchor || typeof stage.animate !== "function") {
     elements.naturalEntryFocusBackdrop.classList.remove("is-open");
@@ -2653,7 +2673,12 @@ function openNaturalEntryStage(editor) {
   if (naturalEntryStageOpen && naturalEntryStageEditor && naturalEntryStageEditor !== panel) {
     const stage = elements.naturalEntryStage;
     const oldHeight = stage.getBoundingClientRect().height;
-    restoreNaturalEntryEditorHome(naturalEntryStageEditor);
+    const previousStageEditor = naturalEntryStageEditor;
+    restoreNaturalEntryEditorHome(previousStageEditor);
+    if (previousStageEditor === elements.splitScope) {
+      splitScopeOpen = false;
+      renderSplitScope();
+    }
     unfreezeNaturalEntryAnchor();
     naturalEntryStageAnchor?.classList.remove("is-stage-anchor");
     naturalEntryStageEditor = panel;
@@ -2734,19 +2759,19 @@ function formatNaturalFamilyCount(count) {
 }
 
 function formatNaturalEntrySplit() {
-  if (activeSplitMode === "custom") return "按自定金额分摊";
+  if (activeSplitMode === "custom") return "按自定金额承担";
   if (activeSplitMode === "families") {
     const names = activeSplitFamilyIds.map(getFamilyName).filter(Boolean);
-    if (!names.length) return "指定家庭按人数分摊";
-    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家按人数分摊`;
+    if (!names.length) return "指定家庭承担";
+    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家承担`;
     if (names.length === 2) {
       const compactNames = names.map((name) => name.replace(/家$/, ""));
-      return `${compactNames.join("&")}家按人数分摊`;
+      return `${compactNames.join("&")}家承担`;
     }
-    return `${names.join("、")}按人数分摊`;
+    return `${names.join("、")}承担`;
   }
   const familyCount = state.families.length;
-  return familyCount >= 3 ? `${formatNaturalFamilyCount(familyCount)}家按人数分摊` : "全部家庭按人数分摊";
+  return familyCount >= 3 ? `${formatNaturalFamilyCount(familyCount)}家承担` : "全部家庭承担";
 }
 
 function formatNaturalEntryAmount(cents) {
@@ -2771,7 +2796,7 @@ function renderNaturalEntry() {
   animateNaturalEntryToken(elements.naturalPayerToken, state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭", { duration: 280 });
   elements.naturalAmountToken.textContent = amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00";
   animateNaturalEntryToken(elements.naturalCategoryToken, state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别", { duration: 260 });
-  elements.naturalNoteToken.textContent = note || "备注可选";
+  animateNaturalEntryToken(elements.naturalNoteToken, note || "备注可选", { duration: 280 });
   elements.naturalNoteToken.title = note;
   animateNaturalEntryToken(elements.naturalSplitToken, formatNaturalEntrySplit(), { duration: 300 });
 
@@ -2780,7 +2805,23 @@ function renderNaturalEntry() {
     button.classList.toggle("is-active", expanded);
     button.setAttribute("aria-expanded", String(expanded));
   });
-  syncNaturalEntryStageToken();
+  const stageText = activeEntryEditor === "date"
+    ? formatNaturalEntryDate(date)
+    : activeEntryEditor === "payer"
+      ? (state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭")
+      : activeEntryEditor === "amount"
+        ? (amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00")
+        : activeEntryEditor === "category"
+          ? (state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别")
+          : activeEntryEditor === "note"
+            ? (note || "备注可选")
+            : formatNaturalEntrySplit();
+  syncNaturalEntryStageToken({
+    text: stageText,
+    animate: naturalEntryStageOpen
+      && !elements.naturalEntryStage.classList.contains("is-preparing")
+      && !elements.naturalEntryStage.classList.contains("is-closing"),
+  });
   scheduleNaturalEntryStagePosition();
 }
 
@@ -7154,62 +7195,128 @@ function animateAmountValueTrack(input, { compact = false, soft = false } = {}) 
 function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
   if (!element) return;
   const next = String(nextText ?? "");
-  if (element.textContent === next) return;
-
-  const before = element.getBoundingClientRect();
   const previous = naturalEntryTokenAnimations.get(element);
+  if (previous?.target === next) return;
+  if (previous && !previous.cancelled && next.startsWith(previous.target)) {
+    // 备注连续输入时延长当前的“输入”目标，不重启动画时间线，避免每个
+    // 按键都把文字拉回删除阶段。
+    previous.target = next;
+    return;
+  }
+  const current = previous?.displayText ?? element.textContent;
   previous?.cancel();
+  if (current === next) return;
 
-  if (prefersReducedMotion() || typeof element.animate !== "function") {
+  if (prefersReducedMotion()) {
     element.textContent = next;
+    element.setAttribute("aria-label", next);
+    naturalEntryTokenAnimations.delete(element);
     return;
   }
 
-  const exitDuration = Math.min(110, Math.max(84, Math.round(duration * 0.38)));
-  const state = { inAnimation: null, outAnimation: null, cancelled: false, cancel() {
-    this.cancelled = true;
-    this.outAnimation?.cancel();
-    this.inAnimation?.cancel();
-  } };
-  naturalEntryTokenAnimations.set(element, state);
-
-  const exit = element.animate(
-    [
-      { transform: "translate3d(0, 0, 0)", opacity: 1 },
-      { transform: "translate3d(-3px, 0, 0)", opacity: 0 },
-    ],
-    {
-      duration: exitDuration,
-      easing: "cubic-bezier(0.32, 0, 0.66, 0)",
-      fill: "forwards",
+  // 金额输入会先测量整组文字的新位置，再用 FLIP 让完整的“¥ + 数字”
+  // 轻快地回到自然位置。文字 token 也沿用这段位移动画，同时保留删空/输入
+  // 的内容时间线；这样宽度变化时会有灵动感，等宽文字也不会被硬拽。
+  const visibleRect = element.getBoundingClientRect();
+  const previousElementText = element.textContent;
+  element.textContent = next;
+  const finalRect = element.getBoundingClientRect();
+  element.textContent = current;
+  const deltaX = visibleRect.left - finalRect.left;
+  const motionDuration = Math.max(240, Math.min(360, Math.round(duration * 1.1)));
+  const canUseTransformAnimation = !element.classList.contains("natural-entry-stage-token");
+  const motionAnimation = canUseTransformAnimation
+    && Math.abs(deltaX) >= 0.25
+    && typeof element.animate === "function"
+    ? element.animate(
+        [
+          { transform: `translate3d(${deltaX}px, 0, 0)` },
+          { transform: "translate3d(0, 0, 0)" },
+        ],
+        {
+          duration: motionDuration,
+          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        },
+      )
+    : null;
+  const previousTranslate = element.style.translate;
+  const fallbackMotion = !motionAnimation
+    && Math.abs(deltaX) >= 0.25
+    && typeof CSS !== "undefined"
+    && CSS.supports?.("translate", "1px")
+    && !previousTranslate;
+  if (fallbackMotion) element.style.translate = `${deltaX}px 0`;
+  if (previousElementText !== current) element.textContent = current;
+  const exitDuration = Math.min(120, Math.max(96, Math.round(motionDuration * 0.38)));
+  const enterDuration = Math.max(150, motionDuration - exitDuration);
+  const previousWillChange = element.style.willChange;
+  if (motionAnimation || fallbackMotion) element.style.willChange = "transform, translate";
+  const state = {
+    target: next,
+    displayText: current,
+    frameId: 0,
+    startedAt: window.performance.now(),
+    exitDuration,
+    enterDuration,
+    motionAnimation,
+    fallbackMotion,
+    deltaX,
+    motionDuration,
+    previousTranslate,
+    previousWillChange,
+    cancelled: false,
+    cancel() {
+      this.cancelled = true;
+      if (this.frameId) window.cancelAnimationFrame(this.frameId);
+      this.frameId = 0;
+      this.motionAnimation?.cancel();
+      if (this.fallbackMotion) element.style.translate = this.previousTranslate;
+      if (this.motionAnimation || this.fallbackMotion) element.style.willChange = this.previousWillChange;
     },
-  );
-  state.outAnimation = exit;
-  exit.addEventListener("finish", () => {
-    if (state.cancelled || naturalEntryTokenAnimations.get(element) !== state) return;
+  };
+  naturalEntryTokenAnimations.set(element, state);
+  element.setAttribute("aria-label", next);
 
-    // Replace the complete value while invisible. The blank replacement is
-    // intentional: equal-width strings still get a clear old-to-new handoff.
-    element.textContent = "";
-    element.textContent = next;
-    const after = element.getBoundingClientRect();
-    const deltaX = before.left - after.left;
-    const enter = element.animate(
-      [
-        { transform: `translate3d(${deltaX}px, 0, 0)`, opacity: 0 },
-        { transform: "translate3d(0, 0, 0)", opacity: 1 },
-      ],
-      {
-        duration: Math.max(120, duration - exitDuration),
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        fill: "both",
-      },
-    );
-    state.inAnimation = enter;
-    enter.addEventListener("finish", () => {
-      if (naturalEntryTokenAnimations.get(element) === state) naturalEntryTokenAnimations.delete(element);
-    }, { once: true });
-  }, { once: true });
+  const renderFrame = (now) => {
+    if (state.cancelled || naturalEntryTokenAnimations.get(element) !== state) return;
+    const elapsed = now - state.startedAt;
+    if (state.fallbackMotion) {
+      const progress = Math.min(1, Math.max(0, elapsed / state.motionDuration));
+      const remainingX = state.deltaX * (1 - easeOutCubic(progress));
+      element.style.translate = `${remainingX}px 0`;
+    }
+    const oldChars = Array.from(current);
+    const nextChars = Array.from(state.target);
+    let nextDisplayText = state.displayText;
+
+    if (elapsed < state.exitDuration) {
+      const progress = easeOutCubic(Math.max(0, elapsed / state.exitDuration));
+      const visibleLength = Math.max(0, Math.ceil(oldChars.length * (1 - progress)));
+      nextDisplayText = oldChars.slice(0, visibleLength).join("");
+    } else {
+      const progress = Math.min(1, Math.max(0, (elapsed - state.exitDuration) / state.enterDuration));
+      const visibleLength = Math.min(nextChars.length, Math.floor(easeOutCubic(progress) * nextChars.length));
+      nextDisplayText = nextChars.slice(0, visibleLength).join("");
+    }
+    if (nextDisplayText !== state.displayText) {
+      state.displayText = nextDisplayText;
+      element.textContent = nextDisplayText;
+    }
+
+    if (elapsed < state.exitDuration + state.enterDuration) {
+      state.frameId = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+    element.textContent = state.target;
+    state.displayText = state.target;
+    state.frameId = 0;
+    state.motionAnimation?.cancel();
+    if (state.fallbackMotion) element.style.translate = state.previousTranslate;
+    if (state.motionAnimation || state.fallbackMotion) element.style.willChange = state.previousWillChange;
+    if (naturalEntryTokenAnimations.get(element) === state) naturalEntryTokenAnimations.delete(element);
+  };
+
+  state.frameId = window.requestAnimationFrame(renderFrame);
 }
 
 function syncAllAmountValueTracks() {

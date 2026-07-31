@@ -3806,6 +3806,11 @@
     border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 52%, transparent);
     opacity: 0.48;
+    transition: opacity 180ms var(--natural-stage-open-curve);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open .natural-entry-stage-token::after {
+    opacity: 0;
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage-token.is-amount {
@@ -4000,7 +4005,50 @@
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-control-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    column-gap: 8px;
+    align-items: center;
     margin-inline: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-chips-fade {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-add-control {
+    position: relative;
+    inset: auto;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-picker.is-adding .category-add-control,
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-picker.is-category-morph-closing .category-add-control {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-control-row::before {
+    width: 36px;
+    opacity: 0;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-control-row.can-fade-start::before {
+    opacity: 1;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-control-row::after {
+    right: 52px;
+    width: 72px;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .category-control-row .selectable-category-chips {
+    scroll-padding-inline: 8px;
+    padding-right: 8px;
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-scope-panel {

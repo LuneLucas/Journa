@@ -118,6 +118,39 @@
   box-shadow: none;
 }
 
+/* 自然语言备注：输入面保持卡片内的凹槽关系，文字本身居中，避免像一条左对齐白条。 */
+html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+}
+
+html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .natural-entry-stage-content {
+  padding: 12px;
+}
+
+html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] input {
+  box-sizing: border-box;
+  width: min(100%, 332px);
+  margin-inline: auto;
+  padding-inline: 18px;
+  border: 0 !important;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-soft) 78%, var(--bg));
+  box-shadow: var(--surface-recess-shadow);
+  text-align: center;
+  transition:
+    opacity 170ms ease 105ms,
+    transform 340ms var(--natural-stage-open-curve) 20ms,
+    clip-path 340ms var(--natural-stage-open-curve) 20ms,
+    box-shadow var(--motion-fast) var(--settle);
+}
+
+html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] input:focus-visible {
+  outline: 0;
+  box-shadow: var(--surface-recess-shadow), var(--focus-ring);
+}
+
 .mobile-submit-bar {
   border: 0 !important;
 }
