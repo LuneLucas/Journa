@@ -86,65 +86,16 @@
   }
 }
 
-@keyframes amount-input-soft-pop {
-  0% {
-    transform: scale(var(--input-scale, 1));
-  }
-
-  15% {
-    transform: scale(calc(var(--input-scale, 1) * 0.994)); /* 极微弱下沉 */
-  }
-
-  40% {
-    transform: scale(calc(var(--input-scale, 1) * 1.001)); /* 极微弱过冲 */
-  }
-
-  70% {
-    transform: scale(calc(var(--input-scale, 1) * 1.000));
-  }
-
-  100% {
-    transform: scale(var(--input-scale, 1));
-  }
-}
-
-@keyframes amount-shell-input-pop {
-  0% {
-    transform: scale(var(--amount-scale, 1.018)) translateY(0);
-  }
-
-  15% {
-    transform: scale(calc(var(--amount-scale, 1.018) * 0.996)) translateY(0.4px); /* 极度收敛位移与缩放 */
-  }
-
-  40% {
-    transform: scale(calc(var(--amount-scale, 1.018) * 1.001)) translateY(-0.05px); /* 几乎消除过冲 */
-  }
-
-  70% {
-    transform: scale(calc(var(--amount-scale, 1.018) * 1.000)) translateY(0.01px);
-  }
-
-  100% {
-    transform: scale(var(--amount-scale, 1.018)) translateY(0);
-  }
-}
-
-@keyframes amount-aura-soft-pop {
+@keyframes amount-aura-recenter-glow {
   0%,
   100% {
-    opacity: 0.78;
+    opacity: 0.32;
     transform: scale(1.02);
   }
 
-  15% {
-    opacity: 0.64;
-    transform: scale(1.005);
-  }
-
-  40% {
-    opacity: 0.86;
-    transform: scale(1.035);
+  34% {
+    opacity: 0.46;
+    transform: scale(1.024);
   }
 }
 

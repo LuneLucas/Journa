@@ -44,6 +44,7 @@
     --edge-rim-strong: inset 0 0 0 1px rgba(255, 255, 255, 0.075);
     --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.17);
     --edge-shade-strong: inset 0 -1px 1px rgba(0, 0, 0, 0.37);
+    --edge-contact: 0 2px 6px rgba(0, 0, 0, 0.18);
     --edge-contact-strong: 0 2px 5px rgba(0, 0, 0, 0.22);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     /* 深色下重定 elevation：亮色阴影是深灰低透明，在暗底直接隐身，
@@ -224,13 +225,23 @@
 
   .amount-label input {
     -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 38%, white);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .amount-label.amount-active input {
+    -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .amount-field {
     /* 亮灰输入底转暗，家庭色亮文字才能成立 */
     background: var(--dark-field-strong);
     box-shadow: inset 0 1px 0 var(--border-highlight);
   }
 
-  .amount-label.amount-active input {
-    -webkit-text-fill-color: color-mix(in srgb, var(--selected-family-text, var(--ink)) 34%, white);
+  .amount-label.amount-active .amount-field {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.07)),
       color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, rgba(20, 24, 22, 0.72));
@@ -1133,16 +1144,21 @@
     box-shadow: none;
   }
 
-  .split-amount-row input {
+  .split-amount-input-shell {
     border-color: var(--border-control);
     background: var(--dark-field);
-    color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
     box-shadow:
       inset 0 1px 0 var(--border-highlight),
       0 0 22px -16px color-mix(in srgb, var(--family-color) 64%, transparent);
   }
 
-  .split-amount-row input:focus {
+  .split-amount-row input {
+    background: transparent;
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 50%, white);
+    box-shadow: none;
+  }
+
+  .split-amount-input-shell:focus-within {
     border-color: color-mix(in srgb, var(--family-color) 42%, var(--border-control));
     box-shadow:
       0 0 0 3px color-mix(in srgb, var(--family-color) 14%, transparent),
@@ -1588,12 +1604,23 @@
     background:
       radial-gradient(
         circle at 12% -8%,
-        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 24%, rgba(255, 255, 255, 0.08)),
+        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, rgba(255, 255, 255, 0.08)),
         transparent 50%
       ),
-      linear-gradient(148deg, rgba(60, 58, 55, 0.95), rgba(40, 39, 36, 0.91) 58%, rgba(28, 28, 27, 0.87)),
-      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 10%, rgba(18, 18, 20, 0.96));
-    box-shadow: var(--shadow-popover);
+      linear-gradient(155deg, rgba(64, 62, 59, 0.97), rgba(46, 45, 43, 0.94) 58%, rgba(32, 31, 30, 0.92)),
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 5%, rgba(20, 20, 21, 0.97));
+    box-shadow: var(--popover-shadow);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage::after {
+    background:
+      radial-gradient(
+        ellipse at 10% 100%,
+        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 8%, transparent),
+        transparent 44%
+      ),
+      radial-gradient(ellipse at 90% 100%, rgba(0, 0, 0, 0.12), transparent 48%),
+      linear-gradient(180deg, transparent 56%, rgba(0, 0, 0, 0.055) 78%, rgba(0, 0, 0, 0.16) 100%);
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage {

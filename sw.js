@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-natural-entry-text-handoff-v92-20260730";
+const APP_VERSION = "journa-warm-popover-settings-float-v8-20260731";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 /* CSS/JS 条目带与 index.html 引用一致的 ?v= 版本戳：Cache API 按完整 URL
    （含 query）匹配，不带戳的预缓存条目永远命中不了带戳请求，等于白缓存。 */
@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
   `./css/misc.css?v=${APP_VERSION}`,
   `./css/responsive.css?v=${APP_VERSION}`,
   `./css/dark.css?v=${APP_VERSION}`,
+  `./css/visual-depth.css?v=${APP_VERSION}`,
   `./css/a11y.css?v=${APP_VERSION}`,
   `./app.js?v=${APP_VERSION}`,
   "./icons/apple-touch-icon.png",

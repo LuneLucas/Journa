@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-natural-entry-text-handoff-v92-20260730";
+const APP_VERSION = "journa-soft-depth-v1-20260730";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -447,6 +447,9 @@ let hasPlayedInitialExpenseCountReveal = false;
 let expenseCountRevealFrameId = 0;
 let expenseCountRevealTargetText = "";
 let amountLabelScrollFrameId = 0;
+const amountTrackAnimations = new WeakMap();
+const naturalEntryTokenAnimations = new WeakMap();
+let amountMeasureContext = null;
 let desktopPointerSinkFrame = 0;
 let desktopPointerSinkTarget = null;
 let desktopPointerSinkFocusTarget = null;
@@ -1657,7 +1660,7 @@ function playSyncLampIgnite() {
 }
 
 function formatMoney(cents) {
-  const showDecimals = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) !== "false";
+  const showDecimals = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) === "true";
   return new Intl.NumberFormat("zh-CN", {
     style: "currency",
     currency: "CNY",
@@ -1904,6 +1907,7 @@ function render(options = {}) {
     applySelectedFamilyTheme();
     applySubmitButtonTheme();
     updateAmountMotionState();
+    syncAllAmountValueTracks();
     scheduleSaveState();
   };
 
@@ -2394,6 +2398,11 @@ function positionNaturalEntryStage() {
 
 function scheduleNaturalEntryStagePosition() {
   if (naturalEntryStagePositionFrame || !naturalEntryStageOpen) return;
+  // The split editor can change the summary token's wrapping while its panel
+  // is open. Re-anchoring the fixed stage to that moving token makes the card
+  // drift downward during option changes; keep the stage in place until the
+  // selection handoff closes it and measures the final anchor once.
+  if (activeEntryEditor === "split") return;
   naturalEntryStagePositionFrame = window.requestAnimationFrame(positionNaturalEntryStage);
 }
 
@@ -2610,6 +2619,11 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   });
 }
 
+function getNaturalEntryChoiceCloseDelay() {
+  if (prefersReducedMotion()) return 0;
+  return getCssDurationMs("--selection-motion", 520) + 120;
+}
+
 function openNaturalEntryStage(editor) {
   window.clearTimeout(naturalEntryStageCloseTimer);
   naturalEntryStageCloseTimer = 0;
@@ -2649,11 +2663,13 @@ function openNaturalEntryStage(editor) {
     anchor.classList.add("is-stage-anchor");
     elements.naturalEntryStage.dataset.editor = editor;
     elements.naturalEntryStageContent.append(panel);
+    if (editor === "amount") syncAmountValueTrack(elements.amountInput);
     syncNaturalEntryStageToken();
     elements.naturalEntryStageContent.classList.add("is-swapping");
     void elements.naturalEntryStageContent.offsetWidth;
     elements.naturalEntryStageContent.classList.remove("is-swapping");
     positionNaturalEntryStage();
+    if (editor === "amount") syncAmountValueTrack(elements.amountInput);
     const nextHeight = stage.scrollHeight;
     stage.style.height = `${oldHeight}px`;
     void stage.offsetHeight;
@@ -2678,6 +2694,9 @@ function openNaturalEntryStage(editor) {
   elements.naturalEntryStageContent.append(panel);
   elements.naturalEntryStage.hidden = false;
   elements.naturalEntryFocusBackdrop.hidden = false;
+  /* 编辑器从隐藏的原表单移动到舞台后，字号和可用宽度会改变；
+     这里必须在可见布局中重新测量，避免沿用隐藏态的 16px 宽度。 */
+  if (editor === "amount") syncAmountValueTrack(elements.amountInput);
   document.body.classList.add("natural-entry-focus-open");
   syncNaturalEntryStageToken();
   positionNaturalEntryStage();
@@ -2748,13 +2767,13 @@ function renderNaturalEntry() {
   const date = normalizeDate(elements.dateInput.value, state.activeDate);
 
   elements.expenseForm.dataset.activeEntryEditor = naturalEntryStageOpen ? activeEntryEditor : "";
-  elements.naturalDateToken.textContent = formatNaturalEntryDate(date);
-  elements.naturalPayerToken.textContent = state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭";
+  animateNaturalEntryToken(elements.naturalDateToken, formatNaturalEntryDate(date), { duration: 240 });
+  animateNaturalEntryToken(elements.naturalPayerToken, state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭", { duration: 280 });
   elements.naturalAmountToken.textContent = amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00";
-  elements.naturalCategoryToken.textContent = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别";
+  animateNaturalEntryToken(elements.naturalCategoryToken, state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别", { duration: 260 });
   elements.naturalNoteToken.textContent = note || "备注可选";
   elements.naturalNoteToken.title = note;
-  elements.naturalSplitToken.textContent = formatNaturalEntrySplit();
+  animateNaturalEntryToken(elements.naturalSplitToken, formatNaturalEntrySplit(), { duration: 300 });
 
   elements.naturalEntryFlow.querySelectorAll("[data-entry-target]").forEach((button) => {
     const expanded = naturalEntryStageOpen && button.dataset.entryTarget === activeEntryEditor;
@@ -2954,6 +2973,18 @@ function renderCategories() {
     .join("");
   // 末尾不再塞「新增」胶囊：新增入口移到 chips 下方独立的圆形 + 按钮（category-add-fab）。
   elements.categoryChips.innerHTML = chipMarkup;
+  scheduleCategoryEdgeFades();
+}
+
+function updateCategorySelectionUI(nextCategory) {
+  const recentCategories = new Set(getRecentCategories(3));
+  elements.categoryChips.querySelectorAll(".selectable-category-chip").forEach((chip) => {
+    const category = chip.dataset.category;
+    const selected = category === nextCategory;
+    chip.classList.toggle("is-selected", selected);
+    chip.classList.toggle("is-recent", !selected && recentCategories.has(category));
+    chip.setAttribute("aria-checked", String(selected));
+  });
   scheduleCategoryEdgeFades();
 }
 
@@ -3423,7 +3454,11 @@ function syncSplitCustomAmounts() {
           (family) => `
           <label class="split-amount-row" style="${familyStyle(family.id)}">
             <span>${escapeHtml(family.name)}</span>
-            <input type="text" inputmode="decimal" autocomplete="off" data-split-amount="${escapeHtml(family.id)}" placeholder="0.00" />
+            <span class="split-amount-input-shell">
+              <span class="amount-value-track is-compact">
+                <input type="text" inputmode="decimal" autocomplete="off" data-split-amount="${escapeHtml(family.id)}" placeholder="0.00" />
+              </span>
+            </span>
           </label>
         `,
         )
@@ -3436,6 +3471,7 @@ function syncSplitCustomAmounts() {
     if (document.activeElement === input) return; // 正在输入时不回写，避免打断
     const amount = Number(activeSplitAmounts[input.dataset.splitAmount]) || 0;
     input.value = amount > 0 ? String(amount) : "";
+    syncAmountValueTrack(input);
   });
   const totalLine = container.querySelector(".split-total-line");
   if (totalLine) totalLine.textContent = formatCustomSplitTotalLine();
@@ -3528,6 +3564,7 @@ function updateAmountFieldForSplitMode() {
 
   const totalCents = getActiveCustomSplitTotalCents();
   elements.amountInput.value = formatAmountInput(totalCents);
+  syncAmountValueTrack(elements.amountInput);
 }
 
 function renderSettings() {
@@ -3536,7 +3573,7 @@ function renderSettings() {
   const syncSummary = getSyncSummary();
   elements.currentLedgerNameInput.value = state.name;
   renderOperatorFamilyChoices(elements.settingsOperatorFamilyList);
-  elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) !== "false";
+  elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) === "true";
   renderEntryModeSettings();
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
@@ -5098,14 +5135,14 @@ function handleCategorySelection(event) {
   }
   state.activeCategory = nextCategory;
   elements.categoryInput.value = state.activeCategory;
-  renderCategories();
+  updateCategorySelectionUI(nextCategory);
   applyChoiceStateClass("[data-category]", "data-category", categorySwitched ? nextCategory : "", "is-activating");
   applyChoiceStateClass("[data-category]", "data-category", categorySwitched ? previousCategory : "", "is-deactivating");
   renderNaturalEntry();
   renderMobileSubmitBar();
   saveState();
   if (naturalEntryStageOpen && activeEntryEditor === "category") {
-    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 120);
+    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), getNaturalEntryChoiceCloseDelay());
   }
 }
 
@@ -5139,7 +5176,7 @@ function handleSplitScopeClick(event) {
     renderMobileSubmitBar();
     scheduleNaturalEntryStagePosition();
     if (naturalEntryStageOpen && activeEntryEditor === "split" && activeSplitMode === "all") {
-      window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 150);
+      window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), getNaturalEntryChoiceCloseDelay());
     }
     return;
   }
@@ -5164,7 +5201,7 @@ function handleSplitScopeClick(event) {
   scheduleNaturalEntryStagePosition();
   if (naturalEntryStageOpen && activeEntryEditor === "split" && isNaturalEntryLayout()) {
     window.clearTimeout(naturalEntryStageCloseTimer);
-    const delay = prefersReducedMotion() ? 0 : getCssDurationMs("--selection-motion", 520) + 40;
+    const delay = getNaturalEntryChoiceCloseDelay();
     naturalEntryStageCloseTimer = window.setTimeout(() => {
       naturalEntryStageCloseTimer = 0;
       if (naturalEntryStageOpen && activeEntryEditor === "split") {
@@ -5233,6 +5270,7 @@ function smoothSplitScopeResize(update) {
 }
 
 function createSplitScopeAnchorRestorer() {
+  if (naturalEntryStageOpen && activeEntryEditor === "split") return () => {};
   const anchor = elements.splitScopeToggle;
   if (!anchor) return () => {};
 
@@ -5315,6 +5353,7 @@ function handleSplitAmountInput(event) {
   if (!input) return;
 
   elements.formError.textContent = "";
+  animateAmountValueTrack(input, { compact: true });
   const familyId = normalizePayerId(input.dataset.splitAmount);
   if (!familyId) return;
   const amount = parseAmountInput(input.value);
@@ -5322,6 +5361,7 @@ function handleSplitAmountInput(event) {
 
   const totalCents = getActiveCustomSplitTotalCents();
   elements.amountInput.value = formatAmountInput(totalCents);
+  animateAmountValueTrack(elements.amountInput, { soft: true });
 
   elements.splitScopeSummary.textContent = formatActiveSplitSummary();
   const totalLine = elements.splitCustomAmounts.querySelector(".split-total-line");
@@ -6695,7 +6735,7 @@ function handleFamilySelection(event) {
   updateAmountMotionState();
   saveState();
   if (naturalEntryStageOpen && activeEntryEditor === "payer") {
-    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), prefersReducedMotion() ? 0 : 150);
+    window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), getNaturalEntryChoiceCloseDelay());
   }
 }
 
@@ -7049,6 +7089,134 @@ function updateAmountMotionState() {
   if (isActive) lockAmountLabelScroll();
 }
 
+function getAmountMeasureContext() {
+  if (amountMeasureContext) return amountMeasureContext;
+  amountMeasureContext = document.createElement("canvas").getContext("2d");
+  return amountMeasureContext;
+}
+
+function measureAmountInputWidth(input) {
+  const context = getAmountMeasureContext();
+  const style = getComputedStyle(input);
+  const value = input.value || input.placeholder || "0.00";
+  const font = style.font && style.font !== "" ? style.font : `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  context.font = font;
+  const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
+  /* Safari 原生 input 的字形绘制比 canvas 测量略宽，窄屏下需要留出
+     光标与最后一位小数的安全余量，避免视觉上被输入边缘吃掉。 */
+  const measured = context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing + 26;
+  const shell = input.closest(".amount-field, .split-amount-input-shell");
+  const currency = input.closest(".amount-value-track")?.querySelector(".currency-mark");
+  const trackStyle = getComputedStyle(input.closest(".amount-value-track"));
+  const gap = Number.parseFloat(trackStyle.columnGap || trackStyle.gap) || 0;
+  const reserved = (currency?.getBoundingClientRect().width || 0) + gap + 24;
+  const available = Math.max(24, (shell?.clientWidth || input.parentElement?.clientWidth || measured) - reserved);
+  return Math.max(12, Math.min(Math.ceil(measured), available));
+}
+
+function syncAmountValueTrack(input) {
+  const track = input?.closest(".amount-value-track");
+  if (!track) return;
+  amountTrackAnimations.get(track)?.cancel();
+  amountTrackAnimations.delete(track);
+  input.style.width = `${measureAmountInputWidth(input)}px`;
+}
+
+function animateAmountValueTrack(input, { compact = false, soft = false } = {}) {
+  const track = input?.closest(".amount-value-track");
+  if (!track) return;
+
+  const visibleRect = track.getBoundingClientRect();
+  amountTrackAnimations.get(track)?.cancel();
+  input.style.width = `${measureAmountInputWidth(input)}px`;
+  const finalRect = track.getBoundingClientRect();
+  const deltaX = visibleRect.left - finalRect.left;
+
+  if (prefersReducedMotion() || Math.abs(deltaX) < 0.25 || typeof track.animate !== "function") return;
+
+  const duration = soft ? 230 : compact ? 288 : 360;
+  const animation = track.animate(
+    [
+      { transform: `translate3d(${deltaX}px, 0, 0)` },
+      { transform: "translate3d(0, 0, 0)" },
+    ],
+    {
+      duration,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    },
+  );
+  amountTrackAnimations.set(track, animation);
+  animation.addEventListener("finish", () => {
+    if (amountTrackAnimations.get(track) === animation) amountTrackAnimations.delete(track);
+  }, { once: true });
+}
+
+function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
+  if (!element) return;
+  const next = String(nextText ?? "");
+  if (element.textContent === next) return;
+
+  const before = element.getBoundingClientRect();
+  const previous = naturalEntryTokenAnimations.get(element);
+  previous?.cancel();
+
+  if (prefersReducedMotion() || typeof element.animate !== "function") {
+    element.textContent = next;
+    return;
+  }
+
+  const exitDuration = Math.min(110, Math.max(84, Math.round(duration * 0.38)));
+  const state = { inAnimation: null, outAnimation: null, cancelled: false, cancel() {
+    this.cancelled = true;
+    this.outAnimation?.cancel();
+    this.inAnimation?.cancel();
+  } };
+  naturalEntryTokenAnimations.set(element, state);
+
+  const exit = element.animate(
+    [
+      { transform: "translate3d(0, 0, 0)", opacity: 1 },
+      { transform: "translate3d(-3px, 0, 0)", opacity: 0 },
+    ],
+    {
+      duration: exitDuration,
+      easing: "cubic-bezier(0.32, 0, 0.66, 0)",
+      fill: "forwards",
+    },
+  );
+  state.outAnimation = exit;
+  exit.addEventListener("finish", () => {
+    if (state.cancelled || naturalEntryTokenAnimations.get(element) !== state) return;
+
+    // Replace the complete value while invisible. The blank replacement is
+    // intentional: equal-width strings still get a clear old-to-new handoff.
+    element.textContent = "";
+    element.textContent = next;
+    const after = element.getBoundingClientRect();
+    const deltaX = before.left - after.left;
+    const enter = element.animate(
+      [
+        { transform: `translate3d(${deltaX}px, 0, 0)`, opacity: 0 },
+        { transform: "translate3d(0, 0, 0)", opacity: 1 },
+      ],
+      {
+        duration: Math.max(120, duration - exitDuration),
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        fill: "both",
+      },
+    );
+    state.inAnimation = enter;
+    enter.addEventListener("finish", () => {
+      if (naturalEntryTokenAnimations.get(element) === state) naturalEntryTokenAnimations.delete(element);
+    }, { once: true });
+  }, { once: true });
+}
+
+function syncAllAmountValueTracks() {
+  syncAmountValueTrack(elements.amountInput);
+  elements.splitCustomAmounts.querySelectorAll("[data-split-amount]").forEach(syncAmountValueTrack);
+}
+
 function lockAmountLabelScroll() {
   window.cancelAnimationFrame(amountLabelScrollFrameId);
   elements.amountLabel.scrollTop = 0;
@@ -7076,9 +7244,9 @@ function formatAmountFieldOnBlur() {
 }
 
 function pulseAmountField() {
-  elements.amountLabel.classList.remove("amount-pulse");
+  elements.amountLabel.classList.remove("amount-recenter-glow");
   void elements.amountLabel.offsetWidth;
-  elements.amountLabel.classList.add("amount-pulse");
+  elements.amountLabel.classList.add("amount-recenter-glow");
 }
 
 async function requestStartEditExpense(expenseId) {
@@ -7506,6 +7674,7 @@ elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
   elements.formError.textContent = "";
   updateAmountMotionState();
+  animateAmountValueTrack(elements.amountInput);
   pulseAmountField();
   renderNaturalEntry();
   renderMobileSubmitBar();
@@ -8214,6 +8383,7 @@ async function bootstrap() {
   setupDesktopPointerSink();
   setupScrollCollapse();
   render();
+  document.fonts?.ready?.then(syncAllAmountValueTracks);
   maybeShowWelcome();
   const restoredFromBackup = await restoreLedgerFromCloudBackup();
   if (!restoredFromBackup && isCloudLedgerActive()) {

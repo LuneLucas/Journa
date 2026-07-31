@@ -121,7 +121,7 @@
     --header-title-collapse-scale: 0.96;
     --mobile-header-progress: 0;
     --mobile-header-collapse-enabled: 1;
-    --sync-expanded-y: 19px;
+    --sync-expanded-y: 0px;
     --mobile-header-switch-center-inset: 39px;
     position: sticky;
     display: grid;
@@ -249,6 +249,13 @@
     will-change: opacity, transform;
   }
 
+  .app-header > :first-child h1 {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .app-header.is-collapsed > :first-child {
     pointer-events: none;
   }
@@ -261,26 +268,29 @@
   }
 
   .header-actions {
-    display: contents;
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
   }
 
   .sync-status {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: start;
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0;
+    gap: 0;
     z-index: 2;
     will-change: transform;
-    overflow: visible;
+    overflow: hidden;
     /* p=0 时向下半个胶囊高度，复原原来 38px grid 行的视觉中心；
        p=1 时只把同一个稳定盒子移到标题旁，不改变自身或 header 的尺寸。 */
-    transform: translate3d(
-      calc(var(--sync-dock-x, 0px) * var(--mobile-header-progress)),
-      calc(
-        var(--sync-expanded-y) * (1 - var(--mobile-header-progress)) +
-        var(--sync-dock-y, 0px) * var(--mobile-header-progress)
-      ),
-      0
-    );
+    transform: none;
     transition:
       opacity var(--motion-fast) var(--settle),
       color var(--motion) var(--settle),
@@ -291,11 +301,11 @@
   }
 
   .sync-status .sync-status-label {
-    display: inline-block;
+    display: none;
     overflow: hidden;
-    max-width: 60vw;
+    max-width: 0;
     white-space: nowrap;
-    opacity: calc(1 - var(--mobile-header-progress));
+    opacity: 0;
     transition: none;
   }
 
@@ -304,7 +314,7 @@
   }
 
   .sync-status .sync-status-shell {
-    opacity: calc(1 - var(--mobile-header-progress));
+    opacity: 1;
     transition: none;
   }
 
@@ -345,17 +355,17 @@
     align-self: center;
     justify-self: end;
     z-index: 3;
-    transform: translate3d(
-      0,
-      calc(var(--sync-expanded-y) * (1 - var(--mobile-header-progress))),
-      0
-    );
+    transform: none;
     transition: none;
     will-change: transform;
   }
 
   .app-header.is-collapsed #openSettingsButton {
     grid-row: 1;
+  }
+
+  .app-header .mobile-panel-switch {
+    margin-top: 2px;
   }
 
   h1 {
@@ -1460,17 +1470,17 @@
 
   .amount-label input {
     height: 58px;
-    padding: 0 12px;
+    padding: 0 5px;
     font-size: clamp(2.2rem, 11vw, 3.5rem);
     line-height: normal;
   }
 
   .amount-label.amount-active input {
-    --input-scale: 1.018;
+    transform: none;
   }
 
   .amount-label.amount-active .currency-mark {
-    transform: scale(1.035);
+    transform: none;
   }
 
   .expense-form {
@@ -2364,7 +2374,7 @@
   }
 
   .amount-label.amount-active input {
-    transform: scale(1.016);
+    transform: none;
   }
 
   .secondary-button {
@@ -2695,7 +2705,9 @@
     position: relative;
     top: auto;
     left: auto;
-    width: auto;
+    width: min(332px, calc(100% - 20px));
+    max-width: 100%;
+    justify-self: start;
     transform: none;
   }
 
@@ -3522,15 +3534,15 @@
     background:
       radial-gradient(
         circle at 13% -10%,
-        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 16%, rgba(255, 255, 255, 0.70)),
+        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 8%, rgba(255, 255, 255, 0.76)),
         transparent 52%
       ),
-      linear-gradient(148deg, rgba(255, 255, 255, 0.90), rgba(252, 252, 249, 0.82) 58%, rgba(246, 246, 242, 0.76)),
-      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 7%, rgba(248, 248, 245, 0.82));
-    box-shadow: var(--shadow-popover);
+      linear-gradient(155deg, rgba(255, 255, 255, 0.95), rgba(253, 251, 247, 0.92) 54%, rgba(244, 242, 237, 0.90)),
+      color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 4%, rgba(249, 248, 244, 0.88));
+    box-shadow: var(--popover-shadow);
     -webkit-backdrop-filter: var(--blur-overlay-strong);
     backdrop-filter: var(--blur-overlay-strong);
-    opacity: 0.94;
+    opacity: 0.96;
     pointer-events: none;
     transform: translateY(2px) translateZ(0);
     clip-path: inset(
@@ -3657,7 +3669,7 @@
   html[data-entry-mode="natural"] .natural-entry-stage::before {
     content: "";
     position: absolute;
-    z-index: 1;
+    z-index: 2;
     pointer-events: none;
     transform: translateY(3px);
     transition:
@@ -3674,10 +3686,40 @@
     opacity: 0.18;
   }
 
+  /* 下缘底面：只在卡片内部形成方向性暗部与家庭色侧光，不画完整外框。 */
+  html[data-entry-mode="natural"] .natural-entry-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse at 10% 100%,
+        color-mix(in srgb, var(--selected-family-color, var(--theme-color)) 7%, transparent),
+        transparent 44%
+      ),
+      radial-gradient(ellipse at 90% 100%, rgba(54, 46, 38, 0.035), transparent 48%),
+      linear-gradient(180deg, transparent 58%, rgba(54, 46, 38, 0.018) 78%, rgba(54, 46, 38, 0.075) 100%);
+    opacity: 0;
+    transform: translateY(2px) scaleY(0.994);
+    transform-origin: center bottom;
+    transition:
+      opacity 200ms var(--natural-stage-curve),
+      transform 420ms var(--natural-stage-open-curve);
+  }
+
   html[data-entry-mode="natural"] .natural-entry-stage.is-open::before,
   html[data-entry-mode="natural"] .natural-entry-stage.is-closing::before {
     opacity: 0.46;
     transform: translateY(0);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage.is-open::after,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing::after {
+    opacity: 0.92;
+    transform: translateY(0) scaleY(1);
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading::before {
@@ -3688,11 +3730,19 @@
       transform 120ms cubic-bezier(0.30, 0, 0.20, 1);
   }
 
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing.is-fading::after {
+    opacity: 0;
+    transform: translateY(0) scaleY(1);
+    transition:
+      opacity 120ms cubic-bezier(0.30, 0, 0.20, 1),
+      transform 120ms cubic-bezier(0.30, 0, 0.20, 1);
+  }
+
   html[data-entry-mode="natural"] .natural-entry-stage-token {
     position: absolute;
     top: 0;
     left: var(--natural-stage-anchor-x);
-    z-index: 3;
+    z-index: 4;
     display: inline-flex;
     align-items: center;
     width: var(--natural-stage-anchor-width);
@@ -3770,10 +3820,34 @@
     transition-delay: 0ms, 0ms, 130ms;
   }
 
+  /* 备注只有一个信息层：英雄文字移动到输入文字的起点后让位，
+     输入框从同一基线展开，避免已有备注在上下两处重复。 */
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"].is-open .natural-entry-stage-token {
+    top: 8px;
+    left: 27px;
+    width: max-content;
+    max-width: calc(100% - 54px);
+    min-height: 52px;
+    justify-content: flex-start;
+    opacity: 0;
+    font-size: 1rem;
+    letter-spacing: 0;
+    text-align: left;
+    transform: scale(1);
+    animation: none;
+    transition:
+      top 320ms var(--natural-stage-open-curve),
+      left 320ms var(--natural-stage-open-curve),
+      transform 320ms var(--natural-stage-open-curve),
+      font-size 260ms var(--natural-stage-open-curve),
+      letter-spacing 260ms var(--natural-stage-open-curve),
+      opacity 150ms ease 155ms;
+  }
+
   html[data-entry-mode="natural"] .natural-entry-stage-content {
     box-sizing: border-box;
     position: relative;
-    z-index: 2;
+    z-index: 3;
     width: 100%;
     padding:
       calc(var(--natural-stage-anchor-height) + 9px)
@@ -3861,8 +3935,19 @@
     transform: none;
   }
 
+  /* 金额重排和自定金额的焦点环需要越过输入壳边缘绘制，
+     否则窄屏上会被编辑层的 resize 裁剪成断线。 */
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-scope[data-entry-editor],
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-detail-area {
+    overflow: visible;
+  }
+
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .natural-entry-stage-content {
     padding: 0;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .natural-entry-stage-content {
+    padding: 8px 12px 12px;
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .amount-field {
@@ -3883,15 +3968,14 @@
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] input {
-    flex: 0 1 220px;
-    width: min(220px, calc(100% - 38px));
-    --input-scale: 1;
+    flex: 0 0 auto;
     height: 70px;
+    padding: 0 5px;
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    text-align: center;
-    transform: scale(var(--input-scale));
+    text-align: left;
+    transform: none;
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .currency-mark {
@@ -3899,11 +3983,11 @@
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label.amount-active[data-entry-editor] input {
-    --input-scale: 1.018;
+    transform: none;
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label.amount-active[data-entry-editor] .currency-mark {
-    transform: scale(1.035);
+    transform: none;
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .payer-field[data-entry-editor] {
@@ -3922,12 +4006,12 @@
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-scope-panel {
     max-height: none;
     margin-top: 0;
-    overflow: hidden;
+    overflow: visible;
     border-radius: var(--radius-md);
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-detail-area {
-    overflow: hidden;
+    overflow: visible;
     border-radius: var(--radius-sm);
   }
 
@@ -3942,6 +4026,25 @@
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] input {
     min-height: 52px;
     border-radius: var(--radius-md);
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] input {
+    opacity: 0;
+    clip-path: inset(0 42% round var(--radius-md));
+    transform: translateY(-12px) scaleY(0.84);
+    transform-origin: center;
+    transition:
+      opacity 170ms ease 105ms,
+      transform 340ms var(--natural-stage-open-curve) 20ms,
+      clip-path 340ms var(--natural-stage-open-curve) 20ms,
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"].is-open .note-label[data-entry-editor] input {
+    opacity: 1;
+    clip-path: inset(0 round var(--radius-md));
+    transform: translateY(0) scaleY(1);
   }
 
   body.natural-entry-focus-open .mobile-submit-bar {

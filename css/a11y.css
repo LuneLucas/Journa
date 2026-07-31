@@ -8,6 +8,13 @@
     transition-delay: 0ms !important;
   }
 
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label input {
+    opacity: 1 !important;
+    clip-path: none !important;
+    transform: none !important;
+    transition-delay: 0ms !important;
+  }
+
   *,
   *::before,
   *::after {
@@ -19,6 +26,7 @@
 
   .amount-label,
   .amount-label input,
+  .amount-value-track,
   .amount-label .currency-mark,
   .family-tag,
   .selectable-category-chip,

@@ -1,0 +1,162 @@
+/* Journa soft-depth system
+   常态层级由表面色差、上下内缘和接触阴影表达；结构分隔与焦点环保留。 */
+:root {
+  /* 自然语言弹出层：用表面上下明暗与近/远投影表达厚度，不画完整外框。 */
+  --popover-top-light: inset 0 1px 1px rgba(255, 255, 255, 0.58);
+  --popover-bottom-shade: inset 0 -1px 1px rgba(22, 26, 30, 0.07);
+  /* 对齐设置卡片的悬浮感：近距离接触影更清楚，远影更集中，不做大范围雾化。 */
+  --popover-contact-shadow: 0 4px 12px -8px rgba(22, 26, 30, 0.14);
+  --popover-lift-shadow: 0 16px 40px -16px rgba(22, 26, 30, 0.20);
+  --popover-shadow:
+    var(--popover-top-light),
+    var(--popover-bottom-shade),
+    var(--popover-contact-shadow),
+    var(--popover-lift-shadow);
+  --surface-raised-shadow:
+    var(--edge-light),
+    var(--edge-shade),
+    0 8px 24px -18px rgba(22, 26, 30, 0.28);
+  --surface-recess-shadow:
+    inset 0 2px 5px rgba(22, 26, 30, 0.055),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.24);
+  --surface-selected-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.42),
+    0 8px 20px -16px color-mix(in srgb, var(--theme-color) 42%, transparent);
+  --surface-control-shadow:
+    var(--edge-light-strong),
+    var(--edge-shade),
+    0 4px 12px -10px rgba(22, 26, 30, 0.22);
+}
+
+/* 外层容器：一个层级只保留表面与投影，不再叠加内圈。 */
+.glass,
+.metric,
+.entry-panel,
+.insights-panel,
+.ledger-section,
+.stat-block,
+.settlement-block,
+.ledger-item {
+  border: 0 !important;
+}
+
+.entry-panel,
+.insights-panel,
+.ledger-section,
+.settings-drawer,
+.ledger-manager-card {
+  box-shadow: var(--surface-raised-shadow), var(--shadow-md);
+}
+
+/* 统计内卡和空状态改成轻微凹入的色阶，避免外框套外框。 */
+.stat-block,
+.category-summary-block,
+.empty-state {
+  border: 0 !important;
+  box-shadow: var(--surface-recess-shadow);
+  background: color-mix(in srgb, var(--surface-soft) 74%, var(--bg));
+}
+
+.empty-state {
+  background: color-mix(in srgb, var(--surface) 76%, var(--bg));
+}
+
+/* 移动端分段切换：活动项由表面抬升表达，不再用环线强调。 */
+.mobile-panel-switch {
+  border: 0 !important;
+  box-shadow: var(--surface-raised-shadow);
+}
+
+.mobile-panel-switch .mobile-panel-indicator,
+.mobile-panel-tab.is-active {
+  box-shadow: var(--surface-selected-shadow);
+}
+
+/* 筛选器、下拉框和分摊输入是凹槽控件，保留焦点环但移除常态实线。 */
+.ledger-filter-toggle,
+.ledger-controls select,
+.split-amount-input-shell,
+.amount-label,
+.category-add-control,
+.journey-family-segment {
+  border: 0 !important;
+  box-shadow: var(--surface-control-shadow);
+}
+
+.ledger-filter-toggle:focus-visible,
+.ledger-controls select:focus-visible,
+.split-amount-input-shell:focus-within,
+.category-add-control:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+/* 选择类控件以填充、文字与主题光区分状态；不再叠加主题色内圈。 */
+.family-tag,
+.settlement-item,
+.selectable-category-chip,
+.split-mode-button {
+  box-shadow: var(--surface-control-shadow);
+}
+
+.family-tag.is-selected,
+.settlement-item:hover,
+.selectable-category-chip.is-selected,
+.split-mode-button.is-selected {
+  box-shadow: var(--surface-selected-shadow);
+}
+
+.family-tag:active,
+.selectable-category-chip:active,
+.split-mode-button:active {
+  box-shadow: var(--surface-recess-shadow);
+}
+
+/* 输入文字本身不承担边界；键盘焦点继续使用统一 focus ring。 */
+.amount-label input,
+.split-amount-row input {
+  border: 0 !important;
+  box-shadow: none;
+}
+
+.mobile-submit-bar {
+  border: 0 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --popover-top-light: inset 0 1px 1px rgba(255, 255, 255, 0.14);
+    --popover-bottom-shade: inset 0 -1px 1px rgba(0, 0, 0, 0.31);
+    --popover-contact-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.45);
+    --popover-lift-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.55);
+    --popover-shadow:
+      var(--popover-top-light),
+      var(--popover-bottom-shade),
+      var(--popover-contact-shadow),
+      var(--popover-lift-shadow);
+    --surface-raised-shadow:
+      var(--edge-light),
+      var(--edge-shade),
+      0 10px 28px -18px rgba(0, 0, 0, 0.52);
+    --surface-recess-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.26),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+    --surface-selected-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.14),
+      0 10px 24px -16px color-mix(in srgb, var(--theme-color) 48%, transparent);
+    --surface-control-shadow:
+      var(--edge-light-strong),
+      var(--edge-shade),
+      0 5px 14px -10px rgba(0, 0, 0, 0.48);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-panel-switch,
+  .mobile-panel-indicator,
+  .family-tag,
+  .settlement-item,
+  .selectable-category-chip,
+  .split-mode-button {
+    transition-duration: 0.01ms;
+  }
+}

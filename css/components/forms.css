@@ -156,25 +156,24 @@ input[type="date"]:focus {
 
 .amount-label input {
   min-width: 0;
-  flex: 1;
+  flex: 0 0 auto;
   height: 64px;
+  padding: 0 5px;
   border: 0;
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.38);
-  box-shadow: inset 0 1px 0 var(--border-highlight);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--selected-family-text);
   font-size: clamp(1.8rem, 5.2vw, 3.4rem);
   font-weight: var(--fw-medium);
   letter-spacing: 0;
   line-height: normal;
-  transform-origin: center;
-  --input-scale: 1;
-  transform: scale(var(--input-scale));
+  text-align: left;
+  overflow: visible;
+  text-overflow: clip;
   transition:
     height var(--amount-motion) var(--spring),
-    transform var(--amount-motion) var(--spring),
-    background-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring);
+    color var(--motion-fast) var(--spring);
 }
 
 .amount-label input::placeholder {
@@ -188,8 +187,7 @@ input[type="date"]:focus {
 }
 
 .amount-label.amount-active input {
-  background: rgba(255, 255, 255, 0.78);
-  --input-scale: 1.025;
+  background: transparent;
 }
 
 .split-family-chip.is-selected {
@@ -204,18 +202,18 @@ input[type="date"]:focus {
   opacity: 1;
 }
 
-.split-amount-row input {
+.split-amount-input-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-width: 0;
   min-height: 46px;
-  border: none;
+  overflow: visible;
   border-radius: var(--split-control-radius);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.56)),
     color-mix(in srgb, var(--family-color) 5%, transparent);
-  color: var(--family-text);
-  font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
-  font-weight: var(--fw-medium);
-  line-height: 1.15;
   box-shadow:
     inset 0 1px 0 var(--border-highlight),
     var(--edge-shade),
@@ -225,7 +223,25 @@ input[type="date"]:focus {
     background-color var(--motion-fast) var(--spring);
 }
 
-.split-amount-row input:focus {
+.split-amount-row input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 5px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--family-text);
+  font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
+  font-weight: var(--fw-medium);
+  line-height: 1.15;
+  text-align: left;
+  overflow: visible;
+  text-overflow: clip;
+  box-shadow: none;
+}
+
+.split-amount-input-shell:focus-within {
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--family-color) 13%, transparent),
     0 0 30px -16px var(--family-soft);
@@ -253,6 +269,12 @@ input[type="date"]:focus {
   color: color-mix(in srgb, var(--category-text) 78%, var(--ink));
   cursor: pointer;
   line-height: 1.2;
+  transition:
+    transform var(--selection-motion) var(--settle),
+    background-color var(--selection-motion) var(--settle),
+    color var(--selection-motion) var(--settle),
+    box-shadow var(--selection-motion) var(--settle),
+    text-shadow var(--selection-motion) var(--settle);
 }
 
 .selectable-category-chip::before {
@@ -380,12 +402,6 @@ input[type="date"]:focus {
   color: color-mix(in srgb, var(--category-text) 86%, var(--ink));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
   transform: none;
-  /* 点灯方向：慢启动坡道，光晕略滞后 */
-  transition:
-    transform var(--motion-fast) var(--spring),
-    border-color var(--lamp-on-motion) var(--lamp-on),
-    background-color var(--motion-fast) var(--spring),
-    color var(--lamp-on-motion) var(--lamp-on);
 }
 
 .selectable-category-chip.is-selected::before {

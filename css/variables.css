@@ -400,11 +400,11 @@
   --edge-light-strong: inset 0 1px 1px rgba(255, 255, 255, 0.68);
   --edge-shade-strong: inset 0 -1px 1px rgba(22, 26, 30, 0.11);
   --edge-contact-strong: 0 2px 5px rgba(22, 26, 30, 0.045);
-  /* 玻璃边光组合：替换生硬 1px 实线。strong 用于控件/强调；普通用于卡片/容器。
+  /* 玻璃边光组合：用上下明暗和近距离接触阴影表达厚度，不再默认画完整内圈。
      注意：已带 --inset-highlight 的元素只用 --edge-shade，避免顶部高光叠加过重。 */
-  --glass-edge: var(--edge-rim), var(--edge-light), var(--edge-shade);
+  --edge-contact: 0 2px 6px rgba(22, 26, 30, 0.045);
+  --glass-edge: var(--edge-light), var(--edge-shade), var(--edge-contact);
   --glass-edge-strong:
-    var(--edge-rim-strong),
     var(--edge-light-strong),
     var(--edge-shade-strong),
     var(--edge-contact-strong);
