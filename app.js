@@ -206,6 +206,7 @@ const uiIconPaths = {
   cloud: { sf: `<path d="M8.8 19.5a6.3 6.3 0 1 1 5.9-8.5h2a4.3 4.3 0 1 1 0 8.5H8.8Z"/>`, fallback: `<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9Z"/>` },
   link: { sf: `<path d="M8.3 14.1 6.4 16A2.4 2.4 0 0 1 3 12.6l3.6-3.7A2.4 2.4 0 0 1 10 9l1.7-1.7a4.8 4.8 0 0 0-6.8-.1l-3.6 3.7a4.8 4.8 0 1 0 6.8 6.8l1.9-1.9-1.7-1.7Zm7.4-4.2L17.6 8a2.4 2.4 0 0 1 3.4 3.4l-3.6 3.7A2.4 2.4 0 0 1 14 15l-1.7 1.7a4.8 4.8 0 0 0 6.8.1l3.6-3.7a4.8 4.8 0 1 0-6.8-6.8L14 8.2l1.7 1.7ZM7.9 13.3l5.4-5.4 2.8 2.8-5.4 5.4-2.8-2.8Z"/>`, fallback: `<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7"/>` },
   download: { sf: `<path d="M10.7 3h2.6v9.4l3-3 1.8 1.8-6.1 6.1-6.1-6.1 1.8-1.8 3 3V3ZM3 18h18v3H3z"/>`, fallback: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>` },
+  upload: { sf: `<path d="M10.7 21h2.6v-9.4l3 3 1.8-1.8-6.1-6.1-6.1 6.1 1.8 1.8 3-3V21ZM3 3h18v3H3z"/>`, fallback: `<path d="M17 8l-5-5-5 5M12 3v12M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>` },
   database: { sf: `<path d="M3 5c0-2 4-3.5 9-3.5S21 3 21 5v4c0 2-4 3.5-9 3.5S3 11 3 9V5Zm0 7c1.8 1.5 5.2 2.2 9 2.2s7.2-.7 9-2.2v3.5c0 2-4 3.5-9 3.5s-9-1.5-9-3.5V12Z"/>`, fallback: `<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>` },
   help: { sf: `<path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 14.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Zm0-10.9c-2.2 0-3.8 1.2-4.1 3.2h2.5c.2-.8.8-1.2 1.6-1.2 1 0 1.7.6 1.7 1.5 0 .8-.4 1.2-1.5 1.9-1.2.8-1.7 1.7-1.6 3.2h2.3c0-.9.3-1.3 1.4-2 1.3-.8 2-1.9 2-3.3 0-2-1.8-3.3-4.3-3.3Z"/>`, fallback: `<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>` },
 };
@@ -254,6 +255,8 @@ const elements = {
   settingsClearLedgerButton: document.querySelector("#settingsClearLedgerButton"),
   exportCsvButton: document.querySelector("#exportCsvButton"),
   exportJsonButton: document.querySelector("#exportJsonButton"),
+  importLedgerButton: document.querySelector("#importLedgerButton"),
+  importLedgerInput: document.querySelector("#importLedgerInput"),
   openLedgerManagerButton: document.querySelector("#openLedgerManagerButton"),
   ledgerManagementView: document.querySelector("#ledgerManagementView"),
   ledgerManagementBackdrop: document.querySelector("#ledgerManagementBackdrop"),
@@ -5940,6 +5943,112 @@ function exportCsvBackup() {
   showToast({ message: "CSV 已下载" });
 }
 
+function parseImportedCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (quoted && text[index + 1] === '"') { cell += '"'; index += 1; }
+      else quoted = !quoted;
+    } else if (char === "," && !quoted) { row.push(cell); cell = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && text[index + 1] === "\n") index += 1;
+      row.push(cell); if (row.some((value) => value.trim())) rows.push(row);
+      row = []; cell = "";
+    } else cell += char;
+  }
+  if (cell || row.length) { row.push(cell); if (row.some((value) => value.trim())) rows.push(row); }
+  return rows;
+}
+
+function findFamilyIdByName(name, families = state.families) {
+  const normalized = String(name || "").trim();
+  return families.find((family) => family.name === normalized)?.id || families[0]?.id || "";
+}
+
+function createImportedLedger(rawLedger, fallbackName) {
+  const source = normalizeLedger(rawLedger, fallbackName);
+  const ledger = {
+    ...source,
+    id: createId("ledger"),
+    name: `${source.name}（导入）`.slice(0, 24),
+    cloudShareToken: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastSyncedAt: "",
+    expenses: source.expenses.map((expense) => ({
+      ...expense,
+      id: createId("expense"),
+      syncState: "synced",
+    })),
+  };
+  return ledger;
+}
+
+function importJsonLedger(text) {
+  const payload = JSON.parse(text);
+  const sourceState = payload?.appState || payload;
+  if (!sourceState || !Array.isArray(sourceState.ledgers)) throw new Error("不是 Journa JSON 备份");
+  return sourceState.ledgers.map((ledger, index) => createImportedLedger(ledger, `导入账本 ${index + 1}`));
+}
+
+function importCsvLedger(text, fileName) {
+  const rows = parseImportedCsv(text).map((row) => row.map((value) => value.trim()));
+  if (rows.length < 2) throw new Error("CSV 中没有账单记录");
+  const headers = rows[0];
+  const indexOf = (label) => headers.indexOf(label);
+  const dateIndex = indexOf("日期");
+  const payerIndex = indexOf("付款家庭");
+  const categoryIndex = indexOf("类别");
+  const amountIndex = indexOf("金额");
+  if ([dateIndex, payerIndex, categoryIndex, amountIndex].some((index) => index < 0)) throw new Error("CSV 缺少必要列");
+  const expenses = rows.slice(1).map((row, index) => {
+    const amount = Number(row[amountIndex]);
+    const category = row[categoryIndex];
+    const payerId = findFamilyIdByName(row[payerIndex]);
+    if (!Number.isFinite(amount) || amount <= 0 || !category || !row[dateIndex]) return null;
+    return normalizeExpense({
+      id: `imported-expense-${index}`,
+      amount, payerId, category, date: row[dateIndex],
+      note: row[indexOf("备注")] || "",
+      splitMode: "all",
+    });
+  }).filter(Boolean);
+  if (!expenses.length) throw new Error("CSV 中没有可导入的有效账单");
+  return createImportedLedger({
+    name: fileName.replace(/\.[^.]+$/, "") || "CSV账本",
+    families: state.families,
+    familyVisuals: state.familyVisuals,
+    familyMembers: state.familyMembers,
+    categories: [...state.categories, ...expenses.map((expense) => expense.category)],
+    expenses,
+  }, "CSV账本");
+}
+
+async function importLedgerFile(file) {
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const importedLedgers = file.name.toLowerCase().endsWith(".csv")
+      ? [importCsvLedger(text, file.name)]
+      : importJsonLedger(text);
+    appState.ledgers.push(...importedLedgers);
+    state = importedLedgers.at(-1);
+    appState.activeLedgerId = state.id;
+    saveState();
+    render({ animateFinancialChanges: true });
+    closeSettings();
+    showToast({ message: `已导入 ${importedLedgers.length} 个账本，原有账本未改变` });
+  } catch (error) {
+    showToast({ message: `导入失败：${error.message || "文件格式不正确"}` });
+  } finally {
+    elements.importLedgerInput.value = "";
+  }
+}
+
 function formatSplitModeForExport(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
   if (splitMode === "custom") return "分别填写金额";
@@ -7745,6 +7854,8 @@ elements.ledgerList.addEventListener("keydown", handleLedgerKeydown);
 elements.settingsClearLedgerButton.addEventListener("click", handleClearLedger);
 elements.exportCsvButton.addEventListener("click", exportCsvBackup);
 elements.exportJsonButton.addEventListener("click", exportJsonBackup);
+elements.importLedgerButton.addEventListener("click", () => elements.importLedgerInput.click());
+elements.importLedgerInput.addEventListener("change", (event) => importLedgerFile(event.target.files?.[0]));
 elements.createCloudLedgerButton.addEventListener("click", createCloudLedger);
 elements.copyShareLinkButton.addEventListener("click", copyShareLink);
 elements.syncStatus.addEventListener("click", handleManualCloudSync);

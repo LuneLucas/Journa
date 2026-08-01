@@ -451,6 +451,11 @@
                         <span class="ui-icon-host" data-ui-icon="database" aria-hidden="true"></span>
                         <span>备份 JSON</span>
                       </button>
+                      <button class="secondary-button" id="importLedgerButton" type="button">
+                        <span class="ui-icon-host" data-ui-icon="upload" aria-hidden="true"></span>
+                        <span>导入账本</span>
+                      </button>
+                      <input id="importLedgerInput" type="file" accept=".json,.csv,application/json,text/csv" hidden />
                       </div>
                       <button class="ghost-button danger settings-clear-button" id="settingsClearLedgerButton" type="button">
                         <span class="ui-icon-host" data-ui-icon="trash" aria-hidden="true"></span>
@@ -638,7 +643,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-header-single-blur-v1-20260801"></script>
+    <script src="./app.js?v=journa-ledger-import-v1-20260801"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
