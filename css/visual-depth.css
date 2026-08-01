@@ -22,10 +22,20 @@
   --surface-selected-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.42),
     0 8px 20px -16px color-mix(in srgb, var(--theme-color) 42%, transparent);
-  --surface-control-shadow:
+  /* 选择/操作类控件保持轻微浮起；真正的输入槽使用 --surface-recess-shadow。 */
+  --surface-choice-shadow:
     var(--edge-light-strong),
     var(--edge-shade),
     0 4px 12px -10px rgba(22, 26, 30, 0.22);
+  /* 结算是阅读型列表卡：比外层面板低一档，但不伪装成可编辑控件。 */
+  --surface-list-shadow:
+    var(--edge-light),
+    var(--edge-shade),
+    0 8px 22px -16px rgba(22, 26, 30, 0.24);
+  --surface-list-hover-shadow:
+    var(--edge-light),
+    var(--edge-shade),
+    0 14px 30px -18px rgba(22, 26, 30, 0.30);
 }
 
 /* 外层容器：一个层级只保留表面与投影，不再叠加内圈。 */
@@ -43,7 +53,6 @@
 .entry-panel,
 .insights-panel,
 .ledger-section,
-.settings-drawer,
 .ledger-manager-card {
   box-shadow: var(--surface-raised-shadow), var(--shadow-md);
 }
@@ -67,47 +76,70 @@
   box-shadow: var(--surface-raised-shadow);
 }
 
-.mobile-panel-switch .mobile-panel-indicator,
-.mobile-panel-tab.is-active {
+.mobile-panel-switch .mobile-panel-indicator {
   box-shadow: var(--surface-selected-shadow);
 }
 
-/* 筛选器、下拉框和分摊输入是凹槽控件，保留焦点环但移除常态实线。 */
+/* 输入、筛选和数据槽使用真实内凹；焦点环叠加在凹槽外侧。 */
 .ledger-filter-toggle,
 .ledger-controls select,
 .split-amount-input-shell,
 .amount-label,
-.category-add-control,
 .journey-family-segment {
   border: 0 !important;
-  box-shadow: var(--surface-control-shadow);
+  box-shadow: var(--surface-recess-shadow);
 }
 
 .ledger-filter-toggle:focus-visible,
 .ledger-controls select:focus-visible,
 .split-amount-input-shell:focus-within,
-.category-add-control:focus-within {
-  box-shadow: var(--focus-ring);
+.amount-label:focus-within,
+.journey-family-segment:focus-within {
+  box-shadow: var(--surface-recess-shadow), var(--focus-ring);
 }
 
-/* 选择类控件以填充、文字与主题光区分状态；不再叠加主题色内圈。 */
+/* 新增类别是动作按钮，不与输入槽共用内凹材质。 */
+.category-add-control {
+  border: 0 !important;
+  box-shadow: var(--surface-choice-shadow);
+}
+
+.category-add-control:focus-within {
+  box-shadow: var(--surface-choice-shadow), var(--focus-ring);
+}
+
+/* 选择类控件以填充、文字与主题光区分状态；常态保持轻微突出。 */
 .family-tag,
-.settlement-item,
 .selectable-category-chip,
 .split-mode-button {
-  box-shadow: var(--surface-control-shadow);
+  box-shadow: var(--surface-choice-shadow);
 }
 
 .family-tag.is-selected,
-.settlement-item:hover,
 .selectable-category-chip.is-selected,
 .split-mode-button.is-selected {
   box-shadow: var(--surface-selected-shadow);
 }
 
+/* 结算项是阅读型列表卡，hover 只增加卡片抬升，不冒充“已选中”。 */
+.settlement-item {
+  box-shadow: var(--surface-list-shadow);
+}
+
+.settlement-item:hover {
+  box-shadow: var(--surface-list-hover-shadow);
+}
+
+/* 选择项按下时短暂回到内凹，形成明确的触控反馈。 */
 .family-tag:active,
 .selectable-category-chip:active,
 .split-mode-button:active {
+  box-shadow: var(--surface-recess-shadow);
+}
+
+/* amount-label 有更高优先级的主题态规则，明确把标准金额槽收回凹陷层。 */
+.amount-label.amount-themed,
+.amount-label.amount-active {
   box-shadow: var(--surface-recess-shadow);
 }
 
@@ -176,10 +208,18 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-l
     --surface-selected-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.14),
       0 10px 24px -16px color-mix(in srgb, var(--theme-color) 48%, transparent);
-    --surface-control-shadow:
+    --surface-choice-shadow:
       var(--edge-light-strong),
       var(--edge-shade),
       0 5px 14px -10px rgba(0, 0, 0, 0.48);
+    --surface-list-shadow:
+      var(--edge-light),
+      var(--edge-shade),
+      0 8px 22px -14px rgba(0, 0, 0, 0.48);
+    --surface-list-hover-shadow:
+      var(--edge-light),
+      var(--edge-shade),
+      0 14px 30px -18px rgba(0, 0, 0, 0.58);
   }
 }
 

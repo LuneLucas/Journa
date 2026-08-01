@@ -3076,9 +3076,11 @@ label,
 }
 
 .ledger-amount {
+  --ledger-amount-rest-size: var(--num-md);
+  --ledger-amount-expanded-size: 1.28rem;
   grid-area: amount;
   color: color-mix(in srgb, var(--family-text) 88%, var(--ink));
-  font-size: var(--num-md);
+  font-size: var(--ledger-amount-rest-size);
   font-weight: var(--fw-medium);
   letter-spacing: 0;
   white-space: nowrap;
@@ -3086,7 +3088,8 @@ label,
   justify-self: end;
   transition:
     color var(--motion-fast) var(--spring),
-    transform var(--motion) var(--spring);
+    transform var(--motion) var(--spring),
+    font-size 180ms var(--ledger-morph-easing);
 }
 
 .ledger-expand-cue {

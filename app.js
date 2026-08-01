@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-soft-depth-v1-20260730";
+const APP_VERSION = "journa-natural-amount-handoff-v1-20260801";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -1914,7 +1914,7 @@ function render(options = {}) {
     scheduleSaveState();
   };
 
-  const mobilePanelFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  const mobilePanelFlow = window.matchMedia("(max-width: 820px)").matches;
   if (document.startViewTransition && animateFinancialChanges && !mobilePanelFlow) {
     document.startViewTransition(performUpdate);
   } else {
@@ -2335,7 +2335,7 @@ const naturalEntryEditors = new Set(["date", "payer", "amount", "category", "not
 
 function isNaturalEntryLayout() {
   return getEntryMode() === "natural"
-    && window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+    && window.matchMedia("(max-width: 820px)").matches;
 }
 
 function getNaturalEntryToken(editor) {
@@ -3269,7 +3269,7 @@ function toggleCategoryAdd() {
 }
 
 function openFullLedger() {
-  const isMobile = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  const isMobile = window.matchMedia("(max-width: 820px)").matches;
   if (isMobile) {
     setMobilePanel("data", { animate: true });
   } else {
@@ -4242,7 +4242,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
      view-transition-name，VT 生效时整块交叉淡变已覆盖刷新；若子项再挂
      is-entering，落定后会“再滑一次”，形成双重动效。故 VT 生效时
      跳过子项 is-entering，仅在不支持 View Transitions 的浏览器用 CSS 兜底。 */
-  const mobilePanelFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  const mobilePanelFlow = window.matchMedia("(max-width: 820px)").matches;
   /* 移动端数据页的两张首屏卡片走同一条卡片路径；避免总支出额外启动
      View Transition，和下方平账卡形成两套叠加轨迹。 */
   const vtActive = document.startViewTransition && animateFinancialChanges && !mobilePanelFlow;
@@ -4973,7 +4973,7 @@ function handleExpenseSubmit(event) {
     updatedAt: new Date().toISOString(),
   };
 
-  const mobileDataFlow = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+  const mobileDataFlow = window.matchMedia("(max-width: 820px)").matches;
   if (mobileDataFlow && !prefersReducedMotion()) {
     /* 先于 render() 写入，确保总支出 VT 与平账卡的数字刷新在创建动画
        的瞬间就拿到与底部悬浮栏相同的时长。 */
@@ -5324,7 +5324,7 @@ function createSplitScopeAnchorRestorer() {
 }
 
 function scheduleCustomSplitViewportSettle() {
-  if (!window.matchMedia("(max-width: 820px), (pointer: coarse)").matches) return;
+  if (!window.matchMedia("(max-width: 820px)").matches) return;
   const settle = () => {
     const customAmounts = elements.splitCustomAmounts;
     if (!customAmounts || customAmounts.hidden) return;
@@ -5553,6 +5553,7 @@ function expandLedgerItem(expenseId) {
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
   const transitionItems = getLedgerTransitionItems(items, expenseId);
   const flipRects = captureLedgerTransitionRects(transitionItems);
+  prepareLedgerMorph("expanding");
   expandedExpenseId = expenseId;
   transitionItems.forEach((item) => {
     const isExpanded = item.dataset.expenseId === expenseId;
@@ -5568,6 +5569,7 @@ function collapseLedgerItem(expenseId) {
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
   const transitionItems = getLedgerTransitionItems(items, expenseId);
   const flipRects = captureLedgerTransitionRects(transitionItems);
+  prepareLedgerMorph("collapsing");
   expandedExpenseId = "";
   transitionItems.forEach((item) => {
     item.classList.remove("is-expanded");
@@ -5595,6 +5597,24 @@ function captureLedgerTransitionRects(items) {
     });
   });
   return rects;
+}
+
+function prepareLedgerMorph(direction) {
+  if (
+    prefersReducedMotion()
+    || typeof Element.prototype.animate !== "function"
+    || !elements.ledgerList
+  ) return;
+  elements.ledgerList.classList.remove("is-ledger-expanding", "is-ledger-collapsing");
+  elements.ledgerList.classList.add("is-morphing-ledger-items", `is-ledger-${direction}`);
+}
+
+function clearLedgerMorphClasses() {
+  elements.ledgerList?.classList.remove(
+    "is-morphing-ledger-items",
+    "is-ledger-expanding",
+    "is-ledger-collapsing",
+  );
 }
 
 function playLedgerTransitionRects(rects) {
@@ -5677,13 +5697,13 @@ function playLedgerTransitionRects(rects) {
   });
 
   if (!animations.length) {
-    if (runId === ledgerMorphRunId) elements.ledgerList?.classList.remove("is-morphing-ledger-items");
+    if (runId === ledgerMorphRunId) clearLedgerMorphClasses();
     return;
   }
 
   Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
     if (runId !== ledgerMorphRunId) return;
-    elements.ledgerList?.classList.remove("is-morphing-ledger-items");
+    clearLedgerMorphClasses();
   });
 }
 
@@ -6216,7 +6236,7 @@ function openSettings(options = {}) {
   applySettingsMode(options.mode);
   clearSettlementReveal();
   if (settingsMode === "settings") {
-    const collapseSecondaryGroups = window.matchMedia("(max-width: 820px), (pointer: coarse)").matches;
+    const collapseSecondaryGroups = window.matchMedia("(max-width: 820px)").matches;
     elements.settingsView.querySelectorAll(".settings-mobile-group").forEach((details) => {
       details.open = !collapseSecondaryGroups;
     });
@@ -8238,7 +8258,7 @@ function updateSyncLampDock(force = false) {
 
 function setupScrollCollapse() {
   const appHeader = document.querySelector(".app-header");
-  const isMobile = () => window.matchMedia?.("(max-width: 820px), (pointer: coarse)").matches ?? false;
+  const isMobile = () => window.matchMedia?.("(max-width: 820px)").matches ?? false;
   let headerFrame = 0;
   let lastProgress = -1;
   let wasCollapsed = false;
@@ -8370,7 +8390,7 @@ function setupSafeAreaMode() {
   const displayQueries = ["standalone", "fullscreen", "minimal-ui"].map((mode) =>
     window.matchMedia?.(`(display-mode: ${mode})`)
   );
-  const mobileQuery = window.matchMedia?.("(max-width: 820px), (pointer: coarse)");
+  const mobileQuery = window.matchMedia?.("(max-width: 820px)");
 
   /* Safe-area insets are fixed by the device's physical safe area (notch /
      home indicator). They do NOT change when the iOS URL bar shows/hides, yet the
@@ -8531,7 +8551,7 @@ bootstrap();
 // 偶发被固定头部/键盘遮挡。这里在窄屏聚焦文本输入后显式滚入视区中央，
 // 复用 inputs/select 已有的 scroll-margin-block（12px 96px）避开头部与提交栏。
 (() => {
-  const mobileQuery = window.matchMedia("(max-width: 820px), (pointer: coarse)");
+  const mobileQuery = window.matchMedia("(max-width: 820px)");
   const isTextEntry = (el) =>
     el && (el.tagName === "SELECT" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
   let focusedEl = null;

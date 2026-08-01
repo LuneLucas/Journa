@@ -279,6 +279,33 @@
     opacity 210ms var(--ledger-morph-easing);
 }
 
+/* 展开时先锁定会参与高度计算的间距，避免 JS 读到“半展开”的终点：
+   金额 FLIP 以稳定的最终矩形为准，卡片内容也不会在旧高度之外压住下一行。 */
+.ledger-list.is-morphing-ledger-items .ledger-item {
+  overflow: hidden;
+}
+
+/* 金额字号不与 FLIP 位移同时切换：展开保持小号、收起保持大号，
+   等卡片落定后再由基础 transition 完成字号交接，避免 WebKit 留下双层字形。 */
+.ledger-list.is-morphing-ledger-items.is-ledger-expanding .ledger-item .ledger-amount {
+  font-size: var(--ledger-amount-rest-size);
+}
+
+.ledger-list.is-morphing-ledger-items.is-ledger-collapsing .ledger-item .ledger-amount {
+  font-size: var(--ledger-amount-expanded-size);
+}
+
+.ledger-list.is-morphing-ledger-items .ledger-title {
+  transition: none;
+}
+
+.ledger-list.is-morphing-ledger-items .ledger-scope,
+.ledger-list.is-morphing-ledger-items .ledger-sync-state {
+  transition:
+    opacity 210ms var(--ledger-morph-easing),
+    transform 210ms var(--ledger-morph-easing);
+}
+
 .ledger-list.is-morphing-ledger-items .ledger-item-actions {
   transition:
     opacity 210ms var(--ledger-morph-easing);
@@ -410,7 +437,7 @@
 .ledger-item.is-expanded .ledger-amount {
   align-self: end;
   justify-self: start;
-  font-size: 1.28rem;
+  font-size: var(--ledger-amount-expanded-size);
 }
 
 .ledger-item:hover .ledger-expand-cue,

@@ -1701,8 +1701,7 @@
 }
 
 /* 深色圆形收缩态：光晕贴近按钮，避免外圈像霓虹灯。 */
-@media (prefers-color-scheme: dark) and (max-width: 820px),
-  (prefers-color-scheme: dark) and (pointer: coarse) {
+@media (prefers-color-scheme: dark) and (max-width: 820px) {
   body.mobile-panel-data .mobile-submit-bar {
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.025) 58%),
@@ -1792,8 +1791,7 @@
 }
 
 /* 深色移动端引导按钮：玻璃底保持可见，边框只做暗底轮廓，发光退为柔和的悬浮光。 */
-@media (prefers-color-scheme: dark) and (max-width: 820px),
-  (prefers-color-scheme: dark) and (pointer: coarse) {
+@media (prefers-color-scheme: dark) and (max-width: 820px) {
   .mobile-submit-button.is-blocked {
     border-color: rgba(232, 238, 236, 0.24);
     background:
