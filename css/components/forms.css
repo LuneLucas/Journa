@@ -77,11 +77,11 @@ select {
   padding: 0 var(--control-padding-x);
   outline: none;
   transition:
-    min-height var(--motion-slow) var(--spring),
-    transform var(--motion-slow) var(--spring),
-    border-color var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring),
-    background-color var(--motion-fast) var(--spring);
+    min-height var(--motion-control) var(--ease-control-out),
+    transform var(--motion-control) var(--ease-control-out),
+    border-color var(--motion-text) var(--ease-text-out),
+    box-shadow var(--motion-control) var(--ease-control-out),
+    background-color var(--motion-text) var(--ease-text-out);
 }
 
 input:focus,
@@ -161,6 +161,8 @@ input[type="date"]:focus {
   padding: 0 5px;
   border: 0;
   border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
   background: transparent;
   box-shadow: none;
   color: var(--selected-family-text);
@@ -431,7 +433,9 @@ input[type="date"]:focus {
   min-width: 126px;
   appearance: none;
   -webkit-appearance: none;
-  border-radius: var(--radius-pill);
+  /* 筛选是普通控件，使用控件圆角；全圆胶囊会与外层筛选卡形成突兀的
+     “胶囊套胶囊”边界，尤其在桌面端双列筛选栏中更明显。 */
+  border-radius: var(--control-radius);
   background:
     linear-gradient(45deg, transparent 50%, var(--theme-color-strong) 50%) calc(100% - 17px) 50% / 6px 6px no-repeat,
     linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),

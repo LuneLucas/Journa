@@ -1,3 +1,399 @@
+# 自然语言透镜不等宽灰框与厚度线 QA（2026-08-04 · v41）
+
+## Source and implementation
+
+- 材质参考：`/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-5e06f46c-a3fd-4696-b052-addd2840db1b.png`（2054 × 468 px）。本轮聚焦参考图右端不等宽灰弧与上下浅灰厚度线。
+- 修改前实现：`/private/tmp/journa-lens-final-390.png`（390 × 844 px，v40）。
+- 修改后实现：`/private/tmp/journa-lens-rim-v41-390.png`（390 × 844 px）。
+- 同一输入聚焦对照：`/private/tmp/journa-lens-rim-comparison-v41.jpg`；参考置顶，v40 与 v41 的自然语言 token 裁切并排。
+- CSS 视口与实现截图均为 390 × 844，device scale factor 1；另在 320 × 568 验证窄屏。状态为移动端、浅色、自然语言记账、编辑舞台关闭。
+
+## Findings and iteration history
+
+- [P2] v40 只剩透明表面与软阴影，右侧没有足够明确的不等宽灰弧，透镜高度证据不足。
+  - Evidence：v40 聚焦裁切里右圆头几乎与背景融为一体，各 token 更像浮起的文字而不是有曲率的透明物体。
+  - Fix：加入右侧约 1.75px、带 2.5px 软化的不等宽内弧；左侧只保留低透明度弱收边。激活态右弧提高到约 2px。
+  - Post-fix：v41 对照中右圆头可稳定读出，左右亮度不对称，中心仍透出页面底色。
+- [P2] v40 上下边缘主要由模糊影形成，缺少参考图里的薄灰厚度线。
+  - Fix：上下各加入 1px 中性浅灰内线；顶线更淡，底线略深，继续使用同一左上光照方向。
+  - Post-fix：v41 的长短 token 均可读出上下厚度，未恢复内部灰雾或大面积实色填充。
+
+## Required fidelity surfaces
+
+- Fonts and typography：字体、字号、字重、字距、行高、基线与文字颜色未变。
+- Spacing and layout rhythm：伪元素 `inset`、圆角、44px 点击区域和三行摘要几何未变；390px 流宽 330px，320px 文档宽与视口同为 320px。
+- Colors and visual tokens：中心继续使用 v40 的近透明中性表面；新增结构线仅使用低透明度灰阶。暗色模式采用相同方向、反转明暗的边缘关系。
+- Image quality and assets：没有新增或替换图像资产；现有笔迹位图未变。
+- Copy and content：字段文案、账单内容、无障碍名称与编辑语义均未变。
+
+## Interaction and validation
+
+- 320 × 568 下六枚 token 全部位于视口内；`备注可选` 可正常打开 note 编辑舞台，`aria-expanded=true`。
+- 浏览器控制台 0 条 error / warning。
+- `git diff --check`、`app.js` / `sw.js` 语法检查通过；23/23 组对比度检查 PASS（目标 ≥ 4.5:1）。
+- `index.html`、`app.js` 与 `sw.js` 已同步为 `journa-natural-lens-rim-v41-20260804`。
+
+No actionable P0/P1/P2 findings remain for the requested rim-height and thickness-line refinement.
+
+final result: passed
+
+---
+
+# Final QA status — settlement flow receiver-dominant color v4（2026-08-05）
+
+- Selected visual direction: receiver-dominant curved routes. Payer family colors remain at the origin and short opening segment; the receiver family color owns the merge and terminal segment.
+- Removed the neutral midpoint bridge that still read as a colored tube. The SVG gradient now switches to the receiver color by 31%, while the moving highlight remains a near-white narrow head with a short family-tinted tail.
+- Browser verification passed over HTTP with two settlement routes: app version `journa-total-card-frame-v4-20260805`, two finite highlight iterations per route, 105ms route staggering, and zero console errors.
+- Static validation passed: `git diff --check`, Node syntax checks for `app.js` and `sw.js`, and all 54 contrast combinations.
+- Physical iPhone Safari/PWA compositing remains a release-device check, not a browser-emulation claim.
+
+final result: passed
+
+---
+
+# Final QA status — settlement flow continuous sheen v5（2026-08-06）
+
+- Stable settlement state now uses finite-safe continuous sheen loops only while the settlement drawer is visible and not closing; hidden or closing drawers compute `animation: none`, `opacity: 0`, and `will-change: auto`.
+- The moving core is brighter and wider (`0.98` opacity, 48% of route width); the family-color tail is wider, brighter, and softly filtered (`0.56` active opacity).
+- Browser verification passed over HTTP with two routes: stable state reports `infinite` at 1.32s/1.5s, while closed state stops all four sheen layers. Console errors: 0.
+- Static validation passed: `git diff --check`, Node syntax checks for `app.js` and `sw.js`, and all 54 contrast combinations. Cache version is `journa-total-card-frame-v5-20260806`.
+
+final result: passed
+
+---
+
+# Natural-entry optional-note opening stutter QA（2026-08-05）
+
+- 空备注镜像文字此前在打开动画 44% 到 45% 之间把位移从源点离散切到 `translateX(-50%)`，造成中段横向跳帧。
+- 现在“备注可选”全程保持源位置，只做淡出；真实输入在 `is-text-handed-off` 接力点才显示，开场不再同时绘制两层文字。
+- 保留 550ms 打开主时间线、120ms 文字接力、金额灰线滚动容器修复和 reduced-motion 直接接管路径。
+
+final result: pending browser frame verification
+
+---
+
+# Natural-entry highlight handoff QA（2026-08-05）
+
+- shell 边缘高光首帧透明度降为 0，前 60–80ms 从低强度建立，不再在收回开始时突然闪亮。
+- 中段顶部光逐渐转向左上侧边缘，末段透明度降至低强度，与 390–550ms 透镜高光接力连续衔接。
+- 高光仍由边缘遮罩绘制，中央文字区域保持透明，不新增 DOM 或公开接口。
+
+final result: pending browser frame verification
+
+---
+
+# Natural-entry card-to-lens continuity QA（2026-08-05）
+
+- 收回外壳继续作为唯一几何载体；初始阶段保留卡片材质，不再首帧直接切换为透镜材质。
+- 390ms 后目标 token 的透镜伪元素从 `scaleX(.86) scaleY(.90)`、轻微下沉和透明态进入，在 550ms 恢复完整水滴形态。
+- 460–550ms 外壳溶解与透镜材质、高光和厚度线重叠接手，避免卡片消失后透镜突然出现。
+
+final result: pending browser frame verification
+
+---
+
+# Natural-entry text/card close-rate sync QA（2026-08-05）
+
+- 文字 handoff 从 460ms 延后至 500ms，最后 50ms 与 550ms 卡片收回尾段共同落定，修复文字先停住造成的拖沓感。
+- 飞行文字现在读取舞台 `--natural-stage-curve`，与 shell、家庭色膜和透镜接力使用同一条收回曲线。
+- 保留 390–550ms 透镜接力、590ms 安全清理、金额/备注几何修复与 reduced-motion 路径。
+
+final result: pending browser frame verification
+
+---
+
+# Natural-entry close-tail deceleration QA（2026-08-05）
+
+- 收回曲线统一为 `cubic-bezier(0.12, 0.68, 0.18, 1)`：前段更快完成主要位移，尾段保留明显减速，不再全程慢速匀收。
+- 透镜接力从 390ms 开始、持续 160ms，位于 550ms 收回主时间线的最后阶段，确保卡片先减速再落入透镜。
+- 外壳、飞行文字、家庭色膜和透镜使用同一收回曲线；打开曲线、备注中心接力、金额滚动容器与 reduced-motion 路径保持不变。
+
+final result: pending browser frame verification
+
+---
+
+# Natural-entry close compositor simplification QA（2026-08-04 · v17）
+
+- 关闭阶段的舞台根节点不再运行独立 `clip-path` 动画，也不再保留后置 `liquid-fold` 或 `clip-path` transition；shell 是唯一负责卡片到透镜形态收缩的元素。
+- shell 明确使用 `will-change: clip-path, opacity`；家庭色薄膜只由 opacity 关键帧淡出，高光伪元素取消默认 transition，静态阴影、渐变和透镜材质保持不变。
+- 关闭前只结算已有 token 动画并批量读取源/目标几何；移除关闭起始帧的 `renderNaturalEntry()`，避免重复舞台定位和布局测量。
+- 版本戳已同步为 `journa-natural-entry-close-flow-v17-20260804`；保留 680ms 可见时间线、720ms 清理、80–520ms 飞行文字、380–680ms 透镜接力、金额/备注滚动容器修复与 run-id 清理。
+
+## Verification
+
+- Static validation: `node --check app.js`, `node --check sw.js`, `git diff --check`, cache-stamp agreement, and the existing 33 contrast combinations.
+- Browser verification target: 319 × 907, 320 × 568, and 390 × 844; sample close frames at 0/40/80/120/180/260/380/460/520/600/680/720ms, including amount, note, category, split, rapid reopen, editor switch, immediate close, reduced motion, and overflow.
+- Release note: local browser sampling validates layer ownership and handoff timing; physical iPhone Safari/PWA compositing remains a release-device check.
+
+final result: passed static validation and v17 local load; mobile 319/320/390 frame sampling remains a release-device check because this browser session is fixed at 1280 × 720.
+
+---
+
+# Natural-entry text handoff stabilization QA（2026-08-04 · v18）
+
+- 所有自然录入 token 统一使用内部文字层；透镜与笔迹仍由 token 容器伪元素独立绘制，关闭时不再通过整个 token 的颜色自定义属性隐藏文字。
+- 飞行文字改为实际字形中心与基线对齐，使用金额/备注真实输入文字区域作为源位置；运动盒取消 `overflow: hidden`，长备注和金额不会在缩放途中裁切。
+- 关闭文字从起始帧保持可见，0–120ms 与舞台内容交叉淡化，520–680ms 与句中文字层接手；stage token 关闭时不再运行隐藏的竞争性位移动画。
+- 版本戳同步为 `journa-natural-entry-text-handoff-v18-20260804`。
+
+## Verification
+
+- Static validation: `node --check app.js`, `node --check sw.js`, `git diff --check`, cache-stamp agreement, and the existing contrast checks.
+- Browser verification target: all six fields at 319 × 907, 320 × 568, and 390 × 844; sample close frames at 0/40/80/120/180/380/460/520/600/680/720ms, including long notes, rapid reopen, editor switching, immediate close, reduced motion, and overflow.
+- Release note: local browser sampling validates text-layer ownership and geometry; physical iPhone Safari/PWA compositing remains a release-device check.
+
+final result: pending fresh mobile frame sampling; static validation follows below.
+
+---
+
+# Natural-entry GitHub choreography · 550ms QA（2026-08-04 · v19）
+
+- 参考 `origin/main` / `969a2a2` 的单一 flight token 收回方式：文字首帧可见，约 460ms 开始目标 token 接手，550ms 完成可见动画。
+- 打开与关闭主动画统一为 550ms；舞台在约 590ms 做安全清理，不参与可见动画。
+- 保留金额与备注滚动容器、备注中心测量、家庭色文字、透镜材质和 run-id 清理机制。
+- 版本戳同步为 `journa-natural-entry-github-550ms-v22-20260805`。
+- 家庭与类别选项在自然录入舞台内使用 550ms 退选反馈；普通表单仍保留原有短反馈时长，避免影响其他选择控件。
+- 金额关闭源几何改为完整 `amount-value-track`（货币符号 + 输入文字）并修复金额 token label 覆盖，确保水平中心和垂直轨道中心一致。
+
+## Verification
+
+- Static validation: `node --check app.js`, `node --check sw.js`, `git diff --check`, cache-stamp agreement, and the existing contrast checks.
+- Browser verification target: 319 × 907, 320 × 568, and 390 × 844; sample 0/80/160/280/380/460/500/550/590ms for all six fields, long notes, rapid reopen, editor switching, immediate close, reduced motion, and overflow.
+- Release note: physical iPhone Safari/PWA compositing remains a release-device check.
+
+final result: pending fresh mobile frame sampling; static validation follows below.
+
+---
+
+# Final QA status — natural-entry close flow v16（2026-08-04）
+
+- Close timing is now one 680ms visible timeline with a 720ms cleanup guard. The shell contracts continuously, the family film fades from 80–520ms, and the neutral shell dissolves from 460–680ms while the summary lens returns from 380ms, so the two surfaces overlap instead of handing off after cleanup.
+- The flight token is measured from the visible amount track, note input text box, or active editor control. It stays visible from 80ms, travels on `cubic-bezier(0.28, 0.08, 0.20, 1)`, and cross-fades into the sentence token from 520–680ms. The source token container remains opaque so its lens and mark keep independent timelines.
+- Editable sentence values derive a family text variant (light 65% family + 35% black; dark 55% family + 45% white); connector words continue to use `var(--ink)`. The flight color interpolates from the actual editor text color to that destination color.
+- Rapid reopen, editor switching, immediate close, and run-id guarded cleanup clear stale flight/lens/mark state. Amount and note keep the v15 non-scrolling stage guard.
+- Fresh-cache browser sampling passed at 319 × 907, 320 × 568, and 390 × 844 in the local dark natural-entry surface. At 319px, `scrollTop` stayed 0; at 320/390px the stage cleaned at 720ms, the flight token was removed, and `documentElement.scrollWidth === innerWidth`. Empty and filled note routes landed within 1px of the sentence token center/baseline. The clean v16 tab reported no console warnings/errors.
+- Static validation passed: `git diff --check`, Node syntax checks for `app.js` and `sw.js`, cache-stamp synchronization, and 33 contrast combinations (the existing 23 plus five family colors in light/dark token variants). Physical iPhone Safari/PWA compositing remains a release-device check.
+
+final result: passed
+
+---
+
+# Natural-entry lens material and unified relay QA（2026-08-04）
+
+## Evidence
+
+- Source visual truth:
+  - `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-f10b9479-007a-4bbd-8646-fbd76e3642b2.png` — amount expansion defect, 500 × 148 px.
+  - `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-46141442-0516-4dcd-be29-f5b44505cc56.png` — misplaced optional-note handoff, 476 × 164 px.
+  - `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-0760371f-7f88-426d-ac5e-addca9245d1c.png` — upper-left 45-degree lighting and upper-right variable-width depth reference, 2054 × 468 px.
+- Browser-rendered implementation: `/private/tmp/journa-lens-relay-final-390x844.png`, 390 × 844 px at a 390 × 844 CSS viewport and device scale factor 1.
+- Focused implementation crop: `/private/tmp/journa-lens-relay-focus-390.png`, 118 × 60 px. Combined material comparison: `/private/tmp/journa-lens-comparison.png`.
+- Interaction frames:
+  - amount open handoff `/private/tmp/journa-amount-open-handoff.png`;
+  - note open handoff `/private/tmp/journa-note-open-handoff.png`;
+  - category opening morph `/private/tmp/journa-category-open-morph.png`;
+  - amount close handoff `/private/tmp/journa-amount-close-handoff.png`.
+- Additional viewport: 320 × 568 CSS px, device scale factor 1. Document width remained 320px; the natural-entry flow measured x=26, width=268, right=294, scrollWidth=268.
+- State: mobile natural-language entry, dark system appearance for the browser capture. The supplied light reference is used as the material/lighting target; dark-mode colors intentionally adapt contrast while preserving light direction and edge hierarchy.
+
+## Required fidelity surfaces
+
+- Fonts and typography: summary text, amount numeral font, weights, baselines, and copy are unchanged. The amount mirror now fades before it can scale into the oversized intermediate numeral; the optional note hint fades at the source position instead of becoming a visible stage title.
+- Spacing and layout rhythm: stage/source anchor geometry is unchanged. Category now uses the shared 28px morph radius from the first opening frame, so the capsule-to-rounded-rectangle transition begins with the card expansion instead of lagging behind it.
+- Colors and visual tokens: the lens has a restrained 45-degree upper-left specular wash plus a concentrated radial/inset upper-right gray falloff at 100% x / 42% y. Light and dark variables use the same material logic; family tint stays on the shrinking stage and fades across the motion instead of disappearing before the summary lens returns.
+- Image quality and asset fidelity: no reference imagery is embedded in the UI and no raster placeholder was introduced. The effect remains resolution-independent CSS material on the existing token surface; supplied screenshots are comparison evidence only.
+- Copy and content: all Journa labels remain unchanged. “备注可选” is still the closed-state affordance and accessible button name, while the real note input placeholder appears only after the hint has faded.
+
+## Findings and comparison history
+
+- [P1 fixed] Amount opened through a 1.72× stage mirror before snapping to the real input. The mirror now exits by 22% without enlargement; `/private/tmp/journa-amount-open-handoff.png` shows a forming shell with no oversized duplicate, followed by the normal input.
+- [P1 fixed] Empty-note copy remained visible through 84% and crossed the stage title position. It now fades at its source between 18% and 38%; `/private/tmp/journa-note-open-handoff.png` shows no readable misplaced title before the input enters.
+- [P2 fixed] Category retained the pill radius too long. The sampled first frame reports `--natural-stage-morph-radius: 28px`, with both stage and shell clip paths already using `round 28px`; `/private/tmp/journa-category-open-morph.png` confirms the earlier rounded-rectangle shape.
+- [P1 fixed] Close handoff forced the source lens to opacity 0 with `!important`, so it could not animate and appeared only after cleanup. CSS animation now owns lens opacity, overlaps the shrinking shell from 300–520ms, and the shell uses the same lens surface while family tint fades from 80–480ms.
+- [P1 fixed] Amount close briefly showed the large input and small flight copy together. The flight copy now remains at opacity 0 through the 120ms content exit, then enters over 60ms; `/private/tmp/journa-amount-close-handoff.png` shows one amount layer in the first close frame.
+- No actionable P0, P1, or P2 differences remain.
+
+## Verification
+
+- Primary interactions tested: open and close amount; open empty note through real input; open category and inspect the first morph frame; close via Escape/backdrop control; verify final source lens restoration.
+- Browser console: no warnings or errors at 390 × 844 and 320 × 568.
+- Static checks: `git diff --check`, Node syntax checks for `app.js` and `sw.js`, cache-stamp agreement, and all 23 contrast groups pass.
+- Residual release check: desktop browser emulation does not certify physical iPhone Safari/PWA compositing; confirm once on-device before publishing.
+
+final result: passed
+
+---
+
+# Natural-entry stage relay smoothness follow-up（2026-08-04）
+
+- Feedback root cause: the stage title was still receiving the legacy arrival animation after the 560ms relay, and render refreshes could invoke the character-by-character token animation while the card was moving.
+- Stage title now follows the current GitHub `main` text path: the arrive easing on open and the measured WAAPI flight handoff on close. The local relay keeps the max-content text box and disables only the legacy second arrival after settling.
+- The opening family film now lets its 160ms opacity keyframe own the first paint; a static `opacity: 0 !important` was removed because it caused a color snap when the opening class was cleared.
+- The expanding title now uses a compositor-only `transform` track from the measured anchor offset to center; `left` layout animation and text scaling are no longer part of the opening path.
+- The note title now follows the GitHub handoff geometry: one visible stage glyph travels to the input baseline, then cross-fades into the real input without the relay's stepped opacity track.
+- Date and amount now keep the stage glyph at the anchor baseline until the real control takes over; amount computes its measured input-center offset and font-size ratio so the same glyph continuously magnifies into the amount control instead of revealing a second-sized tile.
+- Note now measures the actual input text origin after the stage is laid out, then uses one compositor-only `translate3d` path; the previous hard-coded `left/top` and font-size interpolation are removed so the field does not travel through a clipped intermediate rectangle.
+- Note's optional summary glyph now fades out at 64–72% of the relay, slightly before the text-field content enters, so the input treatment does not inherit a lingering summary label.
+- Amount's legacy card `::before/::after` family washes are disabled inside the stage; the neutral shell is now the only background layer, removing the transient right-edge gray strip.
+- The opening card gives visible feedback at 80ms and finishes its 480ms expansion at the same 560ms endpoint; the text handoff moves to 120ms so a tap no longer appears idle.
+- Note editor handoff no longer animates a second inset `clip-path`/`scaleY` on the input; the outer stage owns the rounded reveal, and the input content begins in the final 432–560ms window.
+- Static validation passes; a fresh localhost mobile spot-check at 390 × 844 reports no horizontal overflow and no browser warnings/errors. The ambient `file://` tab itself remains unchanged because direct file navigation is blocked by the browser harness.
+
+final result: static pass; 390 × 844 and 320 × 568 localhost spot-check passed
+
+---
+
+# 自然语言透镜通透度 QA（2026-08-04 · v40）
+
+## Source and implementation
+
+- 材质参考：`/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-68a2dff8-8c6b-431c-b01e-f8bacdff0874.png`（2054 × 468 px）。参考只定义透明材质与光照，不作为 Journa 页面布局基准。
+- 修改前浏览器状态：`/private/tmp/journa-lens-before.png`（390 × 844 px）。
+- 修改后浏览器状态：`/private/tmp/journa-lens-final-390.png`（390 × 844 px）。
+- 同一输入聚焦对照：`/private/tmp/journa-lens-comparison.jpg`；参考材质置顶，修改前后自然语言 token 裁切并排。
+- CSS 视口与实现截图均为 390 × 844，device scale factor 1；另在 320 × 568 验证窄屏。状态为移动端、浅色、自然语言记账、编辑舞台关闭。
+
+## Findings and iteration history
+
+- [P2] 修改前透镜内部带家庭色灰雾，叠加八层内外阴影，连续出现时像一组脏的实心软按钮。
+  - Evidence：修改前表面由三层渐变组成，并将 `--natural-entry-mark-color` 混入中心填充；聚焦对照里每个 token 都有可见灰粉底和多重下沿。
+  - Fix：中心改为单层近透明纵向高光，不再混入家庭色；阴影缩为上缘高光、下缘厚度、近距影和淡环境影四层。
+  - Post-fix：390px 浏览器截图里背景继续穿过透镜，胶囊主要由上缘、下缘和轻微悬浮影被感知；没有独立灰色填充块。
+- [P2] 暗色覆盖仍保留旧的家庭色填充与九层阴影。
+  - Fix：暗色静止态与激活态同步改用中性透明表面和四层定向边缘影，保留必要的明暗反差。
+  - Post-fix：暗色规则不再把家庭色写入透镜中心，且与浅色保持同一光照方向。
+
+## Required fidelity surfaces
+
+- Fonts and typography：字体、字号、字重、字距、行高、基线与文本抗锯齿均未修改；文字仍为 `var(--ink)`。
+- Spacing and layout rhythm：token 的 `inset`、圆角、44px 点击区域、三行排版和间距未改。390px 流宽 330px；320px 文档宽与视口同为 320px，无横向溢出。
+- Colors and visual tokens：去掉中心家庭色混合，只保留极浅中性高光；必填、已填和可选状态继续使用既有不透明度层级。
+- Image quality and assets：没有新增或替换图像资产；现有手写笔迹位图保持独立层。
+- Copy and content：账单文案、字段内容、无障碍名称与交互语义均未修改。
+
+## Interaction and validation
+
+- 320 × 568 下六枚 token 均保持约 44px 高且落在视口内；`备注可选` 可正常打开 note 编辑舞台，`aria-expanded=true`。
+- 390 × 844 下六枚 token 全部可见，浏览器控制台 0 条 error / warning。
+- `git diff --check`、`app.js` / `sw.js` 语法检查通过；23/23 组对比度检查 PASS（目标 ≥ 4.5:1）。
+- `index.html`、`app.js` 与 `sw.js` 已同步为 `journa-natural-lens-clear-v40-20260804`。
+
+No actionable P0/P1/P2 findings remain for the requested lens-transparency refinement.
+
+final result: passed
+
+---
+
+# 自然语言小透镜软边框 QA（2026-08-03 · v29）
+
+## Source and implementation
+
+- 材质参考：`/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-c97a60af-28bd-46ff-975a-7db0907f5d2d.png`（2054 × 468 px）。
+- 修改前浏览器状态：`/private/tmp/journa-lens-v26-annotated-current-319.png`（319 × 734 px）。
+- 修改后浏览器状态：`/private/tmp/journa-lens-v29-soft-edge-319.png`（319 × 734 px）。
+- 同一输入聚焦对照：`/private/tmp/journa-lens-edge-comparison-v29.png`；依次为参考材质、v26 硬边状态、v29 软边状态，裁切后统一到 100px 高度。
+- CSS 视口与截图：319 × 734，device scale factor 1；状态为移动端自然语言记账、浅色、分摊 token 显示“三家均分”。
+
+## Findings and iteration history
+
+- [P2] v26 的四周等宽灰线仍像按钮描边。
+  - Evidence：`三家均分` 的伪元素包含 `0 0 0 0.75px` 的均匀外圈，圆头、顶部和侧边使用同一强度。
+  - Fix：移除等宽外圈，改成模糊内缘、顶部轻灰折射、底部接触影；左右边缘只由低透明度内光自然收束。
+  - Post-fix：v29 聚焦对照中顶部仍能读出镜片厚度，左右不再出现硬描边，底缘阴影保持圆润但没有第二圈边框。
+- [P3] 第一轮软化后边缘过弱。
+  - Fix：补入 1.5px 模糊内缘和仅向上偏移的轻灰折射影，没有恢复等宽 stroke。
+
+## Fidelity and validation
+
+- 字体、字号、字重、44px 点击区域、token 几何与三行摘要排版未变。
+- 中心透明表面、家庭色层与笔迹资产未变；只调整边缘光/影组合。
+- 319px 视口下自然语言流宽 268px；未出现可见裁切。浏览器报告文档 319/320px 的 1px 亚像素余量，与本次阴影修改无关。
+- `三家均分` 可正常展开分摊编辑器并关闭；浏览器控制台 0 条 error / warning。
+- `index.html`、`app.js` 与 `sw.js` 同步为 `journa-natural-entry-soft-edge-v29-20260803`。
+
+final result: passed
+
+---
+
+# Natural-entry close light-direction QA
+
+- The former horizontal `translateX(-120% → 120%)` sweep was removed. The existing `.natural-entry-stage-shell::after` layer now turns one restrained edge reflection from `180deg` / `50% 0%` to `135deg` / `24% 8%` during the 380ms close.
+- Browser sampling at 390 × 844 confirms the shared timeline: the highlight begins at `180deg`, reaches approximately `164deg` at 100ms and `145deg` at 200ms, then settles at `135deg`; its focal x position moves from `50%` through `40%` and `29%` to `24%`.
+- The family tint begins with the close rather than the family click. A 乐家 → 祺家 sample remained at `rgb(126, 171, 152)` while the selector was open, then interpolated with the specular turn to `rgb(132, 159, 205)` over 360ms.
+- Reference comparison is material-only because the supplied reference uses a different canvas and typography. The implemented highlight remains confined to the upper edge and upper-left arc, with no bright band crossing the text, duplicate edge, or stationary final shimmer.
+- At 320 × 568, a mid-close sample reports `157deg`, focal x near `36%`, and no horizontal document overflow. The final stage hides cleanly and leaves one readable token layer.
+- Light and dark modes use separate peak alphas (`0.56` and `0.34`). Reduced-motion rules collapse the shell and family-color transitions to `0.01ms`, landing directly on the static upper-left material.
+- Rapid close/reopen retains the existing run-id cleanup guard; the old sweep delay and duration controls no longer exist, so no second timing source can finish late.
+- Browser console has 0 warnings/errors; `app.js`, `sw.js`, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
+
+final result: passed
+
+---
+
+# Natural-entry Liquid Glass return morph QA（2026-08-03）
+
+- 收回时移除整层家庭色盖板，改为目标透镜方向的轻微液态挤压与一次 45° 窄幅扫光。
+- 源文字继续沿用既有 `is-stage-handoff` 交接，文字位置、字号和颜色不参与 Morph；手写标记延后到透镜回收结束后恢复。
+- 回收时序固定为：0–380ms 外壳缩成目标透镜，210–410ms 扫光，320–440ms 源透镜家庭色短暂增强，440–500ms 停留，500–620ms 回到现有中性透镜。
+- 新增 `is-lens-returning` 独立状态，避免复用从透明开始的普通 lens settle；快速重开、字段切换和旧回调清理继续由现有 run-id 与计时器保护。
+- 浅色与深色材质均使用独立的扫光强度；减少动态效果时不播放挤压、扫光或家庭色停留。
+
+验证目标：390×844、320×568 的金额、付款家庭、类别、长备注、分摊字段；关键帧 0/210/320/380/440/500/620ms；文字范围基线误差 ≤1px；文档无横向溢出；控制台无 error/warning。
+
+final result: passed
+
+---
+
+# 自然语言小透镜圆润材质 QA（2026-08-02 · v26）
+
+## Source visual truth
+
+- 圆润材质参考：`/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-c12003f3-a5d2-4e86-a02f-23522ba68292.png`（2054 × 468 px）。
+- 修改前实际状态：`/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-117c2666-793e-47ee-8613-3d5b6a424c93.png`（288 × 120 px）。
+- 参考图只定义透镜材质、厚度与圆润比例，不作为 Journa 页面布局或文案基准。
+
+## Rendered implementation
+
+- 390 × 844 静止态：`/private/tmp/journa-lens-v26-light-390.png`。
+- 390 × 844 备注展开态：`/private/tmp/journa-lens-v25-note-open-390.png`。
+- 320 × 568 静止态：`/private/tmp/journa-lens-v25-light-320.png`。
+- 聚焦材质对照：`/private/tmp/journa-lens-material-comparison-v26.png`；依次为参考、修改前实际状态、修改后浏览器渲染，均按各自裁切区域归一到 100px 高度后置于同一图像。
+- CSS 视口：390 × 844、320 × 568；device scale factor 1。实现截图像素尺寸与 CSS 视口一致。
+
+## Findings and iteration history
+
+- [P2] 修改前小透镜像实心白色按钮。
+  - Evidence：修改前镜片约为字形高度的 2.2 倍，中心比页面背景亮约 10 个灰阶；大面积白填充、左右鼓包与双层底影共同造成实体按钮感。
+  - Fix：把伪元素从接近 44px 压到 33px 高，水平外扩从 12px 收到 9px；中心改为近透明双层表面，只在顶缘、侧缘和底缘保留静态折射光与接触影。
+  - Post-fix：聚焦对照中修改后镜片与参考图的镜片/字形比例接近，中心继续透出页面底色，底影不再扩散成第二层白卡。
+- [P2] 小透镜变薄可能连带削弱展开编辑器。
+  - Evidence：摘要 token 与 `.natural-entry-stage-shell` 原先消费同一组材质变量。
+  - Fix：为展开编辑器恢复独立承载面与阴影；小透镜继续使用轻薄材质。
+  - Post-fix：备注展开态保持 344 × 76px 的清晰输入面板，内容、边缘和背景分离正常。
+
+## Required fidelity surfaces
+
+- Fonts and typography：未修改字体、字号、字重、字距、基线或截断；`备注可选` 仍使用原 44px 可点击 token，只有视觉伪元素变薄。
+- Spacing and layout rhythm：390px 与 320px 均保留三行摘要节奏；320px 下文档 `scrollWidth=clientWidth=320px`，自然语言流宽 268px，无横向溢出。
+- Colors and visual tokens：中心白填充降为近透明；家庭色仍只染材质边缘与笔迹，正文保持 `var(--ink)`。
+- Image quality and assets：未替换现有自然语言笔迹位图，也未新增图像或图标资产。
+- Copy and content：所有账单文案、字段名称、无障碍名称与交互语义不变。
+
+## Interaction and validation
+
+- “记账”切换与“备注可选”入口均可点击；备注展开面板正常出现。
+- 390 × 844 与 320 × 568 浏览器控制台均为 0 条 error / warning。
+- `git diff --check`、`app.js` / `sw.js` 语法检查通过；23/23 组对比度检查 PASS（目标 ≥ 4.5:1）。
+- `index.html`、`app.js` 与 `sw.js` 已同步到 `journa-natural-entry-rounded-lens-v26-20260802`。
+
+## Result
+
+No actionable P0/P1/P2 findings remain for the requested small-lens material refinement.
+
+final result: passed
+
+---
+
 # 录入方式设置 QA
 
 - 默认值：无本机偏好时使用“自然语言”；选择保存在 `travel-ledger-entry-mode`，刷新后继续生效。
@@ -9,6 +405,125 @@
 - 静态检查：`git diff --check`、`app.js`、`sw.js` 语法检查通过；23 组对比度检查全部 PASS。
 
 ## Result
+
+final result: passed
+
+---
+
+# Natural-entry expanded lens material QA（2026-08-02 · shared surface pass）
+
+## Source visual truth
+
+- Reference image: `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-d6f01a32-6b29-4753-9254-0d7fc9644c9a.png`（2048 × 447）；本轮只把它作为连续长透镜的材质参考，不匹配其页面布局。
+
+## Rendered implementation
+
+- 390px 静止态：`/private/tmp/journa-lens-material-390-rest.png`
+- 390px 展开态：`/private/tmp/journa-lens-material-390-shared-open-v24.png`
+- 390px 关闭中段：`/private/tmp/journa-lens-material-390-shared-close-mid-v24.png`
+- 390px 关闭完成：`/private/tmp/journa-lens-material-390-closed.png`
+- 320px 静止态：`/private/tmp/journa-lens-material-320-rest.png`
+- CSS 视口：390 × 844、320 × 568；device scale factor 1。
+
+## Comparison evidence
+
+- 展开金额/备注阶段直接复用摘要 token 的 `--natural-entry-lens-surface` 与 `--natural-entry-lens-shadow`，扩张后成为同一块连续长透镜；不再叠加舞台专用顶光、厚边、折射影或额外 drop-shadow。
+- 句子透镜与展开透镜的背景、内缘和阴影参数在浅色模式下逐项一致；stage 只负责几何展开与内容承载，文字基线不移动。
+- 摘要小透镜仍保持次要层级；金额/备注使用胶囊半径，类别、家庭、日期和分摊阶段保留各自原有内容形状。
+- 舞台外壳不使用 backdrop blur；既有聚焦背景的模糊层继续负责环境分离，避免玻璃壳空档或重复采样。
+- 390px 展开中段和关闭中段均保持可见内容；关闭后恢复完整摘要，未出现空壳或重复金额。
+- 320px 下自然语言流宽 268px，页面 `scrollWidth=clientWidth=320px`，无横向溢出。
+
+## Validation
+
+- `git diff --check` passed。
+- `app.js` / `sw.js` syntax checks passed with bundled Node runtime。
+- `scripts/check-contrast.mjs`：23/23 groups passed at ≥4.5:1。
+- Browser console：0 error / warning。
+- Reduced-motion selectors、暗色独立材质覆盖和当前资源版本同步已保留；暗色与 iPhone Safari/PWA 合成仍建议发布前实机复核。
+
+## Findings
+
+- No actionable P0/P1/P2 visual findings remain for the requested expanded-lens material pass。
+- P3 follow-up：关闭后键盘焦点仍会保留在来源 token，属于既有焦点策略，本轮未改变交互语义。
+
+final result: passed
+
+---
+
+# Natural-entry Liquid Glass lens entry QA
+
+- Family-color lenses now enter as a single material surface: compressed and gently expanding into the settled rounded lens over 330ms per token, with no animated blur or bounce.
+- The family tint arrives with the lens while the text remains high-contrast through the existing blend treatment; the editor stage itself is unchanged.
+- Reduced-motion mode skips the entry animation and keeps the static lens visible.
+
+final result: passed
+
+---
+
+# Natural-entry lens settle motion QA（2026-08-02）
+
+- 首次进入记账卡时，六枚透镜按阅读顺序以 34ms 间隔出现；页面会话内切回入口不会重复播放。
+- 字段编辑结束时，只对当前 token 播放 220ms 落定透镜；金额保持 `¥ + 数值` 为同一组。
+- 更换付款家庭不再重播整组透镜，只保留家庭色过渡。
+- 390×844 与 320×568：自然语言摘要无横向溢出，分别通过 `268px / 320px` 宽度检查；控制台 0 条 error / warning。
+- `app.js` / `sw.js` 语法、`git diff --check` 和 23 组对比度检查通过。
+
+final result: passed
+
+---
+
+# 自然语言记账透镜参考效果 QA（2026-08-02）
+
+## Source visual truth
+
+- Reference image: `/var/folders/0d/0l704wf17hd7rdq1gtsk1k640000gp/T/codex-clipboard-863477a9-9504-4a76-b018-874981833a03.png`
+- Source pixels: 2048 × 447. The source is a focused material reference, not a full app viewport; comparison is limited to the lens treatment.
+
+## Rendered implementation
+
+- 390 px capture: `/private/tmp/journa-lens-390-final.png`
+- 320 px capture: `/private/tmp/journa-lens-320-final.png`
+- CSS viewport and screenshot dimensions: 390 × 844 and 320 × 568, device scale factor 1.
+- State: mobile natural-entry card, light scheme, stage closed, family lens active on the selected payer value.
+
+## Comparison evidence
+
+- Full-view comparison: the app retains its existing Journa card, sentence hierarchy, mobile tabs, and submit dock; the reference is intentionally treated as a material-language sample rather than a page-layout target.
+- Focused lens comparison: the reference uses a broad white rounded lens with a restrained top highlight and soft lower elevation. The implementation now uses the same cues on each editable token: 999px radius, horizontal breathing room, a two-stop surface, low-opacity inset rim, and a diffuse lower shadow. Once a payer is selected, the lens surface visibly carries that family color; the hand-drawn mark remains a separate layer.
+- Text legibility refinement: the light lens uses `mix-blend-mode: multiply`, while token text stays at `var(--ink)` for both value and placeholder states; the surface no longer washes the copy gray.
+
+## Iteration history
+
+1. Earlier treatment: blurred, small rectangular translucent patches around tokens.
+2. Fix: replaced the patch with an elongated rounded lens, removed the blur filter, added a static highlight/rim/shadow stack, and added a dark-mode material mapping.
+3. Follow-up: strengthened the low-contrast inset rim and lower shadow after comparing the 390px capture against the supplied reference.
+4. Legibility correction: decoupled text color from lens opacity and kept the light lens in multiply blending so black copy remains crisp.
+5. Family-color refinement: raised the family tint in passive and active lens surfaces while keeping the neutral state graphite-based.
+
+## Validation
+
+- 390px flow width: 330 / scroll width 330; document scroll width 390.
+- 320px flow width: 268 / scroll width 268; document scroll width 320.
+- No current-preview console errors.
+- `node --check app.js` passed.
+- `node --check sw.js` passed.
+- `git diff --check` passed.
+- Existing contrast check: 23/23 groups passed at ≥4.5:1.
+- Cache version and Service Worker precache remain synchronized, including the three natural-entry mark assets.
+
+## Findings
+
+- No actionable P0/P1/P2 visual findings remain for the requested lens refinement.
+- P3 follow-up only: if a future design pass wants a single continuous lens behind a whole semantic phrase, that should be designed as a separate phrase-level treatment; the current per-token lens preserves the existing edit affordance and Morph anchors.
+
+## Implementation checklist
+
+- [x] Rounded lens surface matches the supplied material reference.
+- [x] Active and passive family-color states remain distinct.
+- [x] Handwritten marks remain separate from the lens surface.
+- [x] 390px and 320px responsive geometry stays within the viewport.
+- [x] Dark-mode override, reduced-motion rules, and cache synchronization remain intact.
 
 final result: passed
 
@@ -355,6 +870,33 @@ final result: passed
 
 ---
 
+# Latest QA status — natural-entry lens relay（2026-08-04）
+
+- Full evidence and comparison history are recorded in “Natural-entry lens material and unified relay QA（2026-08-04）” above.
+- Source truth: the three supplied screenshots; implementation: `/private/tmp/journa-lens-relay-final-390x844.png` plus the amount, note, category, and close handoff frames in `/private/tmp/`.
+- Browser verification passed at 390 × 844 and 320 × 568 with no document overflow and no console warnings/errors.
+- Amount, optional-note, category-radius, close-lens continuity, light direction, and upper-right depth findings have no remaining actionable P0/P1/P2 item.
+- Physical iPhone Safari/PWA compositing remains a release-device check, not a browser-emulation claim.
+
+final result: passed
+
+---
+
+# Natural-entry stage relay motion QA（2026-08-04）
+
+- Scope: rewrite the mobile natural-entry stage open/close relay only; stored values, editor semantics, first-view lens entrance, and handmark preference remain unchanged.
+- Close now uses one 560ms sequence: content exits at 0–120ms, the neutral stage shrinks at 0–320ms, the source family tint fades at 260–420ms, and the summary lens returns at 380–560ms.
+- Open reverses the same language: summary lens exits at 0–180ms, stage family tint enters at 140–300ms, and the stage expands at 240–560ms. The stage title stays as one visible glyph and swaps with the source token at the measured handoff.
+- The body-level flight clone was removed. Amount and note still enforce a single visible content layer during stage/input handoff.
+- Family selection freezes the source tint during close and commits the new family color only at the text handoff, preventing an old-color → new-color flash inside the shrinking card.
+- Reduced-motion and immediate-close paths land directly on the final state; the run-id guard still prevents stale timers from hiding a newly reopened stage.
+- Validation targets: 390 × 844, 320 × 568, and 360 × 640 in light/dark mode, with intermediate samples at 0, 120, 260, 320, 420, and 560ms; check all six editors, rapid reopen, backdrop close, no horizontal overflow, and zero console errors.
+- Cache/version stamp synchronized to `journa-natural-entry-stage-relay-v1-20260804` across `index.html`, `app.js`, and `sw.js`.
+
+final result: pending browser verification
+
+---
+
 # Natural-entry centered token and single-amount QA
 
 - Amount duplication fixed: the source-token mirror fades to opacity 0 after expansion, leaving `#amountInput` as the only visible amount.
@@ -395,5 +937,44 @@ final result: passed
 - The final rounded glass is now a dedicated `.natural-entry-stage-shell` compositor layer. Its 160ms dissolve starts at 280ms and completes before the stage is hidden at 440ms, while token and specular layers fade independently; the cleanup no longer removes a still-painted WebKit backdrop layer.
 - Motion curves are now role-specific CSS variables: the stage opens with a quick lift and soft settle, the token uses a restrained overshooting center curve, close uses a slightly elastic return, and the shell dissolve keeps its own softer opacity curve.
 - Browser console has 0 warnings/errors; syntax, `git diff --check`, cache-version synchronization, and all 23 contrast combinations pass.
+
+final result: passed
+
+---
+
+# Final QA status — natural-entry lens relay（2026-08-04）
+
+- Full evidence and comparison history are recorded in “Natural-entry lens material and unified relay QA（2026-08-04）”.
+- Source truth: the three supplied screenshots. Implementation: `/private/tmp/journa-lens-relay-final-390x844.png` plus amount, note, category, and close handoff frames in `/private/tmp/`.
+- Browser verification passed at 390 × 844 and 320 × 568 with no document overflow and no console warnings/errors.
+- Amount, optional-note, category-radius, close-lens continuity, light direction, and upper-right depth have no remaining actionable P0/P1/P2 item.
+- Physical iPhone Safari/PWA compositing remains a release-device check, not a browser-emulation claim.
+
+final result: passed
+
+---
+
+# Final QA status — note/amount open handoff v14（2026-08-04）
+
+- Note root cause: the active stage painted an outer shell, a delayed family overlay, and an independently rounded/shadowed/clipped input. The input is now transparent, shadowless, radius-free, and unclipped, so the expanding stage remains the only visible surface.
+- Empty and filled notes use separate text handoffs. The optional label cross-fades into the placeholder from 120ms; an existing value waits until 220ms, after the moving token reaches the input baseline, avoiding both a blank gap and double text.
+- Amount root cause: the stage mirror previously faded at 22% before it could communicate growth. It now remains fully visible while scaling continuously from the sentence geometry to the measured input geometry (1.72 at 390px, 1.61765 at 320px), then cross-fades at that same destination.
+- Browser frame sampling passed at 390 × 844 and 320 × 568. Both widths keep `documentElement.scrollWidth === innerWidth`; empty-note, filled-note, and amount opacity handoffs remain continuous; the final console has zero warnings/errors.
+- Static validation passed: `git diff --check`, Node syntax checks for `app.js` and `sw.js`, all 23 contrast combinations, and 17 synchronized `journa-natural-entry-handoff-flow-v14-20260804` cache references.
+- Evidence: `/private/tmp/journa-note-v14-final.png`, `/private/tmp/journa-amount-v14-final.png`, `/private/tmp/journa-note-v12-320.png`, and `/private/tmp/journa-amount-v12-320.png`.
+- Physical iPhone Safari/PWA compositing remains a release-device check; the verified evidence here is the current local browser surface.
+
+final result: passed
+
+---
+
+# Final QA status — amount gray-line and centered note handoff v15（2026-08-04）
+
+- Amount root cause confirmed at 319 × 907: the short stage was a transient scroll container (`clientHeight=78`, `scrollHeight=83`, `scrollTop=4`), which painted the right rail and moved the content up 4px. Amount and note stages now use `overflow:hidden` + `overflow:clip`, hide WebKit scrollbars, and reset `scrollTop`/`scrollLeft` on open, reuse, and cleanup.
+- Browser verification passed at 319 × 907, 320 × 568, and 390 × 844. Amount content and field stayed aligned with the stage top; every sampled `scrollTop`/`scrollLeft` remained `0`. The 320px and 390px stages reported `scrollHeight` above their fixed height during reflow but did not become scrollable, and `documentElement.scrollWidth === innerWidth` at each width.
+- Filled-note root cause fixed by measuring the visible source label center and the centered input center. The 319px target was `x=-35px`, `y=16px`; the 320px target landed at input center `160px`; the 390px target landed at input center `210px`. The relay token stayed a stable 44px box while scaling from the measured source (`1.36`/`1.535625` in the tested widths). A long note kept the target centered with no overflow.
+- Optional notes retain the in-place fade and placeholder handoff; they do not use the filled-note movement route. Settled filled tokens remain at input-center geometry for close/reopen and amount↔note stage reuse. Closing and reopening the shared stage restored the source text without stale tokens or jumps.
+- Browser console has 0 warnings/errors. Static validation passed: `git diff --check`, Node syntax checks for `app.js` and `sw.js`, all 23 contrast combinations, and 17 synchronized `journa-natural-entry-handoff-flow-v15-20260804` cache references.
+- Reduced-motion selectors and immediate-close paths remain intact; physical iPhone Safari/PWA compositing remains a release-device check, not a browser-emulation claim.
 
 final result: passed

@@ -43,20 +43,20 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/base.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/visual-depth.css?v=journa-header-single-blur-v1-20260801">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-header-single-blur-v1-20260801">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/base.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/visual-depth.css?v=journa-motion-rhythm-v2-20260806">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-motion-rhythm-v2-20260806">
     <script>
       // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
       // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
@@ -66,7 +66,8 @@
       // 全局主题色早应用：app.js 在 body 尾部才执行，这里先挂 data-theme 防止首帧闪默认色
       try {
         var savedTheme = localStorage.getItem('travel-ledger-theme');
-        if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+        var themeMigration = { lotus: 'harbor', malt: 'clay' };
+        if (savedTheme) document.documentElement.dataset.theme = themeMigration[savedTheme] || savedTheme;
         var savedEntryMode = localStorage.getItem('travel-ledger-entry-mode');
         document.documentElement.dataset.entryMode = savedEntryMode === 'standard' ? 'standard' : 'natural';
       } catch (e) {
@@ -78,7 +79,7 @@
     <main class="app-shell">
       <header class="app-header">
         <div>
-          <p class="eyebrow">旅行账本</p>
+          <p class="eyebrow">当前账本</p>
           <h1 id="currentLedgerTitle">旅行账本</h1>
         </div>
         <div class="header-actions">
@@ -97,13 +98,17 @@
       <div class="app-view" id="ledgerView" data-mobile-panel="data">
         <section class="summary-band" aria-label="账本总览">
           <div class="journey-hero-copy" aria-live="polite">
+            <span class="journey-context-eyebrow" aria-hidden="true">每日支出</span>
             <span class="journey-state-label" id="journeyStateLabel">旅程尚未开始</span>
-            <strong id="journeyLedgerName">旅行账本</strong>
+            <strong id="journeyLedgerName" hidden aria-hidden="true">旅行账本</strong>
             <span class="journey-date-range" id="journeyDateRange">记下第一笔，旅程就会在这里展开</span>
+            <div class="journey-day-grid" id="journeyDayGrid" aria-label="每日支出热力图"></div>
+            <span class="journey-peak" id="journeyPeak"></span>
           </div>
           <div class="metric primary" id="totalMetric" role="status">
             <span>总支出</span>
             <strong id="totalAmount">¥0.00</strong>
+            <span class="summary-lens-sheen" aria-hidden="true"></span>
             <div class="summary-mobile-meta" aria-label="账本状态">
               <span><strong id="mobileExpenseCount">0</strong> 笔账单</span>
             </div>
@@ -134,34 +139,42 @@
           <section class="entry-panel" aria-label="记一笔账">
             <div class="section-heading">
               <h2>这笔账</h2>
-              <p class="natural-entry-hint">点按高亮文字修改</p>
+              <p class="natural-entry-hint" id="naturalEntryHint">点按文字修改</p>
             </div>
 
             <form id="expenseForm" class="expense-form" data-active-entry-editor="amount" novalidate>
               <div class="natural-entry-flow full-row" id="naturalEntryFlow" aria-label="账单内容摘要">
                 <p class="natural-entry-line">
-                  <button class="natural-entry-token" id="naturalDateToken" type="button" data-entry-target="date" aria-expanded="false">今天</button>
-                  <span aria-hidden="true">，</span>
-                  <button class="natural-entry-token" id="naturalPayerToken" type="button" data-entry-target="payer" aria-expanded="false">付款家庭</button>
-                  <span>付了</span>
-                  <button class="natural-entry-token natural-entry-amount" id="naturalAmountToken" type="button" data-entry-target="amount" aria-expanded="true">¥ 0.00</button>
+                  <span class="natural-entry-phrase natural-entry-phrase-date">
+                    <button class="natural-entry-token" id="naturalDateToken" type="button" data-entry-target="date" data-value-state="value" aria-expanded="false"><span class="natural-entry-token-label">今天</span></button>
+                    <span aria-hidden="true">，</span>
+                  </span>
+                  <span class="natural-entry-phrase natural-entry-phrase-payment">
+                    <button class="natural-entry-token" id="naturalPayerToken" type="button" data-entry-target="payer" data-mark="loop" data-value-state="placeholder" aria-expanded="false"><span class="natural-entry-token-label">付款家庭</span></button>
+                    <span aria-hidden="true">付了</span>
+                    <button class="natural-entry-token natural-entry-amount" id="naturalAmountToken" type="button" data-entry-target="amount" data-mark="double-underline" data-value-state="placeholder" aria-expanded="true"><span class="natural-entry-token-label"><span class="natural-entry-amount-currency">¥</span><span class="natural-entry-amount-digits">0.00</span></span></button>
+                  </span>
                 </p>
                 <p class="natural-entry-line">
-                  <span>用于</span>
-                  <button class="natural-entry-token" id="naturalCategoryToken" type="button" data-entry-target="category" aria-expanded="false">类别</button>
+                  <span class="natural-entry-phrase natural-entry-phrase-purpose">
+                    <span>用于</span>
+                    <button class="natural-entry-token" id="naturalCategoryToken" type="button" data-entry-target="category" data-value-state="placeholder" aria-expanded="false"><span class="natural-entry-token-label">类别</span></button>
+                  </span>
                   <span aria-hidden="true">·</span>
-                  <button class="natural-entry-token natural-entry-note" id="naturalNoteToken" type="button" data-entry-target="note" aria-expanded="false">备注可选</button>
+                  <button class="natural-entry-token natural-entry-note" id="naturalNoteToken" type="button" data-entry-target="note" data-value-state="optional" aria-expanded="false"><span class="natural-entry-token-label">备注可选</span></button>
                 </p>
                 <p class="natural-entry-line">
-                  <span>由</span>
-                  <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" aria-expanded="false">三家承担</button>
+                  <span class="natural-entry-phrase natural-entry-phrase-split">
+                    <span>由</span>
+                    <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" data-value-state="value" aria-expanded="false"><span class="natural-entry-token-label">三家承担</span></button>
+                  </span>
                 </p>
               </div>
 
               <button class="natural-entry-focus-backdrop" id="naturalEntryFocusBackdrop" type="button" aria-label="关闭当前选择" hidden></button>
               <section class="natural-entry-stage" id="naturalEntryStage" role="dialog" aria-modal="true" aria-label="修改账单内容" hidden>
                 <span class="natural-entry-stage-shell" aria-hidden="true"></span>
-                <span class="natural-entry-stage-token" id="naturalEntryStageToken" aria-hidden="true"></span>
+                <span class="natural-entry-stage-token" id="naturalEntryStageToken" aria-hidden="true"><span class="natural-entry-token-label"></span></span>
                 <div class="natural-entry-stage-content" id="naturalEntryStageContent"></div>
               </section>
 
@@ -179,7 +192,7 @@
                 <span class="amount-field">
                   <span class="amount-value-track">
                     <span class="currency-mark">¥</span>
-                    <input id="amountInput" name="amount" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="next" placeholder="0.00" />
+                    <input id="amountInput" name="amount" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="next" aria-label="金额" placeholder="0.00" />
                   </span>
                 </span>
               </label>
@@ -205,12 +218,16 @@
 
               <section class="split-scope full-row" id="splitScope" data-entry-editor="split" aria-label="分摊范围">
                 <button class="split-scope-toggle" id="splitScopeToggle" type="button" aria-expanded="false" aria-controls="splitScopePanel">
-                  <span>分摊范围</span>
-                  <strong id="splitScopeSummary">全部家庭 · 按人数</strong>
+                  <span>分摊</span>
+                  <strong id="splitScopeSummary">3家均分</strong>
                 </button>
                 <div class="split-scope-panel" id="splitScopePanel" hidden>
-                  <div class="split-mode-buttons" id="splitModeButtons" role="radiogroup" aria-label="选择分摊范围"></div>
+                  <div class="split-mode-buttons" id="splitModeButtons" role="radiogroup" aria-label="选择分摊方式"></div>
                   <div class="split-detail-area" id="splitDetailArea">
+                    <button class="split-participant-toggle" id="splitParticipantToggle" type="button" aria-expanded="false" aria-controls="splitFamilyChoices">
+                      <span>参与家庭</span>
+                      <strong id="splitParticipantSummary">全部家庭</strong>
+                    </button>
                     <div class="split-family-choices" id="splitFamilyChoices" aria-label="选择参与分摊的家庭"></div>
                     <div class="split-custom-amounts" id="splitCustomAmounts" aria-label="分别填写承担金额"></div>
                   </div>
@@ -224,7 +241,9 @@
 
               <label class="note-label" data-entry-editor="note">
                 <span>备注</span>
-                <input id="noteInput" name="note" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" placeholder="例如：高铁票、晚餐、酒店" />
+                <span class="note-value-track">
+                  <input id="noteInput" name="note" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" aria-label="备注" placeholder="例如：高铁票、晚餐" />
+                </span>
               </label>
 
               <div class="edit-banner full-row" id="editBanner" hidden>
@@ -356,10 +375,17 @@
               </form>
               <label class="settings-preference-row" for="settingsMoneyDecimalsInput">
                 <span>
-                  <strong>显示金额小数</strong>
-                  <small>仅影响显示，计算与导出仍精确到分</small>
+                  <strong>始终显示两位小数</strong>
+                  <small>关闭时仅在确有角分时显示两位；计算与导出仍精确到分</small>
                 </span>
                 <input id="settingsMoneyDecimalsInput" type="checkbox" role="switch" />
+              </label>
+              <label class="settings-preference-row" for="settingsNaturalEntryMarksHiddenInput">
+                <span>
+                  <strong>显示手写标记</strong>
+                  <small>显示自然语言句子里的圈选和双下划线</small>
+                </span>
+                <input id="settingsNaturalEntryMarksHiddenInput" type="checkbox" role="switch" />
               </label>
               <div class="settings-entry-mode">
                 <span>
@@ -382,11 +408,10 @@
             <details class="settings-panel personalization-panel settings-mobile-group" open>
               <summary><span>个性化</span><small>主题与家庭颜色</small></summary>
               <div class="settings-mobile-group-body">
-                <p class="settings-note">全局主题色：按钮、强调与光环的颜色（仅本机生效）。</p>
-                <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="全局主题色"></div>
-                <p class="settings-note">选择一套家庭主题色；需要时可单独微调某个家庭。</p>
-                <div id="settingsPaletteList" class="settings-palette-list" aria-label="预设调色板"></div>
-                <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="逐家调整主题色"></div>
+                <p class="settings-note">页面氛围：背景、玻璃与强调色一起变化（仅本机生效）。</p>
+                <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="页面氛围主题"></div>
+                <p class="settings-note">家庭身份色保持稳定；需要时可在高级设置中逐家调整。</p>
+                <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="高级家庭身份色调整"></div>
               </div>
             </details>
 
@@ -513,6 +538,7 @@
       </section>
 
       <div class="mobile-submit-bar" id="mobileSubmitBar" data-state="needs-input" data-missing-target="payer">
+        <span class="mobile-submit-lens-sheen" aria-hidden="true"></span>
         <div class="mobile-submit-summary" id="mobileSubmitSummary" aria-live="polite">还差：付款家庭</div>
         <button class="primary-button mobile-submit-button is-blocked" id="mobileSubmitButton" type="button" aria-disabled="false" aria-label="还差：付款家庭">
           <span class="button-glow-ring"></span>
@@ -643,7 +669,7 @@
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=journa-ledger-import-v1-20260801"></script>
+    <script src="./app.js?v=journa-motion-rhythm-v2-20260806"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

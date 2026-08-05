@@ -4,6 +4,36 @@
   initial-value: rgba(0, 0, 0, 0);
 }
 
+@property --natural-entry-mark-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #5b625f;
+}
+
+@property --natural-entry-text-alpha {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --natural-stage-top-light-alpha {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --natural-stage-left-light-alpha {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --natural-stage-right-light-alpha {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 @property --selected-family-text {
   syntax: "<color>";
   inherits: true;
@@ -100,6 +130,12 @@
   initial-value: 12;
 }
 
+@property --bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f7f1eb;
+}
+
 @property --theme-s {
   syntax: "<percentage>";
   inherits: true;
@@ -117,6 +153,7 @@
   /* 仅这三个主题基量过渡；其余属性不受影响。data-theme 切换时
      整屏主题色（绿/强调/描边派生量）随之平滑插值。 */
   transition:
+    --bg var(--motion) var(--settle),
     --theme-h var(--motion) var(--settle),
     --theme-s var(--motion) var(--settle),
     --theme-l var(--motion) var(--settle);
@@ -137,15 +174,14 @@
   --visual-viewport-bottom: 0px;
   /* 指示灯随滚动进度的停靠比例（0=在胶囊内，1=已贴到账本名称旁）；由 JS 每帧按滚动量写入 */
   --sync-dock-progress: 0;
-  --bg: #f7f4ef;
-  /* 环境光网格：三家庭色在页面四角柔光晕染，玻璃面板在其上漂浮（expressive gradient mesh）。
-     作为 body::before 固定层背景，末尾 var(--bg) 收底。 */
+  --bg: #f7f1eb;
+  /* 页面氛围由全局主题拥有；家庭身份色只在账单与选择控件中出现。 */
   --page-bg:
-    radial-gradient(120% 80% at 6% -4%, rgba(169, 206, 181, 0.24), transparent 55%),
-    radial-gradient(110% 75% at 98% 2%, rgba(185, 201, 230, 0.22), transparent 55%),
-    radial-gradient(135% 95% at 50% 108%, rgba(239, 194, 191, 0.22), transparent 58%),
+    radial-gradient(120% 80% at 6% -4%, rgba(222, 179, 153, 0.22), transparent 55%),
+    radial-gradient(110% 75% at 98% 2%, rgba(234, 205, 173, 0.18), transparent 55%),
+    radial-gradient(135% 95% at 50% 108%, rgba(204, 164, 154, 0.16), transparent 58%),
     var(--bg);
-  /* 毛玻璃反射与模糊定义（暖白：纯白玻璃在暖底上会显冷，统一为暖白更调和） */
+  /* 毛玻璃反射与模糊定义（随主题改变冷暖，不改变透明材质层级） */
   --glass-bg: rgba(255, 252, 248, 0.76);
   --glass-bg-strong: rgba(255, 253, 250, 0.86);
   --glass-blur: blur(12px) saturate(180%);
@@ -206,6 +242,9 @@
 
   --surface: var(--glass-bg);
   --surface-strong: var(--glass-bg-strong);
+  --ledger-card-background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62)),
+    color-mix(in srgb, var(--family-color) 7%, rgba(255, 255, 255, 0.68));
   --surface-soft: rgba(255, 252, 248, 0.60);
   /* ── 玻璃渐隐档：原散落的 color-mix(in srgb, var(--glass-bg) NN%, transparent)。
      按当前百分比具名，颜色源复用 --glass-bg/-strong（随主题自适应），零视觉回归。 ── */
@@ -351,13 +390,27 @@
   --spring-glide-motion: 620ms;
   --snap: cubic-bezier(0.18, 0.84, 0.2, 1);
   --settle: cubic-bezier(0.16, 0.9, 0.14, 1);
-  --motion-fast: 401ms;
-  --motion: 534ms;
-  --motion-slow: 713ms;
+  /* 知觉节拍：短文字先可读，卡片与结构保留重量尾巴。旧 token 继续作为
+     兼容别名，避免一次性重写所有状态选择器。 */
+  --motion-feedback: 120ms;
+  --motion-text: 240ms;
+  --motion-control: 300ms;
+  --motion-card: 420ms;
+  --motion-structure: 560ms;
+  --motion-tail: 620ms;
+  --motion-exit-factor: 0.85;
+  /* 文字避免“冲到终点再刹车”：降低起始斜率，并把第二控制点后移，
+     让最后一小段减速在可感知的时间内完成；不产生回弹。 */
+  --ease-text-out: cubic-bezier(0.30, 0.72, 0.42, 1);
+  --ease-control-out: cubic-bezier(0.16, 0.78, 0.20, 1);
+  --ease-card-settle: cubic-bezier(0.12, 0.68, 0.18, 1);
+  --motion-fast: var(--motion-text);
+  --motion: var(--motion-structure);
+  --motion-slow: var(--motion-tail);
   --ledger-morph-motion: 280ms;
-  --ledger-morph-easing: cubic-bezier(0.2, 0.72, 0.24, 1);
-  --selection-motion: 520ms;
-  --selection-release-motion: 360ms;
+  --ledger-morph-easing: var(--ease-card-settle);
+  --selection-motion: var(--motion-control);
+  --selection-release-motion: var(--motion-text);
   /* 灯泡点亮：慢启动缓动 + 较长升亮时长；熄灯走快速调暗。
      --lamp-on-motion 必须 < app.js MOTION_DELAYS.payerActivate/categoryActivate(760ms)，否则动画会被类清理截断 */
   --lamp-on: cubic-bezier(0.55, 0.06, 0.28, 1);
@@ -487,13 +540,48 @@
   font-feature-settings: var(--font-number-features);
 }
 
-/* ── 全局主题色预设（亮色值；暗色对应见 dark.css）──
-   与 app.js THEME_PRESETS 同步。clay 即 :root 基值，给块以便显式选择。 */
-:root[data-theme="clay"]   { --theme-h: 12; --theme-s: 44%; --theme-l: 45%; }
-:root[data-theme="pine"]   { --theme-h: 171; --theme-s: 65%; --theme-l: 26%; }
-:root[data-theme="harbor"] { --theme-h: 212; --theme-s: 34%; --theme-l: 43%; }
-:root[data-theme="lotus"]  { --theme-h: 284; --theme-s: 21%; --theme-l: 45%; }
-:root[data-theme="malt"]   { --theme-h: 34; --theme-s: 37%; --theme-l: 39%; }
+/* ── 三套页面氛围主题：主题改变环境光与玻璃冷暖，家庭色保持独立 ── */
+:root[data-theme="clay"] {
+  --theme-h: 12;
+  --theme-s: 44%;
+  --theme-l: 45%;
+  --bg: #f7f1eb;
+  --page-bg:
+    radial-gradient(120% 80% at 6% -4%, rgba(222, 179, 153, 0.22), transparent 55%),
+    radial-gradient(110% 75% at 98% 2%, rgba(234, 205, 173, 0.18), transparent 55%),
+    radial-gradient(135% 95% at 50% 108%, rgba(204, 164, 154, 0.16), transparent 58%),
+    var(--bg);
+  --glass-bg: rgba(255, 252, 248, 0.76);
+  --glass-bg-strong: rgba(255, 253, 250, 0.86);
+}
+
+:root[data-theme="pine"] {
+  --theme-h: 171;
+  --theme-s: 65%;
+  --theme-l: 26%;
+  --bg: #f1f5f1;
+  --page-bg:
+    radial-gradient(120% 80% at 6% -4%, rgba(166, 202, 184, 0.24), transparent 55%),
+    radial-gradient(110% 75% at 98% 2%, rgba(174, 211, 207, 0.18), transparent 55%),
+    radial-gradient(135% 95% at 50% 108%, rgba(214, 211, 177, 0.16), transparent 58%),
+    var(--bg);
+  --glass-bg: rgba(249, 253, 250, 0.76);
+  --glass-bg-strong: rgba(252, 254, 252, 0.86);
+}
+
+:root[data-theme="harbor"] {
+  --theme-h: 212;
+  --theme-s: 34%;
+  --theme-l: 43%;
+  --bg: #f1f5f8;
+  --page-bg:
+    radial-gradient(120% 80% at 6% -4%, rgba(176, 204, 229, 0.24), transparent 55%),
+    radial-gradient(110% 75% at 98% 2%, rgba(201, 193, 224, 0.20), transparent 55%),
+    radial-gradient(135% 95% at 50% 108%, rgba(176, 210, 204, 0.16), transparent 58%),
+    var(--bg);
+  --glass-bg: rgba(250, 252, 255, 0.78);
+  --glass-bg-strong: rgba(253, 254, 255, 0.88);
+}
 
 /* ── 渐进增强：iOS26-soft 玻璃档 ──
    data-blur="soft" 仅在 app.js 能力探测通过（支持 backdrop-filter、非 reduced-transparency、

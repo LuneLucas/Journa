@@ -1,11 +1,27 @@
 @media (prefers-reduced-motion: reduce) {
   html[data-entry-mode="natural"] .natural-entry-focus-backdrop,
+  html[data-entry-mode="natural"] .natural-entry-flow,
+  html[data-entry-mode="natural"] .expense-form,
+  html[data-entry-mode="natural"] .natural-entry-flow.is-lens-entering .natural-entry-token::before,
+  html[data-entry-mode="natural"] .natural-entry-token.is-lens-settling::before,
+  html[data-entry-mode="natural"] .natural-entry-token.is-lens-returning::before,
   html[data-entry-mode="natural"] .natural-entry-stage,
+  html[data-entry-mode="natural"] .natural-entry-stage::after,
   html[data-entry-mode="natural"] .natural-entry-stage-shell,
+  html[data-entry-mode="natural"] .natural-entry-stage-shell::before,
+  html[data-entry-mode="natural"] .natural-entry-stage-shell::after,
   html[data-entry-mode="natural"] .natural-entry-stage-token,
   html[data-entry-mode="natural"] .natural-entry-stage-content {
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage-shell::after {
+    animation: none !important;
+    opacity: 0 !important;
+    --natural-stage-top-light-alpha: 0 !important;
+    --natural-stage-left-light-alpha: 0 !important;
+    --natural-stage-right-light-alpha: 0 !important;
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label input {
@@ -24,6 +40,12 @@
     transition-duration: 1ms !important;
   }
 
+  /* View Transition 伪元素不属于普通 * 选择器，需显式纳入减动覆盖。 */
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+
   .amount-label,
   .amount-label input,
   .amount-value-track,
@@ -39,6 +61,20 @@
 
   .pointer-sink-sheen {
     display: none !important;
+  }
+
+  .summary-lens-sheen,
+  .mobile-submit-lens-sheen,
+  .settlement-entry.is-flow-arriving::after,
+  .settlement-entry.is-flow-reminding::before,
+  .settlement-entry.is-flow-reminding::after {
+    display: none !important;
+  }
+
+  .settlement-entry.has-settlement-flow::before {
+    animation: none !important;
+    opacity: 0.42 !important;
+    transform: none !important;
   }
 
   .settings-drawer,

@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-ledger-import-v1-20260801";
+const APP_VERSION = "journa-motion-rhythm-v2-20260806";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 /* CSS/JS 条目带与 index.html 引用一致的 ?v= 版本戳：Cache API 按完整 URL
    （含 query）匹配，不带戳的预缓存条目永远命中不了带戳请求，等于白缓存。 */
@@ -21,6 +21,9 @@ const PRECACHE_URLS = [
   `./css/visual-depth.css?v=${APP_VERSION}`,
   `./css/a11y.css?v=${APP_VERSION}`,
   `./app.js?v=${APP_VERSION}`,
+  "./assets/natural-entry/underline.png",
+  "./assets/natural-entry/loop.png",
+  "./assets/natural-entry/double-underline.png",
   "./icons/apple-touch-icon.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

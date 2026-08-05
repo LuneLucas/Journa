@@ -27,8 +27,8 @@
 .entry-panel.is-resizing,
 .ledger-section.is-resizing {
   transition:
-    border-radius var(--motion-fast) var(--spring),
-    box-shadow var(--motion-fast) var(--spring);
+    border-radius var(--motion-control) var(--spring),
+    box-shadow var(--motion-card) var(--ease-card-settle);
 }
 
 .entry-panel.is-resizing {

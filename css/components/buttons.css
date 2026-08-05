@@ -43,11 +43,13 @@ button:disabled {
 }
 
 .family-tag:not(.split-family-chip).is-activating {
-  animation: family-lamp-overshoot var(--lamp-on-motion) var(--lamp-on) both;
+  /* 家庭选择只让材质渐亮；主体不再缩放或提亮，避免浅色模式下
+     胶囊亮度过冲穿过文字，看起来像字形闪烁。 */
+  animation: none;
 }
 
 .family-tag:not(.split-family-chip).is-deactivating {
-  animation: family-release-soft var(--selection-release-motion) var(--settle) both;
+  animation: none;
 }
 
 .family-tag.split-family-chip.is-deactivating,
@@ -67,13 +69,11 @@ button:disabled {
 }
 
 .family-tag:not(.split-family-chip).is-activating::before {
-  animation:
-    lamp-fill-quick 300ms var(--lamp-quick) both,
-    lamp-glow-settle 560ms var(--lamp-bloom) both;
+  animation: choice-selected-fill 300ms var(--lamp-quick) both;
 }
 
 .family-tag:not(.split-family-chip).is-activating::after {
-  animation: family-halo-overshoot var(--lamp-on-motion) var(--lamp-on) both;
+  animation: family-halo-soft-in var(--selection-motion) var(--settle) both;
 }
 
 .family-tag.is-deactivating::before,
@@ -99,6 +99,13 @@ button:disabled {
 .split-mode-button.is-deactivating span,
 .split-mode-button.is-deactivating small {
   animation: choice-label-release var(--selection-release-motion) var(--settle) both;
+}
+
+/* 付款家庭文字固定在同一合成层；颜色仍由父级状态平滑过渡。 */
+.family-tag:not(.split-family-chip).is-activating > span,
+.family-tag:not(.split-family-chip).is-deactivating > span {
+  animation: none;
+  transform: none;
 }
 
 .split-mode-button.is-deactivating span,
@@ -131,27 +138,71 @@ input[type="number"]::-webkit-inner-spin-button {
 .split-mode-buttons {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--split-inner-radius);
+  background: color-mix(in srgb, var(--submit-color, var(--theme-color)) 5%, rgba(255, 255, 255, 0.44));
   align-items: stretch;
+  transition: grid-template-columns var(--motion-fast) var(--settle);
+}
+
+.split-mode-buttons.is-single-family {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+
+.split-mode-single-summary {
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 44px;
+  border-radius: var(--split-control-radius);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 18%, var(--border-highlight)), 0 5px 14px -10px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 40%, transparent);
+  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--theme-color))) 78%, var(--ink));
+  padding: 0 10px;
+  text-align: center;
+}
+
+.split-mode-single-summary span,
+.split-mode-single-summary small {
+  position: relative;
+  z-index: 1;
+}
+
+.split-mode-single-summary span {
+  font-size: var(--label-md);
+  font-weight: var(--fw-cjk-heavy);
+}
+
+.split-mode-single-summary small {
+  display: block;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--selected-family-text, var(--submit-text, var(--theme-color))) 62%, var(--muted));
+  font-size: 0.7rem;
+  font-weight: var(--fw-bold);
+  line-height: 1.2;
+}
+
+.split-mode-buttons.is-structure-switching > .split-mode-button:not([hidden]),
+.split-mode-buttons.is-structure-switching > .split-mode-single-summary:not([hidden]) {
+  animation: split-mode-structure-in var(--motion-fast) var(--settle) both;
 }
 
 .split-mode-button {
   display: grid;
-  align-content: center;
-  justify-items: start;
+  place-items: center;
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  gap: 3px;
-  height: 58px;
-  min-height: 58px;
+  height: 44px;
+  min-height: 44px;
   border: none;
-  box-shadow: var(--glass-edge-strong);
   border-radius: var(--split-control-radius);
-  background: rgba(255, 255, 255, 0.50);
+  background: transparent;
   color: var(--muted);
-  padding: 10px 12px;
-  text-align: left;
+  padding: 0 10px;
+  text-align: center;
   /* 基础规则的 timing 即“熄灯”方向：快速调暗 */
   transition:
     background-color var(--lamp-off-motion) var(--settle),
@@ -197,12 +248,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .split-mode-button.is-selected {
-  background: rgba(255, 255, 255, 0.50);
+  background: rgba(255, 255, 255, 0.92);
   box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 10%, var(--border-highlight)),
-    0 0 26px -18px var(--selected-family-glow, var(--submit-glow, transparent)),
-    0 10px 26px -22px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 48%, transparent),
-    var(--edge-shade);
+    inset 0 0 0 1px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 18%, var(--border-highlight)),
+    0 5px 14px -10px color-mix(in srgb, var(--selected-family-color, var(--submit-color, var(--theme-color))) 40%, transparent);
   /* 点灯方向：慢启动坡道，光晕略滞后 */
   transition:
     background-color var(--lamp-on-motion) var(--lamp-on),
@@ -441,12 +490,12 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* 按钮文本平滑滑移切换 */
 .text-slide-out {
-  animation: text-slide-out 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: text-slide-out calc(var(--motion-text) * var(--motion-exit-factor)) var(--ease-text-out) forwards;
   display: inline-block;
 }
 
 .text-slide-in {
-  animation: text-slide-in 200ms var(--spring) forwards;
+  animation: text-slide-in var(--motion-text) var(--ease-text-out) forwards;
   display: inline-block;
 }
 

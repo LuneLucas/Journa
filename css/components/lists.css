@@ -193,9 +193,7 @@
   max-height: 94px;
   border: none;
   border-radius: var(--control-radius-large);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62)),
-    color-mix(in srgb, var(--family-color) 7%, rgba(255, 255, 255, 0.68));
+  background: var(--ledger-card-background);
   padding: 8px 12px;
   box-shadow:
     inset 0 0 0 1px var(--ring-family-subtle),
@@ -251,7 +249,7 @@
   min-height: 124px;
   max-height: 280px;
   border-radius: var(--radius-lg);
-  background: var(--glass-grain), var(--surface-strong);
+  background: var(--ledger-card-background);
   padding: 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.42),
@@ -270,13 +268,13 @@
 .ledger-item > * {
   min-height: 0;
   transition:
-    transform var(--motion) var(--settle),
-    opacity var(--motion-fast) var(--settle);
+    transform var(--motion-structure) var(--ease-text-out),
+    opacity var(--motion-text) var(--ease-text-out);
 }
 
 .ledger-list.is-morphing-ledger-items .ledger-item > * {
   transition:
-    opacity 210ms var(--ledger-morph-easing);
+    opacity var(--motion-text) var(--ease-text-out);
 }
 
 /* 展开时先锁定会参与高度计算的间距，避免 JS 读到“半展开”的终点：
@@ -285,14 +283,10 @@
   overflow: hidden;
 }
 
-/* 金额字号不与 FLIP 位移同时切换：展开保持小号、收起保持大号，
-   等卡片落定后再由基础 transition 完成字号交接，避免 WebKit 留下双层字形。 */
-.ledger-list.is-morphing-ledger-items.is-ledger-expanding .ledger-item .ledger-amount {
-  font-size: var(--ledger-amount-rest-size);
-}
-
-.ledger-list.is-morphing-ledger-items.is-ledger-collapsing .ledger-item .ledger-amount {
-  font-size: var(--ledger-amount-expanded-size);
+/* 金额先原子切到终点字号，再由 JS 把旧矩形 FLIP 到新矩形；
+   避免卡片落定后补播 font-size 过渡，导致 WebKit 二次栅格化闪烁。 */
+.ledger-list.is-morphing-ledger-items .ledger-item .ledger-amount {
+  transition: none;
 }
 
 .ledger-list.is-morphing-ledger-items .ledger-title {
@@ -302,8 +296,8 @@
 .ledger-list.is-morphing-ledger-items .ledger-scope,
 .ledger-list.is-morphing-ledger-items .ledger-sync-state {
   transition:
-    opacity 210ms var(--ledger-morph-easing),
-    transform 210ms var(--ledger-morph-easing);
+    opacity var(--motion-text) var(--ease-text-out),
+    transform var(--motion-text) var(--ease-text-out);
 }
 
 .ledger-list.is-morphing-ledger-items .ledger-item-actions {
@@ -313,7 +307,7 @@
 
 .ledger-item:hover {
   transform: var(--hover-lift-card);
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ledger-card-background);
   box-shadow:
     inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
@@ -334,12 +328,12 @@
 
 .ledger-item.is-entering,
 .chip.is-entering {
-  animation: ledger-item-drop-in 360ms var(--settle) both;
+  animation: ledger-item-drop-in var(--motion-card) var(--ease-card-settle) both;
 }
 
 /* 令牌落定：卡片“接住”这笔金额，家庭色内发光一次脉冲。 */
 .ledger-item.is-catching {
-  animation: ledger-item-catch 420ms var(--spring) both;
+  animation: ledger-item-catch var(--motion-card) var(--spring) both;
 }
 
 .row-item.is-entering,
@@ -348,7 +342,7 @@
 .settlement-done.is-entering,
 .empty-state.is-entering,
 .ledger-day-group.is-entering {
-  animation: element-enter var(--motion) var(--spring) both;
+  animation: element-enter var(--motion-card) var(--ease-card-settle) both;
 }
 
 .ledger-item.is-removing {
@@ -359,7 +353,7 @@
   padding-block: 0;
   border-width: 0;
   pointer-events: none;
-  animation: ledger-collapse var(--motion) var(--settle) forwards;
+  animation: ledger-collapse calc(var(--motion-card) * var(--motion-exit-factor)) var(--ease-card-settle) forwards;
 }
 
 .ledger-item.is-removing > * {

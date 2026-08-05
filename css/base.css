@@ -49,6 +49,7 @@ body::before {
   inset: 0;
   z-index: -1;
   background: var(--page-bg);
+  transition: background var(--motion) var(--settle);
   pointer-events: none;
 }
 

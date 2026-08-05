@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-natural-amount-handoff-v1-20260801";
+const APP_VERSION = "journa-motion-rhythm-v2-20260806";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -36,7 +36,7 @@ const MOTION_DELAYS = {
   categoryExit: 280,
   payerActivate: 760,
   categoryActivate: 760,
-  choiceRelease: 460,
+  choiceRelease: 550,
   splitSwitch: 260,
   mobilePanelOut: 120,
   mobilePanelIn: 340,
@@ -47,16 +47,49 @@ const MOTION_DELAYS = {
   tokenFlight: 680,
   totalBloom: 460,
   catchPulse: 420,
-  naturalEntryStageOpen: 420,
-  naturalEntryStageClose: 380,
-  naturalEntryStageDissolveStart: 380,
-  naturalEntryStageHandoffStart: 320,
-  naturalEntryStageCleanup: 500,
-  naturalEntryStageFade: 120,
+  naturalEntryStageOpen: 550,
+  naturalEntryStageClose: 550,
+  naturalEntryStageMorph: 320,
+  naturalEntryStageTextTravelStart: 80,
+  naturalEntryStageTextHandoff: 500,
+  naturalEntryStageOpenTextHandoff: 120,
+  naturalEntryStageNoteOptionalHandoff: 180,
+  naturalEntryStageNoteValueHandoff: 220,
+  naturalEntryStageContentExit: 120,
+  naturalEntryStageLensStart: 390,
+  naturalEntryStageLensDuration: 160,
+  naturalEntryStageFamilyStart: 0,
+  naturalEntryStageFamilyDuration: 460,
+  naturalEntryStageShellDissolveStart: 460,
+  naturalEntryStageShellDissolveDuration: 90,
+  naturalEntryStageCloseCleanup: 590,
+  naturalEntryStageContentInStart: 360,
+  naturalEntryStageContentInDuration: 180,
   naturalEntryStageSwap: 420,
+  naturalEntryFamilyTint: 360,
+  naturalEntryLensEntry: 260,
+  naturalEntryLensStagger: 0,
+  naturalEntryLensSettle: 260,
   toast: 2600,
   toastWithAction: 5200,
 };
+
+/* 以位移的平方根换算时长：远距离对象会变慢，但不会线性拖成长片段。
+   CSS 过渡使用语义 token；只有需要真实首末矩形的 FLIP/WAAPI 才调用这里。 */
+const MOTION_ROLE_PROFILES = {
+  text: { base: 160, factor: 18, min: 180, max: 260 },
+  control: { base: 200, factor: 20, min: 240, max: 360 },
+  card: { base: 280, factor: 22, min: 360, max: 520 },
+  structure: { base: 340, factor: 20, min: 440, max: 620 },
+};
+
+function resolveMotionDuration({ distancePx = 0, role = "control", direction = "enter" } = {}) {
+  const profile = MOTION_ROLE_PROFILES[role] || MOTION_ROLE_PROFILES.control;
+  const distance = Math.max(0, Number(distancePx) || 0);
+  const raw = profile.base + profile.factor * Math.sqrt(distance);
+  const directional = direction === "exit" ? raw * 0.85 : raw;
+  return Math.round(Math.min(profile.max, Math.max(profile.min, directional)));
+}
 /* Bottom bar FLIP springs: underdamped (ζ≈0.59/0.58) so the shape lands with one
    clearly visible elastic rebound rather than easing flatly into place. */
 const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
@@ -78,74 +111,33 @@ const defaultFamilyVisuals = {
   "family-b": deriveFamilyVisual("#849fcd"),
   "family-c": deriveFamilyVisual("#c88f8d"),
 };
-/* 全局主题色预设：色值真身在 CSS（variables.css/dark.css 的 [data-theme] 块），
-   这里只存 id/名称/亮色 swatch 供设置面板渲染。偏好设备级存 localStorage。 */
+/* 全局主题预设：色值真身在 CSS（variables.css/dark.css 的 [data-theme] 块），
+   这里提供设置页文案与无障碍名称。偏好设备级存 localStorage。 */
 const THEME_STORAGE_KEY = "travel-ledger-theme";
 const MONEY_DECIMALS_STORAGE_KEY = "travel-ledger-show-money-decimals";
 const ENTRY_MODE_STORAGE_KEY = "travel-ledger-entry-mode";
+const NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY = "travel-ledger-natural-entry-marks-hidden";
 const THEME_PRESETS = [
-  { id: "clay", name: "陶土橙粉", color: "#9d5745" },
-  { id: "pine", name: "墨松绿", color: "#176c5f" },
-  { id: "harbor", name: "雾港蓝", color: "#4a6b91" },
-  { id: "lotus", name: "藕荷紫", color: "#7d5c88" },
-  { id: "malt", name: "茶麦棕", color: "#87683f" },
+  { id: "clay", name: "暖陶", description: "温暖、柔和", color: "#a45e48" },
+  { id: "pine", name: "松林", description: "沉静、自然", color: "#2f7b6c" },
+  { id: "harbor", name: "海雾", description: "清爽、克制", color: "#5a789f" },
 ];
-const familyPalettePresets = [
-  {
-    id: "morning-map",
-    name: "清晨地图",
-    description: "绿、蓝、珊瑚，清楚但柔和",
-    colors: [
-      { color: "#7eab98" },
-      { color: "#849fcd" },
-      { color: "#c88f8d" },
-      { color: "#b9a064" },
-      { color: "#9b8aba" },
-    ],
-  },
-  {
-    id: "seaside-ledger",
-    name: "海边账本",
-    description: "青、靛蓝、陶橙，识别更轻快",
-    colors: [
-      { color: "#78a5a5" },
-      { color: "#8799cf" },
-      { color: "#c89573" },
-      { color: "#969764" },
-      { color: "#a27a96" },
-    ],
-  },
-  {
-    id: "garden-receipt",
-    name: "花园票据",
-    description: "草绿、湖蓝、玫瑰，温柔偏鲜明",
-    colors: [
-      { color: "#88a978" },
-      { color: "#789fc0" },
-      { color: "#c88898" },
-      { color: "#ad915f" },
-      { color: "#9286ba" },
-    ],
-  },
-];
-const presetFamilyVisuals = familyPalettePresets.map((palette) => palette.colors).flat();
 const familyColorChoices = [
-  { color: "#7eab98" },
-  { color: "#849fcd" },
-  { color: "#c88f8d" },
-  { color: "#b9a064" },
-  { color: "#9b8aba" },
-  { color: "#78a5a5" },
-  { color: "#c89573" },
-  { color: "#a27a96" },
+  { color: "#7eab98", label: "松柏绿" },
+  { color: "#849fcd", label: "雾蓝" },
+  { color: "#c88f8d", label: "珊瑚粉" },
+  { color: "#b9a064", label: "麦金" },
+  { color: "#9b8aba", label: "藕紫" },
 ];
 const defaultCategories = ["交通", "住宿", "餐饮", "门票", "购物", "其他"];
 // 空状态插画：复用 favicon 的三个交叠圆母题（三家庭色，低饱和）
 const emptyStateArt = `<svg class="empty-state-art" viewBox="0 0 96 64" aria-hidden="true" focusable="false"><circle cx="38" cy="26" r="17" fill="#bddbc8" opacity="0.6"/><circle cx="58" cy="25" r="17" fill="#cbd9ef" opacity="0.6"/><circle cx="48" cy="39" r="17" fill="#f2cfce" opacity="0.55"/></svg>`;
 const splitModeOptions = [
-  { id: "all", label: "全部家庭", description: "按人数自动分摊" },
-  { id: "families", label: "指定家庭", description: "只让选中的家庭参与" },
-  { id: "custom", label: "自定金额", description: "逐家填写承担金额" },
+  { id: "equal", label: "各家均分", description: "每个家庭承担相同金额" },
+  { id: "all", label: "按家庭人数", description: "人数多的家庭承担更多" },
+  { id: "families", label: "指定家庭 · 按家庭人数", description: "旧账单：指定家庭按人数" },
+  { id: "families_equal", label: "指定家庭 · 各家均分", description: "旧账单：指定家庭平均承担" },
+  { id: "custom", label: "自定金额", description: "分别填写每家金额" },
 ];
 const categoryVisuals = {
   "交通": { bg: "#d9e8e2", text: "#486d62", border: "rgba(88, 126, 113, 0.28)", gradient: "#b9d8cc" },
@@ -281,9 +273,12 @@ const elements = {
   journeyStateLabel: document.querySelector("#journeyStateLabel"),
   journeyLedgerName: document.querySelector("#journeyLedgerName"),
   journeyDateRange: document.querySelector("#journeyDateRange"),
+  journeyDayGrid: document.querySelector("#journeyDayGrid"),
+  journeyPeak: document.querySelector("#journeyPeak"),
   journeyFamilyTrack: document.querySelector("#journeyFamilyTrack"),
   expenseForm: document.querySelector("#expenseForm"),
   naturalEntryFlow: document.querySelector("#naturalEntryFlow"),
+  naturalEntryHint: document.querySelector("#naturalEntryHint"),
   naturalDateToken: document.querySelector("#naturalDateToken"),
   naturalPayerToken: document.querySelector("#naturalPayerToken"),
   naturalAmountToken: document.querySelector("#naturalAmountToken"),
@@ -317,12 +312,13 @@ const elements = {
   splitScopePanel: document.querySelector("#splitScopePanel"),
   splitModeButtons: document.querySelector("#splitModeButtons"),
   splitDetailArea: document.querySelector("#splitDetailArea"),
+  splitParticipantToggle: document.querySelector("#splitParticipantToggle"),
+  splitParticipantSummary: document.querySelector("#splitParticipantSummary"),
   splitFamilyChoices: document.querySelector("#splitFamilyChoices"),
   splitCustomAmounts: document.querySelector("#splitCustomAmounts"),
   settingsCategoryChips: document.querySelector("#settingsCategoryChips"),
   settingsFamilyList: document.querySelector("#settingsFamilyList"),
   settingsThemeList: document.querySelector("#settingsThemeList"),
-  settingsPaletteList: document.querySelector("#settingsPaletteList"),
   settingsFamilyColorList: document.querySelector("#settingsFamilyColorList"),
   ledgerNameForm: document.querySelector("#ledgerNameForm"),
   currentLedgerNameInput: document.querySelector("#currentLedgerNameInput"),
@@ -330,6 +326,7 @@ const elements = {
   settingsOperatorForm: document.querySelector("#settingsOperatorForm"),
   settingsOperatorFamilyList: document.querySelector("#settingsOperatorFamilyList"),
   settingsMoneyDecimalsInput: document.querySelector("#settingsMoneyDecimalsInput"),
+  settingsNaturalEntryMarksHiddenInput: document.querySelector("#settingsNaturalEntryMarksHiddenInput"),
   settingsEntryModeList: document.querySelector("#settingsEntryModeList"),
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
@@ -394,10 +391,12 @@ let state = getActiveLedger();
 // 每次重新打开应用都从今天开始填写新账单；进入编辑已有账单时，
 // startEditExpense() 会用账单原日期覆盖这个默认值。
 state.activeDate = todayIso();
-let activeSplitMode = "all";
+let activeSplitMode = "equal";
 let activeSplitFamilyIds = state.families.map((family) => family.id);
 let activeSplitAmounts = {};
 let splitScopeOpen = false;
+let splitFamilyChoicesOpen = true;
+let activeFamilyColorFamilyId = state.families[0]?.id || defaultFamilies[0].id;
 let activeEntryEditor = "amount";
 let naturalEntryStageOpen = false;
 let naturalEntryStageEditor = null;
@@ -409,12 +408,23 @@ let naturalEntryFrozenAnchor = null;
 const naturalEntryEditorHomes = new Map();
 let splitScopeCloseTimer = 0;
 let naturalEntryStageCloseTimer = 0;
-let naturalEntryStageFadeTimer = 0;
+let naturalEntryStageHandoffTimer = 0;
+let naturalEntryStageCleanupTimer = 0;
+let naturalEntryStageOpenHandoffTimer = 0;
+let naturalEntryStageOpenFinishTimer = 0;
+let naturalEntryAmountHandoffRunning = false;
+let naturalEntryLensEntryTimer = 0;
+let naturalEntryLensHasRevealed = false;
+let naturalEntryFamilyTintInitialized = false;
+let naturalEntryDisplayedPayerId = "";
+let pendingNaturalEntryFamilyTintId = null;
+const naturalEntryLensSettleTimers = new Map();
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
 let mobileSubmitFeedbackTimer = 0;
 let activatingSplitMode = "";
 let deactivatingSplitMode = "";
+let splitModeStructureTimer = 0;
 const activatingSplitFamilyIds = new Set();
 const deactivatingSplitFamilyIds = new Set();
 let lastAddedExpenseId = "";
@@ -597,6 +607,15 @@ let confirmCloseTimer = 0;
 let settlementRevealTimer = 0;
 let settlementAmountRevealTimer = 0;
 let settlementAmountRevealFrameId = 0;
+let settlementEntryReminderTimer = 0;
+let settlementEntryReminderCleanupTimer = 0;
+let settlementEntryReminderResumeTimer = 0;
+let settlementEntryReminderHasPending = false;
+let settlementEntryReminderInView = false;
+const settlementEntryVisibility = new Map();
+const SETTLEMENT_ENTRY_REMINDER_INITIAL_MS = 8000;
+const SETTLEMENT_ENTRY_REMINDER_REPEAT_MS = 14000;
+const SETTLEMENT_ENTRY_REMINDER_DURATION_MS = 980;
 let settingsReturnFocus = null;
 let ledgerManagementReturnFocus = null;
 let confirmReturnFocus = null;
@@ -792,8 +811,8 @@ function normalizeFamilyVisuals(visuals = {}, families = defaultFamilies) {
   );
 
   return Object.fromEntries(
-    defaultFamilies.map((family, index) => {
-      const visual = source[family.id] || familyVisualsFromRows[family.id] || defaultFamilyVisuals[family.id] || presetFamilyVisuals[index % presetFamilyVisuals.length];
+    defaultFamilies.map((family) => {
+      const visual = source[family.id] || familyVisualsFromRows[family.id] || defaultFamilyVisuals[family.id];
       return [family.id, normalizeFamilyVisual(visual)];
     }),
   );
@@ -870,6 +889,24 @@ function normalizeSplitMode(mode) {
   return splitModeOptions.some((option) => option.id === mode) ? mode : "all";
 }
 
+function getSplitScopeFromMode(mode) {
+  const normalized = normalizeSplitMode(mode);
+  return normalized === "families" || normalized === "families_equal" ? "selected" : "all";
+}
+
+function getSplitRuleFromMode(mode) {
+  const normalized = normalizeSplitMode(mode);
+  if (normalized === "custom") return "custom";
+  if (normalized === "equal" || normalized === "families_equal") return "equal";
+  return "per_person";
+}
+
+function getSplitModeForState(scope, rule) {
+  if (rule === "custom") return "custom";
+  if (scope === "selected") return rule === "equal" ? "families_equal" : "families";
+  return rule === "equal" ? "equal" : "all";
+}
+
 function normalizeSplitFamilyIds(familyIds = [], fallbackIds = []) {
   const ids = Array.isArray(familyIds) ? familyIds : [];
   const validIds = [...new Set(ids.map(normalizePayerId).filter(Boolean))];
@@ -923,6 +960,8 @@ function normalizeOperator(val) {
 
 function normalizeExpense(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
+  const splitScope = getSplitScopeFromMode(splitMode);
+  const splitRule = getSplitRuleFromMode(splitMode);
   const updatedAt = expense.updatedAt || new Date().toISOString();
   return {
     id: expense.id,
@@ -932,7 +971,9 @@ function normalizeExpense(expense) {
     note: String(expense.note || "").trim(),
     date: normalizeDate(expense.date),
     splitMode,
-    splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitMode === "families" ? defaultFamilies.map((family) => family.id) : []),
+    splitScope,
+    splitRule,
+    splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitScope === "selected" ? defaultFamilies.map((family) => family.id) : []),
     splitAmounts: normalizeSplitAmounts(expense.splitAmounts),
     createdBy: normalizeOperator(expense.createdBy),
     updatedBy: normalizeOperator(expense.updatedBy),
@@ -1201,6 +1242,8 @@ function normalizeRemotePayload(payload) {
         note: String(expense.note || "").trim(),
         date: normalizeDate(expense.expense_date),
         splitMode: normalizeSplitMode(expense.split_mode),
+        splitScope: getSplitScopeFromMode(expense.split_mode),
+        splitRule: getSplitRuleFromMode(expense.split_mode),
         splitFamilyIds: normalizeSplitFamilyIds(expense.split_family_ids),
         splitAmounts: normalizeSplitAmounts(expense.split_amounts),
         createdBy: normalizeOperator(expense.created_by),
@@ -1512,11 +1555,18 @@ async function syncCloudExpense(expense) {
     p_is_deleted: Boolean(expense.isDeleted),
     p_updated_at: expense.updatedAt,
   };
+  const splitMode = normalizeSplitMode(expense.splitMode);
 
   try {
-    await supabaseRpc("save_travel_expense", splitPayload);
+    const remoteExpense = await supabaseRpc("save_travel_expense", splitPayload);
+    if ((splitMode === "equal" || splitMode === "families_equal") && remoteExpense?.split_mode !== splitMode) {
+      throw new Error("云端数据库尚未支持均分规则，请先执行最新 supabase-schema.sql");
+    }
   } catch (error) {
     if (!isSplitRpcCompatibilityError(error)) throw error;
+    if (splitMode === "equal" || splitMode === "families_equal") {
+      throw new Error("云端数据库尚未支持均分规则，请先执行最新 supabase-schema.sql");
+    }
     await supabaseRpc("save_travel_expense", basePayload);
   }
   notifyLedgerChanged();
@@ -1565,7 +1615,10 @@ async function syncPendingCloudExpenses({ silent = true } = {}) {
 
 function isSplitRpcCompatibilityError(error) {
   const message = String(error?.message || error || "");
-  return message.includes("p_split_") || message.includes("schema cache") || message.includes("PGRST202");
+  return message.includes("p_split_")
+    || message.includes("schema cache")
+    || message.includes("PGRST202")
+    || message.includes("travel_expenses_split_mode_check");
 }
 
 async function deleteCloudExpense(expenseId) {
@@ -1667,21 +1720,18 @@ function playSyncLampIgnite() {
 
 function formatMoney(cents) {
   const showDecimals = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) === "true";
+  const hasCents = Math.abs(Math.round(Number(cents) || 0)) % 100 !== 0;
+  const fractionDigits = showDecimals || hasCents ? 2 : 0;
   return new Intl.NumberFormat("zh-CN", {
     style: "currency",
     currency: "CNY",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: showDecimals ? 2 : 0,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(cents / 100);
 }
 
 function formatTotalMoney(cents) {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
+  return formatMoney(cents);
 }
 
 function formatLedgerMoney(cents) {
@@ -1778,7 +1828,8 @@ function calculateSummary() {
         owedByFamily[family.id][expense.payerId] += shareCents;
       }
     });
-    if (normalizeSplitMode(expense.splitMode) !== "all") scopedExpenseCount += 1;
+    const expenseSplitMode = normalizeSplitMode(expense.splitMode);
+    if (getSplitScopeFromMode(expenseSplitMode) === "selected" || getSplitRuleFromMode(expenseSplitMode) === "custom") scopedExpenseCount += 1;
   }
 
   const totalMembers = getTotalMembers();
@@ -1824,8 +1875,28 @@ function calculateExpenseShares(expense) {
   }
 
   const allFamilyIds = state.families.map((family) => family.id);
-  const splitFamilyIds = splitMode === "families" ? normalizeSplitFamilyIds(expense.splitFamilyIds, allFamilyIds) : allFamilyIds;
+  const splitFamilyIds = getSplitScopeFromMode(splitMode) === "selected"
+    ? normalizeSplitFamilyIds(expense.splitFamilyIds, allFamilyIds)
+    : allFamilyIds;
+  if (getSplitRuleFromMode(splitMode) === "equal") return calculateEqualFamilySharesForIds(totalCents, splitFamilyIds);
   return calculateFamilySharesForIds(totalCents, splitFamilyIds);
+}
+
+function calculateEqualFamilySharesForIds(totalCents, familyIds) {
+  const shares = Object.fromEntries(state.families.map((family) => [family.id, 0]));
+  const selectedFamilies = normalizeSplitFamilyIds(familyIds, state.families.map((family) => family.id))
+    .map((familyId) => state.families.find((family) => family.id === familyId))
+    .filter(Boolean);
+
+  if (!selectedFamilies.length) return shares;
+
+  const baseCents = Math.floor(totalCents / selectedFamilies.length);
+  let remainingCents = totalCents - baseCents * selectedFamilies.length;
+  selectedFamilies.forEach((family) => {
+    shares[family.id] = baseCents + (remainingCents > 0 ? 1 : 0);
+    remainingCents -= 1;
+  });
+  return shares;
 }
 
 function calculateFamilySharesForIds(totalCents, familyIds) {
@@ -1918,7 +1989,7 @@ function render(options = {}) {
   };
 
   const mobilePanelFlow = window.matchMedia("(max-width: 820px)").matches;
-  if (document.startViewTransition && animateFinancialChanges && !mobilePanelFlow) {
+  if (document.startViewTransition && animateFinancialChanges && !mobilePanelFlow && !prefersReducedMotion()) {
     document.startViewTransition(performUpdate);
   } else {
     performUpdate();
@@ -1990,6 +2061,7 @@ function cancelBarFlip() {
   barFlipAnimations.forEach((animation) => animation.cancel());
   barFlipAnimations = [];
   document.querySelectorAll(".bar-morph-glow").forEach((node) => node.remove());
+  document.querySelectorAll(".bar-family-tint-membrane").forEach((node) => node.remove());
 }
 
 function clearBarMorphState() {
@@ -2038,12 +2110,10 @@ function spawnBarMorphGlow(rect, toData, duration) {
   if (toData) {
     total = duration;
     frames = [
-      { offset: 0, opacity: 0, transform: "scale(0.68)" },
-      { offset: 0.24, opacity: 0.10, transform: "scale(0.86)" },
-      { offset: 0.58, opacity: 0.24, transform: "scale(1.05)" },
-      { offset: 0.78, opacity: 0.18, transform: "scale(1.12)" },
-      { offset: 0.92, opacity: 0, transform: "scale(1.22)" },
-      { offset: 1, opacity: 0, transform: "scale(1.30)" },
+      { offset: 0, opacity: 0.20, transform: "scale(0.94)" },
+      { offset: 0.36, opacity: 0.13, transform: "scale(1)" },
+      { offset: 0.72, opacity: 0.04, transform: "scale(1.06)" },
+      { offset: 1, opacity: 0, transform: "scale(1.10)" },
     ];
   } else {
     total = Math.round(duration * 0.8);
@@ -2064,6 +2134,37 @@ function spawnBarMorphGlow(rect, toData, duration) {
   window.setTimeout(() => {
     if (glow.isConnected) glow.remove();
   }, total + 150);
+  return animation;
+}
+
+function spawnBarFamilyTintMembrane(bar, background, duration) {
+  if (!background) return null;
+
+  bar.querySelectorAll(".bar-family-tint-membrane").forEach((node) => node.remove());
+  const membrane = document.createElement("span");
+  membrane.className = "bar-family-tint-membrane";
+  membrane.style.background = background;
+  bar.prepend(membrane);
+
+  const animation = membrane.animate(
+    [
+      { offset: 0, opacity: 1 },
+      { offset: 0.22, opacity: 0.86 },
+      { offset: 0.68, opacity: 0.24 },
+      { offset: 1, opacity: 0 },
+    ],
+    {
+      duration,
+      easing: "cubic-bezier(0.32, 0, 0.24, 1)",
+      fill: "forwards",
+    },
+  );
+  const cleanup = () => membrane.remove();
+  animation.onfinish = cleanup;
+  animation.oncancel = cleanup;
+  window.setTimeout(() => {
+    if (membrane.isConnected) membrane.remove();
+  }, duration + 150);
   return animation;
 }
 
@@ -2092,6 +2193,7 @@ function animateBarFlip(nextPanel) {
   const firstBar = bar.getBoundingClientRect();
   const firstButton = button.getBoundingClientRect();
   const firstSummary = summary.getBoundingClientRect();
+  const firstBarBackground = getComputedStyle(bar).background;
 
   cancelBarFlip();
   barFlipRunId = flipRunId;
@@ -2151,6 +2253,11 @@ function animateBarFlip(nextPanel) {
   const barAnimation = bar.animate(barFrames, options);
   const buttonAnimation = button.animate(buttonFrames, options);
   barFlipAnimations = [barAnimation, buttonAnimation];
+
+  if (toData) {
+    const tintAnimation = spawnBarFamilyTintMembrane(bar, firstBarBackground, duration);
+    if (tintAnimation) barFlipAnimations.push(tintAnimation);
+  }
 
   const glowAnimation = spawnBarMorphGlow(toData ? lastBar : firstBar, toData, duration);
   if (glowAnimation) barFlipAnimations.push(glowAnimation);
@@ -2273,6 +2380,10 @@ function setMobilePanel(panel, options = {}) {
     renderMobilePanelState();
     scrollToPanel();
 
+    if (nextPanel === "entry") {
+      window.requestAnimationFrame(() => triggerNaturalEntryLensEntry());
+    }
+
     if (!shouldAnimatePanel) return;
 
     /* bar morph already started on tap (see setMobilePanel top) */
@@ -2365,8 +2476,48 @@ function restoreNaturalEntryEditorHome(editor) {
 
 function getNaturalEntryStageWidth(editor, anchorWidth) {
   const viewportWidth = window.visualViewport?.width || window.innerWidth;
-  const preferred = editor === "split" ? 370 : editor === "payer" || editor === "category" ? 356 : 328;
-  return Math.max(anchorWidth, Math.min(preferred, viewportWidth - 24));
+  /* 付款家庭与类别的展开内容是横向选择带：在较宽的移动视口里若仍
+     固定 356px，positionNaturalEntryStage() 会把舞台夹到右侧，英雄文字
+     虽然仍在舞台中心，却不再对应页面中心。让这两类卡片吃满可用宽度，
+     从入口胶囊展开时只改变宽度，不改变最终文字的中心落点。 */
+  const preferred = editor === "payer" || editor === "category"
+    ? viewportWidth - 16
+    : editor === "split" ? 370 : 344;
+  return Math.max(anchorWidth, Math.min(preferred, viewportWidth - 16));
+}
+
+function resetNaturalEntryStageScroll() {
+  const stage = elements.naturalEntryStage;
+  if (!stage || (activeEntryEditor !== "amount" && activeEntryEditor !== "note")) return;
+  // Amount and note are fixed-height handoff stages. WebKit can retain a
+  // fractional scroll position when their editor is moved into the stage;
+  // clear it before the first painted frame so the mirror cannot jump.
+  stage.scrollTop = 0;
+  stage.scrollLeft = 0;
+}
+
+function syncNaturalEntryStageAnchorGeometry(
+  stage,
+  anchor,
+  { anchorRect = null, stageLeft = null, stageWidth = null } = {},
+) {
+  if (!stage || !anchor) return null;
+  const nextAnchorRect = anchorRect || anchor.getBoundingClientRect();
+  const currentStageRect = stage.getBoundingClientRect();
+  const left = Number.isFinite(stageLeft) ? stageLeft : currentStageRect.left;
+  const width = Number.isFinite(stageWidth) ? stageWidth : currentStageRect.width;
+  const anchorX = Math.max(0, nextAnchorRect.left - left);
+
+  stage.style.setProperty("--natural-stage-anchor-x", `${anchorX}px`);
+  stage.style.setProperty("--natural-stage-anchor-width", `${nextAnchorRect.width}px`);
+  stage.style.setProperty("--natural-stage-anchor-height", `${nextAnchorRect.height}px`);
+  stage.style.setProperty("--natural-stage-origin-x", `${anchorX + (nextAnchorRect.width / 2)}px`);
+  stage.style.setProperty(
+    "--natural-stage-token-anchor-offset",
+    `${anchorX - (width / 2)}px`,
+  );
+
+  return { anchorRect: nextAnchorRect, anchorX, stageLeft: left, stageWidth: width };
 }
 
 function positionNaturalEntryStage() {
@@ -2377,33 +2528,113 @@ function positionNaturalEntryStage() {
     return;
   }
 
+  const stage = elements.naturalEntryStage;
   const anchorRect = naturalEntryStageAnchor.getBoundingClientRect();
   const viewport = window.visualViewport;
   const viewportLeft = viewport?.offsetLeft || 0;
   const viewportTop = viewport?.offsetTop || 0;
   const viewportWidth = viewport?.width || window.innerWidth;
   const viewportHeight = viewport?.height || window.innerHeight;
-  const edge = 12;
+  const edge = 8;
   const width = getNaturalEntryStageWidth(activeEntryEditor, anchorRect.width);
   const left = Math.min(
     Math.max(anchorRect.left, viewportLeft + edge),
     viewportLeft + viewportWidth - width - edge,
   );
   const top = Math.max(anchorRect.top, viewportTop + edge);
-  const maxHeight = Math.max(132, viewportTop + viewportHeight - top - edge);
+  const safeAreaBottom = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--safe-area-bottom"),
+  ) || 0;
+  const bottomClearance = Math.max(12, safeAreaBottom + 12);
+  const maxHeight = Math.max(132, viewportTop + viewportHeight - top - edge - bottomClearance);
 
   elements.naturalEntryStage.style.setProperty("--natural-stage-left", `${left}px`);
   elements.naturalEntryStage.style.setProperty("--natural-stage-top", `${top}px`);
   elements.naturalEntryStage.style.setProperty("--natural-stage-width", `${width}px`);
   elements.naturalEntryStage.style.setProperty("--natural-stage-max-height", `${maxHeight}px`);
-  elements.naturalEntryStage.style.setProperty("--natural-stage-anchor-x", `${Math.max(0, anchorRect.left - left)}px`);
-  elements.naturalEntryStage.style.setProperty("--natural-stage-anchor-width", `${anchorRect.width}px`);
-  elements.naturalEntryStage.style.setProperty("--natural-stage-anchor-height", `${anchorRect.height}px`);
-  elements.naturalEntryStage.style.setProperty("--natural-stage-origin-x", `${Math.max(0, anchorRect.left - left) + (anchorRect.width / 2)}px`);
+  syncNaturalEntryStageAnchorGeometry(stage, naturalEntryStageAnchor, {
+    anchorRect,
+    stageLeft: left,
+    stageWidth: width,
+  });
+  resetNaturalEntryStageScroll();
+  const stageToken = elements.naturalEntryStageToken;
+  const stageRect = stage.getBoundingClientRect();
+  const tokenStyle = getComputedStyle(stageToken);
+  const tokenWidth = stageToken.offsetWidth || stageToken.getBoundingClientRect().width;
+  const tokenHeight = stageToken.offsetHeight || stageToken.getBoundingClientRect().height;
+  // The relay starts with `left: 50%` and a pure pixel translation (there is
+  // no -50% centering until the handoff finishes), so the untransformed
+  // origin is the stage midpoint rather than the token's centered left edge.
+  const tokenBaseLeft = stageRect.left + (stageRect.width / 2);
+  const tokenBaseTop = stageRect.top + (Number.parseFloat(tokenStyle.top) || 0);
+  stage.style.removeProperty("--natural-stage-amount-token-y");
+  stage.style.removeProperty("--natural-stage-amount-token-scale");
+  if (activeEntryEditor === "note" && elements.noteInput) {
+    const noteText = elements.noteInput.value || elements.noteInput.placeholder || "";
+    const noteTextMetrics = getNaturalEntryInputTextMetrics(elements.noteInput, noteText);
+    const sourceLabel = naturalEntryStageAnchor?.querySelector(".natural-entry-token-label")
+      || naturalEntryStageAnchor;
+    const sourceMetrics = getNaturalEntryTextMetrics(sourceLabel);
+    const stageLabel = stageToken.querySelector(".natural-entry-token-label") || stageToken;
+    const stageLabelStyle = getComputedStyle(stageLabel);
+    const stageFontSize = Number.parseFloat(stageLabelStyle.fontSize) || tokenHeight;
+    const stageLineHeight = Number.parseFloat(stageLabelStyle.lineHeight) || stageFontSize;
+    const stageTextBaseline = tokenBaseTop
+      + Math.max(0, (tokenHeight - stageLineHeight) / 2)
+      + Math.max(0, (stageLineHeight - stageFontSize) / 2)
+      + (stageFontSize * 0.8);
+    const tokenCenterX = tokenBaseLeft + (tokenWidth / 2);
+    const sourceCenterX = sourceMetrics
+      ? sourceMetrics.centerX
+      : anchorRect.left + (anchorRect.width / 2);
+    const sourceBaseline = sourceMetrics
+      ? sourceMetrics.baseline
+      : anchorRect.top + (anchorRect.height / 2);
+    const targetCenterX = noteTextMetrics
+      ? noteTextMetrics.centerX
+      : anchorRect.left + (anchorRect.width / 2);
+    const targetBaseline = noteTextMetrics
+      ? noteTextMetrics.baseline
+      : anchorRect.top + (anchorRect.height / 2);
+    const sourceFontSize = Number.parseFloat(sourceLabel ? getComputedStyle(sourceLabel).fontSize : "") || 1;
+    const tokenFontSize = Number.parseFloat(tokenStyle.fontSize) || 1;
+    const measuredSourceScale = sourceFontSize / tokenFontSize;
+    const sourceScale = Math.max(1, Math.min(1.6, measuredSourceScale));
+    const sourceBaselineY = sourceBaseline - stageTextBaseline;
+    const targetBaselineY = targetBaseline - stageTextBaseline;
+    stage.style.setProperty(
+      "--natural-stage-note-token-x",
+      `${targetCenterX - tokenCenterX}px`,
+    );
+    stage.style.setProperty(
+      "--natural-stage-note-token-y",
+      `${targetBaselineY}px`,
+    );
+    stage.style.setProperty(
+      "--natural-stage-note-token-source-x",
+      `${sourceCenterX - tokenCenterX}px`,
+    );
+    stage.style.setProperty(
+      "--natural-stage-note-token-source-y",
+      `${sourceBaselineY}px`,
+    );
+    stage.style.setProperty(
+      "--natural-stage-note-token-source-scale",
+      String(sourceScale),
+    );
+  } else {
+    stage.style.removeProperty("--natural-stage-note-token-x");
+    stage.style.removeProperty("--natural-stage-note-token-y");
+    stage.style.removeProperty("--natural-stage-note-token-source-x");
+    stage.style.removeProperty("--natural-stage-note-token-source-y");
+    stage.style.removeProperty("--natural-stage-note-token-source-scale");
+  }
 }
 
 function scheduleNaturalEntryStagePosition() {
   if (naturalEntryStagePositionFrame || !naturalEntryStageOpen) return;
+  if (naturalEntryAmountHandoffRunning) return;
   // The split editor can change the summary token's wrapping while its panel
   // is open. Re-anchoring the fixed stage to that moving token makes the card
   // drift downward during option changes; keep the stage in place until the
@@ -2430,39 +2661,99 @@ function unfreezeNaturalEntryAnchor() {
 
 function syncNaturalEntryStageToken({ animate = false, text = null } = {}) {
   if (!naturalEntryStageOpen || !naturalEntryStageAnchor) return;
-  const nextText = text == null ? naturalEntryStageAnchor.textContent : String(text);
+  if (activeEntryEditor === "amount") return;
+  const anchorLabel = naturalEntryStageAnchor.querySelector(".natural-entry-token-label") || naturalEntryStageAnchor;
+  const nextText = text == null ? anchorLabel.textContent : String(text);
   const stageToken = elements.naturalEntryStageToken;
-  if (animate && !prefersReducedMotion()) {
+  const stageLabel = stageToken.querySelector(".natural-entry-token-label") || stageToken;
+  const mark = naturalEntryStageAnchor.dataset.mark || "";
+  if (mark) stageToken.dataset.mark = mark;
+  else delete stageToken.dataset.mark;
+  stageToken.dataset.valueState = naturalEntryStageAnchor.dataset.valueState || "value";
+  elements.naturalEntryStage.dataset.valueState = stageToken.dataset.valueState;
+  const relayIsRunning = elements.naturalEntryStage.classList.contains("is-opening")
+    || elements.naturalEntryStage.classList.contains("is-closing");
+  if (animate && !prefersReducedMotion() && !relayIsRunning) {
     const duration = activeEntryEditor === "date" ? 240 : activeEntryEditor === "split" ? 300 : 280;
     animateNaturalEntryToken(stageToken, nextText, { duration });
   } else {
     const previous = naturalEntryTokenAnimations.get(stageToken);
     previous?.cancel();
     naturalEntryTokenAnimations.delete(stageToken);
-    stageToken.textContent = nextText;
+    stageLabel.textContent = nextText;
   }
   elements.naturalEntryStageToken.classList.toggle("is-amount", activeEntryEditor === "amount");
 }
 
+function clearNaturalEntryStageRelayTimers() {
+  [
+    ["naturalEntryStageCloseTimer", naturalEntryStageCloseTimer],
+    ["naturalEntryStageHandoffTimer", naturalEntryStageHandoffTimer],
+    ["naturalEntryStageCleanupTimer", naturalEntryStageCleanupTimer],
+    ["naturalEntryStageOpenHandoffTimer", naturalEntryStageOpenHandoffTimer],
+    ["naturalEntryStageOpenFinishTimer", naturalEntryStageOpenFinishTimer],
+  ].forEach(([name, timer]) => {
+    if (timer) window.clearTimeout(timer);
+    if (name === "naturalEntryStageCloseTimer") naturalEntryStageCloseTimer = 0;
+    if (name === "naturalEntryStageHandoffTimer") naturalEntryStageHandoffTimer = 0;
+    if (name === "naturalEntryStageCleanupTimer") naturalEntryStageCleanupTimer = 0;
+    if (name === "naturalEntryStageOpenHandoffTimer") naturalEntryStageOpenHandoffTimer = 0;
+    if (name === "naturalEntryStageOpenFinishTimer") naturalEntryStageOpenFinishTimer = 0;
+  });
+}
+
+function commitPendingNaturalEntryFamilyTint() {
+  if (pendingNaturalEntryFamilyTintId === null) return;
+  applyNaturalEntryFamilyTint(pendingNaturalEntryFamilyTintId, { animate: false });
+}
+
+function captureNaturalEntryStageFamilyTint(stage) {
+  if (!stage) return;
+  const currentColor = [stage, elements.expenseForm, elements.naturalEntryFlow]
+    .map((element) => getComputedStyle(element).getPropertyValue("--natural-entry-mark-color").trim())
+    .find(Boolean);
+  if (currentColor) stage.style.setProperty("--natural-entry-mark-color", currentColor);
+}
+
 function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
-  window.clearTimeout(naturalEntryStageCloseTimer);
-  naturalEntryStageCloseTimer = 0;
-  window.clearTimeout(naturalEntryStageFadeTimer);
-  naturalEntryStageFadeTimer = 0;
+  clearNaturalEntryStageRelayTimers();
+  cancelNaturalEntryMotion();
+  naturalEntryAmountHandoffRunning = false;
+  commitPendingNaturalEntryFamilyTint();
   const editor = naturalEntryStageEditor;
   const anchor = naturalEntryStageAnchor;
+  const stage = elements.naturalEntryStage;
   restoreNaturalEntryEditorHome(editor);
   if (editor === elements.splitScope) {
     splitScopeOpen = false;
     renderSplitScope();
   }
   unfreezeNaturalEntryAnchor();
-  anchor?.classList.remove("is-stage-anchor", "is-stage-handoff", "is-value-settling");
-  elements.naturalEntryStage.classList.remove("is-preparing", "is-closing", "is-fading");
-  elements.naturalEntryStage.style.height = "";
-  elements.naturalEntryStage.hidden = true;
+  anchor?.classList.remove(
+    "is-stage-anchor",
+    "is-stage-opening",
+    "is-stage-handoff",
+    "is-stage-mark-handoff",
+    "is-lens-returning",
+    "is-value-settling",
+  );
+  anchor?.style.removeProperty("--natural-entry-text-alpha");
+  stage.classList.remove("is-preparing", "is-opening", "is-open", "is-closing", "is-text-handed-off", "is-relay-settled");
+  stage.style.removeProperty("--natural-entry-mark-color");
+  stage.style.removeProperty("--natural-stage-note-token-x");
+  stage.style.removeProperty("--natural-stage-note-token-y");
+  stage.style.removeProperty("--natural-stage-note-token-source-x");
+  stage.style.removeProperty("--natural-stage-note-token-source-y");
+  stage.style.removeProperty("--natural-stage-note-token-source-scale");
+  stage.style.removeProperty("--natural-stage-value-state");
+  clearNaturalEntryNoteTrackStyles();
+  stage.scrollTop = 0;
+  stage.scrollLeft = 0;
+  stage.style.height = "";
+  stage.hidden = true;
   elements.naturalEntryFocusBackdrop.hidden = true;
-  elements.naturalEntryStage.dataset.editor = "";
+  stage.dataset.editor = "";
+  stage.dataset.valueState = "";
   naturalEntryStageEditor = null;
   naturalEntryStageAnchor = null;
   document.body.classList.remove("natural-entry-focus-open");
@@ -2475,10 +2766,60 @@ function cancelNaturalEntryMotion() {
     try { anim.cancel(); } catch (_) {}
   }
   naturalEntryMotionAnims = [];
+  naturalEntryAmountHandoffRunning = false;
+  // A note track can outlive the stage-close timer in WebKit when the user
+  // reopens quickly. Cancel any animation still owned by the actual track or
+  // relay token before clearing styles, otherwise the next open starts scaled.
+  [
+    elements.noteInput?.closest(".note-value-track"),
+    elements.naturalEntryStageToken,
+  ].forEach((target) => {
+    target?.getAnimations?.().forEach((animation) => {
+      try { animation.cancel(); } catch (_) {}
+    });
+  });
+  clearNaturalEntryNoteTrackStyles();
+  const amountTrack = elements.amountInput?.closest(".amount-value-track");
+  amountTrack?.getAnimations?.().forEach((animation) => {
+    if (animation.animationName === "") {
+      try { animation.cancel(); } catch (_) {}
+    }
+  });
+  if (amountTrack) {
+    amountTrack.style.transform = "";
+    amountTrack.style.transformOrigin = "";
+    amountTrack.style.willChange = "";
+    amountTrack.style.removeProperty("opacity");
+  }
+  // The GitHub text handoff uses a body-level flight token; remove it on
+  // interruption so a rapid reopen cannot leave a stale glyph behind.
   document.querySelectorAll(".natural-entry-flight-token").forEach((node) => node.remove());
+  clearNaturalEntryTextHandoffStyles();
 }
 
-function makeNaturalEntryFlightToken(sourceRect, destinationRect, text, isAmount, sourceScale = 1) {
+function clearNaturalEntryTextHandoffStyles() {
+  document.querySelectorAll(".natural-entry-token-label").forEach((label) => {
+    label.style.removeProperty("opacity");
+  });
+  document.querySelectorAll(".natural-entry-token").forEach((token) => {
+    token.style.removeProperty("--natural-entry-text-alpha");
+  });
+  elements.noteInput?.style.removeProperty("opacity");
+}
+
+function setNaturalEntryAnchorTextVisible(anchor, visible) {
+  if (!anchor) return;
+  const label = anchor.querySelector(".natural-entry-token-label") || anchor;
+  label.style.opacity = visible ? "1" : "0";
+  anchor.style.setProperty("--natural-entry-text-alpha", visible ? "1" : "0");
+}
+
+function clearNaturalEntryCloseState(anchor = naturalEntryStageAnchor) {
+  anchor?.classList.remove("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
+  anchor?.style.removeProperty("--natural-entry-text-alpha");
+}
+
+function makeNaturalEntryFlightToken(sourceRect, text, isAmount, sourceScale = 1) {
   const ghost = document.createElement("span");
   ghost.className = "natural-entry-flight-token";
   ghost.classList.toggle("is-amount", isAmount);
@@ -2489,7 +2830,7 @@ function makeNaturalEntryFlightToken(sourceRect, destinationRect, text, isAmount
   const baseTop = sourceRect.top + (sourceRect.height - baseHeight) / 2;
   ghost.style.left = `${baseLeft}px`;
   ghost.style.top = `${baseTop}px`;
-  ghost.style.width = `${Math.max(baseWidth, destinationRect.width)}px`;
+  ghost.style.width = `${Math.max(1, baseWidth)}px`;
   ghost.style.height = `${baseHeight}px`;
   ghost.style.transformOrigin = "center center";
   document.body.append(ghost);
@@ -2502,26 +2843,398 @@ function getNaturalEntryFlightSourceRect(stage) {
   return stage.getBoundingClientRect();
 }
 
+function getNaturalEntrySourceColor(element, fallback = "") {
+  if (!element) return fallback;
+  const style = getComputedStyle(element);
+  const fill = style.getPropertyValue("-webkit-text-fill-color").trim();
+  if (fill && fill !== "transparent" && fill !== "rgba(0, 0, 0, 0)") return fill;
+  return style.color || fallback;
+}
+
+function getNaturalEntryInputTextRect(input, text = "") {
+  if (!input) return null;
+  const inputRect = input.getBoundingClientRect();
+  if (!inputRect.width || !inputRect.height) return null;
+  const style = getComputedStyle(input);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const font = style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  if (context) context.font = font;
+  const measuredWidth = context
+    ? context.measureText(String(text || input.placeholder || "")).width
+    : inputRect.width;
+  const width = Math.min(inputRect.width, Math.max(1, measuredWidth));
+  const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) || inputRect.height;
+  const top = inputRect.top + Math.max(0, (inputRect.height - lineHeight) / 2);
+  const textAlign = style.textAlign === "left" ? "left" : style.textAlign === "right" ? "right" : "center";
+  const left = textAlign === "left"
+    ? inputRect.left + (Number.parseFloat(style.paddingLeft) || 0)
+    : textAlign === "right"
+      ? inputRect.right - (Number.parseFloat(style.paddingRight) || 0) - width
+      : inputRect.left + (inputRect.width - width) / 2;
+  return new DOMRect(left, top, width, lineHeight);
+}
+
+function getNaturalEntryInputTextMetrics(input, text = "") {
+  const rect = getNaturalEntryInputTextRect(input, text);
+  if (!rect || !input) return null;
+  const style = getComputedStyle(input);
+  const fontSize = Number.parseFloat(style.fontSize) || rect.height;
+  const lineHeight = Number.parseFloat(style.lineHeight) || rect.height;
+  const lineOffset = Math.max(0, (lineHeight - fontSize) / 2);
+  return {
+    rect,
+    centerX: rect.left + (rect.width / 2),
+    baseline: rect.top + lineOffset + (fontSize * 0.8),
+    fontSize,
+  };
+}
+
+function getNaturalEntryAmountVisibleMetrics() {
+  const input = elements.amountInput;
+  const track = input?.closest(".amount-value-track");
+  if (!input || !track) return null;
+  const currency = track.querySelector(".currency-mark");
+  const inputMetrics = getNaturalEntryInputTextMetrics(input, input.value || input.placeholder || "0.00");
+  const currencyRect = currency?.getBoundingClientRect();
+  if (!inputMetrics?.rect || !currencyRect?.width) return null;
+  /* 轨道右侧仍保留光标安全余量，但动画只认这组真实可见字形的边界。
+     不要用 track.getBoundingClientRect() 的中心，它包含了那段不可见空白。 */
+  const left = Math.min(currencyRect.left, inputMetrics.rect.left);
+  const right = Math.max(currencyRect.right, inputMetrics.rect.right);
+  const top = Math.min(currencyRect.top, inputMetrics.rect.top);
+  const bottom = Math.max(currencyRect.bottom, inputMetrics.rect.bottom);
+  const visibleRect = new DOMRect(left, top, right - left, bottom - top);
+  return {
+    track,
+    rect: visibleRect,
+    visibleRect,
+    caretReserve: AMOUNT_INPUT_CARET_RESERVE,
+    centerX: (left + right) / 2,
+    centerY: (top + bottom) / 2,
+    baseline: inputMetrics.baseline,
+    fontSize: Number.parseFloat(getComputedStyle(input).fontSize) || inputMetrics.fontSize,
+  };
+}
+
+function getNaturalEntryAmountTransform(source, target) {
+  if (!source?.track || !target) return null;
+  const trackRect = source.track.getBoundingClientRect();
+  const scale = target.fontSize && source.fontSize
+    ? target.fontSize / source.fontSize
+    : target.rect.height / Math.max(1, source.rect.height);
+  if (!Number.isFinite(scale) || !Number.isFinite(source.centerX) || !Number.isFinite(target.centerX)) return null;
+  const originX = source.centerX - trackRect.left;
+  const originY = source.baseline - trackRect.top;
+  const translateX = target.centerX - source.centerX;
+  const translateY = target.baseline - source.baseline;
+  return {
+    origin: `${originX}px ${originY}px`,
+    translateX,
+    translateY,
+    scale,
+    transform: `translate3d(${translateX.toFixed(3)}px, ${translateY.toFixed(3)}px, 0) scale(${scale.toFixed(5)})`,
+  };
+}
+
+function getNaturalEntryStageCurve(fallback) {
+  return getComputedStyle(elements.naturalEntryStage || document.documentElement)
+    .getPropertyValue("--natural-stage-curve")
+    .trim() || fallback;
+}
+
+function animateNaturalAmountTrackFrom(target) {
+  const source = getNaturalEntryAmountVisibleMetrics();
+  const track = source?.track;
+  const mapping = getNaturalEntryAmountTransform(source, target);
+  if (!source || !track || !mapping || prefersReducedMotion() || typeof track.animate !== "function") {
+    if (track) {
+      track.style.transform = "";
+      track.style.transformOrigin = "";
+      track.style.willChange = "";
+    }
+    return;
+  }
+  track.style.transformOrigin = mapping.origin;
+  track.style.willChange = "transform";
+  const transformAt = (progress) => {
+    const x = mapping.translateX * (1 - progress);
+    const y = mapping.translateY * (1 - progress);
+    const scale = mapping.scale + ((1 - mapping.scale) * progress);
+    return `translate3d(${x.toFixed(3)}px, ${y.toFixed(3)}px, 0) scale(${scale.toFixed(5)})`;
+  };
+  const animation = track.animate(
+    [
+      /* 先让外壳完成一小段展开，再让金额从原位进入中心，避免首帧
+         直接把数字放大成一块浮在句子上的面板。 */
+      { transform: mapping.transform, offset: 0 },
+      { transform: mapping.transform, offset: 0.14 },
+      { transform: transformAt(0.42), offset: 0.58 },
+      { transform: "translate3d(0, 0, 0) scale(1)", offset: 1 },
+    ],
+    { duration: MOTION_DELAYS.naturalEntryStageOpen, easing: getNaturalEntryStageCurve("cubic-bezier(0.20, 0, 0, 1)"), fill: "both" },
+  );
+  naturalEntryAmountHandoffRunning = true;
+  naturalEntryMotionAnims.push(animation);
+  const cleanup = () => {
+    if (!naturalEntryMotionAnims.includes(animation)) return;
+    naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
+    track.style.transform = "";
+    track.style.transformOrigin = "";
+    track.style.willChange = "";
+  };
+  animation.addEventListener("finish", cleanup, { once: true });
+  animation.addEventListener("cancel", cleanup, { once: true });
+}
+
+function animateNaturalAmountTrackToAnchor(anchor, onReached = null) {
+  const source = getNaturalEntryAmountVisibleMetrics();
+  const target = getNaturalEntryTextMetrics(anchor);
+  const track = source?.track;
+  const mapping = getNaturalEntryAmountTransform(source, target);
+  if (!source || !target || !track || !mapping || prefersReducedMotion() || typeof track.animate !== "function") {
+    if (track) track.style.opacity = "0";
+    onReached?.();
+    return;
+  }
+  track.style.transformOrigin = mapping.origin;
+  track.style.willChange = "transform";
+  const animation = track.animate(
+    [
+      { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1 },
+      { transform: mapping.transform, opacity: 1 },
+    ],
+    { duration: MOTION_DELAYS.naturalEntryStageClose, easing: getNaturalEntryStageCurve("cubic-bezier(0.12, 0.68, 0.18, 1)"), fill: "both" },
+  );
+  naturalEntryMotionAnims.push(animation);
+  animation.finished.then(() => onReached?.(), () => {});
+}
+
+function getNaturalEntryFlightSourceMetrics(stage, editor) {
+  const stageToken = elements.naturalEntryStageToken;
+  const tokenStyle = getComputedStyle(stageToken);
+  const tokenFontSize = Number.parseFloat(tokenStyle.fontSize) || 1;
+  const focusTarget = getNaturalEntryFocusTarget(editor);
+  let rect = getNaturalEntryTextRect(stageToken) || getNaturalEntryFlightSourceRect(stage);
+  let styleTarget = focusTarget || stageToken;
+  let sourceFontSize = Number.parseFloat(getComputedStyle(styleTarget).fontSize) || tokenFontSize;
+
+  if (editor === "amount" && elements.amountInput) {
+    /* 金额的可见字形由货币符号和 input 两部分组成；源盒必须取整条轨道，
+       否则只按 input 文字测量会把飞行字的水平中心推向右侧。 */
+    const amountTrack = elements.amountInput.closest(".amount-value-track") || elements.amountInput;
+    rect = amountTrack.getBoundingClientRect();
+    sourceFontSize = Number.parseFloat(getComputedStyle(elements.amountInput).fontSize) || tokenFontSize;
+    styleTarget = elements.amountInput;
+  } else if (editor === "note" && elements.noteInput) {
+    const noteText = elements.noteInput.value || elements.noteInput.placeholder || "";
+    rect = getNaturalEntryInputTextRect(elements.noteInput, noteText) || rect;
+    sourceFontSize = Number.parseFloat(getComputedStyle(elements.noteInput).fontSize) || tokenFontSize;
+    styleTarget = elements.noteInput;
+  }
+
+  return {
+    rect,
+    sourceColor: getNaturalEntrySourceColor(styleTarget, getComputedStyle(stageToken).color),
+    sourceScale: Math.max(0.72, Math.min(2.1, sourceFontSize / tokenFontSize)),
+  };
+}
+
 function getNaturalEntryTextRect(element) {
   if (!element) return null;
+  const textElement = element.querySelector?.(".natural-entry-token-label") || element;
   const range = document.createRange();
-  range.selectNodeContents(element);
+  range.selectNodeContents(textElement);
   const rect = range.getBoundingClientRect();
   return rect.width > 0 && rect.height > 0 ? rect : null;
 }
 
+function getNaturalEntryTextMetrics(element) {
+  const rect = getNaturalEntryTextRect(element);
+  if (!rect) return null;
+  const textElement = element.querySelector?.(".natural-entry-token-label") || element;
+  const style = getComputedStyle(textElement);
+  const fontSize = Number.parseFloat(style.fontSize) || rect.height;
+  const lineHeight = Number.parseFloat(style.lineHeight) || rect.height;
+  const lineOffset = Math.max(0, (lineHeight - fontSize) / 2);
+  return {
+    rect,
+    centerX: rect.left + (rect.width / 2),
+    baseline: rect.top + lineOffset + (fontSize * 0.8),
+    fontSize,
+  };
+}
+
+function getNaturalEntryNoteTrackMetrics() {
+  const input = elements.noteInput;
+  const track = input?.closest(".note-value-track") || input;
+  if (!input || !track) return null;
+  const text = input.value || input.placeholder || "";
+  const inputMetrics = getNaturalEntryInputTextMetrics(input, text);
+  const trackRect = track.getBoundingClientRect();
+  if (!inputMetrics?.rect || !trackRect.width) return null;
+  return {
+    track,
+    rect: inputMetrics.rect,
+    centerX: inputMetrics.centerX,
+    baseline: inputMetrics.baseline,
+    fontSize: inputMetrics.fontSize,
+  };
+}
+
+function getNaturalEntryTrackTransform(source, target) {
+  if (!source?.track || !target) return null;
+  const trackRect = source.track.getBoundingClientRect();
+  const scale = target.fontSize && source.fontSize
+    ? target.fontSize / source.fontSize
+    : target.rect.height / Math.max(1, source.rect.height);
+  if (!Number.isFinite(scale) || !Number.isFinite(source.centerX) || !Number.isFinite(target.centerX)) return null;
+  return {
+    origin: `${(source.centerX - trackRect.left).toFixed(3)}px ${(source.baseline - trackRect.top).toFixed(3)}px`,
+    transform: `translate3d(${(target.centerX - source.centerX).toFixed(3)}px, ${(target.baseline - source.baseline).toFixed(3)}px, 0) scale(${scale.toFixed(5)})`,
+  };
+}
+
+function clearNaturalEntryNoteTrackStyles() {
+  const track = elements.noteInput?.closest(".note-value-track");
+  if (track) {
+    track.style.removeProperty("transform");
+    track.style.removeProperty("transform-origin");
+    track.style.removeProperty("will-change");
+    track.style.removeProperty("pointer-events");
+  }
+  const stageToken = elements.naturalEntryStageToken;
+  stageToken?.style.removeProperty("transform");
+  stageToken?.style.removeProperty("transform-origin");
+  stageToken?.style.removeProperty("will-change");
+}
+
+function animateNaturalEntryNoteTrackToAnchor(anchor, onReached = null) {
+  const source = getNaturalEntryNoteTrackMetrics();
+  const target = getNaturalEntryTextMetrics(anchor);
+  const track = source?.track;
+  const mapping = getNaturalEntryTrackTransform(source, target);
+  if (!source || !target || !track || !mapping || prefersReducedMotion() || typeof track.animate !== "function") {
+    clearNaturalEntryNoteTrackStyles();
+    onReached?.();
+    return;
+  }
+  track.style.transformOrigin = mapping.origin;
+  track.style.pointerEvents = "none";
+  track.style.willChange = "transform";
+  const animation = track.animate(
+    [
+      { transform: "translate3d(0, 0, 0) scale(1)" },
+      { transform: mapping.transform },
+    ],
+    {
+      duration: MOTION_DELAYS.naturalEntryStageClose,
+      easing: getNaturalEntryStageCurve("cubic-bezier(0.12, 0.68, 0.18, 1)"),
+      fill: "both",
+    },
+  );
+  naturalEntryMotionAnims.push(animation);
+  const cleanup = () => {
+    if (naturalEntryMotionAnims.includes(animation)) {
+      naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
+    }
+    clearNaturalEntryNoteTrackStyles();
+  };
+  animation.addEventListener("finish", () => {
+    cleanup();
+    onReached?.();
+  }, { once: true });
+  animation.addEventListener("cancel", cleanup, { once: true });
+}
+
+function animateNaturalEntryNoteTokenToAnchor(anchor, onReached = null) {
+  const stageToken = elements.naturalEntryStageToken;
+  const source = getNaturalEntryTextMetrics(stageToken);
+  const target = getNaturalEntryTextMetrics(anchor);
+  if (!source || !target || !stageToken || prefersReducedMotion() || typeof stageToken.animate !== "function") {
+    clearNaturalEntryNoteTrackStyles();
+    onReached?.();
+    return;
+  }
+  const deltaX = target.centerX - source.centerX;
+  const deltaY = target.baseline - source.baseline;
+  const targetScale = target.fontSize && source.fontSize ? target.fontSize / source.fontSize : 1;
+  const baseTransform = "translateX(-50%) scale(var(--natural-stage-token-scale, 1))";
+  const targetTransform = `translateX(-50%) translate3d(${deltaX.toFixed(3)}px, ${deltaY.toFixed(3)}px, 0) scale(${targetScale.toFixed(5)})`;
+  stageToken.style.transformOrigin = "center center";
+  stageToken.style.willChange = "transform";
+  const animation = stageToken.animate(
+    [
+      { transform: baseTransform },
+      { transform: targetTransform },
+    ],
+    {
+      duration: MOTION_DELAYS.naturalEntryStageClose,
+      easing: getNaturalEntryStageCurve("cubic-bezier(0.12, 0.68, 0.18, 1)"),
+      fill: "both",
+    },
+  );
+  naturalEntryMotionAnims.push(animation);
+  const cleanup = () => {
+    if (naturalEntryMotionAnims.includes(animation)) {
+      naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
+    }
+    clearNaturalEntryNoteTrackStyles();
+  };
+  animation.addEventListener("finish", () => {
+    cleanup();
+    onReached?.();
+  }, { once: true });
+  animation.addEventListener("cancel", cleanup, { once: true });
+}
+
+function getNaturalEntryEditorDisplayText(editor) {
+  const amount = parseAmountInput(elements.amountInput.value);
+  const amountCents = Number.isFinite(amount) && amount > 0 ? amountToCents(amount) : 0;
+  if (editor === "date") return formatNaturalEntryDate(normalizeDate(elements.dateInput.value, state.activeDate));
+  if (editor === "payer") return state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭";
+  if (editor === "amount") return amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00";
+  if (editor === "category") return state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别";
+  if (editor === "note") return elements.noteInput.value.trim() || "备注可选";
+  return formatNaturalEntrySplit();
+}
+
+function settleNaturalEntryCloseText(anchor, stageToken, editor) {
+  const finalText = getNaturalEntryEditorDisplayText(editor);
+  if (anchor) {
+    const pending = naturalEntryTokenAnimations.get(anchor);
+    if (pending && !pending.cancelled) {
+      pending.cancel();
+      if (editor === "amount") setNaturalAmountTokenDisplay(anchor, finalText);
+      else (anchor.querySelector(".natural-entry-token-label") || anchor).textContent = finalText;
+      naturalEntryTokenAnimations.delete(anchor);
+    } else {
+      if (editor === "amount") setNaturalAmountTokenDisplay(anchor, finalText);
+      else (anchor.querySelector(".natural-entry-token-label") || anchor).textContent = finalText;
+    }
+    anchor.dataset.valueState = editor === "note"
+      ? (elements.noteInput.value.trim() ? "value" : "optional")
+      : "value";
+  }
+  if (anchor && stageToken) {
+    naturalEntryTokenAnimations.get(stageToken)?.cancel();
+    naturalEntryTokenAnimations.delete(stageToken);
+    const anchorLabel = anchor.querySelector(".natural-entry-token-label") || anchor;
+    const stageLabel = stageToken.querySelector(".natural-entry-token-label") || stageToken;
+    stageLabel.textContent = anchorLabel.textContent;
+    stageToken.dataset.valueState = anchor.dataset.valueState || "value";
+  }
+}
+
 function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}) {
   // Blur, backdrop, and choice handlers can converge on the same close. Once
-  // the staged close has started, do not reset its timers or launch a second
-  // flight; only an explicit immediate close may interrupt it.
+  // the staged close has started, do not reset its relay; only an explicit
+  // immediate close may interrupt it.
   if (!naturalEntryStageOpen) {
     if (!naturalEntryStageEditor) return;
     if (!immediate) return;
   }
-  window.clearTimeout(naturalEntryStageCloseTimer);
-  naturalEntryStageCloseTimer = 0;
-  window.clearTimeout(naturalEntryStageFadeTimer);
-  naturalEntryStageFadeTimer = 0;
+  clearNaturalEntryStageRelayTimers();
   naturalEntryStageOpen = false;
   const runId = ++naturalEntryStageRunId;
   window.cancelAnimationFrame(naturalEntryStagePositionFrame);
@@ -2530,115 +3243,155 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   const stage = elements.naturalEntryStage;
   const token = elements.naturalEntryStageToken;
   const anchor = naturalEntryStageAnchor;
-  const isAmount = activeEntryEditor === "amount";
+  captureNaturalEntryStageFamilyTint(stage);
 
-  // Commit the final value behind the backdrop, then measure its true layout
-  // destination before the flight begins. This prevents a text-width change
-  // from moving the landing point half way through the animation.
+  // Settle only the already-pending token text. Calling renderNaturalEntry()
+  // here used to move the editor into a new display state, schedule another
+  // stage-position frame, and force a second layout immediately before the
+  // close animation. The close path now performs one read batch against the
+  // already-rendered surface and leaves the final render to cleanup.
   unfreezeNaturalEntryAnchor();
-  renderNaturalEntry();
-  if (anchor && token) {
-    naturalEntryTokenAnimations.get(token)?.cancel();
-    naturalEntryTokenAnimations.delete(token);
-    token.textContent = anchor.textContent;
+  if (pendingNaturalEntryRenderFrame) {
+    window.cancelAnimationFrame(pendingNaturalEntryRenderFrame);
+    pendingNaturalEntryRenderFrame = 0;
+    pendingNaturalEntryRender = false;
   }
+  cancelNaturalEntryMotion();
+  if (activeEntryEditor === "amount") {
+    normalizeAmountInputDisplayValue();
+    syncAmountValueTrack(elements.amountInput);
+  }
+  settleNaturalEntryCloseText(anchor, token, activeEntryEditor);
+  // The split summary is intentionally not re-anchored while its panel is
+  // open. Once the final text has landed, commit the fresh anchor geometry
+  // before the shell's close keyframes snapshot --natural-stage-collapsed-clip;
+  // otherwise the returning lens can still target the width from stage open.
+  const closeGeometry = stage && anchor
+    ? syncNaturalEntryStageAnchorGeometry(stage, anchor)
+    : null;
 
-  if (immediate || prefersReducedMotion() || !stage || !anchor || typeof stage.animate !== "function") {
+  if (immediate || prefersReducedMotion() || !stage || !anchor) {
+    commitPendingNaturalEntryFamilyTint();
     elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+    clearNaturalEntryCloseState(anchor);
     finishNaturalEntryStageClose({ restoreFocus });
     return;
   }
-
-  const anchorRect = anchor.getBoundingClientRect();
-  const sourceRect = getNaturalEntryFlightSourceRect(stage);
-  cancelNaturalEntryMotion();
-  const sourceScale = 1.006;
-  const { ghost, baseLeft, baseTop } = makeNaturalEntryFlightToken(sourceRect, anchorRect, anchor.textContent, isAmount, sourceScale);
-  // 飞行 token 被挂到 body，无法继承 expenseForm 上的家庭色变量；直接复用锚点的最终计算色，
-  // 避免深色模式收回时短暂回落为白色。
-  ghost.style.color = getComputedStyle(anchor).color;
-  const anchorTextRect = getNaturalEntryTextRect(anchor);
-  const ghostTextRect = getNaturalEntryTextRect(ghost);
-  const landingX = anchorRect.left - baseLeft;
-  // Align the actual glyph box at the handoff, not only the outer button box.
-  // The transparent bottom border makes those differ by about one CSS pixel.
-  const landingY = anchorTextRect && ghostTextRect
-    ? anchorTextRect.top - ghostTextRect.top
+  if (activeEntryEditor === "amount") {
+    stage.classList.add("is-closing");
+    stage.classList.remove("is-open", "is-opening", "is-text-handed-off", "is-relay-settled");
+    anchor.classList.add("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
+    setNaturalEntryAnchorTextVisible(anchor, false);
+    elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+    animateNaturalAmountTrackToAnchor(anchor, () => {
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      setNaturalEntryAnchorTextVisible(anchor, true);
+    });
+    naturalEntryStageCleanupTimer = window.setTimeout(() => {
+      naturalEntryStageCleanupTimer = 0;
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      finishNaturalEntryStageClose({ restoreFocus });
+    }, MOTION_DELAYS.naturalEntryStageCloseCleanup);
+    return;
+  }
+  const anchorRect = closeGeometry?.anchorRect || anchor.getBoundingClientRect();
+  if (activeEntryEditor === "note") {
+    const noteHasValue = Boolean(elements.noteInput?.value.trim());
+    stage.classList.add("is-closing");
+    stage.classList.remove("is-open", "is-opening", "is-text-handed-off", "is-relay-settled");
+    anchor.classList.add("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
+    stage.dataset.valueState = noteHasValue ? "value" : "optional";
+    setNaturalEntryAnchorTextVisible(anchor, false);
+    elements.naturalEntryFocusBackdrop.classList.remove("is-open");
+    const onNoteReached = () => {
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      setNaturalEntryAnchorTextVisible(anchor, true);
+    };
+    if (noteHasValue) {
+      elements.noteInput?.style.removeProperty("opacity");
+      animateNaturalEntryNoteTrackToAnchor(anchor, onNoteReached);
+    } else {
+      elements.noteInput?.style.setProperty("opacity", "0");
+      animateNaturalEntryNoteTokenToAnchor(anchor, onNoteReached);
+    }
+    naturalEntryStageHandoffTimer = window.setTimeout(() => {
+      naturalEntryStageHandoffTimer = 0;
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      commitPendingNaturalEntryFamilyTint();
+    }, MOTION_DELAYS.naturalEntryStageTextHandoff);
+    naturalEntryStageCleanupTimer = window.setTimeout(() => {
+      naturalEntryStageCleanupTimer = 0;
+      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+      finishNaturalEntryStageClose({ restoreFocus });
+    }, MOTION_DELAYS.naturalEntryStageCloseCleanup);
+    return;
+  }
+  const { rect: sourceRect, sourceColor, sourceScale } = getNaturalEntryFlightSourceMetrics(stage, activeEntryEditor);
+  const destinationColor = getComputedStyle(anchor).color || sourceColor;
+  const targetMetrics = getNaturalEntryTextMetrics(anchor);
+  const { ghost, baseLeft, baseTop } = makeNaturalEntryFlightToken(
+    sourceRect,
+    getNaturalEntryEditorDisplayText(activeEntryEditor),
+    activeEntryEditor === "amount",
+    sourceScale,
+  );
+  ghost.style.color = sourceColor;
+  const ghostMetrics = getNaturalEntryTextMetrics(ghost);
+  const landingX = targetMetrics && ghostMetrics
+    ? (targetMetrics.rect.left + (targetMetrics.rect.width / 2)) - (ghostMetrics.rect.left + (ghostMetrics.rect.width / 2))
+    : anchorRect.left - baseLeft;
+  const landingY = targetMetrics && ghostMetrics
+    ? targetMetrics.baseline - ghostMetrics.baseline
     : anchorRect.top - baseTop;
+  const closeDuration = MOTION_DELAYS.naturalEntryStageClose;
+  const textHandoff = MOTION_DELAYS.naturalEntryStageTextHandoff;
+  // 文字和 shell 从同一个 CSS 内部变量读取收回曲线，避免两条时间线
+  // 轻微漂移；文字延后到 500ms 落点，与最后 50ms 的卡片减速共同收尾。
+  const closeCurve = getComputedStyle(stage).getPropertyValue("--natural-stage-curve").trim()
+    || "cubic-bezier(0.12, 0.68, 0.18, 1)";
   const flight = ghost.animate(
     [
       {
         transform: `scale(${sourceScale})`,
         opacity: 1,
-        easing: "cubic-bezier(0.20, 0.72, 0.25, 1)",
+        color: sourceColor,
       },
       {
-        offset: MOTION_DELAYS.naturalEntryStageHandoffStart / MOTION_DELAYS.naturalEntryStageClose,
+        offset: textHandoff / closeDuration,
         transform: `translate(${landingX}px, ${landingY}px) scale(0.996)`,
         opacity: 1,
-        easing: "cubic-bezier(0.20, 0.72, 0.25, 1)",
+        color: destinationColor,
+        easing: closeCurve,
       },
       {
         transform: `translate(${landingX}px, ${landingY}px) scale(1)`,
-        opacity: 0,
-      },
-    ],
-    {
-      duration: MOTION_DELAYS.naturalEntryStageClose,
-      easing: "linear",
-      fill: "forwards",
-    }
-  );
-  const handoff = anchor.animate(
-    [
-      {
-        opacity: 0,
-      },
-      {
-        offset: MOTION_DELAYS.naturalEntryStageHandoffStart / MOTION_DELAYS.naturalEntryStageClose,
-        opacity: 0,
-        easing: "cubic-bezier(0.20, 0.72, 0.25, 1)",
-      },
-      {
         opacity: 1,
+        color: destinationColor,
       },
     ],
-    {
-      duration: MOTION_DELAYS.naturalEntryStageClose,
-      easing: "linear",
-      fill: "forwards",
-    }
+    { duration: closeDuration, easing: closeCurve, fill: "forwards" },
   );
-  // Keep source and flight opacity on the same document timeline. A timer plus
-  // CSS transition can begin one paint late on WebKit, leaving a visible dip
-  // when the flight layer is removed at the end of the close.
-  anchor.classList.add("is-stage-handoff");
-
-  // Treat the source underline as the card's hinge: the outer stage preserves
-  // the text landing box while the glass shell itself folds into the exact
-  // border geometry of the source token. Its endpoints travel three pixels
-  // beyond that line, then the same material yields back to the exact source
-  // underline after the flight has reached its anchor.
+  anchor.classList.add("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
+  setNaturalEntryAnchorTextVisible(anchor, false);
   stage.classList.add("is-closing");
-  stage.classList.remove("is-open");
+  stage.classList.remove("is-open", "is-opening", "is-text-handed-off", "is-relay-settled");
   elements.naturalEntryFocusBackdrop.classList.remove("is-open");
-  naturalEntryMotionAnims.push(flight, handoff);
+  naturalEntryMotionAnims.push(flight);
 
-  naturalEntryStageFadeTimer = window.setTimeout(() => {
-    naturalEntryStageFadeTimer = 0;
+  naturalEntryStageHandoffTimer = window.setTimeout(() => {
+    naturalEntryStageHandoffTimer = 0;
     if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
-    stage.classList.add("is-fading");
-
-    naturalEntryStageFadeTimer = window.setTimeout(() => {
-      naturalEntryStageFadeTimer = 0;
-      if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
-      finishNaturalEntryStageClose({ restoreFocus });
-    }, MOTION_DELAYS.naturalEntryStageCleanup - MOTION_DELAYS.naturalEntryStageDissolveStart);
-  }, MOTION_DELAYS.naturalEntryStageDissolveStart);
-
+    commitPendingNaturalEntryFamilyTint();
+  }, textHandoff);
+  naturalEntryStageCleanupTimer = window.setTimeout(() => {
+    naturalEntryStageCleanupTimer = 0;
+    if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
+    finishNaturalEntryStageClose({ restoreFocus });
+  }, MOTION_DELAYS.naturalEntryStageCloseCleanup);
   flight.finished.catch(() => {}).then(() => {
     if (runId !== naturalEntryStageRunId || naturalEntryStageOpen) return;
-    cancelNaturalEntryMotion();
+    if (ghost.isConnected) ghost.remove();
+    setNaturalEntryAnchorTextVisible(anchor, true);
   });
 }
 
@@ -2648,21 +3401,25 @@ function getNaturalEntryChoiceCloseDelay() {
 }
 
 function openNaturalEntryStage(editor) {
-  window.clearTimeout(naturalEntryStageCloseTimer);
-  naturalEntryStageCloseTimer = 0;
-  window.clearTimeout(naturalEntryStageFadeTimer);
-  naturalEntryStageFadeTimer = 0;
+  clearNaturalEntryStageRelayTimers();
+  clearNaturalEntryLensSettles();
   cancelNaturalEntryMotion();
   const anchor = getNaturalEntryToken(editor);
   const panel = getNaturalEntryEditor(editor);
   if (!anchor || !panel) return false;
+  const amountSourceMetrics = editor === "amount"
+    ? getNaturalEntryTextMetrics(anchor)
+    : null;
 
   ++naturalEntryStageRunId;
   if (!naturalEntryStageOpen && naturalEntryStageEditor) {
+    commitPendingNaturalEntryFamilyTint();
     restoreNaturalEntryEditorHome(naturalEntryStageEditor);
     unfreezeNaturalEntryAnchor();
-    naturalEntryStageAnchor?.classList.remove("is-stage-anchor", "is-stage-handoff");
-    elements.naturalEntryStage.classList.remove("is-closing", "is-fading");
+    clearNaturalEntryCloseState(naturalEntryStageAnchor);
+    naturalEntryStageAnchor?.classList.remove("is-stage-anchor", "is-stage-opening");
+    elements.naturalEntryStage.classList.remove("is-preparing", "is-opening", "is-open", "is-closing", "is-text-handed-off", "is-relay-settled");
+    elements.naturalEntryStage.style.removeProperty("--natural-entry-mark-color");
   }
   // Stage already open on this exact editor: keep it, no re-trigger.
   if (naturalEntryStageOpen && naturalEntryStageEditor === panel) {
@@ -2677,22 +3434,27 @@ function openNaturalEntryStage(editor) {
     const stage = elements.naturalEntryStage;
     const oldHeight = stage.getBoundingClientRect().height;
     const previousStageEditor = naturalEntryStageEditor;
+    const previousStageAnchor = naturalEntryStageAnchor;
     restoreNaturalEntryEditorHome(previousStageEditor);
     if (previousStageEditor === elements.splitScope) {
       splitScopeOpen = false;
       renderSplitScope();
     }
     unfreezeNaturalEntryAnchor();
-    naturalEntryStageAnchor?.classList.remove("is-stage-anchor");
+    clearNaturalEntryCloseState(naturalEntryStageAnchor);
+    naturalEntryStageAnchor?.classList.remove("is-stage-anchor", "is-stage-opening");
+    triggerNaturalEntryLensSettle(previousStageAnchor);
     naturalEntryStageEditor = panel;
     naturalEntryStageAnchor = anchor;
     rememberNaturalEntryEditorHome(panel);
     freezeNaturalEntryAnchor(anchor);
     anchor.classList.add("is-stage-anchor");
+    captureNaturalEntryStageFamilyTint(elements.naturalEntryStage);
     elements.naturalEntryStage.dataset.editor = editor;
     elements.naturalEntryStageContent.append(panel);
     if (editor === "amount") syncAmountValueTrack(elements.amountInput);
     syncNaturalEntryStageToken();
+    resetNaturalEntryStageScroll();
     elements.naturalEntryStageContent.classList.add("is-swapping");
     void elements.naturalEntryStageContent.offsetWidth;
     elements.naturalEntryStageContent.classList.remove("is-swapping");
@@ -2706,6 +3468,8 @@ function openNaturalEntryStage(editor) {
       if (event.propertyName === "height" && naturalEntryStageOpen) stage.style.height = "";
     }, { once: true });
     window.requestAnimationFrame(scheduleNaturalEntryStagePosition);
+    elements.naturalEntryStage.classList.remove("is-opening", "is-closing", "is-text-handed-off");
+    elements.naturalEntryStage.classList.add("is-open", "is-relay-settled");
     return true;
   }
 
@@ -2713,11 +3477,12 @@ function openNaturalEntryStage(editor) {
   naturalEntryStageOpen = true;
   naturalEntryStageEditor = panel;
   naturalEntryStageAnchor = anchor;
-  elements.naturalEntryStage.classList.add("is-preparing");
-  elements.naturalEntryStage.classList.remove("is-open", "is-closing", "is-fading");
-  anchor.classList.remove("is-stage-handoff");
+  elements.naturalEntryStage.classList.add("is-preparing", "is-opening");
+  elements.naturalEntryStage.classList.remove("is-open", "is-closing", "is-text-handed-off", "is-relay-settled");
+  clearNaturalEntryCloseState(anchor);
   freezeNaturalEntryAnchor(anchor);
   anchor.classList.add("is-stage-anchor");
+  anchor.classList.add("is-stage-opening");
   elements.naturalEntryStage.dataset.editor = editor;
   elements.naturalEntryStageContent.append(panel);
   elements.naturalEntryStage.hidden = false;
@@ -2726,8 +3491,14 @@ function openNaturalEntryStage(editor) {
      这里必须在可见布局中重新测量，避免沿用隐藏态的 16px 宽度。 */
   if (editor === "amount") syncAmountValueTrack(elements.amountInput);
   document.body.classList.add("natural-entry-focus-open");
+  captureNaturalEntryStageFamilyTint(elements.naturalEntryStage);
   syncNaturalEntryStageToken();
+  resetNaturalEntryStageScroll();
   positionNaturalEntryStage();
+  /* positionNaturalEntryStage() commits the visible stage width. Re-measure
+     once after that width is final so a reused stage cannot leave the amount
+     track based on its previous editor's box. */
+  if (editor === "amount") syncAmountValueTrack(elements.amountInput);
 
   elements.naturalEntryFocusBackdrop.classList.remove("is-open");
   // The stage is reused between editors. Commit its new anchor geometry as a
@@ -2736,17 +3507,77 @@ function openNaturalEntryStage(editor) {
   void elements.naturalEntryStage.offsetWidth;
   elements.naturalEntryStage.classList.remove("is-preparing");
   void elements.naturalEntryStage.offsetWidth;
+  if (prefersReducedMotion()) {
+    if (editor === "amount") {
+      naturalEntryAmountHandoffRunning = false;
+      positionNaturalEntryStage();
+      syncAmountValueTrack(elements.amountInput);
+      elements.amountInput.closest(".amount-value-track")?.style.removeProperty("transform");
+    }
+    elements.naturalEntryStage.classList.add("is-open", "is-text-handed-off", "is-relay-settled");
+    elements.naturalEntryStage.classList.remove("is-opening");
+    anchor.classList.remove("is-stage-opening");
+    elements.naturalEntryFocusBackdrop.classList.add("is-open");
+    return true;
+  }
   window.requestAnimationFrame(() => {
     if (!naturalEntryStageOpen || naturalEntryStageEditor !== panel) return;
+    /* 金额的最终舞台宽度和输入轨道要在放大动画开始前提交；否则首帧
+       会沿用准备态的临时 left/top，随后再被 positionNaturalEntryStage()
+       拉回中心，形成“放大中才到最终位置”的可见错位。 */
+    if (editor === "amount") {
+      syncAmountValueTrack(elements.amountInput);
+      positionNaturalEntryStage();
+    }
+    if (editor === "amount") naturalEntryAmountHandoffRunning = true;
     elements.naturalEntryStage.classList.add("is-open");
+    if (editor === "amount") animateNaturalAmountTrackFrom(amountSourceMetrics);
     elements.naturalEntryFocusBackdrop.classList.add("is-open");
     scheduleNaturalEntryStagePosition();
+    const openTextHandoff = editor === "note"
+      ? (elements.noteInput.value.trim()
+        ? MOTION_DELAYS.naturalEntryStageNoteValueHandoff
+        : MOTION_DELAYS.naturalEntryStageNoteOptionalHandoff)
+      : MOTION_DELAYS.naturalEntryStageOpenTextHandoff;
+    naturalEntryStageOpenHandoffTimer = window.setTimeout(() => {
+      naturalEntryStageOpenHandoffTimer = 0;
+      if (!naturalEntryStageOpen || naturalEntryStageEditor !== panel) return;
+      anchor.classList.remove("is-stage-opening");
+      elements.naturalEntryStage.classList.add("is-text-handed-off");
+    }, openTextHandoff);
+    naturalEntryStageOpenFinishTimer = window.setTimeout(() => {
+      naturalEntryStageOpenFinishTimer = 0;
+      if (!naturalEntryStageOpen || naturalEntryStageEditor !== panel) return;
+      if (editor === "amount") {
+        naturalEntryAmountHandoffRunning = false;
+        positionNaturalEntryStage();
+        syncAmountValueTrack(elements.amountInput);
+        elements.amountInput.closest(".amount-value-track")?.style.removeProperty("transform");
+      }
+      elements.naturalEntryStage.classList.remove("is-opening", "is-text-handed-off");
+      elements.naturalEntryStage.classList.add("is-relay-settled");
+    }, MOTION_DELAYS.naturalEntryStageOpen);
   });
   return true;
 }
 
 function getEntryMode() {
   return localStorage.getItem(ENTRY_MODE_STORAGE_KEY) === "standard" ? "standard" : "natural";
+}
+
+function areNaturalEntryMarksHidden() {
+  return localStorage.getItem(NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY) !== "false";
+}
+
+function applyNaturalEntryMarksPreference() {
+  const hidden = areNaturalEntryMarksHidden();
+  document.documentElement.dataset.naturalEntryMarksHidden = String(hidden);
+  if (elements.settingsNaturalEntryMarksHiddenInput) {
+    elements.settingsNaturalEntryMarksHiddenInput.checked = !hidden;
+  }
+  if (elements.naturalEntryHint) {
+    elements.naturalEntryHint.textContent = hidden ? "点按文字修改" : "点按标记文字修改";
+  }
 }
 
 function formatNaturalEntryDate(date) {
@@ -2762,32 +3593,160 @@ function formatNaturalFamilyCount(count) {
 }
 
 function formatNaturalEntrySplit() {
-  if (activeSplitMode === "custom") return "按自定金额承担";
-  if (activeSplitMode === "families") {
+  if (activeSplitMode === "custom") return "自定金额分摊";
+  const ruleLabel = getSplitRuleFromMode(activeSplitMode) === "equal" ? "均分" : "按人数分摊";
+  if (getSplitScopeFromMode(activeSplitMode) === "selected") {
     const names = activeSplitFamilyIds.map(getFamilyName).filter(Boolean);
-    if (!names.length) return "指定家庭承担";
-    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家承担`;
+    if (!names.length) return `指定家庭 · ${ruleLabel}`;
+    if (names.length === 1) return `${names[0]}承担全部`;
+    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家${ruleLabel}`;
     if (names.length === 2) {
-      const compactNames = names.map((name) => name.replace(/家$/, ""));
-      return `${compactNames.join("&")}家承担`;
+      return `${names.join("、")}${ruleLabel}`;
     }
-    return `${names.join("、")}承担`;
+    return `${names.join("、")}${ruleLabel}`;
   }
   const familyCount = state.families.length;
-  return familyCount >= 3 ? `${formatNaturalFamilyCount(familyCount)}家承担` : "全部家庭承担";
+  return familyCount >= 3
+    ? `${formatNaturalFamilyCount(familyCount)}家${ruleLabel}`
+    : `全部家庭${ruleLabel}`;
 }
 
 function formatNaturalEntryAmount(cents) {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(cents / 100);
+  const normalizedCents = Math.round(Number(cents) || 0);
+  const hasCents = Math.abs(normalizedCents) % 100 !== 0;
+  const digits = new Intl.NumberFormat("zh-CN", {
+    useGrouping: false,
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+  }).format(normalizedCents / 100);
+  return `¥ ${digits}`;
+}
+
+function setNaturalAmountTokenDisplay(token, displayText) {
+  if (!token) return;
+  const label = token.querySelector(".natural-entry-token-label") || token;
+  const text = String(displayText || "¥ 0.00");
+  const digits = text.replace(/^¥\s*/, "") || "0.00";
+  if (!label.classList.contains("natural-entry-token-label")) {
+    label.textContent = text;
+    return;
+  }
+  let currency = label.querySelector(".natural-entry-amount-currency");
+  let value = label.querySelector(".natural-entry-amount-digits");
+  if (!currency || !value) {
+    currency = document.createElement("span");
+    currency.className = "natural-entry-amount-currency";
+    value = document.createElement("span");
+    value.className = "natural-entry-amount-digits";
+    label.replaceChildren(currency, value);
+  }
+  currency.textContent = "¥";
+  value.textContent = digits;
+  token.setAttribute("aria-label", text);
+}
+
+function getNaturalEntryTintTargets() {
+  return [elements.expenseForm, elements.naturalEntryFlow].filter(Boolean);
+}
+
+function freezeNaturalEntryFamilyTint() {
+  getNaturalEntryTintTargets().forEach((element) => {
+    const currentColor = getComputedStyle(element).getPropertyValue("--natural-entry-mark-color").trim();
+    if (currentColor) element.style.setProperty("--natural-entry-mark-color", currentColor);
+  });
+  if (naturalEntryStageOpen) captureNaturalEntryStageFamilyTint(elements.naturalEntryStage);
+}
+
+function applyNaturalEntryFamilyTint(payerId = state.selectedPayerId, { animate = false } = {}) {
+  const normalizedPayerId = normalizePayerId(payerId);
+  const targetColor = normalizedPayerId ? getFamilyVisual(normalizedPayerId).color : "";
+  const targets = getNaturalEntryTintTargets();
+
+  if (!naturalEntryFamilyTintInitialized || !animate || prefersReducedMotion()) {
+    targets.forEach((element) => {
+      element.style.setProperty("--natural-entry-family-tint-duration", "0ms");
+      if (targetColor) element.style.setProperty("--natural-entry-mark-color", targetColor);
+      else element.style.removeProperty("--natural-entry-mark-color");
+    });
+    window.requestAnimationFrame(() => {
+      targets.forEach((element) => element.style.removeProperty("--natural-entry-family-tint-duration"));
+    });
+  } else {
+    targets.forEach((element) => {
+      element.style.setProperty("--natural-entry-family-tint-duration", `${MOTION_DELAYS.naturalEntryFamilyTint}ms`);
+      if (targetColor) element.style.setProperty("--natural-entry-mark-color", targetColor);
+      else element.style.removeProperty("--natural-entry-mark-color");
+    });
+  }
+
+  naturalEntryFamilyTintInitialized = true;
+  naturalEntryDisplayedPayerId = normalizedPayerId;
+  pendingNaturalEntryFamilyTintId = null;
+}
+
+function syncNaturalEntryFamilyTint() {
+  const selectedPayerId = normalizePayerId(state.selectedPayerId);
+  if (!naturalEntryFamilyTintInitialized) {
+    applyNaturalEntryFamilyTint(selectedPayerId);
+    return;
+  }
+  if (!naturalEntryStageOpen && pendingNaturalEntryFamilyTintId === null && selectedPayerId !== naturalEntryDisplayedPayerId) {
+    applyNaturalEntryFamilyTint(selectedPayerId);
+  }
+}
+
+function clearNaturalEntryLensSettles() {
+  naturalEntryLensSettleTimers.forEach((timer, token) => {
+    window.clearTimeout(timer);
+    token.classList.remove("is-lens-settling");
+  });
+  naturalEntryLensSettleTimers.clear();
+}
+
+function triggerNaturalEntryLensSettle(token, { delay = 0 } = {}) {
+  if (!token) return;
+  const previousTimer = naturalEntryLensSettleTimers.get(token);
+  if (previousTimer) window.clearTimeout(previousTimer);
+  token.classList.remove("is-lens-settling");
+  if (prefersReducedMotion()) return;
+
+  const timer = window.setTimeout(() => {
+    token.classList.remove("is-lens-settling");
+    void token.offsetWidth;
+    token.classList.add("is-lens-settling");
+    const cleanupTimer = window.setTimeout(() => {
+      naturalEntryLensSettleTimers.delete(token);
+      token.classList.remove("is-lens-settling");
+    }, MOTION_DELAYS.naturalEntryLensSettle + 40);
+    naturalEntryLensSettleTimers.set(token, cleanupTimer);
+  }, delay);
+  naturalEntryLensSettleTimers.set(token, timer);
+}
+
+function triggerNaturalEntryLensEntry({ force = false } = {}) {
+  const flow = elements.naturalEntryFlow;
+  if (!flow || prefersReducedMotion() || (naturalEntryLensHasRevealed && !force)) return;
+
+  window.clearTimeout(naturalEntryLensEntryTimer);
+  clearNaturalEntryLensSettles();
+  const tokens = [...flow.querySelectorAll(".natural-entry-token")];
+  tokens.forEach((token) => {
+    token.style.setProperty("--natural-entry-lens-delay", "0ms");
+  });
+  flow.classList.remove("is-lens-entering");
+  void flow.offsetWidth;
+  flow.classList.add("is-lens-entering");
+  naturalEntryLensHasRevealed = true;
+  naturalEntryLensEntryTimer = window.setTimeout(() => {
+    naturalEntryLensEntryTimer = 0;
+    flow.classList.remove("is-lens-entering");
+  }, MOTION_DELAYS.naturalEntryLensEntry + Math.max(0, (tokens.length - 1) * MOTION_DELAYS.naturalEntryLensStagger) + 80);
 }
 
 function renderNaturalEntry() {
   if (!elements.naturalEntryFlow) return;
+
+  syncNaturalEntryFamilyTint();
 
   const amount = parseAmountInput(elements.amountInput.value);
   const amountCents = Number.isFinite(amount) && amount > 0 ? amountToCents(amount) : 0;
@@ -2795,12 +3754,24 @@ function renderNaturalEntry() {
   const date = normalizeDate(elements.dateInput.value, state.activeDate);
 
   elements.expenseForm.dataset.activeEntryEditor = naturalEntryStageOpen ? activeEntryEditor : "";
+  elements.expenseForm.dataset.familySelected = String(Boolean(state.selectedPayerId));
+  elements.naturalEntryFlow.dataset.familySelected = String(Boolean(state.selectedPayerId));
+  elements.naturalDateToken.dataset.valueState = date ? "value" : "placeholder";
+  elements.naturalPayerToken.dataset.valueState = state.selectedPayerId ? "value" : "placeholder";
+  elements.naturalAmountToken.dataset.valueState = amountCents ? "value" : "placeholder";
+  elements.naturalCategoryToken.dataset.valueState = state.activeCategory ? "value" : "placeholder";
+  elements.naturalNoteToken.dataset.valueState = note ? "value" : "optional";
+  elements.naturalSplitToken.dataset.valueState = "value";
   animateNaturalEntryToken(elements.naturalDateToken, formatNaturalEntryDate(date), { duration: 240 });
   animateNaturalEntryToken(elements.naturalPayerToken, state.selectedPayerId ? getFamilyName(state.selectedPayerId) : "付款家庭", { duration: 280 });
-  elements.naturalAmountToken.textContent = amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00";
+  setNaturalAmountTokenDisplay(
+    elements.naturalAmountToken,
+    amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00",
+  );
   animateNaturalEntryToken(elements.naturalCategoryToken, state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别", { duration: 260 });
   animateNaturalEntryToken(elements.naturalNoteToken, note || "备注可选", { duration: 280 });
-  elements.naturalNoteToken.title = note;
+  elements.naturalNoteToken.title = note || "备注可选";
+  elements.naturalNoteToken.setAttribute("aria-label", note || "备注可选");
   animateNaturalEntryToken(elements.naturalSplitToken, formatNaturalEntrySplit(), { duration: 300 });
 
   elements.naturalEntryFlow.querySelectorAll("[data-entry-target]").forEach((button) => {
@@ -2826,6 +3797,21 @@ function renderNaturalEntry() {
       && !elements.naturalEntryStage.classList.contains("is-closing"),
   });
   scheduleNaturalEntryStagePosition();
+}
+
+/* 金额逐字输入时，预览与提交栏统一推迟到下一帧、且同帧只排一次，
+   避免十余次 getBoundingClientRect 测量阻塞输入框自身的绘制（数字卡顿）。 */
+let pendingNaturalEntryRender = false;
+let pendingNaturalEntryRenderFrame = 0;
+function scheduleNaturalEntryRender() {
+  if (pendingNaturalEntryRender) return;
+  pendingNaturalEntryRender = true;
+  pendingNaturalEntryRenderFrame = requestAnimationFrame(() => {
+    pendingNaturalEntryRender = false;
+    pendingNaturalEntryRenderFrame = 0;
+    renderNaturalEntry();
+    renderMobileSubmitBar();
+  });
 }
 
 function getNaturalEntryFocusTarget(editor) {
@@ -3036,6 +4022,11 @@ function updateCategorySelectionUI(nextCategory) {
 function renderRecentPeek() {
   const host = document.getElementById("recentPeek");
   if (!host) return;
+  if (editingExpenseId) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
   const expenses = [...state.expenses]
     .filter((expense) => !expense.isDeleted)
     .sort((a, b) => {
@@ -3057,11 +4048,13 @@ function renderRecentPeek() {
     <ul class="recent-peek-list">
       ${expenses
         .map((expense) => {
-          const label = expense.note ? escapeHtml(expense.note) : formatCategoryLabel(expense.category);
+          const noteMarkup = expense.note
+            ? `<span class="recent-peek-note" title="${escapeHtml(expense.note)}" aria-label="${escapeHtml(expense.note)}">${escapeHtml(expense.note)}</span>`
+            : "";
           return `
         <li class="recent-peek-item">
           <span class="category-pill">${categoryLabelHtml(expense.category)}</span>
-          <span class="recent-peek-note">${label}</span>
+          ${noteMarkup}
           <span class="recent-peek-amount">${formatMoney(Math.round(Number(expense.amount) * 100))}</span>
         </li>`;
         })
@@ -3430,13 +4423,19 @@ function renderSplitScope() {
   elements.splitScopeSummary.textContent = formatActiveSplitSummary();
   elements.splitScopePanel.classList.toggle("is-switching", splitScopeSwitching);
   elements.splitScopePanel.dataset.activeSplitMode = activeSplitMode;
+  elements.splitScopePanel.dataset.activeSplitRule = getSplitRuleFromMode(activeSplitMode);
+  elements.splitScopePanel.dataset.activeSplitScope = getSplitScopeFromMode(activeSplitMode);
   updateSplitScopePanelState();
 
   syncSplitModeButtons();
-  elements.splitDetailArea.hidden = activeSplitMode === "all";
-  elements.splitFamilyChoices.hidden = activeSplitMode !== "families";
+  const isCustom = activeSplitMode === "custom";
+  elements.splitDetailArea.hidden = false;
+  elements.splitParticipantToggle.hidden = isCustom;
+  elements.splitParticipantToggle.setAttribute("aria-expanded", String(splitFamilyChoicesOpen));
+  elements.splitFamilyChoices.hidden = isCustom || !splitFamilyChoicesOpen;
+  syncSplitParticipantSummary();
   syncSplitFamilyChoices();
-  elements.splitCustomAmounts.hidden = activeSplitMode !== "custom";
+  elements.splitCustomAmounts.hidden = !isCustom;
   syncSplitCustomAmounts();
   updateAmountFieldForSplitMode();
 }
@@ -3445,21 +4444,63 @@ function renderSplitScope() {
 // 避免高度动画期间的布局抖动，也保住键盘用户的焦点。
 function syncSplitModeButtons() {
   const container = elements.splitModeButtons;
-  let buttons = [...container.querySelectorAll("[data-split-mode]")];
-  if (buttons.length !== splitModeOptions.length || buttons.some((button, index) => button.dataset.splitMode !== splitModeOptions[index].id)) {
-    container.innerHTML = splitModeOptions
-      .map(
-        (option) => `
-        <button class="split-mode-button" type="button" data-split-mode="${escapeHtml(option.id)}" role="radio" aria-checked="false">
-          <span>${escapeHtml(option.label)}</span>
-          <small>${escapeHtml(option.description)}</small>
-        </button>
-      `,
-      )
-      .join("");
-    buttons = [...container.querySelectorAll("[data-split-mode]")];
+  if (!container) return;
+  const wasReady = container.dataset.splitModeReady === "true";
+  const selectedScope = getSplitScopeFromMode(activeSplitMode);
+  const singleFamily = selectedScope === "selected" && activeSplitFamilyIds.length === 1;
+  const previousSingleFamily = container.dataset.singleFamily === "true";
+  if (!container.dataset.splitModeReady) {
+    container.innerHTML = `
+      <div class="split-mode-single-summary" role="status" hidden>
+        <span>该家庭承担全部</span>
+        <small>只有一家参与，金额会全部记入该家庭</small>
+      </div>
+      <button class="split-mode-button" type="button" data-split-rule="equal" role="radio" aria-checked="false">
+        <span>各家均分</span>
+        <small>每个家庭承担相同金额</small>
+      </button>
+      <button class="split-mode-button" type="button" data-split-rule="per-person" role="radio" aria-checked="false">
+        <span>按家庭人数</span>
+        <small>人数多的家庭承担更多</small>
+      </button>
+      <button class="split-mode-button" type="button" data-split-mode="custom" role="radio" aria-checked="false">
+        <span>自定金额</span>
+        <small>分别填写每家金额</small>
+      </button>
+    `;
+    container.dataset.splitModeReady = "true";
   }
-  buttons.forEach((button) => {
+
+  const equalButton = container.querySelector('[data-split-rule="equal"]');
+  const perPersonButton = container.querySelector('[data-split-rule="per-person"]');
+  const customButton = container.querySelector('[data-split-mode="custom"]');
+  const singleSummary = container.querySelector(".split-mode-single-summary");
+  const equalMode = selectedScope === "selected" ? "families_equal" : "equal";
+  const perPersonMode = selectedScope === "selected" ? "families" : "all";
+
+  equalButton.dataset.splitMode = equalMode;
+  perPersonButton.dataset.splitMode = perPersonMode;
+  container.classList.toggle("is-single-family", singleFamily);
+  container.dataset.singleFamily = String(singleFamily);
+  container.setAttribute("role", "radiogroup");
+  container.setAttribute("aria-label", singleFamily ? "选择特殊分摊方式" : "选择分摊方式");
+  singleSummary.hidden = !singleFamily;
+  equalButton.hidden = singleFamily;
+  perPersonButton.hidden = singleFamily;
+  customButton.hidden = false;
+
+  if (wasReady && singleFamily !== previousSingleFamily && !prefersReducedMotion()) {
+    container.classList.remove("is-structure-switching");
+    window.clearTimeout(splitModeStructureTimer);
+    window.requestAnimationFrame(() => {
+      container.classList.add("is-structure-switching");
+      splitModeStructureTimer = window.setTimeout(() => {
+        container.classList.remove("is-structure-switching");
+      }, MOTION_DELAYS.splitSwitch);
+    });
+  }
+
+  [equalButton, perPersonButton, customButton].forEach((button) => {
     const id = button.dataset.splitMode;
     const selected = activeSplitMode === id;
     button.classList.toggle("is-selected", selected);
@@ -3467,6 +4508,24 @@ function syncSplitModeButtons() {
     button.classList.toggle("is-deactivating", !selected && id === deactivatingSplitMode);
     button.setAttribute("aria-checked", String(selected));
   });
+}
+
+function syncSplitParticipantSummary() {
+  if (!elements.splitParticipantSummary) return;
+  const selectedScope = getSplitScopeFromMode(activeSplitMode);
+  if (selectedScope === "all") {
+    elements.splitParticipantSummary.textContent = "全部家庭";
+    return;
+  }
+  if (!activeSplitFamilyIds.length) {
+    elements.splitParticipantSummary.textContent = "请选择家庭";
+    return;
+  }
+  if (activeSplitFamilyIds.length === state.families.length) {
+    elements.splitParticipantSummary.textContent = "全部家庭";
+    return;
+  }
+  elements.splitParticipantSummary.textContent = `${activeSplitFamilyIds.length}家`;
 }
 
 function syncSplitFamilyChoices() {
@@ -3553,23 +4612,26 @@ function updateSplitScopePanelState() {
 
 function ensureActiveSplitState() {
   activeSplitMode = normalizeSplitMode(activeSplitMode);
-  const fallbackIds = activeSplitMode === "families" ? [] : state.families.map((family) => family.id);
+  const fallbackIds = getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id);
   activeSplitFamilyIds = normalizeSplitFamilyIds(activeSplitFamilyIds, fallbackIds);
+  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = normalizeSplitAmounts(activeSplitAmounts);
 }
 
 function formatActiveSplitSummary() {
   if (activeSplitMode === "custom") {
     const totalCents = getActiveCustomSplitTotalCents();
-    return totalCents ? `规则：自定承担 · ${formatMoney(totalCents)}` : "规则：自定承担";
+    return totalCents ? `自定金额 · ${formatMoney(totalCents)}` : "自定金额";
   }
 
-  if (activeSplitMode === "families") {
-    if (!activeSplitFamilyIds.length) return "规则：指定家庭分摊";
-    return `规则：${activeSplitFamilyIds.length}家按人数分摊`;
+  const ruleLabel = getSplitRuleFromMode(activeSplitMode) === "equal" ? "各家均分" : "按家庭人数";
+  if (getSplitScopeFromMode(activeSplitMode) === "selected") {
+    if (!activeSplitFamilyIds.length) return `指定家庭 · ${ruleLabel}`;
+    if (activeSplitFamilyIds.length === 1) return "1家承担全部";
+    return `${activeSplitFamilyIds.length}家${ruleLabel}`;
   }
 
-  return "规则：全部家庭按人数分摊";
+  return `${state.families.length}家${ruleLabel}`;
 }
 
 function formatExpenseSplitSummary(expense) {
@@ -3582,12 +4644,14 @@ function formatExpenseSplitSummary(expense) {
     return parts.length ? parts.join(" · ") : "分别填写金额";
   }
 
-  if (splitMode === "families") {
+  const ruleLabel = getSplitRuleFromMode(splitMode) === "equal" ? "各家均分" : "按家庭人数";
+  if (getSplitScopeFromMode(splitMode) === "selected") {
     const ids = normalizeSplitFamilyIds(expense.splitFamilyIds, state.families.map((family) => family.id));
-    return `${ids.map(getFamilyName).join("、")} · 按人数`;
+    if (ids.length === 1) return `${ids.map(getFamilyName).join("、")} · 承担全部`;
+    return `${ids.map(getFamilyName).join("、")} · ${ruleLabel}`;
   }
 
-  return "全部家庭 · 按人数";
+  return `全部家庭 · ${ruleLabel}`;
 }
 
 function formatCustomSplitTotalLine() {
@@ -3618,6 +4682,7 @@ function renderSettings() {
   elements.currentLedgerNameInput.value = state.name;
   renderOperatorFamilyChoices(elements.settingsOperatorFamilyList);
   elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) === "true";
+  applyNaturalEntryMarksPreference();
   renderEntryModeSettings();
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
@@ -3707,7 +4772,30 @@ function renderEntryModeSettings() {
 
 function getActiveThemeId() {
   const current = document.documentElement.dataset.theme;
-  return THEME_PRESETS.some((preset) => preset.id === current) ? current : THEME_PRESETS[0].id;
+  const normalized = normalizeThemeId(current);
+  if (current !== normalized) document.documentElement.dataset.theme = normalized;
+  return normalized;
+}
+
+const LEGACY_THEME_ID_MAP = { lotus: "harbor", malt: "clay" };
+
+function normalizeThemeId(value) {
+  const mapped = LEGACY_THEME_ID_MAP[String(value || "")] || String(value || "");
+  return THEME_PRESETS.some((preset) => preset.id === mapped) ? mapped : THEME_PRESETS[0].id;
+}
+
+function migrateThemePreference() {
+  const current = document.documentElement.dataset.theme;
+  const normalized = normalizeThemeId(current);
+  document.documentElement.dataset.theme = normalized;
+  if (current !== normalized) {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, normalized);
+    } catch (error) {
+      /* 私密模式等场景存不了就只在本次会话生效 */
+    }
+  }
+  return normalized;
 }
 
 /* 让 Safari 状态栏/工具栏 tint 跟随应用内主题预设：
@@ -3728,8 +4816,16 @@ function renderThemePresetList() {
       const isSelected = preset.id === activeThemeId;
       return `
         <button class="theme-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-theme-id="${escapeHtml(preset.id)}" aria-checked="${isSelected}">
-          <span class="family-color-choice${isSelected ? " is-selected" : ""}" style="${familyVisualSwatchStyle({ color: preset.color })}" aria-hidden="true"></span>
-          <small>${escapeHtml(preset.name)}</small>
+          <span class="theme-choice-preview" aria-hidden="true">
+            <span class="theme-preview-glow"></span>
+            <span class="theme-preview-surface"></span>
+            <span class="theme-preview-accent"></span>
+          </span>
+          <span class="theme-choice-copy">
+            <strong>${escapeHtml(preset.name)}</strong>
+            <small>${escapeHtml(preset.description)}</small>
+          </span>
+          <span class="theme-choice-check" aria-hidden="true">✓</span>
         </button>
       `;
     })
@@ -3738,53 +4834,35 @@ function renderThemePresetList() {
 
 function renderPersonalizationSettings() {
   renderThemePresetList();
-  if (!elements.settingsPaletteList || !elements.settingsFamilyColorList) return;
+  if (!elements.settingsFamilyColorList) return;
   const detailsOpen = Boolean(elements.settingsFamilyColorList.querySelector(".family-color-details")?.open);
   syncFamilyVisualRows();
-  const activePaletteId = getMatchedPaletteId();
   const presetColors = getFamilyColorChoices();
-
-  elements.settingsPaletteList.innerHTML = familyPalettePresets
-    .map((palette) => {
-      const isActive = palette.id === activePaletteId;
-      const primarySwatches = palette.colors.slice(0, state.families.length);
-      const extraSwatches = palette.colors.slice(state.families.length);
+  const currentFamily = state.families.find((family) => family.id === activeFamilyColorFamilyId) || state.families[0];
+  if (!currentFamily) return;
+  activeFamilyColorFamilyId = currentFamily.id;
+  const currentVisual = getFamilyVisual(currentFamily.id);
+  const isCurrentCurated = presetColors.some((visual) => visual.color === currentVisual.color);
+  const customCount = state.families.filter((family) => !presetColors.some((visual) => visual.color === getFamilyVisual(family.id).color)).length;
+  const customStatus = customCount ? `${customCount} 个自定义` : "默认组合";
+  const familyTargets = state.families
+    .map((family) => {
+      const isSelected = family.id === currentFamily.id;
       return `
-        <button class="palette-card${isActive ? " is-active" : ""}" type="button" data-palette-id="${escapeHtml(palette.id)}" style="${paletteCardStyle(palette)}" aria-pressed="${isActive}">
-          <span class="palette-card-copy">
-            <strong>${escapeHtml(palette.name)}</strong>
-            <small>${escapeHtml(palette.description)}</small>
-          </span>
-          <span class="palette-swatch-row" aria-hidden="true">
-            ${primarySwatches.map((visual) => `<span class="palette-swatch is-primary" style="${familyVisualSwatchStyle(visual)}"></span>`).join("")}
-            ${extraSwatches.map((visual) => `<span class="palette-swatch is-extra" style="${familyVisualSwatchStyle(visual)}"></span>`).join("")}
-          </span>
+        <button class="family-color-target${isSelected ? " is-selected" : ""}" type="button" role="radio" data-family-color-target="${escapeHtml(family.id)}" aria-checked="${isSelected}" style="${familyStyle(family.id)}">
+          <span class="family-color-current" style="${familyVisualSwatchStyle(getFamilyVisual(family.id))}" aria-hidden="true"></span>
+          <span>${escapeHtml(family.name)}</span>
         </button>
       `;
     })
     .join("");
-
-  const customStatus = activePaletteId ? "当前跟随套装" : "当前为自定义组合";
-  const familyRows = state.families
-    .map((family) => {
-      const activeVisual = getFamilyVisual(family.id);
+  const colorChoices = presetColors
+    .map((visual, index) => {
+      const isSelected = currentVisual.color === visual.color;
       return `
-        <div class="family-color-row" style="${familyStyle(family.id)}">
-          <div class="family-color-label">
-            <span class="family-color-current" style="${familyVisualSwatchStyle(activeVisual)}" aria-hidden="true"></span>
-            <span>${escapeHtml(family.name)}</span>
-          </div>
-          <div class="family-color-options" aria-label="${escapeHtml(family.name)}主题色">
-            ${presetColors
-              .map((visual, index) => {
-                const isSelected = activeVisual.color === visual.color;
-                return `
-                  <button class="family-color-choice${isSelected ? " is-selected" : ""}" type="button" data-family-color="${escapeHtml(family.id)}" data-color-index="${index}" style="${familyVisualSwatchStyle(visual)}" aria-label="将${escapeHtml(family.name)}设为${visual.color}" aria-pressed="${isSelected}"></button>
-                `;
-              })
-              .join("")}
-          </div>
-        </div>
+        <button class="family-color-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-family-color="${escapeHtml(currentFamily.id)}" data-color-index="${index}" style="${familyVisualSwatchStyle(visual)}" aria-label="${escapeHtml(currentFamily.name)}：${escapeHtml(visual.label)}" aria-checked="${isSelected}">
+          <span class="family-color-choice-mark" aria-hidden="true">✓</span>
+        </button>
       `;
     })
     .join("");
@@ -3792,12 +4870,24 @@ function renderPersonalizationSettings() {
   elements.settingsFamilyColorList.innerHTML = `
     <details class="family-color-details"${detailsOpen ? " open" : ""}>
       <summary>
-        <span>逐家微调</span>
+        <span>高级：家庭身份色</span>
         <small>${customStatus}</small>
       </summary>
       <div class="family-color-detail-body">
         <div class="family-color-detail-inner">
-          ${familyRows}
+          <div class="family-color-targets" role="radiogroup" aria-label="选择要调整的家庭">
+            ${familyTargets}
+          </div>
+          <div class="family-color-editor" style="${familyStyle(currentFamily.id)}">
+            <div class="family-color-editor-heading">
+              <strong>调整${escapeHtml(currentFamily.name)}</strong>
+              <small>${isCurrentCurated ? "选择一套身份色" : "当前自定义"}</small>
+            </div>
+            <div class="family-color-options" role="radiogroup" aria-label="${escapeHtml(currentFamily.name)}身份色">
+              ${colorChoices}
+            </div>
+            ${isCurrentCurated ? "" : `<span class="family-color-custom-note">保留当前自定义色</span>`}
+          </div>
         </div>
       </div>
     </details>
@@ -3897,29 +4987,13 @@ function bindAnimatedDetails(root = document) {
     });
 }
 
-function getMatchedPaletteId() {
-  return familyPalettePresets.find((palette) => paletteMatchesCurrentFamilies(palette))?.id || "";
-}
-
-function paletteMatchesCurrentFamilies(palette) {
-  return state.families.every((family, index) => {
-    const expected = normalizeFamilyVisual(palette.colors[index % palette.colors.length]);
-    return getFamilyVisual(family.id).color === expected.color;
-  });
-}
-
 function getFamilyColorChoices() {
   const seen = new Set();
-  return familyColorChoices.map(normalizeFamilyVisual).filter((visual) => {
+  return familyColorChoices.map((choice) => ({ ...normalizeFamilyVisual(choice), label: choice.label })).filter((visual) => {
     if (seen.has(visual.color)) return false;
     seen.add(visual.color);
     return true;
   });
-}
-
-function paletteCardStyle(palette) {
-  const accent = normalizeFamilyVisual(palette.colors[0]);
-  return `--palette-accent: ${accent.color}; --palette-accent-text: ${accent.text};`;
 }
 
 function familyVisualSwatchStyle(visual) {
@@ -4031,7 +5105,7 @@ function renderTotalAmount(nextText, shouldAnimate, options = {}) {
      text-slide-out/in），此处不再叠加 is-soft-refresh 的模糊位移，避免数字
      “先交叉淡变、再模糊滑入”的双段感。仅在不支持 View Transitions
      的浏览器走 is-soft-refresh 这层 CSS 兜底。 */
-  if (document.startViewTransition && shouldAnimate) {
+  if (document.startViewTransition && shouldAnimate && !prefersReducedMotion()) {
     elements.totalAmount.textContent = nextText;
     return;
   }
@@ -4235,7 +5309,7 @@ function renderSoftText(element, nextText, shouldAnimate = false) {
   element.classList.add("is-soft-refresh");
   window.setTimeout(() => {
     element.classList.remove("is-soft-refresh");
-  }, getCssDurationMs("--motion", 534) + 80);
+  }, getCssDurationMs("--motion-text", 240) + 80);
 }
 
 function renderSummary({ animateFinancialChanges = false } = {}) {
@@ -4248,7 +5322,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
   const mobilePanelFlow = window.matchMedia("(max-width: 820px)").matches;
   /* 移动端数据页的两张首屏卡片走同一条卡片路径；避免总支出额外启动
      View Transition，和下方平账卡形成两套叠加轨迹。 */
-  const vtActive = document.startViewTransition && animateFinancialChanges && !mobilePanelFlow;
+  const vtActive = document.startViewTransition && animateFinancialChanges && !mobilePanelFlow && !prefersReducedMotion();
   const animateSummaryContents = animateFinancialChanges && !mobilePanelFlow;
   const enterClass = vtActive ? "" : " is-entering";
   renderTotalAmount(formatTotalMoney(summary.totalCents), animateSummaryContents);
@@ -4306,6 +5380,45 @@ function renderJourneyHero(summary) {
     ? formatJourneyDateRange(firstDate, lastDate)
     : "记下第一笔，旅程就会在这里展开";
 
+  const dailyTotals = new Map();
+  expenses.forEach((expense) => {
+    dailyTotals.set(expense.date, (dailyTotals.get(expense.date) || 0) + expenseToCents(expense));
+  });
+  const maxDailyCents = Math.max(0, ...dailyTotals.values());
+  const dayCells = [];
+  if (firstDate && lastDate) {
+    const cursor = new Date(`${firstDate}T00:00:00Z`);
+    const end = new Date(`${lastDate}T00:00:00Z`);
+    while (cursor <= end) {
+      const date = cursor.toISOString().slice(0, 10);
+      const cents = dailyTotals.get(date) || 0;
+      const level = cents && maxDailyCents
+        ? Math.min(5, Math.max(1, Math.ceil((cents / maxDailyCents) * 5)))
+        : 0;
+      const [, month, day] = date.split("-").map(Number);
+      dayCells.push(`
+        <div class="journey-day-cell level-${level}" aria-label="${month}月${day}日 ${formatMoney(cents)}" title="${month}月${day}日 · ${formatMoney(cents)}">
+          <span>${day}</span>
+        </div>
+      `);
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+  }
+  if (elements.journeyDayGrid) {
+    elements.journeyDayGrid.innerHTML = dayCells.length
+      ? dayCells.join("")
+      : `<span class="journey-day-empty">添加账单后显示每天的支出节奏</span>`;
+  }
+  if (elements.journeyPeak) {
+    const peakEntry = [...dailyTotals.entries()].sort((first, second) => second[1] - first[1])[0];
+    if (peakEntry?.[1]) {
+      const [, month, day] = peakEntry[0].split("-").map(Number);
+      elements.journeyPeak.textContent = `峰值 ${month}月${day}日 · ${formatMoney(peakEntry[1])}`;
+    } else {
+      elements.journeyPeak.textContent = "添加第一笔后显示支出峰值";
+    }
+  }
+
   const totalPaid = state.families.reduce((sum, family) => sum + (summary.paidByFamily[family.id] || 0), 0);
   elements.journeyFamilyTrack.innerHTML = state.families
     .map((family) => {
@@ -4342,11 +5455,32 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   if (!elements.settlementEntryButton) return;
   const count = summary.settlements.length;
   const hasExpenses = state.expenses.some((expense) => !expense.isDeleted);
+  const leadingSettlement = summary.settlements[0];
+  const settlementButtons = [elements.settlementEntryButton, elements.mobileSettlementEntryButton].filter(Boolean);
+  settlementButtons.forEach((button) => {
+    button.classList.toggle("has-settlement-flow", Boolean(leadingSettlement));
+    button.classList.toggle("is-flow-arriving", Boolean(shouldAnimate && leadingSettlement && !prefersReducedMotion()));
+    if (!leadingSettlement) {
+      ["--settlement-from-color", "--settlement-to-color", "--settlement-flow-glow"].forEach((property) => button.style.removeProperty(property));
+      return;
+    }
+    const fromVisual = getFamilyVisual(leadingSettlement.fromFamilyId);
+    const toVisual = getFamilyVisual(leadingSettlement.toFamilyId);
+    button.style.setProperty("--settlement-from-color", fromVisual.color);
+    button.style.setProperty("--settlement-to-color", toVisual.color);
+    button.style.setProperty("--settlement-flow-glow", colorWithAlpha(fromVisual.color, 0.34));
+  });
   elements.settlementEntrySub.textContent = count
     ? "旅程收尾时查看"
     : "所有家庭当前已两清";
   elements.settlementEntryCount.textContent = count ? `待结算 ${count} 笔` : "已两清";
   elements.settlementEntryButton.classList.toggle("is-settled", count === 0);
+
+  if (shouldAnimate && leadingSettlement && !prefersReducedMotion()) {
+    window.setTimeout(() => {
+      settlementButtons.forEach((button) => button.classList.remove("is-flow-arriving"));
+    }, 980);
+  }
 
   if (!elements.mobileSettlementEntryButton) return;
   elements.mobileSettlementEntryButton.hidden = !hasExpenses || count === 0;
@@ -4362,6 +5496,99 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
     "aria-label",
     `平账建议：${count} 笔转账。`,
   );
+  syncSettlementEntryReminder(Boolean(leadingSettlement));
+}
+
+function clearSettlementEntryReminder({ removeEffect = true } = {}) {
+  window.clearTimeout(settlementEntryReminderTimer);
+  window.clearTimeout(settlementEntryReminderCleanupTimer);
+  window.clearTimeout(settlementEntryReminderResumeTimer);
+  settlementEntryReminderTimer = 0;
+  settlementEntryReminderCleanupTimer = 0;
+  settlementEntryReminderResumeTimer = 0;
+  if (removeEffect) {
+    [elements.settlementEntryButton, elements.mobileSettlementEntryButton]
+      .filter(Boolean)
+      .forEach((button) => button.classList.remove("is-flow-reminding"));
+  }
+}
+
+function canRunSettlementEntryReminder() {
+  return settlementEntryReminderHasPending
+    && settlementEntryReminderInView
+    && document.visibilityState === "visible"
+    && elements.settingsView.hidden
+    && !prefersReducedMotion();
+}
+
+function getVisibleSettlementEntryButton() {
+  return [elements.settlementEntryButton, elements.mobileSettlementEntryButton]
+    .filter(Boolean)
+    .find((button) => {
+      if (button.hidden || getComputedStyle(button).display === "none") return false;
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0
+        && rect.height > 0
+        && rect.bottom > 0
+        && rect.top < window.innerHeight
+        && rect.right > 0
+        && rect.left < window.innerWidth;
+    }) || null;
+}
+
+function scheduleSettlementEntryReminder(delay = SETTLEMENT_ENTRY_REMINDER_INITIAL_MS) {
+  window.clearTimeout(settlementEntryReminderTimer);
+  settlementEntryReminderTimer = 0;
+  if (!canRunSettlementEntryReminder()) return;
+  settlementEntryReminderTimer = window.setTimeout(() => {
+    settlementEntryReminderTimer = 0;
+    if (!canRunSettlementEntryReminder()) return;
+    const button = getVisibleSettlementEntryButton();
+    if (!button || button.classList.contains("is-flow-arriving")) {
+      scheduleSettlementEntryReminder(SETTLEMENT_ENTRY_REMINDER_REPEAT_MS);
+      return;
+    }
+    button.classList.remove("is-flow-reminding");
+    void button.offsetWidth;
+    button.classList.add("is-flow-reminding");
+    settlementEntryReminderCleanupTimer = window.setTimeout(() => {
+      settlementEntryReminderCleanupTimer = 0;
+      button.classList.remove("is-flow-reminding");
+    }, SETTLEMENT_ENTRY_REMINDER_DURATION_MS);
+    scheduleSettlementEntryReminder(SETTLEMENT_ENTRY_REMINDER_REPEAT_MS);
+  }, delay);
+}
+
+function syncSettlementEntryReminder(hasPending) {
+  const pendingChanged = settlementEntryReminderHasPending !== hasPending;
+  settlementEntryReminderHasPending = hasPending;
+  if (!hasPending) {
+    clearSettlementEntryReminder();
+    return;
+  }
+  if (pendingChanged || (!settlementEntryReminderTimer && !settlementEntryReminderCleanupTimer)) {
+    clearSettlementEntryReminder();
+    scheduleSettlementEntryReminder();
+  }
+}
+
+function setupSettlementEntryReminderObserver() {
+  const buttons = [elements.settlementEntryButton, elements.mobileSettlementEntryButton].filter(Boolean);
+  if (!buttons.length) return;
+  if (!("IntersectionObserver" in window)) {
+    settlementEntryReminderInView = true;
+    scheduleSettlementEntryReminder();
+    return;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => settlementEntryVisibility.set(entry.target, entry.isIntersecting && entry.intersectionRatio > 0));
+    const isInView = buttons.some((button) => settlementEntryVisibility.get(button));
+    if (settlementEntryReminderInView === isInView) return;
+    settlementEntryReminderInView = isInView;
+    if (isInView) scheduleSettlementEntryReminder();
+    else clearSettlementEntryReminder();
+  }, { threshold: 0.01 });
+  buttons.forEach((button) => observer.observe(button));
 }
 
 /* 平账建议内容（资金光流图 + 转账卡），供设置抽屉渲染 */
@@ -4421,15 +5648,17 @@ function renderSettlementFlowMap(settlements, enterClass) {
       const pathD = `M ${x1} ${y1} C ${controlX1} ${y1}, ${controlX2} ${y2}, ${x2} ${y2}`;
       const gradientId = `settlementFlowGradient${index}`;
       gradientDefs.push(
-        `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${fromVisual.color}"/><stop offset="1" stop-color="${toVisual.color}"/></linearGradient>`,
+        `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" color-interpolation="linearRGB" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${fromVisual.color}" stop-opacity="0.86"/><stop offset="18%" stop-color="${fromVisual.color}" stop-opacity="0.78"/><stop offset="31%" stop-color="${toVisual.color}" stop-opacity="0.88"/><stop offset="100%" stop-color="${toVisual.color}" stop-opacity="0.94"/></linearGradient>`,
       );
 
-      // 只用克制的家庭色渐变线表达流向，避免移动光点和多层高亮造成视觉噪音。
+      // 短尾迹承载家庭色方向，窄亮芯提供一次清晰的“资金抵达”瞬间；
+      // 两层都只在揭幕时运动，稳定态不再持续重绘。
       return `
-        <g class="flow-link" style="--flow-delay: ${index * 160}ms;">
+        <g class="flow-link" style="--flow-delay: ${index * 105}ms;">
           <path class="flow-halo" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${(strokeWidth + 3.2).toFixed(1)}" filter="url(#settlementGlow)"/>
           <path class="flow-ribbon" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${strokeWidth.toFixed(1)}"/>
-          <path class="flow-sheen" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${Math.max(1.8, strokeWidth * 0.82).toFixed(1)}"/>
+          <path class="flow-sheen flow-sheen-tail" d="${pathD}" pathLength="1" stroke="url(#${gradientId})" stroke-width="${Math.max(2.4, strokeWidth * 1.18).toFixed(1)}"/>
+          <path class="flow-sheen flow-sheen-core" d="${pathD}" pathLength="1" stroke="rgba(255, 255, 255, 0.98)" stroke-width="${Math.max(1.35, strokeWidth * 0.48).toFixed(1)}"/>
         </g>
       `;
     })
@@ -4503,6 +5732,14 @@ function handleMoneyDecimalsChange() {
   render();
 }
 
+function handleNaturalEntryMarksHiddenChange() {
+  localStorage.setItem(
+    NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY,
+    String(!elements.settingsNaturalEntryMarksHiddenInput.checked),
+  );
+  applyNaturalEntryMarksPreference();
+}
+
 function handleEntryModeSelection(event) {
   const button = event.target.closest("[data-entry-mode-choice]");
   if (!button) return;
@@ -4516,14 +5753,18 @@ function handleEntryModeSelection(event) {
   activeEntryEditor = "amount";
   renderEntryModeSettings();
   renderNaturalEntry();
+  if (nextMode === "natural") {
+    window.requestAnimationFrame(() => triggerNaturalEntryLensEntry({ force: true }));
+  }
   showToast({ message: nextMode === "natural" ? "已切换为自然语言录入" : "已切换为标准录入" });
 }
 
 function renderLedger({ animateFinancialChanges = false } = {}) {
   const visibleExpenses = getVisibleExpenses();
   const enterClass = animateFinancialChanges ? " is-entering" : "";
+  const activeExpenses = getActiveExpenses();
 
-  if (!state.expenses.length) {
+  if (!activeExpenses.length) {
     elements.ledgerList.innerHTML = renderLedgerEmptyState(
       "还没有账单",
       `<br><small>记下第一笔，开始这次旅行。</small><br><button class="secondary-button compact-button empty-state-action" type="button" data-goto-entry>去记一笔</button>`,
@@ -4774,14 +6015,16 @@ function renderEditState() {
   
   if (label.textContent !== newText) {
     label.classList.add("text-slide-out");
+    const textDuration = getCssDurationMs("--motion-text", 240);
+    const textExitDuration = Math.round(textDuration * 0.85);
     window.setTimeout(() => {
       label.textContent = newText;
       label.classList.remove("text-slide-out");
       label.classList.add("text-slide-in");
       window.setTimeout(() => {
         label.classList.remove("text-slide-in");
-      }, 210);
-    }, 150);
+      }, textDuration + 24);
+    }, textExitDuration);
   }
   
   elements.expenseForm.classList.toggle("is-editing", isEditing);
@@ -4835,7 +6078,7 @@ function renderMobileSubmitBar() {
   const category = state.activeCategory ? formatCategoryLabel(state.activeCategory) : "未选类别";
   const date = state.activeDate === todayIso() ? "今天" : state.activeDate.slice(5);
   const action = editingExpenseId ? "保存修改" : "记下这笔";
-  const split = activeSplitMode === "all" ? "" : ` · ${formatActiveSplitSummary()}`;
+  const split = activeSplitMode === "equal" && getSplitScopeFromMode(activeSplitMode) === "all" ? "" : ` · ${formatActiveSplitSummary()}`;
   // 信息未填齐时按钮呈中性引导态，点击会跳到对应缺项。
   const missing = getExpenseMissingState();
   const blocked = Boolean(missing.target);
@@ -4883,10 +6126,10 @@ function getSplitDetailsForSubmit() {
     };
   }
 
-  if (activeSplitMode === "families") {
+  if (getSplitScopeFromMode(activeSplitMode) === "selected") {
     return {
       amount: parseAmountInput(elements.amountInput.value),
-      splitMode: "families",
+      splitMode: getSplitModeForState("selected", getSplitRuleFromMode(activeSplitMode)),
       splitFamilyIds: [...activeSplitFamilyIds],
       splitAmounts: normalizeSplitAmounts(),
       error: activeSplitFamilyIds.length ? "" : "请选择参与分摊的家庭。",
@@ -4895,7 +6138,7 @@ function getSplitDetailsForSubmit() {
 
   return {
     amount: parseAmountInput(elements.amountInput.value),
-    splitMode: "all",
+    splitMode: getSplitModeForState("all", getSplitRuleFromMode(activeSplitMode)),
     splitFamilyIds: [],
     splitAmounts: normalizeSplitAmounts(),
     error: "",
@@ -5081,7 +6324,7 @@ function handleSettingsThemeClick(event) {
   const button = event.target.closest("[data-theme-id]");
   if (!button) return;
 
-  const preset = THEME_PRESETS.find((item) => item.id === button.dataset.themeId);
+  const preset = THEME_PRESETS.find((item) => item.id === normalizeThemeId(button.dataset.themeId));
   if (!preset || preset.id === getActiveThemeId()) return;
 
   document.documentElement.dataset.theme = preset.id;
@@ -5097,23 +6340,16 @@ function handleSettingsThemeClick(event) {
   showToast({ message: `主题色已换成「${preset.name}」` });
 }
 
-function handleSettingsPaletteClick(event) {
-  const button = event.target.closest("[data-palette-id]");
-  if (!button) return;
-
-  const palette = familyPalettePresets.find((item) => item.id === button.dataset.paletteId);
-  if (!palette) return;
-
-  state.familyVisuals = Object.fromEntries(
-    state.families.map((family, index) => [family.id, normalizeFamilyVisual(palette.colors[index % palette.colors.length])]),
-  );
-  syncFamilyVisualRows();
-  render({ animateFinancialChanges: true });
-  queueCloudSettingsSync();
-  showToast({ message: `已套用「${palette.name}」` });
-}
-
 function handleSettingsFamilyColorClick(event) {
+  const targetButton = event.target.closest("[data-family-color-target]");
+  if (targetButton) {
+    const familyId = normalizePayerId(targetButton.dataset.familyColorTarget);
+    if (!familyId || !state.families.some((family) => family.id === familyId)) return;
+    activeFamilyColorFamilyId = familyId;
+    renderPersonalizationSettings();
+    return;
+  }
+
   const button = event.target.closest("[data-family-color]");
   if (!button) return;
 
@@ -5127,8 +6363,9 @@ function handleSettingsFamilyColorClick(event) {
   };
   syncFamilyVisualRows();
   render({ animateFinancialChanges: true });
+  activeFamilyColorFamilyId = familyId;
   queueCloudSettingsSync();
-  showToast({ message: `已更新${getFamilyName(familyId)}颜色` });
+  showToast({ message: `已更新${getFamilyName(familyId)}身份色` });
 }
 
 function addCategoryFromInput(input) {
@@ -5206,9 +6443,8 @@ function handleSplitScopeClick(event) {
       markSplitModeDeactivating(previousMode);
       markSplitModeActivating(nextMode);
       activeSplitMode = nextMode;
-      if (activeSplitMode === "families" && !activeSplitFamilyIds.length) {
-        activeSplitFamilyIds = state.families.map((family) => family.id);
-      }
+      if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
+      splitFamilyChoicesOpen = activeSplitMode !== "custom";
     }
     smoothSplitScopeResize(renderSplitScope);
     if (activeSplitMode === "custom" && !isNaturalEntryLayout()) {
@@ -5219,9 +6455,16 @@ function handleSplitScopeClick(event) {
     renderNaturalEntry();
     renderMobileSubmitBar();
     scheduleNaturalEntryStagePosition();
-    if (naturalEntryStageOpen && activeEntryEditor === "split" && activeSplitMode === "all") {
+    if (naturalEntryStageOpen && activeEntryEditor === "split" && getSplitScopeFromMode(activeSplitMode) === "all" && activeSplitMode !== "custom") {
       window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), getNaturalEntryChoiceCloseDelay());
     }
+    return;
+  }
+
+  const participantToggle = event.target.closest("#splitParticipantToggle");
+  if (participantToggle) {
+    splitFamilyChoicesOpen = !splitFamilyChoicesOpen;
+    smoothSplitScopeResize(renderSplitScope);
     return;
   }
 
@@ -5230,6 +6473,8 @@ function handleSplitScopeClick(event) {
 
   const familyId = normalizePayerId(familyButton.dataset.splitFamily);
   if (!familyId) return;
+  const activeRule = getSplitRuleFromMode(activeSplitMode);
+  const activeScope = getSplitScopeFromMode(activeSplitMode);
   if (activeSplitFamilyIds.includes(familyId)) {
     markSplitFamilyDeactivating(familyId);
     activeSplitFamilyIds = activeSplitFamilyIds.filter((id) => id !== familyId);
@@ -5237,6 +6482,8 @@ function handleSplitScopeClick(event) {
     markSplitFamilyActivating(familyId);
     activeSplitFamilyIds = [...activeSplitFamilyIds, familyId];
   }
+  if (activeScope === "all") activeSplitMode = getSplitModeForState("selected", activeRule);
+  splitFamilyChoicesOpen = true;
   // 勾选家庭不改变面板高度，直接增量渲染，跳过测量流程（否则会闪一帧）
   renderSplitScope();
   applyChoiceStateClass("[data-split-family]", "data-split-family", familyId, activeSplitFamilyIds.includes(familyId) ? "is-activating" : "is-deactivating");
@@ -5290,7 +6537,11 @@ function smoothSplitScopeResize(update) {
   }
 
   panel.style.overflow = "hidden";
-  const duration = getCssDurationMs("--motion", 534);
+  const duration = resolveMotionDuration({
+    distancePx: Math.abs(from.height - to.height),
+    role: "structure",
+    direction: splitScopeOpen ? "enter" : "exit",
+  });
   const easing = getComputedStyle(document.documentElement).getPropertyValue("--settle").trim() || "cubic-bezier(0.16, 0.9, 0.14, 1)";
   const toKeyframe = (box) => ({
     height: `${box.height}px`,
@@ -5331,6 +6582,12 @@ function scheduleCustomSplitViewportSettle() {
   const settle = () => {
     const customAmounts = elements.splitCustomAmounts;
     if (!customAmounts || customAmounts.hidden) return;
+    if (naturalEntryStageOpen && activeEntryEditor === "split") {
+      const focusedInput = customAmounts.querySelector("[data-split-amount]:focus")
+        || customAmounts.querySelector("[data-split-amount]");
+      if (focusedInput) scrollNaturalEntrySplitInputIntoView(focusedInput);
+      return;
+    }
     const rect = customAmounts.getBoundingClientRect();
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
     const targetTop = Math.max(92, viewportHeight * 0.22);
@@ -5341,6 +6598,25 @@ function scheduleCustomSplitViewportSettle() {
   window.requestAnimationFrame(() => {
     settle();
     window.setTimeout(settle, prefersReducedMotion() ? 0 : 180);
+  });
+}
+
+function scrollNaturalEntrySplitInputIntoView(input) {
+  const stage = elements.naturalEntryStage;
+  if (!input || !stage || !naturalEntryStageOpen || activeEntryEditor !== "split") return;
+  window.requestAnimationFrame(() => {
+    if (!naturalEntryStageOpen || activeEntryEditor !== "split" || document.activeElement !== input) return;
+    const stageRect = stage.getBoundingClientRect();
+    const inputRect = input.getBoundingClientRect();
+    const viewportTop = window.visualViewport?.offsetTop || 0;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const targetCenter = viewportTop + Math.min(viewportHeight - 16, Math.max(16, viewportHeight * 0.5));
+    const delta = (inputRect.top + inputRect.height / 2) - targetCenter;
+    const maxScroll = Math.max(0, stage.scrollHeight - stage.clientHeight);
+    stage.scrollTop = Math.max(0, Math.min(maxScroll, stage.scrollTop + delta));
+    if (inputRect.left < stageRect.left || inputRect.right > stageRect.right) {
+      stage.scrollLeft = Math.max(0, Math.min(stage.scrollWidth - stage.clientWidth, inputRect.left - stageRect.left));
+    }
   });
 }
 
@@ -5416,18 +6692,24 @@ function handleSplitAmountInput(event) {
 }
 
 function resetSplitScope() {
-  activeSplitMode = "all";
+  activeSplitMode = "equal";
   activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = {};
   splitScopeOpen = false;
+  splitFamilyChoicesOpen = true;
   activeEntryEditor = "amount";
 }
 
 function setSplitScopeFromExpense(expense) {
   activeSplitMode = normalizeSplitMode(expense.splitMode);
-  activeSplitFamilyIds = normalizeSplitFamilyIds(expense.splitFamilyIds, state.families.map((family) => family.id));
+  activeSplitFamilyIds = normalizeSplitFamilyIds(
+    expense.splitFamilyIds,
+    getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id),
+  );
+  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = normalizeSplitAmounts(expense.splitAmounts);
-  splitScopeOpen = activeSplitMode !== "all";
+  splitScopeOpen = activeSplitMode !== "equal";
+  splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
 }
 
 function handleSettingsCategoryClick(event) {
@@ -5593,7 +6875,14 @@ function captureLedgerTransitionRects(items) {
   const selectors = [".ledger-main", ".ledger-amount"];
   items.forEach((item) => {
     // 卡片自身也入表：高度变化由 play 阶段按实测值做动画
-    rects.set(item, item.getBoundingClientRect());
+    const itemRect = item.getBoundingClientRect();
+    rects.set(item, {
+      left: itemRect.left,
+      top: itemRect.top,
+      width: itemRect.width,
+      height: itemRect.height,
+      marginInlineStart: parseFloat(getComputedStyle(item).marginInlineStart) || 0,
+    });
     item.querySelectorAll(selectors.join(",")).forEach((element) => {
       const rect = element.getBoundingClientRect();
       if (rect.width > 1 && rect.height > 1) rects.set(element, rect);
@@ -5622,8 +6911,13 @@ function clearLedgerMorphClasses() {
 
 function playLedgerTransitionRects(rects) {
   if (!rects.size || prefersReducedMotion() || typeof Element.prototype.animate !== "function") return;
-  const duration = getCssDurationMs("--ledger-morph-motion", 280);
-  const easing = getComputedStyle(document.documentElement).getPropertyValue("--ledger-morph-easing").trim() || "cubic-bezier(0.2, 0.72, 0.24, 1)";
+  const direction = elements.ledgerList?.classList.contains("is-ledger-collapsing") ? "exit" : "enter";
+  const rootStyle = getComputedStyle(document.documentElement);
+  const cardEasing = rootStyle.getPropertyValue("--ease-card-settle").trim()
+    || rootStyle.getPropertyValue("--ledger-morph-easing").trim()
+    || "cubic-bezier(0.12, 0.68, 0.18, 1)";
+  const textEasing = rootStyle.getPropertyValue("--ease-text-out").trim()
+    || "cubic-bezier(0.30, 0.72, 0.42, 1)";
   const animations = [];
   const runId = ++ledgerMorphRunId;
 
@@ -5644,24 +6938,54 @@ function playLedgerTransitionRects(rects) {
   const toRects = new Map();
   rects.forEach((fromRect, element) => {
     if (!element.isConnected) return;
-    toRects.set(element, element.getBoundingClientRect());
+    const toRect = element.getBoundingClientRect();
+    toRects.set(element, element.classList.contains("ledger-item")
+      ? {
+        left: toRect.left,
+        top: toRect.top,
+        width: toRect.width,
+        height: toRect.height,
+        marginInlineStart: parseFloat(getComputedStyle(element).marginInlineStart) || 0,
+      }
+      : toRect);
   });
 
   toRects.forEach((toRect, element) => {
     const fromRect = rects.get(element);
 
-    // 卡片自身只动画 height；min/max 仅在动画期间解除，不参与逐帧插值。
+    // 卡片自身动画 height、width 和横向外边距；min/max 仅在动画期间解除，
+    // 让手机端展开时的左右边界也沿着同一条 FLIP 轨迹落位。
     if (element.classList.contains("ledger-item")) {
-      if (Math.abs(fromRect.height - toRect.height) < 1) return;
+      const hasHeightChange = Math.abs(fromRect.height - toRect.height) >= 1;
+      const hasWidthChange = Math.abs(fromRect.width - toRect.width) >= 1;
+      const hasMarginChange = Math.abs((fromRect.marginInlineStart || 0) - (toRect.marginInlineStart || 0)) >= 0.5;
+      if (!hasHeightChange && !hasWidthChange && !hasMarginChange) return;
       element.style.height = `${fromRect.height}px`;
       element.style.minHeight = "0";
       element.style.maxHeight = "none";
+      const fromFrame = { height: `${fromRect.height}px` };
+      const toFrame = { height: `${toRect.height}px` };
+      if (hasWidthChange) {
+        fromFrame.width = `${fromRect.width}px`;
+        toFrame.width = `${toRect.width}px`;
+      }
+      if (hasMarginChange) {
+        fromFrame.marginInlineStart = `${fromRect.marginInlineStart || 0}px`;
+        toFrame.marginInlineStart = `${toRect.marginInlineStart || 0}px`;
+      }
+      const distance = Math.hypot(
+        toRect.left - fromRect.left,
+        toRect.top - fromRect.top,
+        toRect.height - fromRect.height,
+        toRect.width - fromRect.width,
+      );
+      const duration = resolveMotionDuration({ distancePx: distance, role: "card", direction });
       const animation = element.animate(
         [
-          { height: `${fromRect.height}px` },
-          { height: `${toRect.height}px` },
+          fromFrame,
+          toFrame,
         ],
-        { duration, easing, fill: "forwards" },
+        { duration, easing: cardEasing, fill: "forwards" },
       );
       element._heightAnimation = animation;
       animations.push(animation);
@@ -5672,6 +6996,8 @@ function playLedgerTransitionRects(rects) {
           element.style.height = `${toRect.height}px`;
           animation.cancel();
           element.style.height = "";
+          element.style.width = "";
+          element.style.marginInlineStart = "";
           element.style.minHeight = "";
           element.style.maxHeight = "";
           element._heightAnimation = null;
@@ -5685,15 +7011,34 @@ function playLedgerTransitionRects(rects) {
 
     const dx = fromRect.left - toRect.left;
     const dy = fromRect.top - toRect.top;
+    const isAmount = element.classList.contains("ledger-amount");
+    const scaleX = isAmount ? fromRect.width / toRect.width : 1;
+    const scaleY = isAmount ? fromRect.height / toRect.height : 1;
     const moved = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
-    if (!moved) return;
+    const resized = isAmount && (Math.abs(scaleX - 1) > 0.005 || Math.abs(scaleY - 1) > 0.005);
+    if (!moved && !resized) return;
+
+    const fromTransform = isAmount
+      ? `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`
+      : `translate(${dx}px, ${dy}px)`;
+    const toTransform = isAmount ? "translate(0, 0) scale(1, 1)" : "translate(0, 0)";
+    const distance = Math.hypot(dx, dy, toRect.width - fromRect.width, toRect.height - fromRect.height);
+    const duration = resolveMotionDuration({
+      distancePx: distance,
+      role: isAmount ? "control" : "text",
+      direction,
+    });
 
     const animation = element.animate(
       [
-        { transform: `translate(${dx}px, ${dy}px)` },
-        { transform: "translate(0, 0)" },
+        { transform: fromTransform, transformOrigin: isAmount ? "top left" : "center" },
+        { transform: toTransform, transformOrigin: isAmount ? "top left" : "center" },
       ],
-      { duration, easing, fill: "both" },
+      {
+        duration,
+        easing: textEasing,
+        fill: "both",
+      },
     );
     animations.push(animation);
     animation.finished.then(() => animation.cancel(), () => {});
@@ -5736,8 +7081,14 @@ function deleteExpense(expenseId, item) {
       message: "已删除账单",
       actionLabel: "撤销",
       onAction: () => {
-        expense.isDeleted = false;
-        expense.updatedAt = new Date().toISOString();
+        const restoredExpense = state.expenses.find((item) => item.id === expenseId);
+        const restoredAt = new Date().toISOString();
+        if (restoredExpense) {
+          restoredExpense.isDeleted = false;
+          restoredExpense.updatedAt = restoredAt;
+        } else {
+          state.expenses.push({ ...expense, isDeleted: false, updatedAt: restoredAt });
+        }
         smoothContainerResize(elements.ledgerSection, () => {
           render({ animateFinancialChanges: true });
         });
@@ -6051,20 +7402,19 @@ async function importLedgerFile(file) {
 
 function formatSplitModeForExport(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
-  if (splitMode === "custom") return "分别填写金额";
-  if (splitMode === "families") return "指定家庭";
-  return "全部家庭";
+  if (splitMode === "custom") return "自定金额";
+  return getSplitRuleFromMode(splitMode) === "equal" ? "均分" : "按人数";
 }
 
 function formatSplitFamilyIdsForExport(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
-  if (splitMode === "all") return state.families.map((family) => family.name).join(" / ");
   if (splitMode === "custom") {
     return state.families
       .filter((family) => amountToCents(expense.splitAmounts?.[family.id]) > 0)
       .map((family) => family.name)
       .join(" / ");
   }
+  if (getSplitScopeFromMode(splitMode) === "all") return state.families.map((family) => family.name).join(" / ");
   return normalizeSplitFamilyIds(expense.splitFamilyIds, state.families.map((family) => family.id)).map(getFamilyName).join(" / ");
 }
 
@@ -6328,10 +7678,10 @@ function startSettlementReveal() {
   startSettlementAmountReveal();
   /* 同时等待最后一条渐变线绘制和最后一笔金额落定，避免收尾截帧。 */
   const flowLinks = elements.settingsView.querySelectorAll(".settlement-flow-map .flow-link");
-  const lastFlowDelay = Math.max(0, (flowLinks.length - 1) * 160);
+  const lastFlowDelay = Math.max(0, (flowLinks.length - 1) * 105);
   const settlementItems = elements.settingsView.querySelectorAll(".settlement-item");
   const lastSettlementDelay = Math.max(0, (settlementItems.length - 1) * MOTION_DELAYS.settlementStagger);
-  const flowSequenceEnd = flowLinks.length ? 540 + lastFlowDelay + 1050 : 0;
+  const flowSequenceEnd = flowLinks.length ? 470 + lastFlowDelay + 1680 : 0;
   const cardSequenceEnd = settlementItems.length ? 1410 + lastSettlementDelay + 900 : 1220;
   const revealDuration = Math.max(1600, flowSequenceEnd, cardSequenceEnd) + 60;
   settlementRevealTimer = window.setTimeout(() => {
@@ -6343,6 +7693,7 @@ function startSettlementReveal() {
 
 function openSettings(options = {}) {
   applySettingsMode(options.mode);
+  clearSettlementEntryReminder();
   clearSettlementReveal();
   if (settingsMode === "settings") {
     const collapseSecondaryGroups = window.matchMedia("(max-width: 820px)").matches;
@@ -6388,6 +7739,10 @@ function closeSettings() {
       settingsReturnFocus = element;
     },
   });
+  settlementEntryReminderResumeTimer = window.setTimeout(() => {
+    settlementEntryReminderResumeTimer = 0;
+    scheduleSettlementEntryReminder();
+  }, prefersReducedMotion() ? 0 : getCssDurationMs("--motion", 534) + 80);
 }
 
 function openLedgerManager() {
@@ -6893,7 +8248,9 @@ function handleFamilySelection(event) {
     markPayerDeactivating(previousPayerId);
     markPayerActivating(nextPayerId);
   }
+  freezeNaturalEntryFamilyTint();
   state.selectedPayerId = nextPayerId;
+  pendingNaturalEntryFamilyTintId = nextPayerId;
   elements.payerError.textContent = "";
   applySelectedFamilyTheme();
   renderFamilyRoster();
@@ -6906,6 +8263,8 @@ function handleFamilySelection(event) {
   saveState();
   if (naturalEntryStageOpen && activeEntryEditor === "payer") {
     window.setTimeout(() => closeNaturalEntryStage({ restoreFocus: true }), getNaturalEntryChoiceCloseDelay());
+  } else {
+    applyNaturalEntryFamilyTint(nextPayerId, { animate: isNaturalEntryLayout() });
   }
 }
 
@@ -7163,8 +8522,12 @@ function applySubmitButtonTheme() {
   elements.mobileSubmitBar.classList.toggle("submit-themed", Boolean(state.selectedPayerId));
 }
 
-function getCssDurationMs(variableName, fallback) {
+function getCssDurationMs(variableName, fallback, seen = new Set()) {
+  if (seen.has(variableName)) return fallback;
+  seen.add(variableName);
   const raw = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+  const alias = raw.match(/^var\(\s*(--[\w-]+)(?:\s*,\s*[^)]+)?\s*\)$/);
+  if (alias) return getCssDurationMs(alias[1], fallback, seen);
   if (raw.endsWith("ms")) return Number.parseFloat(raw) || fallback;
   if (raw.endsWith("s")) return (Number.parseFloat(raw) || fallback / 1000) * 1000;
   return fallback;
@@ -7203,7 +8566,11 @@ function smoothContainerResize(element, update, afterMeasure = () => {}, options
   }
 
   element.style.height = `${endHeight}px`;
-  const duration = getCssDurationMs("--motion", 534);
+  const duration = resolveMotionDuration({
+    distancePx: Math.abs(endHeight - startHeight),
+    role: "structure",
+    direction: endHeight >= startHeight ? "enter" : "exit",
+  });
   const easing = getComputedStyle(document.documentElement).getPropertyValue("--settle").trim() || "cubic-bezier(0.16, 0.9, 0.14, 1)";
   const animation = element.animate([{ height: `${startHeight}px` }, { height: `${endHeight}px` }], { duration, easing, fill: "both" });
   element._resizeAnimation = animation;
@@ -7253,10 +8620,15 @@ function formatPercent(value) {
   return `${value.toFixed(2)}%`;
 }
 
+let amountInputWasActive = false;
 function updateAmountMotionState() {
   const isActive = document.activeElement === elements.amountInput;
   elements.amountLabel.classList.toggle("amount-active", isActive);
   if (isActive) lockAmountLabelScroll();
+  /* 回中光晕只在“获得焦点”那一刻触发一次，不要每敲一个字符都重启
+     那个 16px 模糊层的 transform 动画——那是数字卡顿的主因。 */
+  if (isActive && !amountInputWasActive) pulseAmountField();
+  amountInputWasActive = isActive;
 }
 
 function getAmountMeasureContext() {
@@ -7264,6 +8636,8 @@ function getAmountMeasureContext() {
   amountMeasureContext = document.createElement("canvas").getContext("2d");
   return amountMeasureContext;
 }
+
+const AMOUNT_INPUT_CARET_RESERVE = 26;
 
 function measureAmountInputWidth(input) {
   const context = getAmountMeasureContext();
@@ -7274,7 +8648,7 @@ function measureAmountInputWidth(input) {
   const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
   /* Safari 原生 input 的字形绘制比 canvas 测量略宽，窄屏下需要留出
      光标与最后一位小数的安全余量，避免视觉上被输入边缘吃掉。 */
-  const measured = context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing + 26;
+  const measured = context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing + AMOUNT_INPUT_CARET_RESERVE;
   const shell = input.closest(".amount-field, .split-amount-input-shell");
   const currency = input.closest(".amount-value-track")?.querySelector(".currency-mark");
   const trackStyle = getComputedStyle(input.closest(".amount-value-track"));
@@ -7289,12 +8663,25 @@ function syncAmountValueTrack(input) {
   if (!track) return;
   amountTrackAnimations.get(track)?.cancel();
   amountTrackAnimations.delete(track);
+  track.style.setProperty("--amount-input-caret-reserve", `${AMOUNT_INPUT_CARET_RESERVE}px`);
   input.style.width = `${measureAmountInputWidth(input)}px`;
 }
 
 function animateAmountValueTrack(input, { compact = false, soft = false } = {}) {
   const track = input?.closest(".amount-value-track");
   if (!track) return;
+
+  /* 一旦输入值“包含”小数点（含小数点本身及之后的每一位小数），输入框宽度
+     会逐字扩张。WebKit 把“输入绘制区扩张”与“合成层平移”拆成两帧，整组回中
+     FLIP 会让模糊外壳/旧图块在右侧先露出一条灰条再回弹——这正是“输入含
+     小数点时右侧灰条 + 文字卡顿”的根因。因此小数场景直接提交最终几何、
+     跳过整组回中动画；整数位仍保留轻盈的回中 FLIP。 */
+  if (/[.,，]/.test(String(input.value || "").trim())) {
+    amountTrackAnimations.get(track)?.cancel();
+    track.style.willChange = "";
+    syncAmountValueTrack(input);
+    return;
+  }
 
   const visibleRect = track.getBoundingClientRect();
   amountTrackAnimations.get(track)?.cancel();
@@ -7304,7 +8691,13 @@ function animateAmountValueTrack(input, { compact = false, soft = false } = {}) 
 
   if (prefersReducedMotion() || Math.abs(deltaX) < 0.25 || typeof track.animate !== "function") return;
 
-  const duration = soft ? 230 : compact ? 288 : 360;
+  /* 把轨道提升为独立合成层，平移期间整块一起移动，避免 WebKit 在右侧露出
+     静止的背景/玻璃外壳旧图块（灰条）。动画结束或被新动画取消时即收回，
+     不长期占用合成层。 */
+  track.style.willChange = "transform";
+  const duration = soft
+    ? Math.min(230, resolveMotionDuration({ distancePx: Math.abs(deltaX), role: "text" }))
+    : resolveMotionDuration({ distancePx: Math.abs(deltaX), role: compact ? "control" : "text" });
   const animation = track.animate(
     [
       { transform: `translate3d(${deltaX}px, 0, 0)` },
@@ -7316,13 +8709,23 @@ function animateAmountValueTrack(input, { compact = false, soft = false } = {}) 
     },
   );
   amountTrackAnimations.set(track, animation);
-  animation.addEventListener("finish", () => {
-    if (amountTrackAnimations.get(track) === animation) amountTrackAnimations.delete(track);
-  }, { once: true });
+  const clearTrackLayer = () => {
+    if (amountTrackAnimations.get(track) === animation) {
+      amountTrackAnimations.delete(track);
+      track.style.willChange = "";
+    }
+  };
+  animation.addEventListener("finish", clearTrackLayer, { once: true });
+  animation.addEventListener("cancel", clearTrackLayer, { once: true });
 }
 
 function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
   if (!element) return;
+  const textElement = element.querySelector(".natural-entry-token-label") || element;
+  const readText = () => textElement.textContent;
+  const writeText = (text) => {
+    textElement.textContent = text;
+  };
   const next = String(nextText ?? "");
   const previous = naturalEntryTokenAnimations.get(element);
   if (previous?.target === next) return;
@@ -7332,12 +8735,12 @@ function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
     previous.target = next;
     return;
   }
-  const current = previous?.displayText ?? element.textContent;
+  const current = previous?.displayText ?? readText();
   previous?.cancel();
   if (current === next) return;
 
   if (prefersReducedMotion()) {
-    element.textContent = next;
+    writeText(next);
     element.setAttribute("aria-label", next);
     naturalEntryTokenAnimations.delete(element);
     return;
@@ -7347,12 +8750,16 @@ function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
   // 轻快地回到自然位置。文字 token 也沿用这段位移动画，同时保留删空/输入
   // 的内容时间线；这样宽度变化时会有灵动感，等宽文字也不会被硬拽。
   const visibleRect = element.getBoundingClientRect();
-  const previousElementText = element.textContent;
-  element.textContent = next;
+  const previousElementText = readText();
+  writeText(next);
   const finalRect = element.getBoundingClientRect();
-  element.textContent = current;
+  writeText(current);
   const deltaX = visibleRect.left - finalRect.left;
-  const motionDuration = Math.max(240, Math.min(360, Math.round(duration * 1.1)));
+  const requestedDuration = Number(duration) || 260;
+  const motionDuration = Math.min(
+    resolveMotionDuration({ distancePx: Math.abs(deltaX), role: "text" }),
+    Math.max(180, requestedDuration),
+  );
   const canUseTransformAnimation = !element.classList.contains("natural-entry-stage-token");
   const motionAnimation = canUseTransformAnimation
     && Math.abs(deltaX) >= 0.25
@@ -7375,7 +8782,7 @@ function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
     && CSS.supports?.("translate", "1px")
     && !previousTranslate;
   if (fallbackMotion) element.style.translate = `${deltaX}px 0`;
-  if (previousElementText !== current) element.textContent = current;
+  if (previousElementText !== current) writeText(current);
   const exitDuration = Math.min(120, Math.max(96, Math.round(motionDuration * 0.38)));
   const enterDuration = Math.max(150, motionDuration - exitDuration);
   const previousWillChange = element.style.willChange;
@@ -7429,14 +8836,14 @@ function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
     }
     if (nextDisplayText !== state.displayText) {
       state.displayText = nextDisplayText;
-      element.textContent = nextDisplayText;
+      writeText(nextDisplayText);
     }
 
     if (elapsed < state.exitDuration + state.enterDuration) {
       state.frameId = window.requestAnimationFrame(renderFrame);
       return;
     }
-    element.textContent = state.target;
+    writeText(state.target);
     state.displayText = state.target;
     state.frameId = 0;
     state.motionAnimation?.cancel();
@@ -7465,6 +8872,15 @@ function lockAmountLabelScroll() {
   });
 }
 
+function normalizeAmountInputDisplayValue(input = elements.amountInput) {
+  if (!input) return "";
+  const amount = parseAmountInput(input.value);
+  if (!Number.isFinite(amount) || amount <= 0) return input.value;
+  const nextValue = (Math.round(amount * 100) / 100).toFixed(2).replace(/\.00$/, "");
+  if (input.value !== nextValue) input.value = nextValue;
+  return nextValue;
+}
+
 function formatAmountFieldOnBlur() {
   updateAmountMotionState();
   if (activeSplitMode === "custom") {
@@ -7472,10 +8888,8 @@ function formatAmountFieldOnBlur() {
     return;
   }
 
-  const amount = parseAmountInput(elements.amountInput.value);
-  if (Number.isFinite(amount) && amount > 0) {
-    elements.amountInput.value = (Math.round(amount * 100) / 100).toFixed(2).replace(/\.00$/, "");
-  }
+  normalizeAmountInputDisplayValue();
+  syncAmountValueTrack(elements.amountInput);
   renderNaturalEntry();
 }
 
@@ -7536,6 +8950,8 @@ function startEditExpense(expenseId) {
 }
 
 function cancelEdit() {
+  const cancelledExpenseId = editingExpenseId;
+  closeNaturalEntryStage({ immediate: true });
   editingExpenseId = "";
   elements.expenseForm.reset();
   restoreEntryPreferenceState();
@@ -7543,7 +8959,16 @@ function cancelEdit() {
   smoothContainerResize(elements.entryPanel, () => {
     render();
   });
-  elements.amountInput.focus();
+  expandedExpenseId = cancelledExpenseId || expandedExpenseId;
+  setMobilePanel("data", { behavior: "auto", scroll: false });
+  window.requestAnimationFrame(() => {
+    const card = cancelledExpenseId
+      ? elements.ledgerList?.querySelector(`[data-expense-id="${cssEscapeId(cancelledExpenseId)}"]`)
+      : null;
+    if (!card) return;
+    card.scrollIntoView({ block: "center", behavior: "auto" });
+    card.focus({ preventScroll: true });
+  });
 }
 
 function captureEntryPreferenceState() {
@@ -7567,8 +8992,13 @@ function restoreEntryPreferenceState() {
   state.activeCategory = normalizeCategorySelection(editReturnState.activeCategory, state.categories);
   state.selectedPayerId = normalizePayerId(editReturnState.selectedPayerId);
   activeSplitMode = normalizeSplitMode(editReturnState.splitMode);
-  activeSplitFamilyIds = normalizeSplitFamilyIds(editReturnState.splitFamilyIds, state.families.map((family) => family.id));
+  activeSplitFamilyIds = normalizeSplitFamilyIds(
+    editReturnState.splitFamilyIds,
+    getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id),
+  );
+  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = normalizeSplitAmounts(editReturnState.splitAmounts);
+  splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
   editReturnState = null;
   editFormSnapshot = null;
 }
@@ -7770,7 +9200,7 @@ function cssEscapeId(value) {
 }
 
 function updateClearLedgerButton() {
-  const isEmpty = state.expenses.length === 0;
+  const isEmpty = getActiveExpenses().length === 0;
   elements.settingsClearLedgerButton.disabled = isEmpty;
   elements.settingsClearLedgerButton.setAttribute("aria-disabled", String(isEmpty));
 }
@@ -7803,6 +9233,10 @@ window.visualViewport?.addEventListener("scroll", scheduleNaturalEntryStagePosit
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
 elements.splitScopePanel.addEventListener("input", handleSplitAmountInput);
+elements.splitCustomAmounts?.addEventListener("focusin", (event) => {
+  const input = event.target.closest("[data-split-amount]");
+  if (input) scrollNaturalEntrySplitInputIntoView(input);
+});
 elements.ledgerNameForm.addEventListener("submit", (event) => {
   event.preventDefault();
   renameCurrentLedger();
@@ -7818,6 +9252,7 @@ elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryC
 elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
 elements.settingsOperatorFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
+elements.settingsNaturalEntryMarksHiddenInput?.addEventListener("change", handleNaturalEntryMarksHiddenChange);
 elements.settingsEntryModeList?.addEventListener("click", handleEntryModeSelection);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.operatorModalFamilyList.addEventListener("click", handleOperatorFamilyChoice);
@@ -7846,7 +9281,6 @@ window.addEventListener("resize", () => {
 });
 elements.settingsFamilyList.addEventListener("click", handleFamilyMemberStep);
 elements.settingsThemeList?.addEventListener("click", handleSettingsThemeClick);
-elements.settingsPaletteList.addEventListener("click", handleSettingsPaletteClick);
 elements.settingsFamilyColorList.addEventListener("click", handleSettingsFamilyColorClick);
 elements.familyRoster.addEventListener("click", handleFamilySelection);
 elements.ledgerList.addEventListener("click", handleLedgerClick);
@@ -7863,6 +9297,7 @@ elements.openSettingsButton.addEventListener("click", openSettings);
 bindAnimatedDetails();
 elements.settlementEntryButton?.addEventListener("click", openSettlementInSettings);
 elements.mobileSettlementEntryButton?.addEventListener("click", openSettlementInSettings);
+setupSettlementEntryReminderObserver();
 elements.ledgerFilterToggle?.addEventListener("click", toggleLedgerFilters);
 elements.closeSettingsButton.addEventListener("click", closeSettings);
 elements.settingsBackdrop.addEventListener("click", closeSettings);
@@ -7913,9 +9348,10 @@ elements.amountInput.addEventListener("input", () => {
   elements.formError.textContent = "";
   updateAmountMotionState();
   animateAmountValueTrack(elements.amountInput);
-  pulseAmountField();
-  renderNaturalEntry();
-  renderMobileSubmitBar();
+  /* 预览渲染与提交栏不再同步跑在输入关键路径上：它们要做十余次
+     getBoundingClientRect 测量，会阻塞输入框自身的绘制，让数字显得卡顿。
+     推迟到下一帧，先让输入框把新字符画出来，预览晚一帧跟上即可。 */
+  scheduleNaturalEntryRender();
 });
 elements.noteInput.addEventListener("input", () => {
   elements.formError.textContent = "";
@@ -7951,7 +9387,12 @@ elements.ledgerCategoryFilter.addEventListener("change", () => {
 });
 elements.clearLedgerFiltersButton.addEventListener("click", clearLedgerFilters);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") refreshCloudLedgerFromLifecycle();
+  if (document.visibilityState === "visible") {
+    refreshCloudLedgerFromLifecycle();
+    scheduleSettlementEntryReminder();
+  } else {
+    clearSettlementEntryReminder();
+  }
 });
 window.addEventListener("online", refreshCloudLedgerFromLifecycle);
 /* iOS Safari 从 bfcache（往返缓存）恢复页面时不触发 visibilitychange，补一条 */
@@ -8139,8 +9580,8 @@ function flushDesktopPointerSink() {
   const normalizedY = (y / rect.height - 0.5) * 2;
   target.style.setProperty("--pointer-sink-x", `${x.toFixed(1)}px`);
   target.style.setProperty("--pointer-sink-y", `${y.toFixed(1)}px`);
-  target.style.setProperty("--pointer-rotate-x", `${(-normalizedY * 1.2).toFixed(3)}deg`);
-  target.style.setProperty("--pointer-rotate-y", `${(normalizedX * 1.2).toFixed(3)}deg`);
+  target.style.setProperty("--pointer-rotate-x", `${(-normalizedY * 2.6).toFixed(3)}deg`);
+  target.style.setProperty("--pointer-rotate-y", `${(normalizedX * 2.6).toFixed(3)}deg`);
 }
 
 function scheduleDesktopPointerSink(point) {
@@ -8613,6 +10054,8 @@ async function bootstrap() {
   hydrateUiIcons();
   setupStandaloneMode();
   setupSafeAreaMode();
+  migrateThemePreference();
+  applyNaturalEntryMarksPreference();
   syncThemeColorMeta();
   /* 请求持久化存储：降低 Safari ITP 主动清空 localStorage/IndexedDB 的概率 */
   navigator.storage?.persist?.().catch(() => {});
@@ -8669,6 +10112,10 @@ bootstrap();
 
   const scrollFocusedIntoView = () => {
     if (!focusedEl || document.activeElement !== focusedEl) return;
+    if (naturalEntryStageOpen && activeEntryEditor === "split" && focusedEl.matches("[data-split-amount]")) {
+      scrollNaturalEntrySplitInputIntoView(focusedEl);
+      return;
+    }
     focusedEl.scrollIntoView({ block: "center", behavior: "auto" });
   };
 

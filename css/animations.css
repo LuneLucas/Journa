@@ -272,6 +272,76 @@
   }
 }
 
+@keyframes summary-lens-sweep {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) translateX(-165%);
+  }
+
+  18% {
+    opacity: 0.42;
+  }
+
+  72% {
+    opacity: 0.20;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) translateX(520%);
+  }
+}
+
+@keyframes settlement-entry-lens-edge {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scaleY(1);
+  }
+
+  42% {
+    opacity: 0.86;
+    transform: scaleY(1.12);
+  }
+
+  72% {
+    opacity: 0.68;
+    transform: scaleY(1.025);
+  }
+}
+
+@keyframes settlement-entry-lens-sweep {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) translateX(-160%);
+  }
+
+  18% {
+    opacity: 0.62;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) translateX(520%);
+  }
+}
+
+@keyframes mobile-entry-lens-sweep {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) translateX(-180%);
+  }
+
+  24% {
+    opacity: 0.48;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) translateX(500%);
+  }
+}
+
 @keyframes total-bloom {
   0% {
     transform: scale(1);
@@ -310,12 +380,6 @@
     transform: translateY(7px);
   }
 
-  56% {
-    opacity: 0.94;
-    filter: blur(1px);
-    transform: translateY(-1px);
-  }
-
   100% {
     opacity: 1;
     filter: blur(0);
@@ -327,11 +391,6 @@
   0% {
     opacity: 0.62;
     transform: translateY(5px);
-  }
-
-  58% {
-    opacity: 0.96;
-    transform: translateY(-1px);
   }
 
   100% {
@@ -498,6 +557,19 @@
   }
 }
 
+/* 浅色玻璃上的家庭色只做单调渐入，不经过扩张或增亮峰值。 */
+@keyframes family-halo-soft-in {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+}
+
 /* 付款人标签释放缩小：平滑缩放并回弹至稳态，避免昂贵的 filter 渲染 */
 @keyframes family-release-soft {
   0% {
@@ -648,6 +720,18 @@
     color: color-mix(in srgb, var(--category-text) 78%, var(--ink));
     text-shadow: none;
     transform: none;
+  }
+}
+
+@keyframes split-mode-structure-in {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -1014,20 +1098,20 @@
 
   @keyframes settlement-sheen-travel {
     0% {
-      stroke-dashoffset: 1;
+      stroke-dashoffset: var(--flow-sheen-start, 1);
       opacity: 0;
     }
 
     12% {
-      opacity: var(--flow-sheen-opacity, 0.18);
+      opacity: var(--flow-sheen-active-opacity, 0.42);
     }
 
     88% {
-      opacity: var(--flow-sheen-opacity, 0.18);
+      opacity: var(--flow-sheen-active-opacity, 0.42);
     }
 
     100% {
-      stroke-dashoffset: -0.4;
+      stroke-dashoffset: var(--flow-sheen-end, -0.4);
       opacity: 0;
     }
   }
@@ -1164,10 +1248,29 @@
     animation-delay: calc(450ms + var(--flow-delay, 0ms));
   }
 
-  .settings-view.is-settlement-revealing .settlement-flow-map .flow-sheen {
-    --flow-sheen-opacity: 1;
-    animation: settlement-sheen-travel 1050ms linear both;
-    animation-delay: calc(540ms + var(--flow-delay, 0ms));
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-sheen-tail {
+    animation: settlement-sheen-travel 840ms linear 2 both;
+    animation-delay: calc(470ms + var(--flow-delay, 0ms));
+    will-change: stroke-dashoffset, opacity;
+  }
+
+  .settings-view.is-settlement-revealing .settlement-flow-map .flow-sheen-core {
+    animation: settlement-sheen-travel 760ms linear 2 both;
+    animation-delay: calc(450ms + var(--flow-delay, 0ms));
+    will-change: stroke-dashoffset, opacity;
+  }
+
+  /* 揭幕完成后仍保留一条克制的资金流循环：只在可见、稳定的平账抽屉内运行。 */
+  .settings-view.is-settlement-revealed:not([hidden]):not(.is-closing) .settlement-flow-map .flow-sheen-tail {
+    animation: settlement-sheen-travel 1500ms linear infinite;
+    animation-delay: calc(260ms + var(--flow-delay, 0ms));
+    will-change: stroke-dashoffset, opacity;
+  }
+
+  .settings-view.is-settlement-revealed:not([hidden]):not(.is-closing) .settlement-flow-map .flow-sheen-core {
+    animation: settlement-sheen-travel 1320ms linear infinite;
+    animation-delay: calc(240ms + var(--flow-delay, 0ms));
+    will-change: stroke-dashoffset, opacity;
   }
 
   .settings-view.is-settlement-revealing .settlement-item {
@@ -1200,25 +1303,19 @@
     animation-delay: 520ms;
   }
 
-  .settings-view.is-settlement-revealed .settlement-flow-map .flow-sheen {
-    --flow-sheen-opacity: 0.96;
-    animation: settlement-sheen-travel 4s linear infinite;
-    animation-delay: var(--flow-delay, 0ms);
-  }
-
 }
 
 /* 新增和删除卡片的自定义视图过渡 */
 ::view-transition-old(expense-new) {
-  animation: element-exit var(--motion-fast) var(--settle) forwards;
+  animation: element-exit calc(var(--motion-card) * var(--motion-exit-factor)) var(--ease-card-settle) forwards;
 }
 
 ::view-transition-new(expense-new) {
-  animation: element-enter var(--motion) var(--spring) both;
+  animation: element-enter var(--motion-card) var(--ease-card-settle) both;
 }
 
 ::view-transition-old(expense-removing) {
-  animation: ledger-collapse var(--motion) var(--settle) forwards;
+  animation: ledger-collapse calc(var(--motion-card) * var(--motion-exit-factor)) var(--ease-card-settle) forwards;
 }
 
 ::view-transition-new(expense-removing) {
@@ -1227,11 +1324,11 @@
 
 /* 数字微动刷新效果 */
 ::view-transition-old(total-amount) {
-  animation: text-slide-out var(--mobile-panel-in-motion, var(--motion-fast)) var(--settle) forwards;
+  animation: text-slide-out var(--mobile-panel-in-motion, calc(var(--motion-text) * var(--motion-exit-factor))) var(--ease-text-out) forwards;
 }
 
 ::view-transition-new(total-amount) {
-  animation: text-slide-in var(--mobile-panel-in-motion, var(--motion)) var(--spring) both;
+  animation: text-slide-in var(--mobile-panel-in-motion, var(--motion-text)) var(--ease-text-out) both;
 }
 
 /* 欢迎引导插画：三圆轻漂浮 + 云同步三点脉冲 */

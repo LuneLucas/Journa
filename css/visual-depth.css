@@ -50,6 +50,15 @@
   border: 0 !important;
 }
 
+/* 移动端总支出只有一张 primary metric；暗色主题的 summary-band 氛围底
+   不能继续作为方形父背景露在它的圆角外。 */
+@media (max-width: 820px) {
+  .summary-band {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
 .entry-panel,
 .insights-panel,
 .ledger-section,
@@ -150,7 +159,7 @@
   box-shadow: none;
 }
 
-/* 自然语言备注：输入面保持卡片内的凹槽关系，文字本身居中，避免像一条左对齐白条。 */
+/* 自然语言备注：整块舞台本身就是可编辑面，不再在内部再画一张凹陷卡片。 */
 html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] {
   display: grid;
   justify-items: center;
@@ -158,29 +167,28 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-l
 }
 
 html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .natural-entry-stage-content {
-  padding: 12px;
+  padding: 10px 18px;
 }
 
 html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] input {
   box-sizing: border-box;
-  width: min(100%, 332px);
+  width: 100%;
   margin-inline: auto;
-  padding-inline: 18px;
+  padding-inline: 6px;
   border: 0 !important;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-soft) 78%, var(--bg));
-  box-shadow: var(--surface-recess-shadow);
+  border-radius: 0;
+  clip-path: none !important;
+  background: transparent;
+  box-shadow: none;
   text-align: center;
   transition:
-    opacity 170ms ease 105ms,
-    transform 340ms var(--natural-stage-open-curve) 20ms,
-    clip-path 340ms var(--natural-stage-open-curve) 20ms,
-    box-shadow var(--motion-fast) var(--settle);
+    opacity 220ms var(--natural-stage-open-curve),
+    transform 300ms var(--natural-stage-open-curve);
 }
 
 html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] input:focus-visible {
   outline: 0;
-  box-shadow: var(--surface-recess-shadow), var(--focus-ring);
+  box-shadow: none;
 }
 
 .mobile-submit-bar {
@@ -231,5 +239,36 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-l
   .selectable-category-chip,
   .split-mode-button {
     transition-duration: 0.01ms;
+  }
+}
+
+/* 统计内卡本身是凹槽：hover 只让光线在槽内移动，不再把它翻成悬浮卡。 */
+@media (min-width: 1180px) and (hover: hover) and (pointer: fine) {
+  .stat-block.pointer-sink-target {
+    transform-style: flat;
+    transition:
+      transform 120ms var(--settle),
+      box-shadow 180ms ease,
+      background-color 180ms ease,
+      opacity var(--motion-fast) var(--settle);
+  }
+
+  .stat-block.pointer-sink-target.is-pointer-sunk {
+    transform: none;
+    box-shadow:
+      var(--surface-recess-shadow),
+      0 0 22px -18px color-mix(in srgb, var(--category-gradient, var(--theme-color)) 46%, transparent);
+    will-change: auto;
+  }
+
+  .stat-block.pointer-sink-target.is-pointer-pressed {
+    transform: translateY(1px) scale(0.998);
+    box-shadow:
+      var(--surface-recess-shadow),
+      inset 0 3px 8px color-mix(in srgb, var(--ink) 14%, transparent);
+  }
+
+  .stat-block.pointer-sink-target:focus-visible {
+    box-shadow: var(--surface-recess-shadow), var(--focus-ring);
   }
 }

@@ -19,7 +19,7 @@ create table if not exists public.travel_expenses (
   category text not null,
   note text not null default '',
   expense_date date not null default current_date,
-  split_mode text not null default 'all' check (split_mode in ('all', 'families', 'custom')),
+  split_mode text not null default 'all' check (split_mode in ('all', 'families', 'equal', 'families_equal', 'custom')),
   split_family_ids text[] not null default array[]::text[],
   split_amounts jsonb not null default '{}'::jsonb,
   is_deleted boolean not null default false,
@@ -34,6 +34,11 @@ alter table public.travel_expenses
   add column if not exists is_deleted boolean not null default false,
   add column if not exists created_by jsonb,
   add column if not exists updated_by jsonb;
+
+alter table public.travel_expenses drop constraint if exists travel_expenses_split_mode_check;
+alter table public.travel_expenses
+  add constraint travel_expenses_split_mode_check
+  check (split_mode in ('all', 'families', 'equal', 'families_equal', 'custom'));
 
 create index if not exists travel_expenses_ledger_date_idx
   on public.travel_expenses (ledger_id, expense_date desc, created_at desc);
@@ -223,7 +228,7 @@ begin
     trim(p_category),
     coalesce(p_note, ''),
     p_expense_date,
-    case when p_split_mode in ('all', 'families', 'custom') then p_split_mode else 'all' end,
+    case when p_split_mode in ('all', 'families', 'equal', 'families_equal', 'custom') then p_split_mode else 'all' end,
     coalesce(p_split_family_ids, array[]::text[]),
     coalesce(p_split_amounts, '{}'::jsonb),
     p_created_by,
