@@ -61,7 +61,11 @@
 
 .entry-panel,
 .insights-panel,
-.ledger-section,
+.ledger-section {
+  background: var(--surface);
+  box-shadow: var(--surface-raised-shadow), var(--shadow-md);
+}
+
 .ledger-manager-card {
   box-shadow: var(--surface-raised-shadow), var(--shadow-md);
 }

@@ -232,8 +232,8 @@ body.ledger-management-open .mobile-submit-bar {
   padding-bottom: 18px;
 }
 
-/* 老 WebView 不支持 backdrop-filter：玻璃层回退为实底 + 普通投影 */
-@supports not (backdrop-filter: blur(1px)) {
+/* 老 WebView 不支持任一版本的 backdrop-filter：玻璃层回退为实底 + 普通投影 */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .mobile-submit-bar {
     background: rgba(255, 255, 255, 0.92);
     box-shadow: var(--shadow-md);
