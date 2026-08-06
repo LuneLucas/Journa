@@ -900,7 +900,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .settings-drawer,
   .ledger-management-drawer {
     height: 100dvh;
-    padding: 0 0 12px;
+    padding: 0 0 max(12px, var(--safe-area-bottom));
     /* 全屏设置面是独立阅读面；移动端不让首页文字穿透抽屉底色。 */
     background: var(--glass-grain), var(--page-bg);
     -webkit-backdrop-filter: none;
@@ -3789,7 +3789,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
     /* 平账建议是阅读型全屏面板，使用更强的遮罩模糊隔离底层账本文字。 */
     .settings-view[data-mode="settlement"] .settings-drawer {
-      background: var(--glass-fade-strong-86);
+      background: var(--glass-grain), var(--glass-fade-strong-86), var(--page-bg);
       -webkit-backdrop-filter: var(--blur-settings);
       backdrop-filter: var(--blur-settings);
     }
@@ -5205,6 +5205,12 @@ html[data-entry-mode="natural"] .natural-entry-amount {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  @media (max-width: 360px) {
+    html[data-entry-mode="natural"] .expense-form .natural-entry-stage .split-custom-amounts {
+      gap: 5px;
+    }
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor] input,

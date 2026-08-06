@@ -366,13 +366,15 @@ input[type="date"]:focus {
   display: block;
 }
 
-.selectable-category-chip:hover {
-  transform: var(--hover-lift-chip);
-  background: color-mix(in srgb, var(--category-gradient) 16%, rgba(255, 255, 255, 0.66));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 0 34px -18px var(--category-gradient),
-    0 6px 16px -10px color-mix(in srgb, var(--category-gradient) 18%, transparent);
+@media (hover: hover) and (pointer: fine) {
+  .selectable-category-chip:hover {
+    transform: var(--hover-lift-chip);
+    background: color-mix(in srgb, var(--category-gradient) 16%, rgba(255, 255, 255, 0.66));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 0 34px -18px var(--category-gradient),
+      0 6px 16px -10px color-mix(in srgb, var(--category-gradient) 18%, transparent);
+  }
 }
 
 .selectable-category-chip.is-recent:not(.is-selected) {

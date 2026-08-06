@@ -182,10 +182,13 @@
     border-color: color-mix(in srgb, var(--swatch-color) 42%, rgba(255, 255, 255, 0.12));
   }
 
-  /* 抽屉与确认框的白色渐变改暗面 */
-  .settings-drawer,
-  .ledger-management-drawer {
-    background: var(--glass-grain), var(--glass-bg);
+  /* 桌面抽屉与确认框的白色渐变改暗面；移动端由 responsive.css 提供独立实底，
+     避免深色玻璃重新覆盖移动端的页面隔离层。 */
+  @media (min-width: 821px) {
+    .settings-drawer,
+    .ledger-management-drawer {
+      background: var(--glass-grain), var(--glass-bg);
+    }
   }
 
   .confirm-dialog {
