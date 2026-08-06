@@ -901,6 +901,10 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .ledger-management-drawer {
     height: 100dvh;
     padding: 0 0 12px;
+    /* 全屏设置面是独立阅读面；移动端不让首页文字穿透抽屉底色。 */
+    background: var(--glass-grain), var(--page-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     animation-name: settings-drawer-enter-mobile;
   }
 
@@ -3776,12 +3780,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     .app-view.is-mobile-panel-switching-in .insights-panel {
       filter: none !important;
       will-change: opacity, transform;
-    }
-
-    .settings-drawer,
-    .ledger-management-drawer {
-      -webkit-backdrop-filter: var(--glass-blur);
-      backdrop-filter: var(--glass-blur);
     }
 
     .settings-view .settings-drawer,
