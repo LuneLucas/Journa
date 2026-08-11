@@ -3798,6 +3798,35 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       filter: none !important;
       will-change: opacity, transform;
     }
+
+    /* 提交栏已经由 app.js 的 FLIP/WAAPI 负责几何运动；Safari 不再同时
+       过渡 left/padding/gap/radius，避免布局动画和合成动画双轨运行。 */
+    :root[data-material-tier="balanced"] .mobile-submit-bar,
+    :root[data-material-tier="solid"] .mobile-submit-bar {
+      transition-property: background-color, background-image, border-color, box-shadow, opacity;
+    }
+
+    :root[data-material-tier="balanced"] .mobile-submit-bar::before,
+    :root[data-material-tier="solid"] .mobile-submit-bar::before,
+    :root[data-material-tier="balanced"] .bar-morph-glow,
+    :root[data-material-tier="solid"] .bar-morph-glow {
+      filter: none !important;
+    }
+
+    /* balanced/solid 档禁止关键结构动画进入 filter 插值；高光仍由
+       opacity/transform 完成，避免 WebKit 对整个面板逐帧重栅格化。 */
+    :root[data-material-tier="balanced"] .app-view.is-mobile-panel-switching-out > *,
+    :root[data-material-tier="balanced"] .app-view.is-mobile-panel-switching-in > *,
+    :root[data-material-tier="balanced"] .settings-view .settings-drawer,
+    :root[data-material-tier="balanced"] .ledger-management-view .ledger-management-drawer,
+    :root[data-material-tier="balanced"] .category-picker.is-category-morphing .category-chips-fade,
+    :root[data-material-tier="solid"] .app-view.is-mobile-panel-switching-out > *,
+    :root[data-material-tier="solid"] .app-view.is-mobile-panel-switching-in > *,
+    :root[data-material-tier="solid"] .settings-view .settings-drawer,
+    :root[data-material-tier="solid"] .ledger-management-view .ledger-management-drawer,
+    :root[data-material-tier="solid"] .category-picker.is-category-morphing .category-chips-fade {
+      filter: none !important;
+    }
   }
 }
 

@@ -1374,3 +1374,17 @@ body.is-scrolling .welcome-orb,
 body.is-scrolling .welcome-sync-dots span {
   animation-play-state: paused;
 }
+
+/* Safari 的材质档位只保留运动感，不让装饰性滤镜参与转场合成。 */
+:root[data-material-tier="balanced"] .settings-drawer,
+:root[data-material-tier="balanced"] .ledger-management-drawer,
+:root[data-material-tier="balanced"] .app-view.is-mobile-panel-switching-out > *,
+:root[data-material-tier="balanced"] .app-view.is-mobile-panel-switching-in > *,
+:root[data-material-tier="balanced"] .category-picker.is-category-morphing .category-chips-fade,
+:root[data-material-tier="solid"] .settings-drawer,
+:root[data-material-tier="solid"] .ledger-management-drawer,
+:root[data-material-tier="solid"] .app-view.is-mobile-panel-switching-out > *,
+:root[data-material-tier="solid"] .app-view.is-mobile-panel-switching-in > *,
+:root[data-material-tier="solid"] .category-picker.is-category-morphing .category-chips-fade {
+  filter: none !important;
+}

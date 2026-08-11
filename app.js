@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-fixes-v1-20260807";
+const APP_VERSION = "journa-safari-perf-v1-20260811";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -20,11 +20,86 @@ document.documentElement.dataset.appVersion = APP_VERSION;
       var m = ua.match(/OS (\d+)_/);
       if (m) iOSVer = parseInt(m[1], 10);
     }
-    /* 桌面端直接上 soft；iOS 16+ 整块面板模糊稳定，仅增强非渐隐玻璃（渐隐层不消费 soft token） */
-    if (!iOS || iOSVer >= 16) {
+    /* 桌面端直接上 soft；iOS 先从 balanced 材质起步，避免把实时模糊成本压到首个交互上。 */
+    if (iOS) {
+      document.documentElement.dataset.materialTier = "balanced";
+    } else {
       document.documentElement.setAttribute("data-blur", "soft");
+      document.documentElement.dataset.materialTier = "full";
     }
   } catch (e) { /* 静默降级为基线玻璃 */ }
+})();
+
+/* Safari 动效质量调度：保持几何、节奏和颜色不变，只在空闲阶段切换材质成本。
+   不依赖 deviceMemory 等 Safari 不稳定暴露的硬件信息，而是测量 Journa 自身的
+   交互帧间隔。balanced 是移动 WebKit 的安全起点；连续稳定后才升级 full，出现
+   长帧则回退。状态只存在当前会话，不写入账本或用户设置。 */
+(function setupMotionQuality() {
+  const root = document.documentElement;
+  const ua = navigator.userAgent || "";
+  const isIOS = /iP(ad|hone|od)/.test(ua) || /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const reducedTransparency = window.matchMedia?.("(prefers-reduced-transparency: reduce)").matches;
+  if (!isIOS) {
+    root.dataset.motionTier = reducedMotion ? "calm" : "full";
+    return;
+  }
+
+  root.dataset.motionTier = reducedMotion ? "calm" : "full";
+  let materialTier = reducedTransparency ? "solid" : (root.dataset.materialTier || "balanced");
+  let goodSamples = 0;
+  let badSamples = 0;
+  let sampleRunning = false;
+  let sampleTimer = 0;
+
+  const applyMaterialTier = (nextTier) => {
+    materialTier = nextTier;
+    root.dataset.materialTier = nextTier;
+    if (nextTier === "full") root.dataset.blur = "soft";
+    else root.removeAttribute("data-blur");
+  };
+
+  const sampleFrames = () => {
+    if (sampleRunning || document.visibilityState !== "visible" || reducedMotion) return;
+    sampleRunning = true;
+    const intervals = [];
+    const startedAt = performance.now();
+    let previous = startedAt;
+    const deadline = startedAt + 900;
+    const finish = () => {
+      sampleRunning = false;
+      const sorted = intervals.slice().sort((a, b) => a - b);
+      const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 99;
+      const slowRatio = intervals.length ? intervals.filter((interval) => interval > 25).length / intervals.length : 1;
+      const smooth = p95 <= 18 && slowRatio <= 0.05;
+
+      if (smooth) {
+        goodSamples += 1;
+        badSamples = 0;
+        if (materialTier === "balanced" && goodSamples >= 3) applyMaterialTier("full");
+      } else {
+        badSamples += 1;
+        goodSamples = 0;
+        if (materialTier === "full") applyMaterialTier("balanced");
+        else if (badSamples >= 2 && materialTier === "balanced") applyMaterialTier("solid");
+      }
+    };
+    const tick = (now) => {
+      const interval = now - previous;
+      if (interval > 0) intervals.push(interval);
+      previous = now;
+      if (now < deadline) requestAnimationFrame(tick);
+      else finish();
+    };
+    requestAnimationFrame(tick);
+  };
+
+  const scheduleSample = () => {
+    window.clearTimeout(sampleTimer);
+    sampleTimer = window.setTimeout(sampleFrames, 40);
+  };
+  document.addEventListener("pointerup", scheduleSample, { passive: true, capture: true });
+  document.addEventListener("touchend", scheduleSample, { passive: true, capture: true });
 })();
 const MOTION_DELAYS = {
   ledgerSettle: 1783,
@@ -4312,6 +4387,12 @@ function updateCategoryEdgeFades() {
 // 阻塞合成器滚动导致跟手性下降。
 function setupCategoryOverscroll(el) {
   if (!el) return;
+  /* iOS Safari 的原生横向滚动已经提供惯性与边缘回弹；手写 touchmove
+     需要 passive:false，会让 WebKit 等待方向判断，反而阻塞页面纵向滚动。
+     保留桌面触控板/其他浏览器的轻微拉伸反馈，移动 WebKit 交回原生滚动。 */
+  const mobileWebKit = /iP(ad|hone|od)/.test(navigator.userAgent || "")
+    || (/Macintosh/.test(navigator.userAgent || "") && navigator.maxTouchPoints > 1);
+  if (mobileWebKit && window.matchMedia?.("(max-width: 820px)").matches) return;
   const LIMIT = 22; // 最大拉出距离（渐近上限）
   const RESIST = 190; // 阻尼系数：越大越“沉”
   const maxScroll = () => el.scrollWidth - el.clientWidth;

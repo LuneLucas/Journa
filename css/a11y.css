@@ -122,3 +122,46 @@
   }
 
 }
+
+/* 移动 WebKit 的运行时材质档位。此文件最后加载，确保深色主题的基础变量
+   也会被性能档位正确覆盖；档位不改变视觉几何，只收敛实时采样和滤镜成本。 */
+:root[data-material-tier="balanced"] {
+  --glass-blur: blur(8px) saturate(140%);
+  --glass-blur-strong: blur(12px) saturate(145%);
+  --glass-blur-soft: var(--glass-blur);
+  --glass-blur-strong-soft: var(--glass-blur-strong);
+  --blur-confirm: blur(4px);
+  --blur-toast: blur(4px) saturate(130%);
+  --blur-settings: blur(10px) saturate(120%);
+  --blur-header: blur(8px) saturate(140%);
+  --blur-header-before: blur(10px) saturate(130%) brightness(1.01);
+  --blur-header-after: none;
+  --blur-header-soft: var(--blur-header-before);
+  --blur-panel-switch: none;
+  --blur-panel-switch-soft: none;
+  --blur-submit: blur(8px) saturate(140%);
+  --blur-focus-dim: blur(6px) saturate(0.76) brightness(0.76);
+  --blur-dim: blur(6px) saturate(0.86) brightness(0.97);
+  --blur-overlay-strong: blur(12px) saturate(130%);
+}
+
+:root[data-material-tier="solid"] {
+  --glass-blur: none;
+  --glass-blur-strong: none;
+  --glass-blur-soft: none;
+  --glass-blur-strong-soft: none;
+  --blur-confirm: none;
+  --blur-toast: none;
+  --blur-settings: none;
+  --blur-header: none;
+  --blur-header-before: none;
+  --blur-header-after: none;
+  --blur-header-soft: none;
+  --blur-panel-switch: none;
+  --blur-panel-switch-soft: none;
+  --blur-category: none;
+  --blur-submit: none;
+  --blur-focus-dim: none;
+  --blur-dim: none;
+  --blur-overlay-strong: none;
+}
