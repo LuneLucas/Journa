@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-perf-v1-20260811";
+const APP_VERSION = "journa-ledger-alignment-v2-20260812";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -3945,6 +3945,29 @@ function handleNaturalEntryClick(event) {
   }
 }
 
+/* The modal backdrop sits above the sentence so the inactive page stays
+   softly blurred. Resolve taps that land on another sentence token from its
+   frozen screen rect, then reuse the normal token click path. This makes the
+   existing stage-to-stage morph reachable without exposing unrelated controls
+   behind the backdrop. */
+function handleNaturalEntryBackdropClick(event) {
+  const token = [...elements.naturalEntryFlow.querySelectorAll("[data-entry-target]")]
+    .find((button) => {
+      if (button === naturalEntryStageAnchor) return false;
+      const rect = button.getBoundingClientRect();
+      return event.clientX >= rect.left
+        && event.clientX <= rect.right
+        && event.clientY >= rect.top
+        && event.clientY <= rect.bottom;
+    });
+
+  if (token) {
+    token.click();
+    return;
+  }
+  closeNaturalEntryStage({ restoreFocus: true });
+}
+
 function renderLedgerFilters() {
   elements.ledgerFamilyFilter.innerHTML = [
     `<option value="">全部家庭</option>`,
@@ -4728,11 +4751,11 @@ function formatExpenseSplitSummary(expense) {
   const ruleLabel = getSplitRuleFromMode(splitMode) === "equal" ? "各家均分" : "按家庭人数";
   if (getSplitScopeFromMode(splitMode) === "selected") {
     const ids = normalizeSplitFamilyIds(expense.splitFamilyIds, state.families.map((family) => family.id));
-    if (ids.length === 1) return `${ids.map(getFamilyName).join("、")} · 承担全部`;
-    return `${ids.map(getFamilyName).join("、")} · ${ruleLabel}`;
+    if (ids.length === 1) return `${ids.map(getFamilyName).join("、")} · 全额`;
+    return `${ids.map(getFamilyName).join("、")} · ${ruleLabel === "各家均分" ? "均分" : "按人数"}`;
   }
 
-  return `全部家庭 · ${ruleLabel}`;
+  return `${state.families.length} 家 · ${ruleLabel === "各家均分" ? "均分" : "按人数"}`;
 }
 
 function formatCustomSplitTotalLine() {
@@ -5220,7 +5243,8 @@ function playInitialTotalReveal(targetText) {
   cancelInitialTotalReveal();
   elements.totalAmount.classList.remove("is-soft-refresh");
 
-  if (prefersReducedMotion()) {
+  const numericTarget = Number(String(targetText).replace(/[^\d.-]/g, ""));
+  if (prefersReducedMotion() || numericTarget === 0) {
     elements.totalAmount.classList.remove("is-scrambling");
     elements.totalAmount.textContent = targetText;
     return;
@@ -5323,6 +5347,12 @@ function playInitialExpenseCountReveal(targetText) {
   }
 
   hasPlayedInitialExpenseCountReveal = true;
+  if (Number(targetText) === 0) {
+    expenseCountRevealTargetText = targetText;
+    cancelExpenseCountReveal();
+    elements.expenseCount.textContent = targetText;
+    return;
+  }
   playExpenseCountScramble(targetText);
 }
 
@@ -5455,7 +5485,7 @@ function renderJourneyHero(summary) {
 
   elements.journeyLedgerName.textContent = state.name;
   elements.journeyStateLabel.textContent = expenses.length
-    ? `旅程已展开 · ${dayCount} 天`
+    ? `共 ${dayCount} 天`
     : "旅程尚未开始";
   elements.journeyDateRange.textContent = expenses.length
     ? formatJourneyDateRange(firstDate, lastDate)
@@ -5551,10 +5581,8 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
     button.style.setProperty("--settlement-to-color", toVisual.color);
     button.style.setProperty("--settlement-flow-glow", colorWithAlpha(fromVisual.color, 0.34));
   });
-  elements.settlementEntrySub.textContent = count
-    ? "旅程收尾时查看"
-    : "所有家庭当前已两清";
-  elements.settlementEntryCount.textContent = count ? `待结算 ${count} 笔` : "已两清";
+  elements.settlementEntrySub.textContent = count ? "查看承担与转账" : "已两清";
+  elements.settlementEntryCount.textContent = count ? `${count} 笔待结算` : "已两清";
   elements.settlementEntryButton.classList.toggle("is-settled", count === 0);
 
   if (shouldAnimate && leadingSettlement && !prefersReducedMotion()) {
@@ -5846,9 +5874,12 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   const activeExpenses = getActiveExpenses();
 
   if (!activeExpenses.length) {
+    document.documentElement.dataset.ledgerExpanded = "false";
+    elements.mobileSubmitBar?.removeAttribute("aria-hidden");
+    elements.mobileSubmitBar?.removeAttribute("inert");
     elements.ledgerList.innerHTML = renderLedgerEmptyState(
       "还没有账单",
-      `<br><small>记下第一笔，开始这次旅行。</small><br><button class="secondary-button compact-button empty-state-action" type="button" data-goto-entry>去记一笔</button>`,
+      `<br><button class="secondary-button compact-button empty-state-action" type="button" data-goto-entry>记第一笔</button>`,
       enterClass,
       { suffixIsHtml: true },
     );
@@ -5856,6 +5887,9 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   }
 
   if (!visibleExpenses.length) {
+    document.documentElement.dataset.ledgerExpanded = "false";
+    elements.mobileSubmitBar?.removeAttribute("aria-hidden");
+    elements.mobileSubmitBar?.removeAttribute("inert");
     elements.ledgerList.innerHTML = renderLedgerEmptyState(
       "没有符合筛选的账单",
       `<button class="secondary-button compact-button empty-state-action" type="button" data-clear-filter-empty>清除筛选</button>`,
@@ -5866,6 +5900,10 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   }
 
   elements.ledgerList.innerHTML = groupExpensesByDate(visibleExpenses).map((group) => renderLedgerDayGroup(group, enterClass)).join("");
+  const expandedItem = elements.ledgerList.querySelector(".ledger-item.is-expanded");
+  document.documentElement.dataset.ledgerExpanded = expandedItem ? "true" : "false";
+  elements.mobileSubmitBar?.toggleAttribute("inert", Boolean(expandedItem));
+  elements.mobileSubmitBar?.setAttribute("aria-hidden", String(Boolean(expandedItem)));
 }
 
 function renderLedgerEmptyState(message, suffix = "", enterClass = "", { includeArt = true, suffixIsHtml = false } = {}) {
@@ -5899,33 +5937,34 @@ function renderLedgerItem(expense) {
   );
   const syncBadge = syncState ? `<span class="ledger-sync-badge">${escapeHtml(formatExpenseSyncBadge(syncState))}</span>` : "";
   const syncLine = syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : "";
-  const expandCue = isExpanded ? `<span class="ledger-expand-cue" aria-hidden="true">收起</span>` : "";
+  const expandCue = `<span class="ledger-expand-cue" aria-hidden="true">${isExpanded ? "收起" : "展开"}</span>`;
   const createdFamilyId = normalizePayerId(expense.createdBy?.familyId);
   const updatedFamilyId = normalizePayerId(expense.updatedBy?.familyId);
   const createdFamilyName = createdFamilyId ? getFamilyName(createdFamilyId) : "";
   const updatedFamilyName = updatedFamilyId ? getFamilyName(updatedFamilyId) : "";
   const operatorLabel = updatedFamilyId && updatedFamilyId !== createdFamilyId
-    ? `最近由 ${updatedFamilyName} 编辑`
+    ? `${updatedFamilyName} 更新`
     : createdFamilyId
-      ? `由 ${createdFamilyName} 记下`
+      ? `${createdFamilyName} 记录`
       : "";
   const operatorHtml = operatorLabel
     ? `<small class="ledger-operator" title="${escapeHtml(operatorLabel)}">${escapeHtml(operatorLabel)}</small>`
     : "";
 
-  let metaHtml = "";
-  if (isExpanded) {
-    let metaItems = "";
-    if (createdFamilyId) {
-      metaItems += `<span>${uiIconHtml("plus", "ledger-meta-icon")}创建：${escapeHtml(createdFamilyName)}</span>`;
-    }
-    if (updatedFamilyId && updatedFamilyId !== createdFamilyId) {
-      metaItems += `<span>${uiIconHtml("edit", "ledger-meta-icon")}更新：${escapeHtml(updatedFamilyName)}</span>`;
-    }
-    if (metaItems) {
-      metaHtml = `<div class="ledger-meta-info">${metaItems}</div>`;
-    }
+  let metaItems = "";
+  if (createdFamilyId) {
+    metaItems += `<span>${uiIconHtml("plus", "ledger-meta-icon")}创建：${escapeHtml(createdFamilyName)}</span>`;
   }
+  if (updatedFamilyId && updatedFamilyId !== createdFamilyId) {
+    metaItems += `<span>${uiIconHtml("edit", "ledger-meta-icon")}更新：${escapeHtml(updatedFamilyName)}</span>`;
+  }
+  const metaHtml = metaItems
+    ? `<div class="ledger-meta-info" aria-hidden="${String(!isExpanded)}">${metaItems}</div>`
+    : "";
+  const noteText = String(expense.note || "").trim();
+  const noteHtml = noteText ? `<p class="ledger-note">${escapeHtml(noteText)}</p>` : "";
+  const actionTabIndex = isExpanded ? "0" : "-1";
+  const actionVisibility = String(!isExpanded);
 
   const transitionStyle = expense.id === lastAddedExpenseId ? "view-transition-name: expense-new" : "";
   const combinedStyle = [familyStyle(expense.payerId), transitionStyle].filter(Boolean).join(";");
@@ -5944,7 +5983,7 @@ function renderLedgerItem(expense) {
           <span class="category-pill" style="${categoryStyle(expense.category)}">${categoryLabelHtml(expense.category)}</span>
           ${syncBadge}
         </div>
-        <p class="ledger-note">${escapeHtml(expense.note || "无备注")}</p>
+        ${noteHtml}
         ${operatorHtml}
         <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
         ${syncLine}
@@ -5953,9 +5992,9 @@ function renderLedgerItem(expense) {
       <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
       <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
       ${expandCue}
-      <div class="ledger-item-actions">
-        <button class="ledger-edit-button" type="button" data-edit-id="${escapeHtml(expense.id)}" aria-label="编辑这笔账">${uiIconHtml("edit")}</button>
-        <button class="delete-button" type="button" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">${uiIconHtml("trash")}</button>
+      <div class="ledger-item-actions" aria-hidden="${actionVisibility}" ${isExpanded ? "" : "inert"}>
+        <button class="ledger-edit-button" type="button" tabindex="${actionTabIndex}" data-edit-id="${escapeHtml(expense.id)}" aria-label="编辑这笔账">${uiIconHtml("edit")}</button>
+        <button class="delete-button" type="button" tabindex="${actionTabIndex}" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">${uiIconHtml("trash")}</button>
       </div>
     </article>
   `;
@@ -6128,22 +6167,22 @@ function getExpenseMissingState() {
   if (!hasPayer) {
     return {
       target: "payer",
-      summary: "还差：付款家庭",
-      action: "去选择",
+      summary: "请选择付款家庭",
+      action: "选择",
     };
   }
   if (!Number.isFinite(amount) || amount <= 0) {
     return {
       target: activeSplitMode === "custom" ? "split" : "amount",
-      summary: activeSplitMode === "custom" ? "还差：分摊金额" : "还差：金额",
-      action: "去填写",
+      summary: activeSplitMode === "custom" ? "请填写分摊金额" : "请输入金额",
+      action: "填写",
     };
   }
   if (!hasCategory) {
     return {
       target: "category",
-      summary: "还差：类别",
-      action: "去选择",
+      summary: "请选择类别",
+      action: "选择",
     };
   }
   return {
@@ -6348,7 +6387,7 @@ function handleExpenseSubmit(event) {
       onAction: clearLedgerFilters,
     });
   } else if (!wasEditing && mobileDataFlow) {
-    showToast({ message: "已记下，账本状态已更新" });
+    showToast({ message: "账单已添加" });
   }
   if (mobileDataFlow) {
     setMobilePanel("data", { animate: true, scroll: false });
@@ -6365,7 +6404,7 @@ function handleExpenseSubmit(event) {
   window.setTimeout(() => {
     showMobileSubmitFeedback(
       "success",
-      wasEditing ? "已保存 ✓" : "已记下 ✓",
+      wasEditing ? "已保存 ✓" : "已添加 ✓",
       wasEditing ? "这笔账已更新" : `${getFamilyName(payerId)} · ${formatCategoryLabel(category)}`,
     );
   }, 32);
@@ -6914,6 +6953,39 @@ function toggleLedgerItem(expenseId) {
   expandLedgerItem(expenseId);
 }
 
+function syncLedgerItemExpandedState(item, isExpanded) {
+  if (!item) return;
+  document.documentElement.dataset.ledgerExpanded = isExpanded ? "true" : "false";
+  item.classList.toggle("is-expanded", isExpanded);
+  item.setAttribute("aria-expanded", String(isExpanded));
+  item.setAttribute("aria-label", isExpanded ? "收起这笔账单" : "展开这笔账单");
+
+  const cue = item.querySelector(".ledger-expand-cue");
+  if (cue) cue.textContent = isExpanded ? "收起" : "展开";
+
+  const actions = item.querySelector(".ledger-item-actions");
+  if (actions) {
+    actions.toggleAttribute("inert", !isExpanded);
+    actions.setAttribute("aria-hidden", String(!isExpanded));
+    actions.querySelectorAll("button").forEach((button) => {
+      button.tabIndex = isExpanded ? 0 : -1;
+    });
+  }
+
+  const meta = item.querySelector(".ledger-meta-info");
+  if (meta) meta.setAttribute("aria-hidden", String(!isExpanded));
+
+  const mobileSubmitBar = elements.mobileSubmitBar;
+  if (mobileSubmitBar) {
+    mobileSubmitBar.setAttribute("aria-hidden", String(isExpanded));
+    mobileSubmitBar.toggleAttribute("inert", isExpanded);
+  }
+
+  if (!isExpanded && item.contains(document.activeElement)) {
+    item.focus({ preventScroll: true });
+  }
+}
+
 function expandLedgerItem(expenseId) {
   if (!expenseId || expandedExpenseId === expenseId) return;
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
@@ -6923,9 +6995,7 @@ function expandLedgerItem(expenseId) {
   expandedExpenseId = expenseId;
   transitionItems.forEach((item) => {
     const isExpanded = item.dataset.expenseId === expenseId;
-    item.classList.toggle("is-expanded", isExpanded);
-    item.setAttribute("aria-expanded", String(isExpanded));
-    item.setAttribute("aria-label", isExpanded ? "收起这笔账单" : "展开这笔账单");
+    syncLedgerItemExpandedState(item, isExpanded);
   });
   playLedgerTransitionRects(flipRects);
 }
@@ -6938,9 +7008,7 @@ function collapseLedgerItem(expenseId) {
   prepareLedgerMorph("collapsing");
   expandedExpenseId = "";
   transitionItems.forEach((item) => {
-    item.classList.remove("is-expanded");
-    item.setAttribute("aria-expanded", "false");
-    item.setAttribute("aria-label", "展开这笔账单");
+    syncLedgerItemExpandedState(item, false);
   });
   playLedgerTransitionRects(flipRects);
 }
@@ -6962,7 +7030,6 @@ function captureLedgerTransitionRects(items) {
       top: itemRect.top,
       width: itemRect.width,
       height: itemRect.height,
-      marginInlineStart: parseFloat(getComputedStyle(item).marginInlineStart) || 0,
     });
     item.querySelectorAll(selectors.join(",")).forEach((element) => {
       const rect = element.getBoundingClientRect();
@@ -7022,43 +7089,30 @@ function playLedgerTransitionRects(rects) {
     const toRect = element.getBoundingClientRect();
     toRects.set(element, element.classList.contains("ledger-item")
       ? {
-        left: toRect.left,
-        top: toRect.top,
-        width: toRect.width,
-        height: toRect.height,
-        marginInlineStart: parseFloat(getComputedStyle(element).marginInlineStart) || 0,
-      }
+          left: toRect.left,
+          top: toRect.top,
+          width: toRect.width,
+          height: toRect.height,
+        }
       : toRect);
   });
 
   toRects.forEach((toRect, element) => {
     const fromRect = rects.get(element);
 
-    // 卡片自身动画 height、width 和横向外边距；min/max 仅在动画期间解除，
-    // 让手机端展开时的左右边界也沿着同一条 FLIP 轨迹落位。
+    // 卡片只动画真实高度；移动端左右边界保持稳定，避免展开时横向错位。
     if (element.classList.contains("ledger-item")) {
       const hasHeightChange = Math.abs(fromRect.height - toRect.height) >= 1;
-      const hasWidthChange = Math.abs(fromRect.width - toRect.width) >= 1;
-      const hasMarginChange = Math.abs((fromRect.marginInlineStart || 0) - (toRect.marginInlineStart || 0)) >= 0.5;
-      if (!hasHeightChange && !hasWidthChange && !hasMarginChange) return;
+      if (!hasHeightChange) return;
       element.style.height = `${fromRect.height}px`;
       element.style.minHeight = "0";
       element.style.maxHeight = "none";
       const fromFrame = { height: `${fromRect.height}px` };
       const toFrame = { height: `${toRect.height}px` };
-      if (hasWidthChange) {
-        fromFrame.width = `${fromRect.width}px`;
-        toFrame.width = `${toRect.width}px`;
-      }
-      if (hasMarginChange) {
-        fromFrame.marginInlineStart = `${fromRect.marginInlineStart || 0}px`;
-        toFrame.marginInlineStart = `${toRect.marginInlineStart || 0}px`;
-      }
       const distance = Math.hypot(
         toRect.left - fromRect.left,
         toRect.top - fromRect.top,
         toRect.height - fromRect.height,
-        toRect.width - fromRect.width,
       );
       const duration = resolveMotionDuration({ distancePx: distance, role: "card", direction });
       const animation = element.animate(
@@ -7077,8 +7131,6 @@ function playLedgerTransitionRects(rects) {
           element.style.height = `${toRect.height}px`;
           animation.cancel();
           element.style.height = "";
-          element.style.width = "";
-          element.style.marginInlineStart = "";
           element.style.minHeight = "";
           element.style.maxHeight = "";
           element._heightAnimation = null;
@@ -7629,7 +7681,7 @@ function openDismissiblePanel({ view, bodyClass, closeButton, fallbackFocus, ren
   closeButton.focus();
 }
 
-function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, setCloseTimer, getReturnFocus, setReturnFocus }) {
+function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, setCloseTimer, getReturnFocus, setReturnFocus, restoreReturnFocus = true }) {
   if (view.hidden || view.classList.contains("is-closing")) return;
 
   view.classList.add("is-closing");
@@ -7640,7 +7692,7 @@ function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, 
     view.hidden = true;
     view.classList.remove("is-closing");
     document.body.classList.remove(bodyClass);
-    restoreFocus(getReturnFocus() || fallbackFocus);
+    if (restoreReturnFocus) restoreFocus(getReturnFocus() || fallbackFocus);
     setReturnFocus(null);
   }, delay));
 }
@@ -7805,7 +7857,7 @@ function openSettlementInSettings() {
   openSettings({ mode: "settlement" });
 }
 
-function closeSettings() {
+function closeSettings({ restoreFocus = true } = {}) {
   clearSettlementReveal({ settle: true });
   closeDismissiblePanel({
     view: elements.settingsView,
@@ -7819,6 +7871,7 @@ function closeSettings() {
     setReturnFocus: (element) => {
       settingsReturnFocus = element;
     },
+    restoreReturnFocus: restoreFocus,
   });
   settlementEntryReminderResumeTimer = window.setTimeout(() => {
     settlementEntryReminderResumeTimer = 0;
@@ -8214,10 +8267,11 @@ function syncWelcomeControls() {
   const isLast = welcomeSlideIndex === getWelcomeSlides().length - 1;
   const selectedFamilyId = getSelectedOperatorFamilyId(elements.welcomeIdentityFamilyList) || getOperatorFamilyId();
   const identityMissing = isLast && welcomeRequiresFamily() && !selectedFamilyId;
+  const revealPending = isLast && !welcomeEnterRevealed;
   elements.welcomeNextLabel.textContent = isLast ? "立即查看" : "继续";
   elements.welcomeSkipButton.hidden = isLast;
   elements.welcomeNextButton.disabled = identityMissing;
-  elements.welcomeNextButton.setAttribute("aria-disabled", String(identityMissing));
+  elements.welcomeNextButton.setAttribute("aria-disabled", String(identityMissing || revealPending));
   /* 末屏终端 CTA：进入末屏后 2 秒才淡入，期间不可点击，避免一进来就误点跳过认家。
      离开末屏则复位，下次回到末屏重新计时。 */
   if (isLast) {
@@ -8226,9 +8280,11 @@ function syncWelcomeControls() {
       elements.welcomeNextButton.classList.remove("is-revealed");
       if (!welcomeEnterTimer) {
         welcomeEnterTimer = window.setTimeout(function () {
+          welcomeEnterTimer = null;
           welcomeEnterRevealed = true;
           elements.welcomeNextButton.classList.remove("pending-reveal");
           elements.welcomeNextButton.classList.add("is-revealed");
+          syncWelcomeControls();
         }, 2000);
       }
     }
@@ -8263,6 +8319,7 @@ function handleWelcomeTrackScroll() {
 }
 
 function handleWelcomeNext() {
+  if (welcomeSlideIndex >= getWelcomeSlides().length - 1 && !welcomeEnterRevealed) return;
   if (welcomeSlideIndex >= getWelcomeSlides().length - 1) {
     const familyId = getSelectedOperatorFamilyId(elements.welcomeIdentityFamilyList);
     if (familyId) {
@@ -9024,6 +9081,7 @@ function startEditExpense(expenseId) {
   elements.amountInput.value = activeSplitMode === "custom" ? formatAmountInput(getActiveCustomSplitTotalCents()) : String(expense.amount);
   elements.noteInput.value = expense.note;
   renderNaturalEntry();
+  renderMobileSubmitBar();
   editFormSnapshot = captureExpenseFormSnapshot();
   elements.expenseForm.scrollIntoView({ block: "start", behavior: "auto" });
   elements.amountInput.focus();
@@ -9297,8 +9355,7 @@ function escapeHtml(value) {
 
 elements.expenseForm.addEventListener("submit", handleExpenseSubmit);
 elements.naturalEntryFlow?.addEventListener("click", handleNaturalEntryClick);
-elements.naturalEntryFocusBackdrop?.addEventListener("pointerdown", () => closeNaturalEntryStage({ restoreFocus: true }));
-elements.naturalEntryFocusBackdrop?.addEventListener("click", () => closeNaturalEntryStage({ restoreFocus: true }));
+elements.naturalEntryFocusBackdrop?.addEventListener("click", handleNaturalEntryBackdropClick);
 elements.categoryAddConfirm?.addEventListener("click", handleInlineCategoryAdd);
 elements.newCategoryInput.addEventListener("input", updateCategoryAddConfirmState);
 elements.newCategoryInput.addEventListener("keydown", handleNewCategoryKeydown);
@@ -9353,7 +9410,7 @@ elements.welcomeDots.addEventListener("click", (event) => {
   if (dot) setWelcomeSlide(Number(dot.dataset.welcomeDot));
 });
 elements.openWelcomeButton.addEventListener("click", () => {
-  closeSettings();
+  closeSettings({ restoreFocus: false });
   openWelcome();
 });
 /* 横滑卡片按容器宽度定位，窗口尺寸变化时瞬时校正到当前页 */

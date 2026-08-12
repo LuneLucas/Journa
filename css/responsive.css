@@ -2382,7 +2382,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       background-image 320ms ease,
       border-color 320ms ease,
       box-shadow 320ms ease,
-      opacity 220ms ease;
+      opacity 220ms ease,
+      transform 220ms ease;
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 26%),
       radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 42%),
@@ -2399,6 +2400,13 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       0 24px 72px rgba(22, 26, 30, 0.16);
     -webkit-backdrop-filter: var(--blur-submit);
     backdrop-filter: var(--blur-submit);
+  }
+
+  /* 展开账单时让详情成为唯一焦点，避免固定圆形入口压住卡片操作区。 */
+  html[data-ledger-expanded="true"] .mobile-submit-bar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, 18px, 0) scale(0.88);
   }
 
   .mobile-submit-bar::before,
@@ -2667,24 +2675,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .ledger-item.is-expanded {
-    grid-template-columns: minmax(0, 1fr) 52px 100px;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
     grid-template-areas:
-      "main date delete"
-      "amount date delete";
-    gap: 12px 10px;
-    min-height: 124px;
+      "main main"
+      "amount delete";
+    gap: 10px;
+    min-height: 142px;
     max-height: 260px;
     padding: 14px;
-    /* 展开态回到账单内容区的左右边界；收起态继续保留时间轴缩进。 */
-    margin-inline-start: calc(-1 * var(--timeline-content-offset));
-    width: calc(100% + var(--timeline-content-offset));
-  }
-
-  .ledger-item.is-expanded::before,
-  .ledger-item.is-expanded::after {
-    /* 卡片左移后，标记仍停在原时间轴轴线上。 */
-    left: calc(var(--timeline-axis) - var(--ledger-marker-border-offset));
   }
 
   .ledger-main {
@@ -2704,16 +2703,18 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .ledger-item.is-expanded .ledger-date {
-    width: 46px;
-    min-width: 46px;
-    max-width: 52px;
-    opacity: 0.46;
+    display: none;
   }
 
   .ledger-item.is-expanded .ledger-item-actions {
     width: 100px;
     min-width: 100px;
     gap: 7px;
+  }
+
+  .ledger-item.is-expanded .ledger-main {
+    align-self: start;
+    width: 100%;
   }
 
   .ledger-item.is-expanded .ledger-edit-button,

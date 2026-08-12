@@ -248,7 +248,7 @@
   gap: 12px 14px;
   min-height: 124px;
   max-height: 280px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--control-radius-large);
   background: var(--ledger-card-background);
   padding: 14px;
   box-shadow:
@@ -386,9 +386,9 @@
   overflow: hidden;
   margin-top: 3px;
   color: color-mix(in srgb, var(--family-text) 62%, var(--muted));
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: var(--fw-bold);
-  line-height: 1.25;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -469,12 +469,30 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 0.72rem;
+  max-height: 0;
+  margin-top: 0;
+  padding-top: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  font-size: 0.75rem;
   color: var(--muted);
-  margin-top: 8px;
   border-top: solid var(--border-divider);
-  padding-top: 6px;
   width: 100%;
+  transition:
+    max-height var(--motion-text) var(--ease-text-out),
+    margin-top var(--motion-text) var(--ease-text-out),
+    padding-top var(--motion-text) var(--ease-text-out),
+    opacity var(--motion-text) var(--ease-text-out),
+    transform var(--motion-text) var(--ease-text-out);
+}
+
+.ledger-item.is-expanded .ledger-meta-info {
+  max-height: 64px;
+  margin-top: 8px;
+  padding-top: 6px;
+  opacity: 1;
+  transform: none;
 }
 
 .ledger-meta-info span {
