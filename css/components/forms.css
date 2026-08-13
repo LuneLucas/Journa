@@ -65,7 +65,8 @@
 }
 
 input,
-select {
+select,
+textarea {
   font-size: 1rem; /* 保证 ≥16px，避免 iOS Safari 聚焦强制放大整页 */
   min-height: var(--control-height);
   width: 100%;
@@ -85,7 +86,8 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   box-shadow: var(--focus-ring);
 }
 

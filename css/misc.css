@@ -673,6 +673,21 @@ label,
   min-width: 0;
 }
 
+.note-label textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 46px;
+  max-height: calc(3 * 1.2em + 24px);
+  padding: 10px 12px;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .full-row {
   grid-column: 1 / -1;
 }
@@ -832,7 +847,7 @@ label,
   min-width: 0;
   transform: translate3d(0, 0, 0);
   background: transparent;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .amount-value-track.is-compact {
@@ -3336,11 +3351,6 @@ label,
   text-overflow: ellipsis;
 }
 
-.ledger-meta-icon {
-  width: 1em;
-  height: 1em;
-}
-
 .ledger-amount {
   --ledger-amount-rest-size: var(--num-md);
   --ledger-amount-expanded-size: 1.28rem;
@@ -4223,10 +4233,10 @@ label,
     position: relative;
     isolation: isolate;
     grid-template-columns:
-      minmax(270px, 1.12fr)
-      minmax(150px, 0.62fr)
-      minmax(126px, 0.52fr)
-      minmax(250px, 1.18fr);
+      minmax(330px, 1.22fr)
+      minmax(220px, 0.72fr)
+      minmax(116px, 0.42fr)
+      minmax(260px, 1fr);
     gap: 14px;
     overflow: hidden;
     border-radius: var(--radius-xl);
@@ -4332,8 +4342,14 @@ label,
   }
 
   .summary-band .metric {
+    min-width: 0;
     min-height: 118px;
     padding: 20px;
+  }
+
+  .summary-band .metric:not(.primary) strong {
+    max-width: 100%;
+    font-size: clamp(1.55rem, 2.6vw, 2.05rem);
   }
 
   .summary-band .metric.primary strong {
@@ -4424,7 +4440,7 @@ label,
   }
 
   .entry-panel {
-    padding: 20px;
+    padding: 18px;
     background:
       radial-gradient(ellipse at 18% 0%, rgba(169, 206, 181, 0.12), transparent 46%),
       linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 249, 0.72)),
@@ -4433,7 +4449,37 @@ label,
   }
 
   .entry-panel .expense-form {
-    gap: 12px;
+    column-gap: 12px;
+    row-gap: 10px;
+  }
+
+  .entry-panel .amount-label {
+    grid-template-rows: minmax(15px, auto) minmax(60px, 1fr);
+    min-height: 100px;
+    padding: 10px 14px;
+  }
+
+  .entry-panel .amount-field {
+    min-height: 60px;
+  }
+
+  .entry-panel .amount-label input {
+    height: 54px;
+  }
+
+  .entry-panel .category-picker {
+    gap: 5px;
+  }
+
+  .entry-panel .split-scope-panel {
+    --split-panel-padding: 10px;
+    --split-panel-offset: 8px;
+    gap: 8px;
+  }
+
+  .entry-panel .recent-peek {
+    margin-top: 12px;
+    padding: 12px 14px;
   }
 
   .workspace > .ledger-section {

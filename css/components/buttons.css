@@ -326,7 +326,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08)),
     color-mix(in srgb, var(--submit-color, var(--theme-color)) 40%, rgba(255, 255, 255, 0.46));
-  color: var(--submit-text, var(--theme-color-strong));
+  color: var(--submit-text);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
   transform-origin: center;
   box-shadow:
@@ -335,6 +335,15 @@ input[type="number"]::-webkit-inner-spin-button {
     0 12px 28px -20px rgba(22, 26, 30, 0.30),
     0 8px 22px -18px color-mix(in srgb, var(--submit-color, var(--theme-color)) 30%, transparent),
     var(--edge-shade);
+}
+
+/* Keep generic primary actions readable. Expense and mobile submit buttons
+   override this locally with family-derived text when a payer is selected. */
+.ledger-management-view .primary-button,
+.settings-view .primary-button,
+.empty-state-action,
+.welcome-next-button {
+  --submit-text: var(--theme-color-strong);
 }
 
 .primary-button .button-label {
@@ -369,6 +378,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --submit-text: var(--coral);
   --submit-glow: rgba(183, 79, 56, 0.26);
 }
+
 
 .operator-confirm-button {
   --submit-text: #375c64;

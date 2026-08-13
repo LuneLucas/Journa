@@ -81,7 +81,7 @@ test.describe('ledger card expansion', () => {
     expect(Math.abs(after.x - before.x)).toBeLessThan(1);
     expect(Math.abs(after.width - before.width)).toBeLessThan(1);
     expect(await card.locator('.ledger-main').evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThan(200);
-    expect(await card.locator('.ledger-meta-info').getAttribute('aria-hidden')).toBe('false');
+    await expect(card.locator('.ledger-operator')).toHaveText('乐家创建 · 祺家更新');
 
     const overlap = await page.evaluate(() => {
       const card = document.querySelector('.ledger-item.is-expanded');
@@ -117,6 +117,7 @@ test.describe('ledger card expansion', () => {
     await expect(card).toHaveAttribute('aria-expanded', 'true');
     await expect(card.locator('.ledger-date')).toBeVisible();
     await expect(card.locator('.ledger-item-actions button')).toHaveCount(2);
-    await expect(card.locator('.ledger-meta-info')).toBeVisible();
+    await expect(card.locator('.ledger-operator')).toBeVisible();
+    await expect(card.locator('.ledger-operator')).toHaveText('乐家创建 · 祺家更新');
   });
 });

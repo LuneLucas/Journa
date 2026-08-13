@@ -509,6 +509,8 @@
   --z-flying-token: 40;
   /* 提交主题色由 app.js 按选中家庭内联覆盖；这里声明兜底值 */
   --submit-color: var(--theme-color);
+  /* 通用主按钮也必须有可见的默认文字色；提交表单/家庭选择会在局部覆盖它。 */
+  --submit-text: var(--theme-color-strong);
 }
 
 @supports (animation-timing-function: linear(0, 1)) {

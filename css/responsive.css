@@ -4,6 +4,47 @@
   }
 }
 
+/* Long editable text must scroll inside the native control, not be clipped by
+   the natural-entry handoff track. The textarea grows to three lines; after
+   that its own vertical scrollbar is the only truncation boundary. */
+@media (max-width: 820px) {
+  .note-label textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 46px;
+    max-height: none;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] {
+    align-content: center;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] :is(input, textarea) {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 52px;
+    max-height: none;
+    padding: 10px 6px;
+    line-height: 1.2;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
+    resize: none;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage[data-editor="note"] .note-value-track {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-value-track {
+    overflow: visible;
+  }
+}
+
 /* 金额展开只保留原生 input：镜像 token 不再参与交接，真实轨道从入口
    几何直接 FLIP 到最终几何。输入框仍保留光标安全余量，但不拿这段空白
    参与视觉居中。标准模式与其他自然编辑器不受影响。 */
@@ -56,8 +97,18 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     from {
       transform: translateY(0) translateZ(0);
     }
+    38% {
+      /* A restrained gooey squeeze: the silhouette briefly widens as it
+         leaves the editor, then narrows into the destination lens. The
+         content layer stays unfiltered and the stage clip remains the
+         geometry source, so Safari never has to blur live text. */
+      transform: translateY(0) scaleX(1.014) scaleY(0.986) translateZ(0);
+    }
+    76% {
+      transform: translateY(0) scaleX(0.988) scaleY(1.012) translateZ(0);
+    }
     to {
-      transform: translateY(0) translateZ(0);
+      transform: translateY(0) scaleX(1) scaleY(1) translateZ(0);
     }
   }
 
@@ -332,7 +383,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   /* 备注输入框不再与外层 stage 同时做第二套圆角裁切；外层 clip-path
      负责卡片形态，输入轨道负责收起时的真实文字形变。 */
-  html[data-entry-mode="natural"] .natural-entry-stage.is-opening.is-open[data-editor="note"] .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .natural-entry-stage.is-opening.is-open[data-editor="note"] .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 0;
     clip-path: none !important;
     transform: none !important;
@@ -943,6 +994,21 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     min-width: 100px;
   }
 
+  .settings-note {
+    color: color-mix(in srgb, var(--muted) 72%, var(--ink));
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  .settings-preference-row small,
+  .settings-entry-mode > span small,
+  .settings-entry-mode-choice small {
+    color: color-mix(in srgb, var(--muted) 76%, var(--ink));
+    font-size: 0.76rem;
+    font-weight: var(--fw-medium);
+    line-height: 1.45;
+  }
+
   .ledger-management-tools {
     padding: 14px;
     border-radius: var(--radius-lg);
@@ -963,12 +1029,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .ledger-card-actions {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    justify-content: stretch;
   }
 
   .ledger-card-actions > * {
-    flex: 1 1 112px;
+    width: 100%;
+    flex: 0 0 auto;
     min-width: 0;
   }
 
@@ -1232,7 +1301,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .mobile-panel-tab.is-active {
-    color: color-mix(in srgb, var(--submit-text, var(--theme-color-strong)) 46%, var(--ink));
+    color: color-mix(in srgb, var(--theme-color-strong) 46%, var(--ink));
   }
 
   .mobile-panel-tab:active {
@@ -1249,9 +1318,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     border-radius: var(--radius-pill);
     background:
       linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.30)),
-      color-mix(in srgb, var(--submit-color, var(--theme-color)) 5%, rgba(255, 252, 248, 0.54));
+      color-mix(in srgb, var(--theme-color) 5%, rgba(255, 252, 248, 0.54));
     box-shadow:
-      inset 0 0 0 1px var(--ring-subtle),
+      inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 10%, transparent),
       inset 0 1px 1px rgba(255, 255, 255, 0.64),
       inset 0 -1px 1px rgba(22, 26, 30, 0.035),
       0 6px 14px -12px rgba(22, 26, 30, 0.22);
@@ -1320,9 +1389,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .mobile-panel-tab:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--submit-color, var(--theme-color)) 12%, rgba(22, 26, 30, 0.38));
+    outline: 2px solid color-mix(in srgb, var(--theme-color) 18%, rgba(22, 26, 30, 0.38));
     outline-offset: 1px;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--submit-color, var(--theme-color)) 8%, rgba(22, 26, 30, 0.18));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-color) 10%, rgba(22, 26, 30, 0.18));
   }
 
   .workspace {
@@ -3088,6 +3157,23 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     margin-inline: max(10px, calc(var(--safe-area-left) + 10px)) max(10px, calc(var(--safe-area-right) + 10px));
   }
 
+  /* The narrow breakpoint reduces the shell edge to 10px. Match the
+     header's full-bleed glass pseudo-layers to that edge so their 14px bleed
+     cannot make body.scrollWidth four pixels wider than a 320px viewport. */
+  .app-header::before,
+  .app-header::after {
+    right: -10px;
+    left: -10px;
+  }
+
+  .metric.primary::before {
+    left: -10px;
+  }
+
+  .metric.primary::after {
+    right: -10px;
+  }
+
   .settlement-item {
     grid-template-columns: 88px minmax(0, 1fr);
     gap: 10px;
@@ -3948,6 +4034,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   html[data-entry-mode="natural"] .natural-entry-phrase-payment {
     flex: 0 1 auto;
+    min-inline-size: 0;
+    max-inline-size: 100%;
   }
 
   html[data-entry-mode="natural"] .natural-entry-phrase-purpose,
@@ -4147,29 +4235,47 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     border-radius: var(--radius-pill);
   }
 
-html[data-entry-mode="natural"] .natural-entry-amount {
-    flex: 0 0 auto;
-    inline-size: max-content;
-    min-inline-size: max-content;
+  /* 收起态保持一句话和固定币种，只有数字这个 flex 子项可以压缩。
+     max-content 会把整串金额带出 320px 舞台；min-width:0 + ellipsis
+     让完整值仍留在 aria-label/编辑器里，视觉上只省略数字区域。 */
+  html[data-entry-mode="natural"] .natural-entry-amount {
+    flex: 1 1 auto;
+    inline-size: auto;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    overflow: hidden;
     font-family: var(--font-number);
     font-weight: var(--fw-medium);
     letter-spacing: -0.045em;
-}
+  }
 
-  /* 摘要态与展开态都由同一段显式间距连接币种和数字。按钮不能被
-     payment phrase 的 flex 收缩，否则文字边界会溢出按钮并把视觉中心推开。 */
+  /* 摘要态与展开态都由同一段显式间距连接币种和数字。 */
   html[data-entry-mode="natural"] .natural-entry-amount .natural-entry-token-label {
-    display: inline-flex;
+    display: flex;
     align-items: baseline;
     gap: var(--amount-currency-gap, 8px);
-    inline-size: max-content;
-    min-inline-size: max-content;
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    overflow: hidden;
     white-space: nowrap;
   }
 
-  html[data-entry-mode="natural"] .natural-entry-amount-currency,
-  html[data-entry-mode="natural"] .natural-entry-amount-digits {
+  html[data-entry-mode="natural"] .natural-entry-amount-currency {
     display: inline-block;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font: inherit;
+    line-height: 1;
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-amount-digits {
+    display: block;
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font: inherit;
     line-height: 1;
   }
@@ -5081,7 +5187,7 @@ html[data-entry-mode="natural"] .natural-entry-amount {
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-label[data-entry-editor] .amount-value-track {
-    overflow: hidden;
+    overflow: visible;
   }
 
   /* 金额重排和自定金额的焦点环需要越过输入壳边缘绘制，
@@ -5131,6 +5237,7 @@ html[data-entry-mode="natural"] .natural-entry-amount {
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .amount-value-track {
+    overflow: visible;
     --amount-currency-gap: 8px;
     gap: var(--amount-currency-gap);
     align-items: center;
@@ -5244,12 +5351,12 @@ html[data-entry-mode="natural"] .natural-entry-amount {
   }
 
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor] input,
-  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] :is(input, textarea) {
     min-height: 52px;
     border-radius: 0;
   }
 
-  html[data-entry-mode="natural"] .expense-form .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage[data-editor="note"] .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 1;
     clip-path: none;
     transform: translateY(0) scaleY(1);
@@ -5277,7 +5384,7 @@ html[data-entry-mode="natural"] .natural-entry-amount {
     min-width: 0;
     flex: 0 1 auto;
     max-width: 100%;
-    overflow: hidden;
+    overflow: visible;
     transform: translate3d(0, 0, 0) scale(1);
     transform-origin: center center;
     will-change: auto;
@@ -5289,7 +5396,7 @@ html[data-entry-mode="natural"] .natural-entry-amount {
     will-change: auto !important;
   }
 
-  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"].is-open .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"].is-open .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 1;
     clip-path: none;
     transform: translateY(0) scaleY(1);
@@ -5298,14 +5405,14 @@ html[data-entry-mode="natural"] .natural-entry-amount {
   /* 备注可选的空态只在内容交接时显示真实输入。让输入本身不参与
      开场前半段的绘制，避免与镜像标题同时出现造成一次重绘卡顿；
      is-text-handed-off 由 JS 在镜像退场后的备注专属接力点打开。 */
-  html[data-entry-mode="natural"] .natural-entry-stage.is-opening.is-open[data-editor="note"] .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .natural-entry-stage.is-opening.is-open[data-editor="note"] .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 0 !important;
     clip-path: none !important;
     transform: none !important;
     transition: none !important;
   }
 
-  html[data-entry-mode="natural"] .natural-entry-stage.is-opening.is-open.is-text-handed-off[data-editor="note"] .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .natural-entry-stage.is-opening.is-open.is-text-handed-off[data-editor="note"] .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 1 !important;
     transition: opacity 90ms ease !important;
   }
@@ -5319,13 +5426,13 @@ html[data-entry-mode="natural"] .natural-entry-amount {
     max-width: 100%;
   }
 
-  html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"] .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"] .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 1 !important;
     clip-path: none !important;
     transition: none !important;
   }
 
-  html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"][data-value-state="optional"] .note-label[data-entry-editor] input {
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"][data-value-state="optional"] .note-label[data-entry-editor] :is(input, textarea) {
     opacity: 0 !important;
   }
 

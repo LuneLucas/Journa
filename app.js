@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-ledger-alignment-v2-20260812";
+const APP_VERSION = "journa-safari-mobile-v6-20260813";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -38,8 +38,12 @@ document.documentElement.dataset.appVersion = APP_VERSION;
   const root = document.documentElement;
   const ua = navigator.userAgent || "";
   const isIOS = /iP(ad|hone|od)/.test(ua) || /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  const isSafariMobileSurface = isIOS || (window.matchMedia?.("(max-width: 820px)").matches
+    && /Safari/.test(ua)
+    && !/Chrome|CriOS|FxiOS|EdgiOS/.test(ua));
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const reducedTransparency = window.matchMedia?.("(prefers-reduced-transparency: reduce)").matches;
+  if (isSafariMobileSurface) root.dataset.safariMotion = "true";
   if (!isIOS) {
     root.dataset.motionTier = reducedMotion ? "calm" : "full";
     return;
@@ -113,21 +117,21 @@ const MOTION_DELAYS = {
   categoryActivate: 760,
   choiceRelease: 550,
   splitSwitch: 260,
-  mobilePanelOut: 120,
-  mobilePanelIn: 340,
-  mobilePanelIndicator: 620,
-  barMorph: 620,
+  mobilePanelOut: 80,
+  mobilePanelIn: 360,
+  mobilePanelIndicator: 420,
+  barMorph: 500,
   addCelebrate: 1560,
   totalAbsorb: 1320,
   tokenFlight: 680,
   totalBloom: 460,
   catchPulse: 420,
-  naturalEntryStageOpen: 550,
-  naturalEntryStageClose: 550,
+  naturalEntryStageOpen: 560,
+  naturalEntryStageClose: 504,
   naturalEntryStageMorph: 320,
   naturalEntryStageTextTravelStart: 80,
-  naturalEntryStageTextHandoff: 500,
-  naturalEntryStageOpenTextHandoff: 120,
+  naturalEntryStageTextHandoff: 414,
+  naturalEntryStageOpenTextHandoff: 360,
   naturalEntryStageNoteOptionalHandoff: 180,
   naturalEntryStageNoteValueHandoff: 220,
   naturalEntryStageContentExit: 120,
@@ -165,10 +169,10 @@ function resolveMotionDuration({ distancePx = 0, role = "control", direction = "
   const directional = direction === "exit" ? raw * 0.85 : raw;
   return Math.round(Math.min(profile.max, Math.max(profile.min, directional)));
 }
-/* Bottom bar FLIP springs: underdamped (ζ≈0.59/0.58) so the shape lands with one
-   clearly visible elastic rebound rather than easing flatly into place. */
-const SPRING_BAR_COLLAPSE = { stiffness: 260, damping: 19, mass: 1 };
-const SPRING_BAR_EXPAND = { stiffness: 240, damping: 18, mass: 1 };
+/* Bottom bar FLIP springs: Safari mobile uses a critically damped, monotonic
+   response; desktop keeps the established spring constants below. */
+const SPRING_BAR_COLLAPSE = { duration: 460, monotonic: true };
+const SPRING_BAR_EXPAND = { duration: 500, monotonic: true };
 const SPRING_CATEGORY_ADD_OPEN = { stiffness: 280, damping: 24, mass: 1 };
 const SPRING_CATEGORY_ADD_CLOSE = { stiffness: 320, damping: 28, mass: 1 };
 const SPRING_LANDING_TAIL_MS = 64;
@@ -480,6 +484,8 @@ let naturalEntryStagePositionFrame = 0;
 let naturalEntryStageRunId = 0;
 let naturalEntryMotionAnims = [];
 let naturalEntryFrozenAnchor = null;
+let naturalEntryStageHeightTransitionHandler = null;
+let naturalEntryStageHeightResetTimer = 0;
 const naturalEntryEditorHomes = new Map();
 let splitScopeCloseTimer = 0;
 let naturalEntryStageCloseTimer = 0;
@@ -487,6 +493,9 @@ let naturalEntryStageHandoffTimer = 0;
 let naturalEntryStageCleanupTimer = 0;
 let naturalEntryStageOpenHandoffTimer = 0;
 let naturalEntryStageOpenFinishTimer = 0;
+let naturalEntryMaterialSettleFrame = 0;
+let naturalEntryMaterialSettleFrame2 = 0;
+let naturalEntryMaterialSettleTimer = 0;
 let naturalEntryAmountHandoffRunning = false;
 let naturalEntryLensEntryTimer = 0;
 let naturalEntryLensHasRevealed = false;
@@ -494,6 +503,34 @@ let naturalEntryFamilyTintInitialized = false;
 let naturalEntryDisplayedPayerId = "";
 let pendingNaturalEntryFamilyTintId = null;
 const naturalEntryLensSettleTimers = new Map();
+
+function clearNaturalEntryMaterialSettle() {
+  window.cancelAnimationFrame(naturalEntryMaterialSettleFrame);
+  window.cancelAnimationFrame(naturalEntryMaterialSettleFrame2);
+  window.clearTimeout(naturalEntryMaterialSettleTimer);
+  naturalEntryMaterialSettleFrame = 0;
+  naturalEntryMaterialSettleFrame2 = 0;
+  naturalEntryMaterialSettleTimer = 0;
+  document.body.classList.remove("natural-entry-focus-settled");
+}
+
+function scheduleNaturalEntryMaterialSettle() {
+  clearNaturalEntryMaterialSettle();
+  if (prefersReducedMotion()) {
+    document.body.classList.add("natural-entry-focus-settled");
+    return;
+  }
+  naturalEntryMaterialSettleFrame = window.requestAnimationFrame(() => {
+    naturalEntryMaterialSettleFrame = 0;
+    naturalEntryMaterialSettleFrame2 = window.requestAnimationFrame(() => {
+      naturalEntryMaterialSettleFrame2 = 0;
+      naturalEntryMaterialSettleTimer = window.setTimeout(() => {
+        naturalEntryMaterialSettleTimer = 0;
+        if (naturalEntryStageOpen) document.body.classList.add("natural-entry-focus-settled");
+      }, 120);
+    });
+  });
+}
 let splitScopeSwitching = false;
 let splitScopeSwitchTimer = 0;
 let mobileSubmitFeedbackTimer = 0;
@@ -2071,7 +2108,20 @@ function render(options = {}) {
   }
 }
 
-function springSamples({ stiffness, damping, mass = 1 }, epsilon = 0.005) {
+function springSamples({ stiffness, damping, mass = 1, duration: monotonicDuration = 0 }, epsilon = 0.005) {
+  if (monotonicDuration) {
+    const duration = monotonicDuration;
+    const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
+    const settleRate = 6 / duration;
+    const finalResponse = 1 - Math.exp(-settleRate * duration) * (1 + settleRate * duration);
+    const values = [];
+    for (let i = 0; i <= count; i++) {
+      const time = (duration * i) / count;
+      const response = 1 - Math.exp(-settleRate * time) * (1 + settleRate * time);
+      values.push(Math.min(1, Math.max(0, response / finalResponse)));
+    }
+    return { values, duration };
+  }
   const w0 = Math.sqrt(stiffness / mass);
   const zeta = damping / (2 * Math.sqrt(stiffness * mass));
   const settle = Math.log(1 / epsilon) / (zeta * w0);
@@ -2292,6 +2342,7 @@ function animateBarFlip(nextPanel) {
   const barFrames = [];
   const buttonFrames = [];
 
+  const safariMotion = document.documentElement.dataset.safariMotion === "true";
   values.forEach((progress, index) => {
     const offset = index / (values.length - 1);
     const width = firstBar.width + (lastBar.width - firstBar.width) * progress;
@@ -2302,8 +2353,8 @@ function animateBarFlip(nextPanel) {
     const scaleY = height / lastBar.height;
     const translateX = x - lastBar.left;
     const translateY = y - lastBar.top;
-    const arcLift = barArcLift(offset);
-    const horizontalRebound = barHorizontalRebound(offset, toData);
+    const arcLift = safariMotion ? 0 : barArcLift(offset);
+    const horizontalRebound = safariMotion ? 0 : barHorizontalRebound(offset, toData);
     barFrames.push({ offset, transform: `translate(${translateX + horizontalRebound}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
 
     if (toData) {
@@ -2375,12 +2426,13 @@ function setMobilePanel(panel, options = {}) {
   const canAnimate = options.animate && !prefersReducedMotion();
   const shouldAnimatePanel = panelChanged && canAnimate;
   const shouldAnimateChrome = (panelChanged || visualChanged) && canAnimate;
-  const panelMotionDuration = shouldAnimateChrome ? getBarMorphDuration(nextPanel) : 0;
+  const barMotionDuration = shouldAnimateChrome ? getBarMorphDuration(nextPanel) : 0;
+  const panelMotionDuration = shouldAnimatePanel ? MOTION_DELAYS.mobilePanelIn : 0;
 
   if (shouldAnimateChrome) {
     /* 页面卡片、总支出/平账与底部悬浮栏共用本次悬浮栏的实际弹簧时长，
        避免固定 300ms 的面板淡入提前结束。 */
-    const motionValue = `${panelMotionDuration}ms`;
+    const motionValue = `${panelMotionDuration || barMotionDuration}ms`;
     document.documentElement.style.setProperty("--mobile-panel-in-motion", motionValue);
     elements.ledgerView.style.setProperty("--mobile-panel-in-motion", motionValue);
   }
@@ -2748,7 +2800,7 @@ function syncNaturalEntryStageToken({ animate = false, text = null } = {}) {
   elements.naturalEntryStage.dataset.valueState = stageToken.dataset.valueState;
   const relayIsRunning = elements.naturalEntryStage.classList.contains("is-opening")
     || elements.naturalEntryStage.classList.contains("is-closing");
-  if (animate && !prefersReducedMotion() && !relayIsRunning) {
+  if (animate && activeEntryEditor !== "note" && !prefersReducedMotion() && !relayIsRunning) {
     const duration = activeEntryEditor === "date" ? 240 : activeEntryEditor === "split" ? 300 : 280;
     animateNaturalEntryToken(stageToken, nextText, { duration });
   } else {
@@ -2758,6 +2810,42 @@ function syncNaturalEntryStageToken({ animate = false, text = null } = {}) {
     stageLabel.textContent = nextText;
   }
   elements.naturalEntryStageToken.classList.toggle("is-amount", activeEntryEditor === "amount");
+}
+
+function clearNaturalEntryStageHeightTransition({ resetHeight = false } = {}) {
+  const stage = elements.naturalEntryStage;
+  if (stage && naturalEntryStageHeightTransitionHandler) {
+    stage.removeEventListener("transitionend", naturalEntryStageHeightTransitionHandler);
+  }
+  naturalEntryStageHeightTransitionHandler = null;
+  if (naturalEntryStageHeightResetTimer) {
+    window.clearTimeout(naturalEntryStageHeightResetTimer);
+    naturalEntryStageHeightResetTimer = 0;
+  }
+  if (resetHeight && stage) stage.style.removeProperty("height");
+}
+
+function armNaturalEntryStageHeightTransition(stage) {
+  clearNaturalEntryStageHeightTransition();
+  if (!stage) return;
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    if (naturalEntryStageHeightTransitionHandler === onTransitionEnd) {
+      stage.removeEventListener("transitionend", onTransitionEnd);
+      naturalEntryStageHeightTransitionHandler = null;
+      naturalEntryStageHeightResetTimer = 0;
+    }
+    stage.style.removeProperty("height");
+  };
+  const onTransitionEnd = (event) => {
+    if (event.target !== stage || event.propertyName !== "height") return;
+    finish();
+  };
+  naturalEntryStageHeightTransitionHandler = onTransitionEnd;
+  stage.addEventListener("transitionend", onTransitionEnd);
+  naturalEntryStageHeightResetTimer = window.setTimeout(finish, Math.max(560, MOTION_DELAYS.naturalEntryStageMorph + 240));
 }
 
 function clearNaturalEntryStageRelayTimers() {
@@ -2791,7 +2879,9 @@ function captureNaturalEntryStageFamilyTint(stage) {
 }
 
 function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
+  clearNaturalEntryMaterialSettle();
   clearNaturalEntryStageRelayTimers();
+  clearNaturalEntryStageHeightTransition({ resetHeight: true });
   cancelNaturalEntryMotion();
   naturalEntryAmountHandoffRunning = false;
   commitPendingNaturalEntryFamilyTint();
@@ -2813,7 +2903,7 @@ function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
     "is-value-settling",
   );
   anchor?.style.removeProperty("--natural-entry-text-alpha");
-  stage.classList.remove("is-preparing", "is-opening", "is-open", "is-closing", "is-text-handed-off", "is-relay-settled");
+  stage.classList.remove("is-preparing", "is-opening", "is-open", "is-closing", "is-liquid-returning", "is-text-handed-off", "is-relay-settled");
   stage.style.removeProperty("--natural-entry-mark-color");
   stage.style.removeProperty("--natural-stage-note-token-x");
   stage.style.removeProperty("--natural-stage-note-token-y");
@@ -2824,7 +2914,6 @@ function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
   clearNaturalEntryNoteTrackStyles();
   stage.scrollTop = 0;
   stage.scrollLeft = 0;
-  stage.style.height = "";
   stage.hidden = true;
   elements.naturalEntryFocusBackdrop.hidden = true;
   stage.dataset.editor = "";
@@ -3310,6 +3399,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
     if (!immediate) return;
   }
   clearNaturalEntryStageRelayTimers();
+  clearNaturalEntryMaterialSettle();
   naturalEntryStageOpen = false;
   const runId = ++naturalEntryStageRunId;
   window.cancelAnimationFrame(naturalEntryStagePositionFrame);
@@ -3330,6 +3420,8 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
     window.cancelAnimationFrame(pendingNaturalEntryRenderFrame);
     pendingNaturalEntryRenderFrame = 0;
     pendingNaturalEntryRender = false;
+    pendingNaturalEntryNoteHeightSync = false;
+    pendingNaturalEntryStagePosition = false;
   }
   cancelNaturalEntryMotion();
   if (activeEntryEditor === "amount") {
@@ -3353,7 +3445,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
     return;
   }
   if (activeEntryEditor === "amount") {
-    stage.classList.add("is-closing");
+    stage.classList.add("is-closing", "is-liquid-returning");
     stage.classList.remove("is-open", "is-opening", "is-text-handed-off", "is-relay-settled");
     anchor.classList.add("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
     setNaturalEntryAnchorTextVisible(anchor, false);
@@ -3372,7 +3464,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   const anchorRect = closeGeometry?.anchorRect || anchor.getBoundingClientRect();
   if (activeEntryEditor === "note") {
     const noteHasValue = Boolean(elements.noteInput?.value.trim());
-    stage.classList.add("is-closing");
+    stage.classList.add("is-closing", "is-liquid-returning");
     stage.classList.remove("is-open", "is-opening", "is-text-handed-off", "is-relay-settled");
     anchor.classList.add("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
     stage.dataset.valueState = noteHasValue ? "value" : "optional";
@@ -3448,7 +3540,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   );
   anchor.classList.add("is-stage-handoff", "is-stage-mark-handoff", "is-lens-returning");
   setNaturalEntryAnchorTextVisible(anchor, false);
-  stage.classList.add("is-closing");
+  stage.classList.add("is-closing", "is-liquid-returning");
   stage.classList.remove("is-open", "is-opening", "is-text-handed-off", "is-relay-settled");
   elements.naturalEntryFocusBackdrop.classList.remove("is-open");
   naturalEntryMotionAnims.push(flight);
@@ -3477,6 +3569,7 @@ function getNaturalEntryChoiceCloseDelay() {
 
 function openNaturalEntryStage(editor) {
   clearNaturalEntryStageRelayTimers();
+  clearNaturalEntryMaterialSettle();
   clearNaturalEntryLensSettles();
   cancelNaturalEntryMotion();
   const anchor = getNaturalEntryToken(editor);
@@ -3493,8 +3586,9 @@ function openNaturalEntryStage(editor) {
     unfreezeNaturalEntryAnchor();
     clearNaturalEntryCloseState(naturalEntryStageAnchor);
     naturalEntryStageAnchor?.classList.remove("is-stage-anchor", "is-stage-opening");
-    elements.naturalEntryStage.classList.remove("is-preparing", "is-opening", "is-open", "is-closing", "is-text-handed-off", "is-relay-settled");
+    elements.naturalEntryStage.classList.remove("is-preparing", "is-opening", "is-open", "is-closing", "is-liquid-returning", "is-text-handed-off", "is-relay-settled");
     elements.naturalEntryStage.style.removeProperty("--natural-entry-mark-color");
+    clearNaturalEntryStageHeightTransition({ resetHeight: true });
   }
   // Stage already open on this exact editor: keep it, no re-trigger.
   if (naturalEntryStageOpen && naturalEntryStageEditor === panel) {
@@ -3507,6 +3601,7 @@ function openNaturalEntryStage(editor) {
   // content cross-fades, so the editor reads as having moved between words.
   if (naturalEntryStageOpen && naturalEntryStageEditor && naturalEntryStageEditor !== panel) {
     const stage = elements.naturalEntryStage;
+    clearNaturalEntryStageHeightTransition();
     const oldHeight = stage.getBoundingClientRect().height;
     const previousStageEditor = naturalEntryStageEditor;
     const previousStageAnchor = naturalEntryStageAnchor;
@@ -3528,6 +3623,7 @@ function openNaturalEntryStage(editor) {
     elements.naturalEntryStage.dataset.editor = editor;
     elements.naturalEntryStageContent.append(panel);
     if (editor === "amount") syncAmountValueTrack(elements.amountInput);
+    if (editor === "note") syncNoteInputHeight(elements.noteInput);
     syncNaturalEntryStageToken();
     resetNaturalEntryStageScroll();
     elements.naturalEntryStageContent.classList.add("is-swapping");
@@ -3538,13 +3634,19 @@ function openNaturalEntryStage(editor) {
     const nextHeight = stage.scrollHeight;
     stage.style.height = `${oldHeight}px`;
     void stage.offsetHeight;
-    stage.style.height = `${nextHeight}px`;
-    stage.addEventListener("transitionend", (event) => {
-      if (event.propertyName === "height" && naturalEntryStageOpen) stage.style.height = "";
-    }, { once: true });
+    if ((editor === "note" && !elements.noteInput.value.trim()) || Math.abs(nextHeight - oldHeight) < 1) {
+      /* WebKit still dispatches unrelated transitionend events when the
+         measured heights are equal. Do not leave that redundant inline lock
+         on a stable note stage. */
+      clearNaturalEntryStageHeightTransition({ resetHeight: true });
+    } else {
+      stage.style.height = `${nextHeight}px`;
+      armNaturalEntryStageHeightTransition(stage);
+    }
     window.requestAnimationFrame(scheduleNaturalEntryStagePosition);
-    elements.naturalEntryStage.classList.remove("is-opening", "is-closing", "is-text-handed-off");
+    elements.naturalEntryStage.classList.remove("is-opening", "is-closing", "is-liquid-returning", "is-text-handed-off");
     elements.naturalEntryStage.classList.add("is-open", "is-relay-settled");
+    scheduleNaturalEntryMaterialSettle();
     return true;
   }
 
@@ -3553,7 +3655,7 @@ function openNaturalEntryStage(editor) {
   naturalEntryStageEditor = panel;
   naturalEntryStageAnchor = anchor;
   elements.naturalEntryStage.classList.add("is-preparing", "is-opening");
-  elements.naturalEntryStage.classList.remove("is-open", "is-closing", "is-text-handed-off", "is-relay-settled");
+  elements.naturalEntryStage.classList.remove("is-open", "is-closing", "is-liquid-returning", "is-text-handed-off", "is-relay-settled");
   clearNaturalEntryCloseState(anchor);
   freezeNaturalEntryAnchor(anchor);
   anchor.classList.add("is-stage-anchor");
@@ -3565,6 +3667,7 @@ function openNaturalEntryStage(editor) {
   /* 编辑器从隐藏的原表单移动到舞台后，字号和可用宽度会改变；
      这里必须在可见布局中重新测量，避免沿用隐藏态的 16px 宽度。 */
   if (editor === "amount") syncAmountValueTrack(elements.amountInput);
+  if (editor === "note") syncNoteInputHeight(elements.noteInput);
   document.body.classList.add("natural-entry-focus-open");
   captureNaturalEntryStageFamilyTint(elements.naturalEntryStage);
   syncNaturalEntryStageToken();
@@ -3593,6 +3696,7 @@ function openNaturalEntryStage(editor) {
     elements.naturalEntryStage.classList.remove("is-opening");
     anchor.classList.remove("is-stage-opening");
     elements.naturalEntryFocusBackdrop.classList.add("is-open");
+    scheduleNaturalEntryMaterialSettle();
     return true;
   }
   window.requestAnimationFrame(() => {
@@ -3631,6 +3735,7 @@ function openNaturalEntryStage(editor) {
       }
       elements.naturalEntryStage.classList.remove("is-opening", "is-text-handed-off");
       elements.naturalEntryStage.classList.add("is-relay-settled");
+      scheduleNaturalEntryMaterialSettle();
     }, MOTION_DELAYS.naturalEntryStageOpen);
   });
   return true;
@@ -3818,7 +3923,7 @@ function triggerNaturalEntryLensEntry({ force = false } = {}) {
   }, MOTION_DELAYS.naturalEntryLensEntry + Math.max(0, (tokens.length - 1) * MOTION_DELAYS.naturalEntryLensStagger) + 80);
 }
 
-function renderNaturalEntry() {
+function renderNaturalEntry({ positionStage = true } = {}) {
   if (!elements.naturalEntryFlow) return;
 
   syncNaturalEntryFamilyTint();
@@ -3844,7 +3949,10 @@ function renderNaturalEntry() {
     amountCents ? formatNaturalEntryAmount(amountCents) : "¥ 0.00",
   );
   animateNaturalEntryToken(elements.naturalCategoryToken, state.activeCategory ? formatCategoryLabel(state.activeCategory) : "类别", { duration: 260 });
-  animateNaturalEntryToken(elements.naturalNoteToken, note || "备注可选", { duration: 280 });
+  animateNaturalEntryToken(elements.naturalNoteToken, note || "备注可选", {
+    duration: 280,
+    animate: !(naturalEntryStageOpen && activeEntryEditor === "note"),
+  });
   elements.naturalNoteToken.title = note || "备注可选";
   elements.naturalNoteToken.setAttribute("aria-label", note || "备注可选");
   animateNaturalEntryToken(elements.naturalSplitToken, formatNaturalEntrySplit(), { duration: 300 });
@@ -3871,20 +3979,29 @@ function renderNaturalEntry() {
       && !elements.naturalEntryStage.classList.contains("is-preparing")
       && !elements.naturalEntryStage.classList.contains("is-closing"),
   });
-  scheduleNaturalEntryStagePosition();
+  if (positionStage) scheduleNaturalEntryStagePosition();
 }
 
 /* 金额逐字输入时，预览与提交栏统一推迟到下一帧、且同帧只排一次，
    避免十余次 getBoundingClientRect 测量阻塞输入框自身的绘制（数字卡顿）。 */
 let pendingNaturalEntryRender = false;
 let pendingNaturalEntryRenderFrame = 0;
-function scheduleNaturalEntryRender() {
+let pendingNaturalEntryNoteHeightSync = false;
+let pendingNaturalEntryStagePosition = false;
+function scheduleNaturalEntryRender({ syncNote = false, positionStage = true } = {}) {
+  pendingNaturalEntryNoteHeightSync ||= syncNote;
+  pendingNaturalEntryStagePosition ||= positionStage;
   if (pendingNaturalEntryRender) return;
   pendingNaturalEntryRender = true;
   pendingNaturalEntryRenderFrame = requestAnimationFrame(() => {
     pendingNaturalEntryRender = false;
     pendingNaturalEntryRenderFrame = 0;
-    renderNaturalEntry();
+    const shouldSyncNote = pendingNaturalEntryNoteHeightSync;
+    const shouldPositionStage = pendingNaturalEntryStagePosition;
+    pendingNaturalEntryNoteHeightSync = false;
+    pendingNaturalEntryStagePosition = false;
+    if (shouldSyncNote) syncNoteInputHeight(elements.noteInput);
+    renderNaturalEntry({ positionStage: shouldPositionStage });
     renderMobileSubmitBar();
   });
 }
@@ -3913,6 +4030,7 @@ function setActiveEntryEditor(editor, { focus = false, scroll = false } = {}) {
   if (!naturalEntryEditors.has(requestedEditor)) return;
 
   activeEntryEditor = requestedEditor;
+  if (requestedEditor === "note") syncNoteInputHeight(elements.noteInput);
   if (requestedEditor === "split" && !splitScopeOpen) {
     splitScopeOpen = true;
     renderSplitScope();
@@ -5943,23 +6061,12 @@ function renderLedgerItem(expense) {
   const createdFamilyName = createdFamilyId ? getFamilyName(createdFamilyId) : "";
   const updatedFamilyName = updatedFamilyId ? getFamilyName(updatedFamilyId) : "";
   const operatorLabel = updatedFamilyId && updatedFamilyId !== createdFamilyId
-    ? `${updatedFamilyName} 更新`
+    ? `${createdFamilyName}创建 · ${updatedFamilyName}更新`
     : createdFamilyId
-      ? `${createdFamilyName} 记录`
+      ? `${createdFamilyName}创建`
       : "";
   const operatorHtml = operatorLabel
     ? `<small class="ledger-operator" title="${escapeHtml(operatorLabel)}">${escapeHtml(operatorLabel)}</small>`
-    : "";
-
-  let metaItems = "";
-  if (createdFamilyId) {
-    metaItems += `<span>${uiIconHtml("plus", "ledger-meta-icon")}创建：${escapeHtml(createdFamilyName)}</span>`;
-  }
-  if (updatedFamilyId && updatedFamilyId !== createdFamilyId) {
-    metaItems += `<span>${uiIconHtml("edit", "ledger-meta-icon")}更新：${escapeHtml(updatedFamilyName)}</span>`;
-  }
-  const metaHtml = metaItems
-    ? `<div class="ledger-meta-info" aria-hidden="${String(!isExpanded)}">${metaItems}</div>`
     : "";
   const noteText = String(expense.note || "").trim();
   const noteHtml = noteText ? `<p class="ledger-note">${escapeHtml(noteText)}</p>` : "";
@@ -5987,7 +6094,6 @@ function renderLedgerItem(expense) {
         ${operatorHtml}
         <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
         ${syncLine}
-        ${metaHtml}
       </div>
       <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
       <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
@@ -6265,6 +6371,24 @@ function getSplitDetailsForSubmit() {
   };
 }
 
+/* 移动端悬浮按钮不在 expenseForm 内，提交前先把自然录入阶段里最新的
+   日期/类别值同步回表单状态，再走同一个原生 submit 入口。这样编辑态在
+   面板切换或 WebKit 的异步重绘后，仍会保留 editingExpenseId 并更新原账单。 */
+function syncExpenseFormState() {
+  state.activeCategory = normalizeCategorySelection(
+    elements.categoryInput.value || state.activeCategory,
+    state.categories,
+  );
+  state.activeDate = normalizeDate(elements.dateInput.value, state.activeDate);
+  elements.categoryInput.value = state.activeCategory;
+  elements.dateInput.value = state.activeDate;
+}
+
+function requestExpenseSubmit() {
+  syncExpenseFormState();
+  elements.expenseForm.requestSubmit(elements.submitButton);
+}
+
 function handleExpenseSubmit(event) {
   event.preventDefault();
   elements.formError.textContent = "";
@@ -6280,9 +6404,14 @@ function handleExpenseSubmit(event) {
   const splitDetails = getSplitDetailsForSubmit();
   const amount = splitDetails.amount;
   const payerId = state.selectedPayerId;
-  const category = elements.categoryInput.value;
+  const category = normalizeCategorySelection(
+    elements.categoryInput.value || state.activeCategory,
+    state.categories,
+  );
   const date = normalizeDate(elements.dateInput.value, state.activeDate);
   const note = elements.noteInput.value.trim();
+  state.activeCategory = category;
+  state.activeDate = date;
   const missing = getExpenseMissingState();
 
   if (missing.target) {
@@ -6793,7 +6922,9 @@ function handleSplitAmountInput(event) {
   if (!input) return;
 
   elements.formError.textContent = "";
+  syncAmountValueTrack(input);
   animateAmountValueTrack(input, { compact: true });
+  revealAmountInputCaret(input);
   const familyId = normalizePayerId(input.dataset.splitAmount);
   if (!familyId) return;
   const amount = parseAmountInput(input.value);
@@ -6971,9 +7102,6 @@ function syncLedgerItemExpandedState(item, isExpanded) {
       button.tabIndex = isExpanded ? 0 : -1;
     });
   }
-
-  const meta = item.querySelector(".ledger-meta-info");
-  if (meta) meta.setAttribute("aria-hidden", String(!isExpanded));
 
   const mobileSubmitBar = elements.mobileSubmitBar;
   if (mobileSubmitBar) {
@@ -8650,7 +8778,7 @@ function applySubmitButtonTheme() {
   const text = style?.text || accent;
   const wash = style?.wash || colorWithAlpha(accent, 0.14);
   const glow = colorWithAlpha(color, state.selectedPayerId ? 0.58 : 0.42);
-  [elements.expenseForm, elements.mobileSubmitBar, elements.mobilePanelSwitch].forEach((element) => {
+  [elements.expenseForm, elements.mobileSubmitBar].forEach((element) => {
     element.style.setProperty("--submit-color", color);
     element.style.setProperty("--submit-text", text);
     element.style.setProperty("--submit-wash", wash);
@@ -8788,12 +8916,34 @@ function measureAmountInputWidth(input) {
      光标与最后一位小数的安全余量，避免视觉上被输入边缘吃掉。 */
   const measured = context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing + AMOUNT_INPUT_CARET_RESERVE;
   const shell = input.closest(".amount-field, .split-amount-input-shell");
-  const currency = input.closest(".amount-value-track")?.querySelector(".currency-mark");
-  const trackStyle = getComputedStyle(input.closest(".amount-value-track"));
+  const track = input.closest(".amount-value-track");
+  const currency = track?.querySelector(".currency-mark");
+  const trackStyle = getComputedStyle(track || input);
+  const shellStyle = shell ? getComputedStyle(shell) : null;
   const gap = Number.parseFloat(trackStyle.columnGap || trackStyle.gap) || 0;
-  const reserved = (currency?.getBoundingClientRect().width || 0) + gap + 24;
-  const available = Math.max(24, (shell?.clientWidth || input.parentElement?.clientWidth || measured) - reserved);
+  const trackWidth = track?.clientWidth || shell?.clientWidth || input.parentElement?.clientWidth || measured;
+  const reserved = (currency?.getBoundingClientRect().width || 0) + gap;
+  /* Keep the native input inside the track. Long values then use the input's
+     own horizontal scroll and the caret remains visible, instead of extending
+     beyond the track and being clipped by a WebKit compositing layer. */
+  const shellContentWidth = shell
+    ? shell.clientWidth
+      - (Number.parseFloat(shellStyle?.paddingLeft) || 0)
+      - (Number.parseFloat(shellStyle?.paddingRight) || 0)
+    : trackWidth;
+  const available = currency
+    ? Math.max(24, shellContentWidth - 24 - reserved)
+    : Math.max(24, shellContentWidth);
   return Math.max(12, Math.min(Math.ceil(measured), available));
+}
+
+function revealAmountInputCaret(input) {
+  if (!input || document.activeElement !== input) return;
+  window.requestAnimationFrame(() => {
+    if (document.activeElement !== input) return;
+    const end = input.selectionEnd ?? input.value.length;
+    if (end >= input.value.length) input.scrollLeft = input.scrollWidth;
+  });
 }
 
 function syncAmountValueTrack(input) {
@@ -8803,6 +8953,8 @@ function syncAmountValueTrack(input) {
   amountTrackAnimations.delete(track);
   track.style.setProperty("--amount-input-caret-reserve", `${AMOUNT_INPUT_CARET_RESERVE}px`);
   input.style.width = `${measureAmountInputWidth(input)}px`;
+  input.style.textOverflow = "clip";
+  revealAmountInputCaret(input);
 }
 
 function animateAmountValueTrack(input, { compact = false, soft = false } = {}) {
@@ -8857,7 +9009,7 @@ function animateAmountValueTrack(input, { compact = false, soft = false } = {}) 
   animation.addEventListener("cancel", clearTrackLayer, { once: true });
 }
 
-function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
+function animateNaturalEntryToken(element, nextText, { duration = 260, animate = true } = {}) {
   if (!element) return;
   const textElement = element.querySelector(".natural-entry-token-label") || element;
   const readText = () => textElement.textContent;
@@ -8866,6 +9018,13 @@ function animateNaturalEntryToken(element, nextText, { duration = 260 } = {}) {
   };
   const next = String(nextText ?? "");
   const previous = naturalEntryTokenAnimations.get(element);
+  if (!animate) {
+    previous?.cancel();
+    naturalEntryTokenAnimations.delete(element);
+    if (readText() !== next) writeText(next);
+    element.setAttribute("aria-label", next);
+    return;
+  }
   if (previous?.target === next) return;
   if (previous && !previous.cancelled && next.startsWith(previous.target)) {
     // 备注连续输入时延长当前的“输入”目标，不重启动画时间线，避免每个
@@ -9019,6 +9178,30 @@ function normalizeAmountInputDisplayValue(input = elements.amountInput) {
   return nextValue;
 }
 
+const NOTE_MAX_LINES = 3;
+
+function syncNoteInputHeight(input = elements.noteInput) {
+  if (!input || input.tagName !== "TEXTAREA") return;
+  const style = getComputedStyle(input);
+  const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) || 20;
+  const padding = (Number.parseFloat(style.paddingTop) || 0)
+    + (Number.parseFloat(style.paddingBottom) || 0);
+  const borders = (Number.parseFloat(style.borderTopWidth) || 0)
+    + (Number.parseFloat(style.borderBottomWidth) || 0);
+  const minHeight = Number.parseFloat(style.minHeight) || lineHeight + padding + borders;
+  const maxHeight = Math.max(minHeight, Math.ceil((lineHeight * NOTE_MAX_LINES) + padding + borders));
+  input.style.height = "auto";
+  const nextHeight = Math.min(maxHeight, Math.max(minHeight, input.scrollHeight));
+  input.style.height = `${Math.ceil(nextHeight)}px`;
+  input.style.overflowY = input.scrollHeight > maxHeight + 1 ? "auto" : "hidden";
+  const stage = elements.naturalEntryStage;
+  if (stage && naturalEntryStageOpen && activeEntryEditor === "note" && stage.classList.contains("is-relay-settled")) {
+    /* 备注从单行长到三行后，稳定态不再依赖切换时的固定高度；否则
+       WebKit 可能把上一次 editor morph 留下的 inline height 当成裁剪边界。 */
+    clearNaturalEntryStageHeightTransition({ resetHeight: true });
+  }
+}
+
 function formatAmountFieldOnBlur() {
   updateAmountMotionState();
   if (activeSplitMode === "custom") {
@@ -9068,7 +9251,9 @@ function startEditExpense(expenseId) {
     editReturnState = captureEntryPreferenceState();
   }
   editingExpenseId = expense.id;
-  expandedExpenseId = expense.id;
+  /* 展开卡片会通过 data-ledger-expanded 隐藏移动端提交栏；编辑是另一条
+     工作面，进入编辑前先释放展开态，确保“保存修改”始终可见。 */
+  expandedExpenseId = "";
   setMobilePanel("entry", { behavior: "auto" });
   state.selectedPayerId = expense.payerId;
   state.activeCategory = expense.category;
@@ -9080,6 +9265,7 @@ function startEditExpense(expenseId) {
   });
   elements.amountInput.value = activeSplitMode === "custom" ? formatAmountInput(getActiveCustomSplitTotalCents()) : String(expense.amount);
   elements.noteInput.value = expense.note;
+  syncNoteInputHeight(elements.noteInput);
   renderNaturalEntry();
   renderMobileSubmitBar();
   editFormSnapshot = captureExpenseFormSnapshot();
@@ -9373,7 +9559,11 @@ elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
 elements.splitScopePanel.addEventListener("input", handleSplitAmountInput);
 elements.splitCustomAmounts?.addEventListener("focusin", (event) => {
   const input = event.target.closest("[data-split-amount]");
-  if (input) scrollNaturalEntrySplitInputIntoView(input);
+  if (input) {
+    syncAmountValueTrack(input);
+    revealAmountInputCaret(input);
+    scrollNaturalEntrySplitInputIntoView(input);
+  }
 });
 elements.ledgerNameForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -9454,6 +9644,7 @@ elements.mobileSubmitButton.addEventListener("click", () => {
     setMobilePanel("entry", { animate: true, scroll: true });
     return;
   }
+  syncExpenseFormState();
   const missing = getExpenseMissingState();
   if (missing.target) {
     elements.formError.textContent = "";
@@ -9464,7 +9655,7 @@ elements.mobileSubmitButton.addEventListener("click", () => {
     return;
   }
   setMobilePanel("entry", { behavior: "auto", scroll: false });
-  elements.expenseForm.requestSubmit();
+  requestExpenseSubmit();
 });
 elements.amountInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || event.isComposing) return;
@@ -9476,15 +9667,16 @@ elements.amountInput.addEventListener("keydown", (event) => {
   }
 });
 elements.noteInput.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" || event.isComposing) return;
+  if (event.key !== "Enter" || event.isComposing || (!event.metaKey && !event.ctrlKey)) return;
   event.preventDefault();
-  elements.expenseForm.requestSubmit();
+  requestExpenseSubmit();
 });
 elements.amountInput.addEventListener("focus", updateAmountMotionState);
 elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
   elements.formError.textContent = "";
   updateAmountMotionState();
+  revealAmountInputCaret(elements.amountInput);
   animateAmountValueTrack(elements.amountInput);
   /* 预览渲染与提交栏不再同步跑在输入关键路径上：它们要做十余次
      getBoundingClientRect 测量，会阻塞输入框自身的绘制，让数字显得卡顿。
@@ -9493,7 +9685,9 @@ elements.amountInput.addEventListener("input", () => {
 });
 elements.noteInput.addEventListener("input", () => {
   elements.formError.textContent = "";
-  renderNaturalEntry();
+  /* 高度同步、摘要更新和提交栏刷新合并到同一帧；备注输入期间舞台
+     已经固定在当前 anchor，不再为每个字符重新测量 fixed 定位。 */
+  scheduleNaturalEntryRender({ syncNote: true, positionStage: false });
 });
 elements.categoryInput.addEventListener("change", () => {
   state.activeCategory = elements.categoryInput.value || state.activeCategory;
@@ -10202,6 +10396,7 @@ async function bootstrap() {
   setupDesktopPointerSink();
   setupScrollCollapse();
   render();
+  syncNoteInputHeight(elements.noteInput);
   document.fonts?.ready?.then(syncAllAmountValueTracks);
   maybeShowWelcome();
   const restoredFromBackup = await restoreLedgerFromCloudBackup();
@@ -10224,7 +10419,7 @@ bootstrap();
   const KEYBOARD_MIN_OVERLAP = 140;
   const viewport = window.visualViewport;
   const isTextEntry = (el) =>
-    el && (el.tagName === "SELECT" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
+    el && (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
   const isKeyboardOpen = () => {
     if (!isTextEntry(document.activeElement)) return false;
     if (!viewport) return true;
@@ -10245,7 +10440,7 @@ bootstrap();
 (() => {
   const mobileQuery = window.matchMedia("(max-width: 820px)");
   const isTextEntry = (el) =>
-    el && (el.tagName === "SELECT" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
+    el && (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
   let focusedEl = null;
 
   const scrollFocusedIntoView = () => {
