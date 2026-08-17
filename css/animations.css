@@ -326,22 +326,6 @@
   }
 }
 
-@keyframes mobile-entry-lens-sweep {
-  0% {
-    opacity: 0;
-    transform: rotate(45deg) translateX(-180%);
-  }
-
-  24% {
-    opacity: 0.48;
-  }
-
-  100% {
-    opacity: 0;
-    transform: rotate(45deg) translateX(500%);
-  }
-}
-
 @keyframes total-bloom {
   0% {
     transform: scale(1);

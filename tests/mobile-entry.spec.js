@@ -123,6 +123,92 @@ test.describe('mobile entry smoke flow', () => {
     await expect(visibleAmountInputs).toHaveCount(1);
   });
 
+  test('amount summary keeps the same rounded lens geometry as other tokens', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自然录入透镜只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+    const lens = await page.locator('#naturalAmountToken').evaluate((token) => {
+      const lensStyle = getComputedStyle(token, '::before');
+      return {
+        tokenOverflow: getComputedStyle(token).overflow,
+        lensRadius: lensStyle.borderRadius,
+        lensShadow: lensStyle.boxShadow,
+      };
+    });
+    expect(lens.tokenOverflow).toBe('visible');
+    expect(lens.lensRadius).not.toBe('0px');
+    expect(lens.lensShadow).not.toBe('none');
+  });
+
+  test('note relay keeps one anchored origin through open and close', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '备注 relay 只在移动端启用');
+
+    const sampleRelay = async (action, duration = 620) => page.evaluate(({ action: relayAction, duration: sampleDuration }) => new Promise((resolve) => {
+      const stage = document.querySelector('#naturalEntryStage');
+      const frames = [];
+      const started = performance.now();
+      document.querySelector(relayAction).click();
+      const sample = (now) => {
+        const rect = stage.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          frames.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+        }
+        if (now - started >= sampleDuration) {
+          resolve(frames);
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }), { action, duration });
+
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
+      await openAmountEditor(page, testInfo.project.name);
+      const closeTiming = await page.locator('#naturalEntryStage').evaluate((stage) => {
+        const style = getComputedStyle(stage);
+        return {
+          closeDuration: style.getPropertyValue('--natural-stage-close-duration').trim(),
+          textHandoff: style.getPropertyValue('--natural-stage-text-handoff').trim(),
+        };
+      });
+      expect(closeTiming.closeDuration).toBe('504ms');
+      expect(closeTiming.textHandoff).toBe('414ms');
+      await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+      const openFrames = await sampleRelay('#naturalNoteToken');
+      const openOrigin = openFrames[0];
+      expect(openOrigin).toBeTruthy();
+      expect(Math.max(...openFrames.map((frame) => Math.abs(frame.left - openOrigin.left)))).toBeLessThanOrEqual(2);
+      expect(Math.max(...openFrames.map((frame) => Math.abs(frame.top - openOrigin.top)))).toBeLessThanOrEqual(2);
+      await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+      const closeFrames = await sampleRelay('#naturalEntryFocusBackdrop');
+      const closeOrigin = closeFrames[0];
+      expect(closeOrigin).toBeTruthy();
+      expect(Math.max(...closeFrames.map((frame) => Math.abs(frame.left - closeOrigin.left)))).toBeLessThanOrEqual(2);
+      expect(Math.max(...closeFrames.map((frame) => Math.abs(frame.top - closeOrigin.top)))).toBeLessThanOrEqual(2);
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+      await page.locator('#naturalNoteToken').click({ force: true });
+      await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+      await page.locator('#noteInput').fill('酒店晚餐路径检查ABC');
+      await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+      const filledOpenFrames = await sampleRelay('#naturalNoteToken');
+      const filledOpenOrigin = filledOpenFrames[0];
+      expect(filledOpenOrigin).toBeTruthy();
+      expect(Math.max(...filledOpenFrames.map((frame) => Math.abs(frame.left - filledOpenOrigin.left)))).toBeLessThanOrEqual(2);
+      expect(Math.max(...filledOpenFrames.map((frame) => Math.abs(frame.top - filledOpenOrigin.top)))).toBeLessThanOrEqual(2);
+      await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+      await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    }
+  });
+
   test('Safari mobile uses semantic motion tokens without material blur during relay', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), 'Safari mobile token contract');
     await openAmountEditor(page, testInfo.project.name);
@@ -151,6 +237,100 @@ test.describe('mobile entry smoke flow', () => {
     expect(motion.structure).toBe('560ms');
     expect(motion.settleClass).toBeTruthy();
     expect(motion.shellFilter).toContain('blur');
+  });
+
+  test('bottom submit bar follows one anchored lift and landing rebound path', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '底部 Bar 路径只在移动端启用');
+
+    const sampleTransition = async (tabSelector, duration) => page.evaluate(({ tabSelector: selector, duration: sampleDuration }) => new Promise((resolve) => {
+      const bar = document.querySelector('#mobileSubmitBar');
+      const tab = document.querySelector(selector);
+      const frames = [];
+      const started = performance.now();
+      tab.click();
+      const sample = (now) => {
+        const rect = bar.getBoundingClientRect();
+        frames.push({
+          t: now - started,
+          left: rect.left,
+          right: rect.right,
+          bottom: rect.bottom,
+          width: rect.width,
+          expandHaloCount: document.querySelectorAll('.bar-morph-glow').length,
+          auraOpacity: getComputedStyle(bar, '::before').opacity,
+          lensSheenDisplay: getComputedStyle(bar.querySelector('.mobile-submit-lens-sheen')).display,
+        });
+        if (now - started >= sampleDuration) {
+          resolve(frames);
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }), { tabSelector, duration });
+
+    const summarize = (frames, direction) => {
+      const first = frames[0];
+      const last = frames[frames.length - 1];
+      const widths = frames.map((frame) => frame.width);
+      const bottoms = frames.map((frame) => frame.bottom);
+      const extremumIndex = direction === 'collapse'
+        ? widths.indexOf(Math.min(...widths))
+        : widths.indexOf(Math.max(...widths));
+      const tail = frames.slice(extremumIndex);
+      const tailMovesBackwards = tail.slice(1).some((frame, index) => direction === 'collapse'
+        ? frame.width < tail[index].width - 0.25
+        : frame.width > tail[index].width + 0.25);
+      return {
+        rightDrift: Math.max(...frames.map((frame) => Math.abs(frame.right - first.right))),
+        lift: first.bottom - Math.min(...bottoms),
+        overshoot: direction === 'collapse'
+          ? last.width - Math.min(...widths)
+          : Math.max(...widths) - last.width,
+        tailMovesBackwards,
+        finalBottomError: Math.abs(last.bottom - first.bottom),
+      };
+    };
+
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 568 });
+      await openAmountEditor(page, testInfo.project.name);
+      await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+      const collapseFrames = await sampleTransition('#mobileDataTab', 620);
+      const collapse = summarize(collapseFrames, 'collapse');
+      expect(collapse.rightDrift).toBeLessThanOrEqual(1.1);
+      expect(collapse.lift).toBeGreaterThanOrEqual(2.2);
+      expect(collapse.lift).toBeLessThanOrEqual(3.8);
+      expect(collapse.overshoot).toBeGreaterThanOrEqual(1.2);
+      expect(collapse.overshoot).toBeLessThanOrEqual(3.8);
+      expect(collapse.tailMovesBackwards).toBeFalsy();
+      expect(collapse.finalBottomError).toBeLessThanOrEqual(1.1);
+
+      const expandFrames = await sampleTransition('#mobileEntryTab', 660);
+      const expand = summarize(expandFrames, 'expand');
+      expect(expand.rightDrift).toBeLessThanOrEqual(1.1);
+      expect(expand.lift).toBeGreaterThanOrEqual(2.2);
+      expect(expand.lift).toBeLessThanOrEqual(3.8);
+      expect(expand.overshoot).toBeGreaterThanOrEqual(1.2);
+      expect(expand.overshoot).toBeLessThanOrEqual(3.8);
+      expect(expand.tailMovesBackwards).toBeFalsy();
+      expect(expand.finalBottomError).toBeLessThanOrEqual(1.1);
+      expect(expandFrames[0].expandHaloCount).toBe(0);
+      expect(Number(expandFrames[0].auraOpacity)).toBe(0);
+      expect(Number(expandFrames[expandFrames.length - 1].auraOpacity)).toBe(0);
+      expect(expandFrames[0].lensSheenDisplay).toBe('none');
+
+      await page.locator('#mobileDataTab').click();
+      await page.waitForTimeout(120);
+      await page.locator('#mobileEntryTab').click();
+      await page.waitForTimeout(700);
+      await expect(page.locator('#ledgerView')).toHaveAttribute('data-mobile-panel', 'entry');
+      await expect(page.locator('#mobileSubmitBar')).not.toHaveClass(/is-flip-morphing/);
+      await expect(page.locator('.bar-summary-ghost')).toHaveCount(0);
+      await expect(page.locator('.bar-family-tint-membrane')).toHaveCount(0);
+    }
   });
 
   test('amount Enter moves focus to note input', async ({ page }, testInfo) => {

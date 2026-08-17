@@ -300,6 +300,16 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .note-l
   }
 }
 
+/* 记账展开态只保留外壳的接触影。飞行时关闭的 ::before 模糊 aura
+   不再在落稳瞬间重新出现，避免 box-shadow + aura 组成两套阴影后产生跳变。 */
+@media (max-width: 820px) {
+  body.mobile-panel-entry .mobile-submit-bar::before {
+    opacity: 0 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 /* 统计内卡本身是凹槽：hover 只让光线在槽内移动，不再把它翻成悬浮卡。 */
 @media (min-width: 1180px) and (hover: hover) and (pointer: fine) {
   .stat-block.pointer-sink-target {

@@ -226,6 +226,7 @@
   --blur-header: blur(14px) saturate(170%);                        /* 顶部主玻璃 */
   --blur-header-before: blur(16px) saturate(145%) brightness(1.015); /* 头部高光层 */
   --blur-header-after: blur(14px) saturate(125%) brightness(1.01);   /* 头部渐隐层 */
+  --blur-scroll-edge: blur(11px) saturate(112%);                    /* 移动端滚动边缘玻璃 */
   --blur-header-soft: blur(22px) saturate(150%) brightness(1.02);    /* [data-blur=soft] 头部 */
   --blur-panel-switch: blur(12px) saturate(150%) brightness(1.015);  /* 移动端面板切换器 */
   --blur-panel-switch-soft: blur(18px) saturate(160%) brightness(1.02); /* [data-blur=soft] 切换器 */
@@ -256,6 +257,8 @@
   --glass-fade-54: color-mix(in srgb, var(--glass-bg) 54%, transparent);
   --glass-fade-56: color-mix(in srgb, var(--glass-bg) 56%, transparent);
   --glass-fade-60: color-mix(in srgb, var(--glass-bg) 60%, transparent);
+  --scroll-edge-surface-strong: color-mix(in srgb, var(--glass-bg) 58%, transparent);
+  --scroll-edge-surface-soft: color-mix(in srgb, var(--glass-bg) 28%, transparent);
   --glass-fade-84: color-mix(in srgb, var(--glass-bg) 84%, transparent);
   --glass-fade-88: color-mix(in srgb, var(--glass-bg) 88%, transparent);
   --glass-fade-strong-70: color-mix(in srgb, var(--glass-bg-strong) 70%, transparent);
@@ -608,6 +611,7 @@
     --blur-header: none;
     --blur-header-before: none;
     --blur-header-after: none;
+    --blur-scroll-edge: none;
     --blur-header-soft: none;
     --blur-panel-switch: none;
     --blur-panel-switch-soft: none;
@@ -634,6 +638,7 @@
     --blur-header: none;
     --blur-header-before: none;
     --blur-header-after: none;
+    --blur-scroll-edge: none;
     --blur-header-soft: none;
     --blur-panel-switch: none;
     --blur-panel-switch-soft: none;

@@ -446,7 +446,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   /* 备注的真实输入与已填写文字 flight 不能在首帧重叠；空备注则由
-     anchor 直接接管。外壳仍按 550ms 收回，只有这块内容在交接瞬间隐去。 */
+     anchor 直接接管。外壳与金额轨道共用 504ms 收回时钟。 */
   html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"] .natural-entry-stage-content {
     opacity: 0 !important;
     transform: none !important;
@@ -627,6 +627,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .app-header {
     --header-title-collapse-scale: 0.96;
     --mobile-header-progress: 0;
+    --mobile-header-edge-opacity: 0;
     --mobile-header-collapse-enabled: 1;
     --sync-expanded-y: 0px;
     --mobile-header-switch-center-inset: 39px;
@@ -662,15 +663,23 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     z-index: 0;
     top: 0;
     right: -14px;
-    /* 主玻璃随切换器一起收起：展开态覆盖下移的 tab，收起态刚好止于紧凑头部。 */
-    bottom: calc(-50px * (1 - var(--mobile-header-progress)));
+    /* 主玻璃随切换器一起收起，并在切换器下方实际延伸 4px；展开态的
+       现有几何本身留有 4px 安全差，因此这里补足 8px 才能落到目标位置。 */
+    bottom: calc(-50px * (1 - var(--mobile-header-progress)) - 8px);
     left: -14px;
     border-bottom: 0;
-    /* 主玻璃层保持均匀失焦，降低饱和度，避免下方彩色卡片在模糊后形成脏色块。
-       下缘的渐进失焦由 ::after 继续接力。 */
-    background: var(--glass-fade-56);
-    -webkit-backdrop-filter: var(--blur-header-before);
-    backdrop-filter: var(--blur-header-before);
+    /* Soar 风格的单一背景采样层：上缘保持材质，下缘由渐变和 mask 自然收束。
+       ::after 只负责 alpha 羽化，不再重复采样背景。 */
+    background: linear-gradient(
+      to bottom,
+      var(--scroll-edge-surface-strong) 0%,
+      var(--scroll-edge-surface-soft) 48%,
+      transparent 100%
+    );
+    -webkit-backdrop-filter: var(--blur-scroll-edge);
+    backdrop-filter: var(--blur-scroll-edge);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 100%);
     box-shadow: none;
     content: "";
     pointer-events: none;
@@ -680,17 +689,18 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     position: absolute;
     z-index: 0;
     right: -14px;
-    /* 始终从主玻璃的下缘开始接力，避免收起态向上回叠 16px 形成第二道横带。 */
+    /* 始终从主玻璃下缘附近开始接力；主层下延后，这里自然形成更宽的
+       柔和重叠，避免收起态向上回叠形成第二道横带。 */
     bottom: calc(-56px - (50px * (1 - var(--mobile-header-progress))));
     left: -14px;
-    /* 独立的滚动羽化幕布：展开态完全透明；收回后从主玻璃边缘向正文延伸，
-       卡片在这段距离里柔和淡出，且不与主玻璃重复叠色。 */
-    height: 56px;
+    /* 独立的滚动羽化幕布：向主玻璃上方重叠 10px，先从透明开始接力，
+       避免主层渐隐结束后突然出现一条更实的横向边界。 */
+    height: 66px;
     background: linear-gradient(
       to bottom,
-      var(--glass-fade-60) 0%,
-      var(--glass-fade-38) 34%,
-      var(--glass-fade-15) 72%,
+      transparent 0%,
+      var(--glass-fade-38) 20%,
+      var(--glass-fade-15) 68%,
       transparent 100%
     );
     /* 下缘只负责把主玻璃柔和地收尾，不再重复采样背景。
@@ -700,7 +710,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     /* 单一 alpha 梯度完成羽化，避免背景渐变与 mask 再次相乘产生分层。 */
     -webkit-mask-image: none;
     mask-image: none;
-    opacity: var(--mobile-header-progress);
+    opacity: var(--mobile-header-edge-opacity);
     content: "";
     pointer-events: none;
     will-change: opacity;
@@ -709,8 +719,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   /* 渐进增强：data-blur="soft" 时只加强常驻主玻璃。
      ::after 只做 alpha 羽化，不再重复采样背景，避免重新出现玻璃分层。 */
   :root[data-blur="soft"] .app-header::before {
-    -webkit-backdrop-filter: var(--blur-header-soft);
-    backdrop-filter: var(--blur-header-soft);
+    -webkit-backdrop-filter: var(--blur-scroll-edge);
+    backdrop-filter: var(--blur-scroll-edge);
   }
   :root[data-blur="soft"] .mobile-panel-switch {
     /* 顶栏统一由 .app-header::before 模糊；切换器只保留半透明表面。 */
@@ -739,10 +749,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     backdrop-filter: none;
     -webkit-mask-image: none;
     mask-image: none;
-  }
-
-  .app-header.is-collapsed::before {
-    background: var(--glass-fade-60);
   }
 
   .app-header > *,
@@ -1661,8 +1667,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry::before {
     animation: none !important;
-    opacity: var(--bar-aura-opacity, 0.78) !important;
-    transform: scale(1) !important;
+    opacity: 0 !important;
+    transform: none !important;
     transition: none !important;
   }
 
@@ -1797,7 +1803,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
        pivot the squash at right-bottom: it grows upward when it gets taller
        rather than pushing off the bottom of the screen. */
     transform-origin: right bottom;
-    animation: bar-collapse-squash 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: bar-collapse-squash 460ms linear both;
     /* Collapse-only geometry easing: fluid and elegant */
     transition-timing-function:
       cubic-bezier(0.22, 0.74, 0.24, 1),
@@ -1832,7 +1838,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
      - summary text fades in delayed after bar has mostly expanded */
   .mobile-submit-bar.is-bar-morphing-to-entry {
     transform-origin: right bottom;
-    animation: bar-expand-stretch 460ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: bar-expand-stretch 500ms linear both;
     /* Keep the outer glass shell pill-shaped throughout expand and final state. */
     border-radius: var(--radius-pill) !important;
   }
@@ -1854,21 +1860,85 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     animation: icon-dismiss 150ms cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
+  /* WAAPI owns the FLIP path in modern browsers. Keep the content handoff on
+     the same normalized bar clock, and prevent the legacy shape keyframes from
+     adding a second transform path during the flight. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data,
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry {
+    animation: none !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data .mobile-submit-button::after {
+    animation: mobile-plus-morph-reveal-sync var(--bar-motion-duration, 460ms) linear both !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-summary {
+    animation: summary-expand-sync var(--bar-motion-duration, 500ms) linear both !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-button .button-label {
+    animation: label-appear-sync var(--bar-motion-duration, 500ms) linear both !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-button::after {
+    animation: icon-dismiss-sync var(--bar-motion-duration, 500ms) linear both !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing::before,
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data::before,
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry::before {
+    animation: none !important;
+  }
+
+  /* Expand starts from the collapsed circle. Keep its blurred aura absent
+     during the shape flight, then let the normal resting aura fade in after
+     the FLIP releases; this prevents a full-size halo from flashing on frame 1. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry::before {
+    opacity: 0 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  @keyframes mobile-plus-morph-reveal-sync {
+    0%, 28% { opacity: 0; transform: scale(0.48) rotate(-58deg); }
+    46% { opacity: 0.32; transform: scale(0.68) rotate(-30deg); }
+    62% { opacity: 1; transform: scale(1) rotate(0deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes summary-expand-sync {
+    0%, 36% { opacity: 0; transform: translateX(-14px); max-width: 0; }
+    52% { opacity: 0.72; transform: translateX(-2px); max-width: 400px; }
+    68%, 100% { opacity: 1; transform: translateX(0); max-width: 400px; }
+  }
+
+  @keyframes label-appear-sync {
+    0%, 36% { opacity: 0; transform: scale(0.5); }
+    54% { opacity: 0.76; transform: scale(0.94); }
+    68%, 100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes icon-dismiss-sync {
+    0% { opacity: 1; transform: scale(1) rotate(0deg); }
+    22% { opacity: 0; transform: scale(0.3) rotate(90deg); }
+    100% { opacity: 0; transform: scale(0.3) rotate(90deg); }
+  }
+
   /* Fallback-only shape accents. Keep them small; FLIP is the real motion. */
   @keyframes bar-collapse-squash {
-    0%   { transform: translateY(0) scaleX(1)     scaleY(1); }
-    48%  { transform: translateY(-5px) scaleX(0.955) scaleY(1.047); }
-    84%  { transform: translate(3.2px, 1.4px) scaleX(0.992) scaleY(1.008); }
-    94%  { transform: translate(0.8px, 0.25px) scaleX(0.998) scaleY(1.002); }
-    100% { transform: translateY(0) scaleX(1)     scaleY(1); }
+    0%   { transform: translateY(0) scaleX(1) scaleY(1); }
+    28%  { transform: translateY(-1.2px) scaleX(0.997) scaleY(1.003); }
+    55%  { transform: translateY(-3px) scaleX(0.992) scaleY(1.008); }
+    80%  { transform: translateY(-2.2px) scaleX(0.99) scaleY(1.01); }
+    100% { transform: translateY(0) scaleX(1) scaleY(1); }
   }
 
   @keyframes bar-expand-stretch {
-    0%   { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
-    46%  { transform: translateY(-5px) scaleX(1.045) scaleY(0.957); border-radius: var(--radius-pill); }
-    84%  { transform: translate(-2.4px, 1.4px) scaleX(1.008) scaleY(0.992); border-radius: var(--radius-pill); }
-    94%  { transform: translate(-0.6px, 0.25px) scaleX(1.002) scaleY(0.998); border-radius: var(--radius-pill); }
-    100% { transform: translateY(0) scaleX(1)     scaleY(1);     border-radius: var(--radius-pill); }
+    0%   { transform: translateY(0) scaleX(1) scaleY(1); border-radius: var(--radius-pill); }
+    28%  { transform: translateY(-1.2px) scaleX(1.003) scaleY(0.997); border-radius: var(--radius-pill); }
+    55%  { transform: translateY(-3px) scaleX(1.008) scaleY(0.992); border-radius: var(--radius-pill); }
+    80%  { transform: translateY(-2.2px) scaleX(1.01) scaleY(0.99); border-radius: var(--radius-pill); }
+    100% { transform: translateY(0) scaleX(1) scaleY(1); border-radius: var(--radius-pill); }
   }
 
   /* Summary text collapses: fast fade + slide left */
@@ -2521,8 +2591,10 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     opacity: 0.85;
   }
 
-  /* 入口水滴扫光：只在圆形按钮展开回记账栏时出现一次。 */
+  /* 入口水滴扫光会越过固定 Bar 的左边界，形成截图中游离的斜向光带。
+     保留节点以兼容现有 DOM 选择器，但不再让它参与视觉渲染。 */
   .mobile-submit-lens-sheen {
+    display: none !important;
     position: absolute;
     z-index: 1;
     top: 8%;
@@ -2542,10 +2614,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     opacity: 0;
     pointer-events: none;
     transform: rotate(45deg) translateX(-180%);
-  }
-
-  .mobile-submit-bar.is-bar-morphing-to-entry .mobile-submit-lens-sheen {
-    animation: mobile-entry-lens-sweep 620ms var(--settle) 80ms both;
   }
 
   .mobile-submit-bar.submit-themed {
@@ -3839,18 +3907,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       --ledger-morph-easing: cubic-bezier(0.24, 0.68, 0.24, 1);
     }
 
-    /* 静态主玻璃保留 WebKit 模糊；只把动态切换中的内容滤镜关闭。 */
-    .app-header::before {
-      background: var(--glass-fade-56);
-      -webkit-backdrop-filter: var(--blur-header-before);
-      backdrop-filter: var(--blur-header-before);
-    }
-
-    :root[data-blur="soft"] .app-header::before {
-      -webkit-backdrop-filter: var(--blur-header-soft);
-      backdrop-filter: var(--blur-header-soft);
-    }
-
     .mobile-panel-switch {
       background:
         linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.16) 48%, rgba(255, 255, 255, 0.24)),
@@ -4243,7 +4299,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     inline-size: auto;
     min-inline-size: 0;
     max-inline-size: 100%;
-    overflow: hidden;
+    /* 透镜伪元素需要越过 token 的内容盒显示圆角；数字本身已经由
+       .natural-entry-amount-digits 单独裁剪，不能在这里把整块透镜裁成矩形。 */
+    overflow: visible;
     font-family: var(--font-number);
     font-weight: var(--fw-medium);
     letter-spacing: -0.045em;
@@ -4495,11 +4553,12 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     /* 收回前段快速完成主要距离，最后约 160ms 留出明确减速尾段。 */
     --natural-stage-curve: cubic-bezier(0.12, 0.68, 0.18, 1);
     --natural-stage-open-curve: cubic-bezier(0.20, 0, 0, 1);
-    --natural-stage-close-duration: 550ms;
+    /* Keep every return relay on the amount track's 504ms close path. */
+    --natural-stage-close-duration: 504ms;
     --natural-stage-close-cleanup-duration: 590ms;
     --natural-stage-content-exit-duration: 120ms;
     --natural-stage-text-travel-start: 80ms;
-    --natural-stage-text-handoff: 500ms;
+    --natural-stage-text-handoff: 414ms;
     --natural-stage-lens-start: 390ms;
     --natural-stage-lens-duration: 160ms;
     --natural-stage-family-start: 0ms;

@@ -54,6 +54,47 @@ async function openSeededLedger(page) {
   await page.waitForTimeout(500);
 }
 
+const recentPeekState = {
+  ...sampleState,
+  activeLedgerId: 'recent-peek-order-test',
+  ledgers: [{
+    ...sampleState.ledgers[0],
+    id: 'recent-peek-order-test',
+    expenses: [
+      {
+        ...sampleState.ledgers[0].expenses[0],
+        id: 'expense-added-last',
+        date: '2026-08-11',
+        note: '按添加顺序应排第一',
+        createdAt: '2026-08-12T12:00:00.000Z',
+        updatedAt: '2026-08-12T12:00:00.000Z',
+      },
+      {
+        ...sampleState.ledgers[0].expenses[1],
+        id: 'expense-added-first',
+        date: '2026-08-12',
+        note: '按添加顺序应排第二',
+        createdAt: '2026-08-12T11:00:00.000Z',
+        updatedAt: '2026-08-12T11:00:00.000Z',
+      },
+    ],
+  }],
+};
+
+async function openSeededRecentPeek(page) {
+  await page.addInitScript((state) => {
+    localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
+    localStorage.setItem('travel-ledger-welcome-seen', '1');
+    localStorage.setItem('travel-ledger-entry-mode', 'standard');
+  }, recentPeekState);
+  await page.goto('/');
+  const mobileEntryTab = page.locator('#mobileEntryTab');
+  if (await mobileEntryTab.isVisible().catch(() => false)) {
+    await mobileEntryTab.click();
+  }
+  await expect(page.locator('#recentPeek')).toBeVisible();
+}
+
 function rectSnapshot(locator) {
   return locator.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -62,6 +103,15 @@ function rectSnapshot(locator) {
 }
 
 test.describe('ledger card expansion', () => {
+  test('recent peek keeps newest additions ahead of newer expense dates', async ({ page }) => {
+    await openSeededRecentPeek(page);
+
+    await expect(page.locator('.recent-peek-note')).toHaveText([
+      '按添加顺序应排第一',
+      '按添加顺序应排第二',
+    ]);
+  });
+
   test('mobile expansion keeps the card aligned and actions reachable', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'chromium-desktop', 'mobile geometry is covered by the mobile projects');
     await page.setViewportSize({ width: 320, height: 568 });

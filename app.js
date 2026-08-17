@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-mobile-v6-20260813";
+const APP_VERSION = "journa-safari-scroll-edge-v2-20260815";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -169,17 +169,14 @@ function resolveMotionDuration({ distancePx = 0, role = "control", direction = "
   const directional = direction === "exit" ? raw * 0.85 : raw;
   return Math.round(Math.min(profile.max, Math.max(profile.min, directional)));
 }
-/* Bottom bar FLIP springs: Safari mobile uses a critically damped, monotonic
-   response; desktop keeps the established spring constants below. */
+/* Bottom bar FLIP durations. The actual mobile path is sampled below from a
+   shared Hermite timeline so Chromium and Safari receive the same lift and
+   single landing rebound. */
 const SPRING_BAR_COLLAPSE = { duration: 460, monotonic: true };
 const SPRING_BAR_EXPAND = { duration: 500, monotonic: true };
 const SPRING_CATEGORY_ADD_OPEN = { stiffness: 280, damping: 24, mass: 1 };
 const SPRING_CATEGORY_ADD_CLOSE = { stiffness: 320, damping: 28, mass: 1 };
 const SPRING_LANDING_TAIL_MS = 64;
-const BAR_ARC_LIFT_PX = 5;
-const BAR_ARC_REBOUND_PX = 1.4;
-const BAR_COLLAPSE_REBOUND_X_PX = 3.2;
-const BAR_EXPAND_REBOUND_X_PX = -2.4;
 const defaultFamilies = [
   { id: "family-a", name: "乐家" },
   { id: "family-b", name: "祺家" },
@@ -1362,6 +1359,7 @@ function normalizeRemotePayload(payload) {
         updatedBy: normalizeOperator(expense.updated_by),
         syncState: "synced",
         isDeleted: Boolean(expense.is_deleted),
+        createdAt: expense.created_at || expense.updated_at || new Date().toISOString(),
         updatedAt: expense.updated_at || new Date().toISOString(),
       }))
       .filter(isValidExpense),
@@ -2113,12 +2111,24 @@ function springSamples({ stiffness, damping, mass = 1, duration: monotonicDurati
     const duration = monotonicDuration;
     const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
     const settleRate = 6 / duration;
-    const finalResponse = 1 - Math.exp(-settleRate * duration) * (1 + settleRate * duration);
+    const rawResponseAt = (time) => 1 - Math.exp(-settleRate * time) * (1 + settleRate * time);
+    const finalResponse = rawResponseAt(duration);
+    /* The truncated critically-damped response still has a small non-zero
+       velocity at its final sample. Add a terminal correction that preserves
+       the existing travel, but makes the last frame arrive at rest instead of
+       snapping to the final layout when the WAAPI animation is removed. */
+    const terminalVelocity = Math.exp(-settleRate * duration)
+      * settleRate
+      * settleRate
+      * duration
+      / finalResponse;
     const values = [];
     for (let i = 0; i <= count; i++) {
       const time = (duration * i) / count;
-      const response = 1 - Math.exp(-settleRate * time) * (1 + settleRate * time);
-      values.push(Math.min(1, Math.max(0, response / finalResponse)));
+      const progress = time / duration;
+      const baseResponse = rawResponseAt(time) / finalResponse;
+      const terminalEase = terminalVelocity * progress ** 2 * (1 - progress);
+      values.push(Math.min(1, Math.max(0, baseResponse + terminalEase)));
     }
     return { values, duration };
   }
@@ -2178,7 +2188,7 @@ function springSamples({ stiffness, damping, mass = 1, duration: monotonicDurati
 }
 
 function getBarMorphDuration(nextPanel) {
-  return springSamples(nextPanel === "data" ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND).duration;
+  return barMotionSamples(nextPanel === "data" ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND).duration;
 }
 
 function cancelBarFlip() {
@@ -2191,9 +2201,10 @@ function cancelBarFlip() {
 
 function clearBarMorphState() {
   elements.mobileSubmitBar.classList.remove("is-flip-morphing", "is-bar-morphing-to-data", "is-bar-morphing-to-entry");
+  elements.mobileSubmitBar.style.removeProperty("--bar-motion-duration");
 }
 
-function spawnSummaryGhost(rect) {
+function spawnSummaryGhost(rect, duration) {
   if (!rect.width) return;
 
   document.querySelectorAll(".bar-summary-ghost").forEach((ghost) => ghost.remove());
@@ -2204,10 +2215,22 @@ function spawnSummaryGhost(rect) {
   ghost.style.top = `${rect.top}px`;
   ghost.style.maxWidth = `${rect.width}px`;
   document.body.appendChild(ghost);
-  ghost.addEventListener("animationend", () => ghost.remove());
+  ghost.style.animation = "none";
+  const animation = ghost.animate(
+    [
+      { offset: 0, opacity: 1, transform: "translateX(0)" },
+      { offset: 0.28, opacity: 0, transform: "translateX(-16px)" },
+      { offset: 1, opacity: 0, transform: "translateX(-16px)" },
+    ],
+    { duration, easing: "linear", fill: "both" },
+  );
+  const cleanup = () => ghost.remove();
+  animation.onfinish = cleanup;
+  animation.oncancel = cleanup;
   window.setTimeout(() => {
     if (ghost.isConnected) ghost.remove();
-  }, 400);
+  }, duration + 80);
+  return animation;
 }
 
 /*
@@ -2236,21 +2259,25 @@ function spawnBarMorphGlow(rect, toData, duration) {
     total = duration;
     frames = [
       { offset: 0, opacity: 0.20, transform: "scale(0.94)" },
-      { offset: 0.36, opacity: 0.13, transform: "scale(1)" },
-      { offset: 0.72, opacity: 0.04, transform: "scale(1.06)" },
-      { offset: 1, opacity: 0, transform: "scale(1.10)" },
+      { offset: 0.20, opacity: 0.16, transform: "scale(0.98)" },
+      { offset: 0.76, opacity: 0.04, transform: "scale(1.04)" },
+      { offset: 0.82, opacity: 0, transform: "scale(1.07)" },
+      { offset: 1, opacity: 0, transform: "scale(1.07)" },
     ];
   } else {
-    total = Math.round(duration * 0.8);
+    total = duration;
     frames = [
       { offset: 0, opacity: 1, transform: "scale(1)" },
-      { offset: 1, opacity: 0, transform: "scale(1.12)" },
+      { offset: 0.20, opacity: 0.78, transform: "scale(1.02)" },
+      { offset: 0.78, opacity: 0.08, transform: "scale(1.08)" },
+      { offset: 0.86, opacity: 0, transform: "scale(1.10)" },
+      { offset: 1, opacity: 0, transform: "scale(1.10)" },
     ];
   }
 
   const animation = glow.animate(frames, {
     duration: total,
-    easing: toData ? "cubic-bezier(0.4, 0, 0.2, 1)" : "cubic-bezier(0.4, 0, 0.7, 1)",
+    easing: "linear",
     fill: "forwards",
   });
   const cleanup = () => glow.remove();
@@ -2274,13 +2301,14 @@ function spawnBarFamilyTintMembrane(bar, background, duration) {
   const animation = membrane.animate(
     [
       { offset: 0, opacity: 1 },
-      { offset: 0.22, opacity: 0.86 },
-      { offset: 0.68, opacity: 0.24 },
+      { offset: 0.20, opacity: 0.86 },
+      { offset: 0.76, opacity: 0.24 },
+      { offset: 0.82, opacity: 0 },
       { offset: 1, opacity: 0 },
     ],
     {
       duration,
-      easing: "cubic-bezier(0.32, 0, 0.24, 1)",
+      easing: "linear",
       fill: "forwards",
     },
   );
@@ -2293,20 +2321,61 @@ function spawnBarFamilyTintMembrane(bar, background, duration) {
   return animation;
 }
 
-function smoothBump(value) {
-  const u = Math.min(1, Math.max(0, value));
-  return 64 * u ** 3 * (1 - u) ** 3;
+function cubicHermite(value0, value1, velocity0, velocity1, span, localOffset) {
+  const u = Math.min(1, Math.max(0, localOffset));
+  const u2 = u * u;
+  const u3 = u2 * u;
+  const h00 = 2 * u3 - 3 * u2 + 1;
+  const h10 = u3 - 2 * u2 + u;
+  const h01 = -2 * u3 + 3 * u2;
+  const h11 = u3 - u2;
+  return h00 * value0
+    + h10 * velocity0 * span
+    + h01 * value1
+    + h11 * velocity1 * span;
 }
 
-function barArcLift(offset) {
-  const arc = smoothBump(offset);
-  const landing = smoothBump((offset - 0.68) / 0.32);
-  return -BAR_ARC_LIFT_PX * arc + BAR_ARC_REBOUND_PX * landing;
+function sampleHermitePath(anchors, count) {
+  const values = [];
+  for (let index = 0; index <= count; index++) {
+    const offset = index / count;
+    let segment = anchors.length - 2;
+    for (let anchorIndex = 0; anchorIndex < anchors.length - 1; anchorIndex++) {
+      if (offset <= anchors[anchorIndex + 1].offset) {
+        segment = anchorIndex;
+        break;
+      }
+    }
+    const start = anchors[segment];
+    const end = anchors[segment + 1];
+    const span = end.offset - start.offset;
+    values.push(cubicHermite(
+      start.value,
+      end.value,
+      start.velocity,
+      end.velocity,
+      span,
+      (offset - start.offset) / span,
+    ));
+  }
+  return values;
 }
 
-function barHorizontalRebound(offset, toData) {
-  const landing = smoothBump((offset - 0.68) / 0.32);
-  return (toData ? BAR_COLLAPSE_REBOUND_X_PX : BAR_EXPAND_REBOUND_X_PX) * landing;
+function barMotionSamples({ duration }) {
+  const count = Math.max(32, Math.min(96, Math.round(duration / 8)));
+  const progress = sampleHermitePath([
+    { offset: 0, value: 0, velocity: 0 },
+    { offset: 0.28, value: 0.50, velocity: 1.35 },
+    { offset: 0.68, value: 0.97, velocity: 0.34 },
+    { offset: 0.80, value: 1.01, velocity: 0 },
+    { offset: 1, value: 1, velocity: 0 },
+  ], count);
+  const lift = sampleHermitePath([
+    { offset: 0, value: 0, velocity: 0 },
+    { offset: 0.55, value: -3, velocity: 0 },
+    { offset: 1, value: 0, velocity: 0 },
+  ], count);
+  return { values: progress, lifts: lift, duration };
 }
 
 function animateBarFlip(nextPanel) {
@@ -2315,6 +2384,7 @@ function animateBarFlip(nextPanel) {
   const summary = elements.mobileSubmitSummary;
   const toData = nextPanel === "data";
   const flipRunId = barFlipRunId + 1;
+  const motion = barMotionSamples(toData ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND);
   const firstBar = bar.getBoundingClientRect();
   const firstButton = button.getBoundingClientRect();
   const firstSummary = summary.getBoundingClientRect();
@@ -2322,6 +2392,7 @@ function animateBarFlip(nextPanel) {
 
   cancelBarFlip();
   barFlipRunId = flipRunId;
+  bar.style.setProperty("--bar-motion-duration", `${motion.duration}ms`);
   bar.classList.add("is-flip-morphing");
   bar.classList.remove("is-bar-morphing-to-data", "is-bar-morphing-to-entry");
   void bar.offsetWidth;
@@ -2336,38 +2407,32 @@ function animateBarFlip(nextPanel) {
     return;
   }
 
-  const { values, duration } = springSamples(toData ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND);
+  const { values, lifts, duration } = motion;
   const relX = lastButton.left - lastBar.left;
   const relY = lastButton.top - lastBar.top;
   const barFrames = [];
   const buttonFrames = [];
-
-  const safariMotion = document.documentElement.dataset.safariMotion === "true";
   values.forEach((progress, index) => {
     const offset = index / (values.length - 1);
+    const lift = lifts[index];
     const width = firstBar.width + (lastBar.width - firstBar.width) * progress;
     const height = firstBar.height + (lastBar.height - firstBar.height) * progress;
-    const x = firstBar.left + (lastBar.left - firstBar.left) * progress;
-    const y = firstBar.top + (lastBar.top - firstBar.top) * progress;
+    const right = firstBar.right;
+    const bottom = firstBar.bottom + (lastBar.bottom - firstBar.bottom) * progress + lift;
+    const x = right - width;
+    const y = bottom - height;
     const scaleX = width / lastBar.width;
     const scaleY = height / lastBar.height;
     const translateX = x - lastBar.left;
     const translateY = y - lastBar.top;
-    const arcLift = safariMotion ? 0 : barArcLift(offset);
-    const horizontalRebound = safariMotion ? 0 : barHorizontalRebound(offset, toData);
-    barFrames.push({ offset, transform: `translate(${translateX + horizontalRebound}px, ${translateY + arcLift}px) scale(${scaleX}, ${scaleY})` });
-
-    if (toData) {
-      // Collapse has one geometry carrier: the outer bar. Let the button ride
-      // that transform instead of taking a second, desynchronizable FLIP path.
-      buttonFrames.push({ offset, transform: "translate(0px, 0px) scale(1)" });
-      return;
-    }
+    barFrames.push({ offset, transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})` });
 
     const buttonWidth = firstButton.width + (lastButton.width - firstButton.width) * progress;
     const buttonHeight = firstButton.height + (lastButton.height - firstButton.height) * progress;
-    const buttonX = firstButton.left + (lastButton.left - firstButton.left) * progress;
-    const buttonY = firstButton.top + (lastButton.top - firstButton.top) * progress;
+    const buttonRight = firstButton.right + (lastButton.right - firstButton.right) * progress;
+    const buttonBottom = firstButton.bottom + (lastButton.bottom - firstButton.bottom) * progress + lift;
+    const buttonX = buttonRight - buttonWidth;
+    const buttonY = buttonBottom - buttonHeight;
     const childScaleX = buttonWidth / (scaleX * lastButton.width);
     const childScaleY = buttonHeight / (scaleY * lastButton.height);
     const childTranslateX = (buttonX - lastBar.left - translateX) / scaleX - relX;
@@ -2385,19 +2450,16 @@ function animateBarFlip(nextPanel) {
     if (tintAnimation) barFlipAnimations.push(tintAnimation);
   }
 
-  const glowAnimation = spawnBarMorphGlow(toData ? lastBar : firstBar, toData, duration);
+  /* The collapse halo is useful as the circle forms. During expand the resting
+     pill aura and the old fixed circle halo overlap, producing a brief flash
+     and leaving a shadow-looking ring behind the settled bar. Let the shell's
+     own settling material handle the expand side instead. */
+  const glowAnimation = toData ? spawnBarMorphGlow(lastBar, true, duration) : null;
   if (glowAnimation) barFlipAnimations.push(glowAnimation);
 
   if (toData) {
-    spawnSummaryGhost(firstSummary);
-  } else {
-    barFlipAnimations.push(summary.animate(
-      [
-        { opacity: 0, transform: "translateX(-14px)" },
-        { opacity: 1, transform: "translateX(0)" },
-      ],
-      { duration: 240, delay: 180, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)", fill: "backwards" }
-    ));
+    const ghostAnimation = spawnSummaryGhost(firstSummary, duration);
+    if (ghostAnimation) barFlipAnimations.push(ghostAnimation);
   }
 
   let cleanupQueued = false;
@@ -3513,7 +3575,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   const closeDuration = MOTION_DELAYS.naturalEntryStageClose;
   const textHandoff = MOTION_DELAYS.naturalEntryStageTextHandoff;
   // 文字和 shell 从同一个 CSS 内部变量读取收回曲线，避免两条时间线
-  // 轻微漂移；文字延后到 500ms 落点，与最后 50ms 的卡片减速共同收尾。
+  // 轻微漂移；文字在 414ms 交接，与后段卡片减速共同收尾。
   const closeCurve = getComputedStyle(stage).getPropertyValue("--natural-stage-curve").trim()
     || "cubic-bezier(0.12, 0.68, 0.18, 1)";
   const flight = ghost.animate(
@@ -4035,9 +4097,18 @@ function setActiveEntryEditor(editor, { focus = false, scroll = false } = {}) {
     splitScopeOpen = true;
     renderSplitScope();
   }
-  if (isNaturalEntryLayout()) openNaturalEntryStage(requestedEditor);
+  const naturalEntryLayout = isNaturalEntryLayout();
+  /* Commit the sentence/token state before moving the editor into the fixed
+     stage. Moving the panel changes the natural-flow layout; if the token
+     text/value state is rendered afterwards, WebKit can measure the old anchor
+     for the first frame and then re-anchor the stage one frame later. That is
+     the visible jump on the note relay path. */
+  if (naturalEntryLayout && !naturalEntryStageOpen) {
+    renderNaturalEntry({ positionStage: false });
+  }
+  if (naturalEntryLayout) openNaturalEntryStage(requestedEditor);
   renderNaturalEntry();
-  if (!isNaturalEntryLayout() || (!focus && !scroll)) return;
+  if (!naturalEntryLayout || (!focus && !scroll)) return;
 
   window.requestAnimationFrame(() => {
     const panel = getNaturalEntryEditor(requestedEditor);
@@ -4245,10 +4316,8 @@ function renderRecentPeek() {
   }
   const expenses = [...state.expenses]
     .filter((expense) => !expense.isDeleted)
-    .sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-      return (b.updatedAt || "").localeCompare(a.updatedAt || "");
-    })
+    // “最近”指最近添加，而不是账单发生日期；编辑已有账单也不应改变它的位置。
+    .sort((a, b) => (b.createdAt || b.updatedAt || "").localeCompare(a.createdAt || a.updatedAt || "") || b.id.localeCompare(a.id))
     .slice(0, 2);
   if (!expenses.length) {
     host.hidden = true;
@@ -10177,6 +10246,7 @@ function setupScrollCollapse() {
       lastProgress = 0;
       wasCollapsed = false;
       appHeader.style.setProperty("--mobile-header-progress", "0");
+      appHeader.style.setProperty("--mobile-header-edge-opacity", "0");
       appHeader.classList.remove("is-docking", "is-collapsed");
       return;
     }
@@ -10193,6 +10263,7 @@ function setupScrollCollapse() {
       lastProgress = 0;
       wasCollapsed = false;
       appHeader.style.setProperty("--mobile-header-progress", "0");
+      appHeader.style.setProperty("--mobile-header-edge-opacity", "0");
       appHeader.classList.remove("is-docking", "is-collapsed");
       return;
     }
@@ -10201,6 +10272,7 @@ function setupScrollCollapse() {
     if (progress !== lastProgress) {
       lastProgress = progress;
       appHeader.style.setProperty("--mobile-header-progress", String(progress));
+      appHeader.style.setProperty("--mobile-header-edge-opacity", String(progress));
     }
     const isDocking = progress > 0.001 && progress < 0.999;
     const isCollapsed = progress >= 0.999;

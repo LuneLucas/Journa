@@ -13,6 +13,7 @@
     --glass-bg: rgba(30, 31, 33, 0.76);
     --glass-bg-strong: rgba(39, 40, 43, 0.86);
     --glass-blur: blur(12px) saturate(180%);
+    --blur-scroll-edge: blur(11px) saturate(112%);
     /* 暗色 soft 档（iOS26-soft 增强）；与亮色同由 data-blur="soft" 拨档，这里给暗色调优值 */
     --glass-blur-soft: blur(22px) saturate(160%) brightness(1.02);
     --glass-blur-strong-soft: blur(30px) saturate(185%) brightness(1.03);
