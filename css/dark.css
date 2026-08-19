@@ -1197,6 +1197,14 @@
     box-shadow: none;
   }
 
+  .split-amount-family-toggle {
+    color: color-mix(in srgb, var(--family-text, var(--ink)) 42%, white);
+  }
+
+  .split-amount-family-toggle:not(.is-selected) {
+    color: rgba(232, 236, 233, 0.42);
+  }
+
   .split-amount-input-shell:focus-within {
     border-color: color-mix(in srgb, var(--family-color) 42%, var(--border-control));
     box-shadow:

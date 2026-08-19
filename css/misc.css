@@ -583,7 +583,7 @@ h3 {
 .ledger-filter-toggle {
   align-items: center;
   gap: 7px;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--border-control);
   border-radius: var(--control-radius-compact);
   background: var(--surface-soft);
@@ -1139,7 +1139,7 @@ label,
 
 .split-amount-row {
   display: grid;
-  grid-template-columns: minmax(56px, 0.32fr) minmax(0, 1fr);
+  grid-template-columns: minmax(72px, 0.42fr) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-height: 46px;
@@ -1156,8 +1156,19 @@ label,
   grid-column: 1 / -1;
   margin: 0;
   color: var(--muted);
+  min-height: 20px;
   font-size: 0.78rem;
   font-weight: var(--fw-medium);
+  text-align: right;
+}
+
+.split-total-line[data-state="matched"] {
+  color: var(--selected-family-text);
+}
+
+.split-total-line[data-state="under"],
+.split-total-line[data-state="over"] {
+  color: var(--coral);
 }
 
 .edit-banner {
@@ -3217,6 +3228,7 @@ label,
 
 .ledger-main {
   grid-area: main;
+  display: block;
   min-width: 0;
 }
 
@@ -3248,6 +3260,7 @@ label,
 }
 
 .ledger-note {
+  display: block;
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.22;
@@ -3360,8 +3373,9 @@ label,
   font-weight: var(--fw-medium);
   letter-spacing: 0;
   white-space: nowrap;
-  align-self: center;
+  align-self: start;
   justify-self: end;
+  margin-top: 2px;
   transition:
     color var(--motion-text) var(--ease-text-out),
     transform var(--motion-structure) var(--ease-text-out),
@@ -3370,18 +3384,24 @@ label,
 
 .ledger-expand-cue {
   position: absolute;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
   right: 10px;
-  bottom: 6px;
+  bottom: 7px;
   color: color-mix(in srgb, var(--family-text) 58%, var(--muted));
-  font-size: 0.66rem;
-  font-weight: var(--fw-cjk-black);
-  letter-spacing: 0;
   opacity: 0.68;
   pointer-events: none;
   transition:
     color var(--motion-fast) var(--spring),
     opacity var(--motion-fast) var(--spring),
     transform var(--motion-fast) var(--spring);
+}
+
+.ledger-expand-cue .ui-icon-pair {
+  width: 14px;
+  height: 14px;
 }
 
 /* ── 欢迎引导浮层：与确认框同一玻璃语言，四步横滑卡片 ── */

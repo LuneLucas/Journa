@@ -186,7 +186,7 @@
   overflow: visible;
   grid-template-columns: minmax(0, 1fr) auto 0 0;
   grid-template-rows: auto;
-  grid-template-areas: "main amount date delete";
+  grid-template-areas: "main amount date actions";
   gap: 8px 12px;
   align-items: center;
   min-height: 60px;
@@ -240,11 +240,11 @@
 }
 
 .ledger-item.is-expanded {
-  grid-template-columns: minmax(0, 1fr) 58px 112px;
+  grid-template-columns: minmax(0, 1fr) auto 144px;
   grid-template-rows: auto auto;
   grid-template-areas:
-    "main date delete"
-    "amount date delete";
+    "main amount date"
+    "main actions date";
   gap: 12px 14px;
   min-height: 124px;
   max-height: 280px;
@@ -270,6 +270,26 @@
   transition:
     transform var(--motion-structure) var(--ease-text-out),
     opacity var(--motion-text) var(--ease-text-out);
+}
+
+.ledger-summary-toggle {
+  grid-area: main;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: calc(var(--control-radius-large) - 4px);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.ledger-summary-toggle:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 
 .ledger-list.is-morphing-ledger-items .ledger-item > * {
@@ -302,9 +322,13 @@
 
 .ledger-list.is-morphing-ledger-items .ledger-item-actions {
   transition:
-    opacity 210ms var(--ledger-morph-easing);
+    opacity 210ms var(--ledger-morph-easing),
+    transform 240ms var(--ledger-morph-easing);
 }
 
+/* 操作键跟随外壳揭示：展开先留出一小段结构建立时间，收起则先淡出再
+   释放宽度。否则 collapsed 规则会在首帧把容器宽度清零，虽然 opacity
+   仍在过渡，肉眼看到的却是按钮瞬间消失。 */
 .ledger-item:hover {
   transform: var(--hover-lift-card);
   background: var(--ledger-card-background);
@@ -384,13 +408,28 @@
 .ledger-operator {
   display: block;
   overflow: hidden;
-  margin-top: 3px;
+  max-height: 0;
+  margin-top: 0;
   color: color-mix(in srgb, var(--family-text) 62%, var(--muted));
   font-size: 0.74rem;
   font-weight: var(--fw-bold);
+  opacity: 0;
   line-height: 1.3;
   text-overflow: ellipsis;
+  transform: translateY(-4px);
+  transition:
+    max-height var(--motion-text) var(--ease-text-out),
+    margin var(--motion-text) var(--ease-text-out),
+    opacity var(--motion-text) var(--ease-text-out),
+    transform var(--motion-text) var(--ease-text-out);
   white-space: nowrap;
+}
+
+.ledger-item.is-expanded .ledger-operator {
+  max-height: 32px;
+  margin-top: 3px;
+  opacity: 1;
+  transform: none;
 }
 
 .ledger-operator::before {
@@ -429,8 +468,9 @@
 }
 
 .ledger-item.is-expanded .ledger-amount {
-  align-self: end;
-  justify-self: start;
+  align-self: start;
+  justify-self: end;
+  margin-top: 2px;
   font-size: var(--ledger-amount-expanded-size);
 }
 
@@ -442,7 +482,7 @@
 }
 
 .ledger-item-actions {
-  grid-area: delete;
+  grid-area: actions;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -457,9 +497,15 @@
     transform var(--motion-fast) var(--spring);
 }
 
+.ledger-action-label {
+  font-size: 0.78rem;
+  font-weight: var(--fw-cjk-heavy);
+  line-height: 1;
+}
+
 .ledger-item.is-expanded .ledger-item-actions {
-  width: 112px;
-  min-width: 112px;
+  width: 144px;
+  min-width: 144px;
   opacity: 1;
   pointer-events: auto;
   transform: none;
@@ -478,4 +524,242 @@
     content-visibility: auto;
     contain-intrinsic-height: auto 72px;
   }
+}
+
+/* ── 稳定账单摘要与单轨展开动画 ──
+   摘要按钮负责整张卡片的第一层信息；展开内容脱离摘要网格，避免收起时
+   隐藏的操作栏生成隐式列，连带挤压其它账单。卡片高度由 app.js 单独做
+   WAAPI，摘要文字和金额不再参与 FLIP。 */
+.ledger-item,
+.ledger-item.is-expanded {
+  display: block;
+  border-radius: var(--control-radius-large);
+  grid-template: none;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  transition:
+    border-color var(--motion-fast) var(--settle),
+    transform var(--motion-fast) var(--settle),
+    background-color var(--motion-fast) var(--settle),
+    box-shadow 160ms var(--ledger-morph-easing),
+    opacity var(--motion-fast) var(--settle);
+}
+
+.ledger-item > * {
+  min-height: 0;
+  transition: none;
+}
+
+.ledger-summary-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 48px;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "primary amount date"
+    "meta cue date";
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  border-radius: inherit;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.ledger-summary-primary,
+.ledger-summary-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.ledger-summary-primary {
+  grid-area: primary;
+}
+
+.ledger-primary-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--family-text);
+  font-size: 0.94rem;
+  font-weight: var(--fw-cjk-heavy);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledger-summary-meta {
+  grid-area: meta;
+  flex-wrap: wrap;
+  gap: 5px 7px;
+  overflow: hidden;
+  min-height: 20px;
+}
+
+.ledger-summary-meta .ledger-family {
+  max-width: 96px;
+  min-width: 0;
+  font-size: 0.76rem;
+}
+
+.ledger-summary-meta .category-pill {
+  min-height: 20px;
+  padding: 2px 6px;
+  font-size: 0.66rem;
+}
+
+.ledger-summary-meta .ledger-sync-badge {
+  min-height: 20px;
+  padding-inline: 6px;
+  font-size: 0.64rem;
+}
+
+.ledger-summary-toggle .ledger-amount {
+  grid-area: amount;
+  align-self: start;
+  justify-self: end;
+  margin-top: 1px;
+  font-size: var(--ledger-amount-rest-size);
+}
+
+.ledger-summary-toggle .ledger-expand-cue {
+  position: static;
+  grid-area: cue;
+  align-self: end;
+  justify-self: end;
+  width: 24px;
+  height: 20px;
+  transform: none;
+}
+
+.ledger-summary-toggle .ledger-date {
+  grid-area: date;
+  align-self: stretch;
+  justify-self: center;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  opacity: 0;
+  pointer-events: none;
+  transform: none;
+}
+
+.ledger-item.is-expanded .ledger-summary-toggle .ledger-date {
+  opacity: 0.52;
+}
+
+.ledger-expanded-content {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: end;
+  padding: 0 12px 12px;
+  overflow: hidden;
+}
+
+.ledger-expanded-rail {
+  position: absolute;
+  top: 0;
+  bottom: 14px;
+  left: 5px;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--family-color) 72%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+.ledger-item.is-expanded .ledger-expanded-rail {
+  opacity: 1;
+  transform: none;
+}
+
+.ledger-expanded-content[hidden] {
+  display: none;
+}
+
+.ledger-expanded-details {
+  min-width: 0;
+}
+
+.ledger-expanded-details .ledger-operator,
+.ledger-expanded-details .ledger-scope,
+.ledger-expanded-details .ledger-sync-state {
+  display: block;
+  max-height: none;
+  margin-top: 4px;
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.ledger-expanded-details .ledger-detail-note {
+  display: none;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ledger-item.is-note-truncated.is-expanded .ledger-expanded-details .ledger-detail-note {
+  display: block;
+}
+
+.ledger-expanded-content .ledger-item-actions {
+  display: flex;
+  grid-area: auto;
+  width: 144px;
+  min-width: 144px;
+  height: 44px;
+  gap: 8px;
+  opacity: 1;
+  overflow: visible;
+  pointer-events: auto;
+  transform: none;
+}
+
+.ledger-list.is-morphing-ledger-items {
+  overflow-anchor: none;
+}
+
+.ledger-item.is-ledger-expanding .ledger-expanded-details,
+.ledger-item.is-ledger-expanding .ledger-item-actions,
+.ledger-item.is-ledger-collapsing .ledger-expanded-details,
+.ledger-item.is-ledger-collapsing .ledger-item-actions {
+  pointer-events: none;
+}
+
+.ledger-list.is-morphing-ledger-items .ledger-expanded-details,
+.ledger-list.is-morphing-ledger-items .ledger-item-actions {
+  transition: none;
+}
+
+.ledger-item.is-ledger-expanding .ledger-expanded-details,
+.ledger-item.is-ledger-collapsing .ledger-expanded-details {
+  will-change: opacity, transform, clip-path;
+}
+
+.ledger-item.is-ledger-expanding .ledger-expanded-rail,
+.ledger-item.is-ledger-collapsing .ledger-expanded-rail {
+  will-change: opacity, transform;
+}
+
+.ledger-item.is-ledger-expanding,
+.ledger-item.is-ledger-collapsing {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    var(--edge-shade),
+    0 18px 40px rgba(22, 26, 30, 0.12);
+}
+
+.ledger-item.is-expanded .ledger-summary-toggle .ledger-amount,
+.ledger-item.is-ledger-expanding .ledger-summary-toggle .ledger-amount,
+.ledger-item.is-ledger-collapsing .ledger-summary-toggle .ledger-amount {
+  font-size: var(--ledger-amount-rest-size);
 }

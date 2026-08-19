@@ -210,6 +210,7 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   width: 100%;
   min-width: 0;
   min-height: 46px;
@@ -227,9 +228,64 @@ input[type="date"]:focus {
     background-color var(--motion-fast) var(--spring);
 }
 
+.split-amount-family-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--family-text);
+  font-size: 0.82rem;
+  font-weight: var(--fw-cjk-heavy);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.split-amount-family-toggle:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--family-color) 34%, transparent);
+  outline-offset: 2px;
+}
+
+.split-amount-family-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--family-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--family-color) 14%, transparent);
+}
+
+.split-amount-family-toggle:not(.is-selected) {
+  opacity: 0.46;
+}
+
+.split-amount-family-toggle:not(.is-selected) .split-amount-family-dot {
+  background: var(--muted);
+  box-shadow: none;
+}
+
+.split-amount-row.is-excluded .split-amount-input-shell {
+  opacity: 0.42;
+}
+
+.split-amount-row.is-excluded input {
+  cursor: not-allowed;
+}
+
+.split-amount-input-shell .currency-mark {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .split-amount-row input {
   box-sizing: border-box;
+  flex: 1 1 auto;
   width: 100%;
+  min-width: 0;
   min-height: 46px;
   padding: 0 5px;
   border: none;

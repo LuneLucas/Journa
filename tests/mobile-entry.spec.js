@@ -70,6 +70,36 @@ const editableMobileLedger = {
   }],
 };
 
+const customSplitEditableMobileLedger = {
+  activeLedgerId: 'mobile-custom-split-edit-ledger',
+  ledgers: [{
+    id: 'mobile-custom-split-edit-ledger',
+    name: '移动自定分摊编辑测试账本',
+    families: [
+      { id: 'family-a', name: '乐家' },
+      { id: 'family-b', name: '祺家' },
+      { id: 'family-c', name: '旦家' },
+    ],
+    categories: ['餐饮', '交通'],
+    familyMembers: { 'family-a': 1, 'family-b': 1, 'family-c': 1 },
+    expenses: [{
+      id: 'mobile-custom-split-expense',
+      amount: 422.01,
+      payerId: 'family-a',
+      category: '餐饮',
+      date: '2026-08-12',
+      note: '自定分摊数字显示',
+      splitMode: 'custom',
+      splitFamilyIds: [],
+      splitAmounts: { 'family-a': 345.67, 'family-b': 64, 'family-c': 12.34 },
+      createdBy: { familyId: 'family-a' },
+      updatedBy: null,
+      createdAt: '2026-08-12T12:00:00.000Z',
+      updatedAt: '2026-08-12T12:00:00.000Z',
+    }],
+  }],
+};
+
 test.describe('mobile entry smoke flow', () => {
   test('mobile edit saves the existing expense from the floating submit button', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '移动端编辑保存回归');
@@ -84,8 +114,8 @@ test.describe('mobile entry smoke flow', () => {
     await page.locator('#mobileDataTab').click();
     await expect(page.locator('#ledgerView')).toHaveAttribute('data-mobile-panel', 'data');
     const card = page.locator('[data-expense-id="mobile-edit-expense"]');
-    await card.click();
-    await expect(card).toHaveAttribute('aria-expanded', 'true');
+    await card.locator('.ledger-summary-toggle').click();
+    await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'true');
     await card.locator('[data-edit-id="mobile-edit-expense"]').click();
 
     await expect(page.locator('#editBanner')).toBeVisible();
@@ -110,6 +140,33 @@ test.describe('mobile entry smoke flow', () => {
     await expect(page.locator('.ledger-item')).toContainText('¥45.67');
     await expect(page.locator('.ledger-item')).toContainText('编辑后备注');
     await expect(page.locator('.toast')).toContainText('已更新账单');
+  });
+
+  test('prefilled custom split amounts keep their full width after entering the natural stage', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自定金额舞台只在移动端启用');
+    await page.addInitScript((state) => {
+      localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
+    }, customSplitEditableMobileLedger);
+    await openAmountEditor(page, testInfo.project.name);
+
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#mobileDataTab').click();
+    const card = page.locator('[data-expense-id="mobile-custom-split-expense"]');
+    await card.click();
+    await card.locator('[data-edit-id="mobile-custom-split-expense"]').click();
+
+    await expect(page.locator('#editBanner')).toBeVisible();
+    await page.locator('#naturalSplitToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+    const geometry = await page.locator('[data-split-amount]').evaluateAll((inputs) => inputs.map((input) => ({
+      value: input.value,
+      width: input.clientWidth,
+      scrollWidth: input.scrollWidth,
+    })));
+    expect(geometry.map(({ value }) => value)).toEqual(['345.67', '64', '12.34']);
+    expect(geometry.every(({ width, scrollWidth }) => width > 24 && scrollWidth <= width + 1)).toBeTruthy();
   });
 
   test('amount entry exposes one visible input and preserves the form flow', async ({ page }, testInfo) => {
@@ -360,6 +417,62 @@ test.describe('mobile entry smoke flow', () => {
     expect(geometry.inputRight).toBeLessThanOrEqual(geometry.trackRight + 1);
     expect(geometry.scrollable).toBeTruthy();
     expect(geometry.caretAtEnd).toBeTruthy();
+  });
+
+  test('custom split keeps a known total and shows the compact matched state', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自定金额入口只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    const amount = page.locator('#amountInput');
+    const splitInputs = page.locator('[data-split-amount]');
+    const totalLine = page.locator('.split-total-line');
+
+    // Known total: switching modes must keep it as the target instead of resetting to 0.
+    await amount.fill('268.50');
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalSplitToken').click();
+    await page.getByRole('radio', { name: '自定金额' }).click();
+    await expect(amount).toHaveValue('268.50');
+    await splitInputs.nth(0).fill('101.20');
+    await splitInputs.nth(1).fill('67.80');
+    await splitInputs.nth(2).fill('99.50');
+    await expect(totalLine).toHaveText('¥268.50 ✓');
+  });
+
+  test('custom split derives the total when family amounts are entered first', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自定金额入口只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    const amount = page.locator('#amountInput');
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await page.locator('#naturalSplitToken').click();
+    await page.getByRole('radio', { name: '自定金额' }).click();
+    const splitInputs = page.locator('[data-split-amount]');
+    await splitInputs.nth(0).fill('101.20');
+    await splitInputs.nth(1).fill('67.80');
+    await splitInputs.nth(2).fill('99.50');
+    await expect(amount).toHaveValue('268.50');
+    await expect(page.locator('.split-total-line')).toHaveText('¥268.50');
+  });
+
+  test('custom split marks a mismatch and lets a family be excluded inline', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自定金额入口只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    const amount = page.locator('#amountInput');
+    await amount.fill('268.50');
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await page.locator('#naturalSplitToken').click();
+    await page.getByRole('radio', { name: '自定金额' }).click();
+
+    const rows = page.locator('.split-amount-row');
+    const splitInputs = page.locator('[data-split-amount]');
+    await splitInputs.nth(0).fill('101.20');
+    await splitInputs.nth(1).fill('67.80');
+    await splitInputs.nth(2).fill('90');
+    await expect(page.locator('.split-total-line')).toHaveText('¥259 ≠ ¥268.50');
+
+    await rows.nth(2).getByRole('button', { name: /参与分摊/ }).click();
+    await expect(splitInputs.nth(2)).toBeDisabled();
+    await expect(page.locator('.split-total-line')).toHaveText('¥169 ≠ ¥268.50');
   });
 
   test('note expands to a bounded textarea and split amounts remain editable', async ({ page }, testInfo) => {

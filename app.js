@@ -366,6 +366,7 @@ const elements = {
   naturalEntryStageToken: document.querySelector("#naturalEntryStageToken"),
   naturalEntryStageContent: document.querySelector("#naturalEntryStageContent"),
   amountInput: document.querySelector("#amountInput"),
+  amountAutoBadge: document.querySelector("#amountAutoBadge"),
   categoryInput: document.querySelector("#categoryInput"),
   dateInput: document.querySelector("#dateInput"),
   noteInput: document.querySelector("#noteInput"),
@@ -470,6 +471,10 @@ state.activeDate = todayIso();
 let activeSplitMode = "equal";
 let activeSplitFamilyIds = state.families.map((family) => family.id);
 let activeSplitAmounts = {};
+// 自定金额允许“先填总额”或“先填各家金额”。null 表示总额尚未被用户明确指定，
+// 此时各家金额合计就是当前总额；保留为 UI 草稿，不改变持久化结构。
+let customSplitTargetCents = null;
+let customSplitSuspendedAmounts = {};
 let splitScopeOpen = false;
 let splitFamilyChoicesOpen = true;
 let activeFamilyColorFamilyId = state.families[0]?.id || defaultFamilies[0].id;
@@ -493,6 +498,7 @@ let naturalEntryStageOpenFinishTimer = 0;
 let naturalEntryMaterialSettleFrame = 0;
 let naturalEntryMaterialSettleFrame2 = 0;
 let naturalEntryMaterialSettleTimer = 0;
+let ledgerNoteMeasureFrame = 0;
 let naturalEntryAmountHandoffRunning = false;
 let naturalEntryLensEntryTimer = 0;
 let naturalEntryLensHasRevealed = false;
@@ -3693,6 +3699,7 @@ function openNaturalEntryStage(editor) {
     elements.naturalEntryStageContent.classList.remove("is-swapping");
     positionNaturalEntryStage();
     if (editor === "amount") syncAmountValueTrack(elements.amountInput);
+    if (editor === "split") syncSplitAmountValueTracks();
     const nextHeight = stage.scrollHeight;
     stage.style.height = `${oldHeight}px`;
     void stage.offsetHeight;
@@ -3739,6 +3746,7 @@ function openNaturalEntryStage(editor) {
      once after that width is final so a reused stage cannot leave the amount
      track based on its previous editor's box. */
   if (editor === "amount") syncAmountValueTrack(elements.amountInput);
+  if (editor === "split") syncSplitAmountValueTracks();
 
   elements.naturalEntryFocusBackdrop.classList.remove("is-open");
   // The stage is reused between editors. Commit its new anchor geometry as a
@@ -4088,7 +4096,7 @@ function getNaturalEntryFocusTarget(editor) {
 }
 
 function setActiveEntryEditor(editor, { focus = false, scroll = false } = {}) {
-  const requestedEditor = editor === "amount" && activeSplitMode === "custom" ? "split" : editor;
+  const requestedEditor = editor;
   if (!naturalEntryEditors.has(requestedEditor)) return;
 
   activeEntryEditor = requestedEditor;
@@ -4194,6 +4202,9 @@ function renderLedgerFilterSummary() {
 
 function toggleLedgerFilters() {
   ledgerFiltersExpanded = !ledgerFiltersExpanded;
+  if (ledgerFiltersExpanded && expandedExpenseId) {
+    collapseLedgerItem(expandedExpenseId);
+  }
   renderLedgerFilterSummary();
   if (ledgerFiltersExpanded) {
     window.requestAnimationFrame(() => elements.ledgerFamilyFilter?.focus({ preventScroll: true }));
@@ -4846,29 +4857,42 @@ function syncSplitCustomAmounts() {
       ${state.families
         .map(
           (family) => `
-          <label class="split-amount-row" style="${familyStyle(family.id)}">
-            <span>${escapeHtml(family.name)}</span>
+          <div class="split-amount-row" style="${familyStyle(family.id)}" data-split-family-row="${escapeHtml(family.id)}">
+            <button class="split-amount-family-toggle" type="button" data-split-family="${escapeHtml(family.id)}" aria-pressed="true" aria-label="${escapeHtml(family.name)}参与分摊">
+              <span class="split-amount-family-dot" aria-hidden="true"></span>
+              <span>${escapeHtml(family.name)}</span>
+            </button>
             <span class="split-amount-input-shell">
+              <span class="currency-mark" aria-hidden="true">¥</span>
               <span class="amount-value-track is-compact">
-                <input type="text" inputmode="decimal" autocomplete="off" data-split-amount="${escapeHtml(family.id)}" placeholder="0.00" />
+                <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" data-split-amount="${escapeHtml(family.id)}" aria-label="${escapeHtml(family.name)}金额" placeholder="0.00" />
               </span>
             </span>
-          </label>
+          </div>
         `,
         )
         .join("")}
-      <p class="split-total-line"></p>
+      <p class="split-total-line" role="status" aria-live="polite"></p>
     `;
     inputs = [...container.querySelectorAll("[data-split-amount]")];
   }
   inputs.forEach((input) => {
     if (document.activeElement === input) return; // 正在输入时不回写，避免打断
-    const amount = Number(activeSplitAmounts[input.dataset.splitAmount]) || 0;
+    const familyId = input.dataset.splitAmount;
+    const amount = activeSplitFamilyIds.includes(familyId) ? Number(activeSplitAmounts[familyId]) || 0 : 0;
     input.value = amount > 0 ? String(amount) : "";
+    input.disabled = !activeSplitFamilyIds.includes(familyId);
     syncAmountValueTrack(input);
   });
+  container.querySelectorAll("[data-split-family]").forEach((button) => {
+    const familyId = button.dataset.splitFamily;
+    const selected = activeSplitFamilyIds.includes(familyId);
+    button.setAttribute("aria-pressed", String(selected));
+    button.classList.toggle("is-selected", selected);
+    button.closest(".split-amount-row")?.classList.toggle("is-excluded", !selected);
+  });
   const totalLine = container.querySelector(".split-total-line");
-  if (totalLine) totalLine.textContent = formatCustomSplitTotalLine();
+  syncCustomSplitTotalLine(totalLine);
 }
 
 function updateSplitScopePanelState() {
@@ -4905,7 +4929,7 @@ function ensureActiveSplitState() {
   activeSplitMode = normalizeSplitMode(activeSplitMode);
   const fallbackIds = getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id);
   activeSplitFamilyIds = normalizeSplitFamilyIds(activeSplitFamilyIds, fallbackIds);
-  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
+  if (getSplitScopeFromMode(activeSplitMode) === "all" && activeSplitMode !== "custom") activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = normalizeSplitAmounts(activeSplitAmounts);
 }
 
@@ -4947,23 +4971,76 @@ function formatExpenseSplitSummary(expense) {
 
 function formatCustomSplitTotalLine() {
   const totalCents = getActiveCustomSplitTotalCents();
-  return totalCents ? `金额栏由分摊金额自动求和 · 当前合计 ${formatMoney(totalCents)}` : "金额栏由分摊金额自动求和";
+  const targetCents = customSplitTargetCents;
+  if (targetCents === null) return formatMoney(totalCents);
+  if (totalCents === targetCents) return `${formatMoney(totalCents)} ✓`;
+  return `${formatMoney(totalCents)} ≠ ${formatMoney(targetCents)}`;
 }
 
 function getActiveCustomSplitTotalCents() {
-  return state.families.reduce((sum, family) => sum + amountToCents(activeSplitAmounts[family.id]), 0);
+  return state.families.reduce(
+    (sum, family) => sum + (activeSplitFamilyIds.includes(family.id) ? amountToCents(activeSplitAmounts[family.id]) : 0),
+    0,
+  );
+}
+
+function getActiveCustomSplitAmounts() {
+  return Object.fromEntries(
+    state.families.map((family) => [
+      family.id,
+      activeSplitFamilyIds.includes(family.id) ? amountToCents(activeSplitAmounts[family.id]) : 0,
+    ]),
+  );
+}
+
+function getCustomSplitDifferenceCents() {
+  if (customSplitTargetCents === null) return 0;
+  return getActiveCustomSplitTotalCents() - customSplitTargetCents;
+}
+
+function getCustomSplitDifferenceState() {
+  if (customSplitTargetCents === null) return "derived";
+  const difference = getCustomSplitDifferenceCents();
+  return difference === 0 ? "matched" : difference > 0 ? "over" : "under";
+}
+
+function syncCustomSplitTotalLine(totalLine = elements.splitCustomAmounts.querySelector(".split-total-line")) {
+  if (!totalLine) return;
+  const totalCents = getActiveCustomSplitTotalCents();
+  totalLine.textContent = formatCustomSplitTotalLine();
+  totalLine.dataset.state = getCustomSplitDifferenceState();
+  totalLine.setAttribute(
+    "aria-label",
+    customSplitTargetCents === null
+      ? `分摊合计 ${formatMoney(totalCents)}`
+      : `当前分摊合计 ${formatMoney(totalCents)}，账单总额 ${formatMoney(customSplitTargetCents)}`,
+  );
+}
+
+function syncCustomSplitTotalField() {
+  if (activeSplitMode !== "custom") return;
+  const totalCents = customSplitTargetCents === null ? getActiveCustomSplitTotalCents() : customSplitTargetCents;
+  if (document.activeElement !== elements.amountInput) {
+    elements.amountInput.value = formatAmountInput(totalCents);
+    syncAmountValueTrack(elements.amountInput);
+  }
+  elements.amountInput.dataset.customTotalState = getCustomSplitDifferenceState();
+  elements.amountInput.setAttribute("aria-label", customSplitTargetCents === null ? "分摊合计" : "账单总额");
+  if (elements.amountAutoBadge) elements.amountAutoBadge.textContent = customSplitTargetCents === null ? "合计" : "总额";
 }
 
 function updateAmountFieldForSplitMode() {
   const isCustom = activeSplitMode === "custom";
-  elements.amountInput.disabled = isCustom;
+  elements.amountInput.disabled = false;
   elements.amountLabel.classList.toggle("amount-auto-total", isCustom);
   elements.amountInput.placeholder = "0.00";
-  if (!isCustom) return;
-
-  const totalCents = getActiveCustomSplitTotalCents();
-  elements.amountInput.value = formatAmountInput(totalCents);
-  syncAmountValueTrack(elements.amountInput);
+  if (!isCustom) {
+    elements.amountInput.removeAttribute("data-custom-total-state");
+    elements.amountInput.setAttribute("aria-label", "金额");
+    if (elements.amountAutoBadge) elements.amountAutoBadge.textContent = "自动汇总分摊金额";
+    return;
+  }
+  syncCustomSplitTotalField();
 }
 
 function renderSettings() {
@@ -6087,6 +6164,7 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   }
 
   elements.ledgerList.innerHTML = groupExpensesByDate(visibleExpenses).map((group) => renderLedgerDayGroup(group, enterClass)).join("");
+  scheduleLedgerNoteMeasurement();
   const expandedItem = elements.ledgerList.querySelector(".ledger-item.is-expanded");
   document.documentElement.dataset.ledgerExpanded = expandedItem ? "true" : "false";
   elements.mobileSubmitBar?.toggleAttribute("inert", Boolean(expandedItem));
@@ -6124,7 +6202,6 @@ function renderLedgerItem(expense) {
   );
   const syncBadge = syncState ? `<span class="ledger-sync-badge">${escapeHtml(formatExpenseSyncBadge(syncState))}</span>` : "";
   const syncLine = syncState ? `<small class="ledger-sync-state">${escapeHtml(formatExpenseSyncState(syncState))}</small>` : "";
-  const expandCue = `<span class="ledger-expand-cue" aria-hidden="true">${isExpanded ? "收起" : "展开"}</span>`;
   const createdFamilyId = normalizePayerId(expense.createdBy?.familyId);
   const updatedFamilyId = normalizePayerId(expense.updatedBy?.familyId);
   const createdFamilyName = createdFamilyId ? getFamilyName(createdFamilyId) : "";
@@ -6138,9 +6215,27 @@ function renderLedgerItem(expense) {
     ? `<small class="ledger-operator" title="${escapeHtml(operatorLabel)}">${escapeHtml(operatorLabel)}</small>`
     : "";
   const noteText = String(expense.note || "").trim();
-  const noteHtml = noteText ? `<p class="ledger-note">${escapeHtml(noteText)}</p>` : "";
   const actionTabIndex = isExpanded ? "0" : "-1";
-  const actionVisibility = String(!isExpanded);
+  const familyName = getFamilyName(expense.payerId);
+  const categoryName = formatCategoryLabel(expense.category);
+  const amountLabel = formatLedgerMoney(expenseToCents(expense));
+  const primaryText = noteText || `${familyName} · ${categoryName}`;
+  const detailsId = `ledger-details-${String(expense.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  const summaryLabel = [
+    primaryText,
+    familyName,
+    categoryName,
+    amountLabel,
+    isExpanded ? "收起详情" : "展开详情",
+  ].filter(Boolean).join("，");
+  const summaryMetaHtml = noteText
+    ? `<span class="ledger-summary-family ledger-family">${escapeHtml(familyName)}</span>
+       <span class="category-pill" style="${categoryStyle(expense.category)}">${categoryLabelHtml(expense.category)}</span>
+       ${syncBadge}`
+    : syncBadge;
+  const fullNoteHtml = noteText
+    ? `<p class="ledger-detail-note" data-ledger-full-note hidden>${escapeHtml(noteText)}</p>`
+    : "";
 
   const transitionStyle = expense.id === lastAddedExpenseId ? "view-transition-name: expense-new" : "";
   const combinedStyle = [familyStyle(expense.payerId), transitionStyle].filter(Boolean).join(";");
@@ -6150,29 +6245,49 @@ function renderLedgerItem(expense) {
       data-expense-id="${escapeHtml(expense.id)}"
       data-pointer-family-id="${escapeHtml(expense.payerId)}"
       data-pointer-category="${escapeHtml(expense.category)}"
-      data-pointer-date="${escapeHtml(expense.date)}"
-      tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? "收起这笔账单" : "展开这笔账单"}">
+      data-pointer-date="${escapeHtml(expense.date)}">
       <span class="pointer-sink-sheen" aria-hidden="true"></span>
-      <div class="ledger-main">
-        <div class="ledger-title">
-          <span class="ledger-family">${escapeHtml(getFamilyName(expense.payerId))}</span>
-          <span class="category-pill" style="${categoryStyle(expense.category)}">${categoryLabelHtml(expense.category)}</span>
-          ${syncBadge}
+      <button class="ledger-summary-toggle" type="button" aria-expanded="${isExpanded}" aria-controls="${detailsId}" aria-label="${escapeHtml(summaryLabel)}">
+        <span class="ledger-summary-primary">
+          <span class="ledger-primary-text" data-ledger-note-primary>${escapeHtml(primaryText)}</span>
+        </span>
+        <span class="ledger-summary-meta">${summaryMetaHtml}</span>
+        <strong class="ledger-amount">${amountLabel}</strong>
+        <span class="ledger-expand-cue" aria-hidden="true">${uiIconHtml(isExpanded ? "chevron-up" : "chevron-down")}</span>
+        <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
+      </button>
+      <div class="ledger-expanded-content" id="${detailsId}" aria-hidden="${String(!isExpanded)}" ${isExpanded ? "" : "inert hidden"}>
+        <span class="ledger-expanded-rail" aria-hidden="true"></span>
+        <div class="ledger-expanded-details">
+          ${fullNoteHtml}
+          ${operatorHtml}
+          <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
+          ${syncLine}
         </div>
-        ${noteHtml}
-        ${operatorHtml}
-        <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
-        ${syncLine}
-      </div>
-      <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
-      <strong class="ledger-amount">${formatLedgerMoney(expenseToCents(expense))}</strong>
-      ${expandCue}
-      <div class="ledger-item-actions" aria-hidden="${actionVisibility}" ${isExpanded ? "" : "inert"}>
-        <button class="ledger-edit-button" type="button" tabindex="${actionTabIndex}" data-edit-id="${escapeHtml(expense.id)}" aria-label="编辑这笔账">${uiIconHtml("edit")}</button>
-        <button class="delete-button" type="button" tabindex="${actionTabIndex}" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">${uiIconHtml("trash")}</button>
+        <div class="ledger-item-actions">
+          <button class="ledger-edit-button" type="button" tabindex="${actionTabIndex}" data-edit-id="${escapeHtml(expense.id)}" aria-label="编辑这笔账">${uiIconHtml("edit")}<span class="ledger-action-label">编辑</span></button>
+          <button class="delete-button" type="button" tabindex="${actionTabIndex}" data-delete-id="${escapeHtml(expense.id)}" aria-label="删除这笔账">${uiIconHtml("trash")}<span class="ledger-action-label">删除</span></button>
+        </div>
       </div>
     </article>
   `;
+}
+
+function syncLedgerItemNoteState(item) {
+  const primary = item?.querySelector("[data-ledger-note-primary]");
+  const fullNote = item?.querySelector("[data-ledger-full-note]");
+  if (!primary || !fullNote) return;
+  const isTruncated = primary.scrollWidth > primary.clientWidth + 1;
+  item.classList.toggle("is-note-truncated", isTruncated);
+  fullNote.hidden = !(isTruncated && item.classList.contains("is-expanded"));
+}
+
+function scheduleLedgerNoteMeasurement() {
+  window.cancelAnimationFrame(ledgerNoteMeasureFrame);
+  ledgerNoteMeasureFrame = window.requestAnimationFrame(() => {
+    ledgerNoteMeasureFrame = 0;
+    elements.ledgerList?.querySelectorAll(".ledger-item").forEach(syncLedgerItemNoteState);
+  });
 }
 
 function getExpenseSyncState(expense) {
@@ -6335,7 +6450,9 @@ function getExpenseMissingPrompt() {
 }
 
 function getExpenseMissingState() {
-  const amount = parseAmountInput(elements.amountInput.value);
+  const amount = activeSplitMode === "custom"
+    ? centsToAmount(customSplitTargetCents === null ? getActiveCustomSplitTotalCents() : customSplitTargetCents)
+    : parseAmountInput(elements.amountInput.value);
   const hasPayer = state.families.some((family) => family.id === state.selectedPayerId);
   const hasCategory = Boolean(state.activeCategory || elements.categoryInput.value);
 
@@ -6412,12 +6529,18 @@ function getSplitDetailsForSubmit() {
 
   if (activeSplitMode === "custom") {
     const totalCents = getActiveCustomSplitTotalCents();
+    const targetCents = customSplitTargetCents;
+    const difference = targetCents === null ? 0 : totalCents - targetCents;
     return {
       amount: centsToAmount(totalCents),
       splitMode: "custom",
       splitFamilyIds: [],
-      splitAmounts: normalizeSplitAmounts(activeSplitAmounts),
-      error: totalCents > 0 ? "" : "请至少填写一个家庭的承担金额。",
+      splitAmounts: getActiveCustomSplitAmounts(),
+      error: !totalCents
+        ? "请填写分摊金额。"
+        : targetCents !== null && difference !== 0
+          ? "金额未对齐。"
+          : "",
     };
   }
 
@@ -6757,6 +6880,14 @@ function handleSplitScopeClick(event) {
     const previousMode = activeSplitMode;
     const modeSwitched = nextMode !== previousMode;
     if (modeSwitched) {
+      if (nextMode === "custom" && previousMode !== "custom") {
+        const currentAmount = parseAmountInput(elements.amountInput.value);
+        customSplitTargetCents = Number.isFinite(currentAmount) && currentAmount > 0 ? amountToCents(currentAmount) : null;
+      }
+      if (previousMode === "custom" && nextMode !== "custom") {
+        customSplitTargetCents = null;
+        customSplitSuspendedAmounts = {};
+      }
       markSplitScopeSwitching();
       markSplitModeDeactivating(previousMode);
       markSplitModeActivating(nextMode);
@@ -6793,6 +6924,32 @@ function handleSplitScopeClick(event) {
   if (!familyId) return;
   const activeRule = getSplitRuleFromMode(activeSplitMode);
   const activeScope = getSplitScopeFromMode(activeSplitMode);
+  if (activeSplitMode === "custom") {
+    const selected = activeSplitFamilyIds.includes(familyId);
+    if (selected) {
+      markSplitFamilyDeactivating(familyId);
+      activeSplitFamilyIds = activeSplitFamilyIds.filter((id) => id !== familyId);
+      customSplitSuspendedAmounts[familyId] = activeSplitAmounts[familyId] || 0;
+      activeSplitAmounts[familyId] = 0;
+    } else {
+      markSplitFamilyActivating(familyId);
+      activeSplitFamilyIds = [...activeSplitFamilyIds, familyId];
+      if (Object.prototype.hasOwnProperty.call(customSplitSuspendedAmounts, familyId)) {
+        activeSplitAmounts[familyId] = customSplitSuspendedAmounts[familyId];
+        delete customSplitSuspendedAmounts[familyId];
+      }
+    }
+    if (!activeSplitFamilyIds.length) {
+      const fallbackFamilyId = state.families[0]?.id;
+      if (fallbackFamilyId) activeSplitFamilyIds = [fallbackFamilyId];
+    }
+    renderSplitScope();
+    syncCustomSplitTotalField();
+    renderNaturalEntry();
+    renderMobileSubmitBar();
+    scheduleNaturalEntryStagePosition();
+    return;
+  }
   if (activeSplitFamilyIds.includes(familyId)) {
     markSplitFamilyDeactivating(familyId);
     activeSplitFamilyIds = activeSplitFamilyIds.filter((id) => id !== familyId);
@@ -6999,22 +7156,35 @@ function handleSplitAmountInput(event) {
   const amount = parseAmountInput(input.value);
   activeSplitAmounts[familyId] = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0;
 
-  const totalCents = getActiveCustomSplitTotalCents();
-  elements.amountInput.value = formatAmountInput(totalCents);
-  animateAmountValueTrack(elements.amountInput, { soft: true });
+  syncCustomSplitTotalField();
+  if (customSplitTargetCents === null) animateAmountValueTrack(elements.amountInput, { soft: true });
 
   elements.splitScopeSummary.textContent = formatActiveSplitSummary();
-  const totalLine = elements.splitCustomAmounts.querySelector(".split-total-line");
-  if (totalLine) totalLine.textContent = formatCustomSplitTotalLine();
-  renderNaturalEntry();
-  renderMobileSubmitBar();
+  syncCustomSplitTotalLine();
+  scheduleNaturalEntryRender({ positionStage: false });
   updateAmountMotionState();
+}
+
+function handleSplitAmountKeydown(event) {
+  const input = event.target.closest("[data-split-amount]");
+  if (!input || event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  const inputs = [...elements.splitCustomAmounts.querySelectorAll("[data-split-amount]:not(:disabled)")];
+  const next = inputs[inputs.indexOf(input) + 1];
+  if (next) {
+    next.focus();
+    next.select();
+  } else {
+    input.blur();
+  }
 }
 
 function resetSplitScope() {
   activeSplitMode = "equal";
   activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = {};
+  customSplitTargetCents = null;
+  customSplitSuspendedAmounts = {};
   splitScopeOpen = false;
   splitFamilyChoicesOpen = true;
   activeEntryEditor = "amount";
@@ -7028,6 +7198,8 @@ function setSplitScopeFromExpense(expense) {
   );
   if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = normalizeSplitAmounts(expense.splitAmounts);
+  customSplitTargetCents = activeSplitMode === "custom" ? amountToCents(expense.amount) : null;
+  customSplitSuspendedAmounts = {};
   splitScopeOpen = activeSplitMode !== "equal";
   splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
 }
@@ -7153,72 +7325,135 @@ function toggleLedgerItem(expenseId) {
   expandLedgerItem(expenseId);
 }
 
-function syncLedgerItemExpandedState(item, isExpanded) {
+function canAnimateLedgerMorph() {
+  return Boolean(
+    elements.ledgerList
+      && !prefersReducedMotion()
+      && typeof Element.prototype.animate === "function",
+  );
+}
+
+function syncLedgerMobileSubmitBar(isExpanded) {
+  const mobileSubmitBar = elements.mobileSubmitBar;
+  if (!mobileSubmitBar) return;
+  mobileSubmitBar.setAttribute("aria-hidden", String(isExpanded));
+  mobileSubmitBar.toggleAttribute("inert", isExpanded);
+}
+
+function cancelLedgerItemAnimations(item) {
+  item?._heightAnimation?.cancel();
+  item?._ledgerDetailsAnimation?.cancel();
+  item?._ledgerActionsAnimation?.cancel();
+  item?._ledgerRailAnimation?.cancel();
   if (!item) return;
-  document.documentElement.dataset.ledgerExpanded = isExpanded ? "true" : "false";
+  item._heightAnimation = null;
+  item._ledgerDetailsAnimation = null;
+  item._ledgerActionsAnimation = null;
+  item._ledgerRailAnimation = null;
+}
+
+function syncLedgerItemExpandedState(item, isExpanded, { deferHide = false } = {}) {
+  if (!item) return;
   item.classList.toggle("is-expanded", isExpanded);
-  item.setAttribute("aria-expanded", String(isExpanded));
-  item.setAttribute("aria-label", isExpanded ? "收起这笔账单" : "展开这笔账单");
+  item.classList.remove("is-ledger-expanding", "is-ledger-collapsing");
+  const summaryToggle = item.querySelector(".ledger-summary-toggle");
+  const content = item.querySelector(".ledger-expanded-content");
+  summaryToggle?.setAttribute("aria-expanded", String(isExpanded));
+  summaryToggle?.setAttribute("aria-controls", content?.id || "");
+  if (summaryToggle) {
+    const suffix = isExpanded ? "收起详情" : "展开详情";
+    const baseLabel = summaryToggle.getAttribute("aria-label") || "这笔账单";
+    summaryToggle.setAttribute("aria-label", baseLabel.replace(/，(?:收起详情|展开详情)$/, `，${suffix}`));
+  }
 
   const cue = item.querySelector(".ledger-expand-cue");
-  if (cue) cue.textContent = isExpanded ? "收起" : "展开";
+  if (cue) cue.innerHTML = uiIconHtml(isExpanded ? "chevron-up" : "chevron-down");
+
+  if (content) {
+    content.toggleAttribute("inert", !isExpanded);
+    content.setAttribute("aria-hidden", String(!isExpanded));
+    if (isExpanded) content.hidden = false;
+    else if (!deferHide) content.hidden = true;
+  }
 
   const actions = item.querySelector(".ledger-item-actions");
-  if (actions) {
-    actions.toggleAttribute("inert", !isExpanded);
-    actions.setAttribute("aria-hidden", String(!isExpanded));
-    actions.querySelectorAll("button").forEach((button) => {
-      button.tabIndex = isExpanded ? 0 : -1;
-    });
-  }
-
-  const mobileSubmitBar = elements.mobileSubmitBar;
-  if (mobileSubmitBar) {
-    mobileSubmitBar.setAttribute("aria-hidden", String(isExpanded));
-    mobileSubmitBar.toggleAttribute("inert", isExpanded);
-  }
+  actions?.querySelectorAll("button").forEach((button) => {
+    button.tabIndex = isExpanded ? 0 : -1;
+  });
+  syncLedgerItemNoteState(item);
 
   if (!isExpanded && item.contains(document.activeElement)) {
-    item.focus({ preventScroll: true });
+    summaryToggle?.focus({ preventScroll: true });
   }
+}
+
+function finalizeLedgerItemState(item, isExpanded) {
+  const content = item.querySelector(".ledger-expanded-content");
+  if (content) {
+    content.hidden = !isExpanded;
+    content.toggleAttribute("inert", !isExpanded);
+    content.setAttribute("aria-hidden", String(!isExpanded));
+  }
+  item.style.height = "";
+  item.style.minHeight = "";
+  item.style.maxHeight = "";
+  item.classList.remove("is-ledger-expanding", "is-ledger-collapsing");
+  syncLedgerItemNoteState(item);
 }
 
 function expandLedgerItem(expenseId) {
   if (!expenseId || expandedExpenseId === expenseId) return;
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
   const transitionItems = getLedgerTransitionItems(items, expenseId);
-  const flipRects = captureLedgerTransitionRects(transitionItems);
-  prepareLedgerMorph("expanding");
+  const targetStates = new Map(transitionItems.map((item) => [item, item.dataset.expenseId === expenseId]));
+  const fromRects = captureLedgerTransitionRects(transitionItems);
+  const shouldAnimate = canAnimateLedgerMorph();
+  if (shouldAnimate) prepareLedgerMorph("expanding");
+
   expandedExpenseId = expenseId;
   transitionItems.forEach((item) => {
-    const isExpanded = item.dataset.expenseId === expenseId;
-    syncLedgerItemExpandedState(item, isExpanded);
+    const isExpanded = targetStates.get(item);
+    syncLedgerItemExpandedState(item, isExpanded, { deferHide: shouldAnimate && !isExpanded });
   });
-  playLedgerTransitionRects(flipRects);
+  document.documentElement.dataset.ledgerExpanded = "true";
+  syncLedgerMobileSubmitBar(true);
+  scheduleLedgerNoteMeasurement();
+
+  if (shouldAnimate) playLedgerTransitionRects(fromRects, targetStates);
+  else transitionItems.forEach((item) => finalizeLedgerItemState(item, targetStates.get(item)));
 }
 
 function collapseLedgerItem(expenseId) {
   if (!expenseId || expandedExpenseId !== expenseId) return;
   const items = [...elements.ledgerList.querySelectorAll(".ledger-item")];
-  const transitionItems = getLedgerTransitionItems(items, expenseId);
-  const flipRects = captureLedgerTransitionRects(transitionItems);
-  prepareLedgerMorph("collapsing");
+  const transitionItems = getLedgerTransitionItems(items, "");
+  const targetStates = new Map(transitionItems.map((item) => [item, false]));
+  const fromRects = captureLedgerTransitionRects(transitionItems);
+  const shouldAnimate = canAnimateLedgerMorph();
+  if (shouldAnimate) prepareLedgerMorph("collapsing");
+
   expandedExpenseId = "";
   transitionItems.forEach((item) => {
-    syncLedgerItemExpandedState(item, false);
+    syncLedgerItemExpandedState(item, false, { deferHide: shouldAnimate });
   });
-  playLedgerTransitionRects(flipRects);
+  document.documentElement.dataset.ledgerExpanded = "false";
+  syncLedgerMobileSubmitBar(false);
+
+  if (shouldAnimate) playLedgerTransitionRects(fromRects, targetStates);
+  else transitionItems.forEach((item) => finalizeLedgerItemState(item, false));
 }
 
 function getLedgerTransitionItems(items, nextExpenseId) {
   const ids = new Set([expandedExpenseId, nextExpenseId].filter(Boolean));
-  return items.filter((item) => ids.has(item.dataset.expenseId));
+  return items.filter((item) => ids.has(item.dataset.expenseId)
+    || item.classList.contains("is-ledger-expanding")
+    || item.classList.contains("is-ledger-collapsing")
+    || item._heightAnimation);
 }
 
 function captureLedgerTransitionRects(items) {
   if (prefersReducedMotion()) return new Map();
   const rects = new Map();
-  const selectors = [".ledger-main", ".ledger-amount"];
   items.forEach((item) => {
     // 卡片自身也入表：高度变化由 play 阶段按实测值做动画
     const itemRect = item.getBoundingClientRect();
@@ -7227,10 +7462,6 @@ function captureLedgerTransitionRects(items) {
       top: itemRect.top,
       width: itemRect.width,
       height: itemRect.height,
-    });
-    item.querySelectorAll(selectors.join(",")).forEach((element) => {
-      const rect = element.getBoundingClientRect();
-      if (rect.width > 1 && rect.height > 1) rects.set(element, rect);
     });
   });
   return rects;
@@ -7254,133 +7485,101 @@ function clearLedgerMorphClasses() {
   );
 }
 
-function playLedgerTransitionRects(rects) {
-  if (!rects.size || prefersReducedMotion() || typeof Element.prototype.animate !== "function") return;
-  const direction = elements.ledgerList?.classList.contains("is-ledger-collapsing") ? "exit" : "enter";
+function playLedgerTransitionRects(rects, targetStates) {
+  if (!rects.size || !canAnimateLedgerMorph()) {
+    targetStates.forEach((isExpanded, item) => finalizeLedgerItemState(item, isExpanded));
+    clearLedgerMorphClasses();
+    return;
+  }
+  const direction = [...targetStates.values()].some(Boolean) ? "enter" : "exit";
   const rootStyle = getComputedStyle(document.documentElement);
   const cardEasing = rootStyle.getPropertyValue("--ease-card-settle").trim()
     || rootStyle.getPropertyValue("--ledger-morph-easing").trim()
     || "cubic-bezier(0.12, 0.68, 0.18, 1)";
-  const textEasing = rootStyle.getPropertyValue("--ease-text-out").trim()
-    || "cubic-bezier(0.30, 0.72, 0.42, 1)";
   const animations = [];
+  const records = [];
   const runId = ++ledgerMorphRunId;
 
   elements.ledgerList?.classList.add("is-morphing-ledger-items");
 
-  // 保留 capture 阶段量到的当前视觉高度，再释放上一轮动画以读取新状态的自然终点。
-  rects.forEach((fromRect, element) => {
-    if (element.classList?.contains("ledger-item")) {
-      element._heightAnimation?.cancel();
-      element._heightAnimation = null;
-      element.style.height = "";
-      element.style.minHeight = "";
-      element.style.maxHeight = "";
-    }
-  });
+  rects.forEach((fromRect, item) => {
+    const isExpanded = Boolean(targetStates.get(item));
+    cancelLedgerItemAnimations(item);
+    item.classList.add(isExpanded ? "is-ledger-expanding" : "is-ledger-collapsing");
+    item.style.height = "";
+    item.style.minHeight = "0";
+    item.style.maxHeight = "none";
+    syncLedgerItemNoteState(item);
 
-  // 终点矩形先一次性读完再写起点样式：读写交错会让每个元素都触发一次强制回流。
-  const toRects = new Map();
-  rects.forEach((fromRect, element) => {
-    if (!element.isConnected) return;
-    const toRect = element.getBoundingClientRect();
-    toRects.set(element, element.classList.contains("ledger-item")
-      ? {
-          left: toRect.left,
-          top: toRect.top,
-          width: toRect.width,
-          height: toRect.height,
-        }
-      : toRect);
-  });
+    const summary = item.querySelector(".ledger-summary-toggle");
+    const details = item.querySelector(".ledger-expanded-details");
+    const actions = item.querySelector(".ledger-item-actions");
+    const rail = item.querySelector(".ledger-expanded-rail");
+    const targetHeight = isExpanded
+      ? item.scrollHeight
+      : summary?.getBoundingClientRect().height || fromRect.height;
+    const distance = Math.abs(targetHeight - fromRect.height);
+    const duration = resolveMotionDuration({ distancePx: distance, role: "card", direction });
+    const cardAnimation = item.animate(
+      [
+        { height: `${fromRect.height}px` },
+        { height: `${targetHeight}px` },
+      ],
+      { duration, easing: cardEasing, fill: "forwards" },
+    );
+    item._heightAnimation = cardAnimation;
+    animations.push(cardAnimation);
+    const childAnimations = [cardAnimation];
 
-  toRects.forEach((toRect, element) => {
-    const fromRect = rects.get(element);
-
-    // 卡片只动画真实高度；移动端左右边界保持稳定，避免展开时横向错位。
-    if (element.classList.contains("ledger-item")) {
-      const hasHeightChange = Math.abs(fromRect.height - toRect.height) >= 1;
-      if (!hasHeightChange) return;
-      element.style.height = `${fromRect.height}px`;
-      element.style.minHeight = "0";
-      element.style.maxHeight = "none";
-      const fromFrame = { height: `${fromRect.height}px` };
-      const toFrame = { height: `${toRect.height}px` };
-      const distance = Math.hypot(
-        toRect.left - fromRect.left,
-        toRect.top - fromRect.top,
-        toRect.height - fromRect.height,
-      );
-      const duration = resolveMotionDuration({ distancePx: distance, role: "card", direction });
+    const animateChild = (element, delay, childDuration, fromOpacity, toOpacity, { reveal = false } = {}) => {
+      if (!element) return;
+      const startClip = reveal && !fromOpacity ? "inset(0 0 100% 0)" : "inset(0 0 0 0)";
+      const endClip = reveal && !toOpacity ? "inset(0 0 100% 0)" : "inset(0 0 0 0)";
       const animation = element.animate(
         [
-          fromFrame,
-          toFrame,
+          { opacity: fromOpacity, transform: `translateY(${fromOpacity ? 0 : 6}px)`, ...(reveal ? { clipPath: startClip } : {}) },
+          { opacity: toOpacity, transform: `translateY(${toOpacity ? 0 : 6}px)`, ...(reveal ? { clipPath: endClip } : {}) },
         ],
-        { duration, easing: cardEasing, fill: "forwards" },
+        { delay, duration: childDuration, easing: "cubic-bezier(0.30, 0.72, 0.42, 1)", fill: "both" },
       );
-      element._heightAnimation = animation;
+      childAnimations.push(animation);
       animations.push(animation);
-      animation.finished.then(
-        () => {
-          if (element._heightAnimation !== animation) return;
-          // 先让内联 height 落在终点，再原子化释放动画与尺寸约束。
-          element.style.height = `${toRect.height}px`;
-          animation.cancel();
-          element.style.height = "";
-          element.style.minHeight = "";
-          element.style.maxHeight = "";
-          element._heightAnimation = null;
-        },
-        () => {},
-      );
-      return;
-    }
+      return animation;
+    };
 
-    if (toRect.width <= 1 || toRect.height <= 1) return;
-
-    const dx = fromRect.left - toRect.left;
-    const dy = fromRect.top - toRect.top;
-    const isAmount = element.classList.contains("ledger-amount");
-    const scaleX = isAmount ? fromRect.width / toRect.width : 1;
-    const scaleY = isAmount ? fromRect.height / toRect.height : 1;
-    const moved = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
-    const resized = isAmount && (Math.abs(scaleX - 1) > 0.005 || Math.abs(scaleY - 1) > 0.005);
-    if (!moved && !resized) return;
-
-    const fromTransform = isAmount
-      ? `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`
-      : `translate(${dx}px, ${dy}px)`;
-    const toTransform = isAmount ? "translate(0, 0) scale(1, 1)" : "translate(0, 0)";
-    const distance = Math.hypot(dx, dy, toRect.width - fromRect.width, toRect.height - fromRect.height);
-    const duration = resolveMotionDuration({
-      distancePx: distance,
-      role: isAmount ? "control" : "text",
-      direction,
-    });
-
-    const animation = element.animate(
+    const childDuration = isExpanded ? 240 : 120;
+    const detailsAnimation = animateChild(details, isExpanded ? 80 : 0, childDuration, isExpanded ? 0 : 1, isExpanded ? 1 : 0, { reveal: true });
+    const actionsAnimation = animateChild(actions, isExpanded ? 140 : 0, childDuration, isExpanded ? 0 : 1, isExpanded ? 1 : 0);
+    const railAnimation = rail?.animate(
       [
-        { transform: fromTransform, transformOrigin: isAmount ? "top left" : "center" },
-        { transform: toTransform, transformOrigin: isAmount ? "top left" : "center" },
+        { opacity: isExpanded ? 0 : 1, transform: isExpanded ? "scaleY(0)" : "scaleY(1)" },
+        { opacity: isExpanded ? 1 : 0, transform: isExpanded ? "scaleY(1)" : "scaleY(0)" },
       ],
-      {
-        duration,
-        easing: textEasing,
-        fill: "both",
-      },
+      { duration: isExpanded ? 260 : 120, easing: "cubic-bezier(0.20, 0.75, 0.25, 1)", fill: "both" },
     );
-    animations.push(animation);
-    animation.finished.then(() => animation.cancel(), () => {});
+    if (railAnimation) {
+      childAnimations.push(railAnimation);
+      animations.push(railAnimation);
+    }
+    item._ledgerDetailsAnimation = detailsAnimation;
+    item._ledgerActionsAnimation = actionsAnimation;
+    item._ledgerRailAnimation = railAnimation;
+    records.push({ item, isExpanded, targetHeight, animations: childAnimations });
   });
 
   if (!animations.length) {
+    records.forEach(({ item, isExpanded }) => finalizeLedgerItemState(item, isExpanded));
     if (runId === ledgerMorphRunId) clearLedgerMorphClasses();
     return;
   }
 
   Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
     if (runId !== ledgerMorphRunId) return;
+    records.forEach(({ item, isExpanded, targetHeight }) => {
+      item.style.height = `${targetHeight}px`;
+      cancelLedgerItemAnimations(item);
+      finalizeLedgerItemState(item, isExpanded);
+    });
     clearLedgerMorphClasses();
   });
 }
@@ -8986,10 +9185,12 @@ function measureAmountInputWidth(input) {
   const measured = context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing + AMOUNT_INPUT_CARET_RESERVE;
   const shell = input.closest(".amount-field, .split-amount-input-shell");
   const track = input.closest(".amount-value-track");
-  const currency = track?.querySelector(".currency-mark");
+  const currency = track?.querySelector(".currency-mark") || shell?.querySelector(".currency-mark");
   const trackStyle = getComputedStyle(track || input);
   const shellStyle = shell ? getComputedStyle(shell) : null;
-  const gap = Number.parseFloat(trackStyle.columnGap || trackStyle.gap) || 0;
+  const currencyIsInsideTrack = currency?.parentElement === track;
+  const gapStyle = currencyIsInsideTrack ? trackStyle : shellStyle || trackStyle;
+  const gap = Number.parseFloat(gapStyle.columnGap || gapStyle.gap) || 0;
   const trackWidth = track?.clientWidth || shell?.clientWidth || input.parentElement?.clientWidth || measured;
   const reserved = (currency?.getBoundingClientRect().width || 0) + gap;
   /* Keep the native input inside the track. Long values then use the input's
@@ -9223,6 +9424,10 @@ function animateNaturalEntryToken(element, nextText, { duration = 260, animate =
 
 function syncAllAmountValueTracks() {
   syncAmountValueTrack(elements.amountInput);
+  syncSplitAmountValueTracks();
+}
+
+function syncSplitAmountValueTracks() {
   elements.splitCustomAmounts.querySelectorAll("[data-split-amount]").forEach(syncAmountValueTrack);
 }
 
@@ -9274,6 +9479,9 @@ function syncNoteInputHeight(input = elements.noteInput) {
 function formatAmountFieldOnBlur() {
   updateAmountMotionState();
   if (activeSplitMode === "custom") {
+    const amount = parseAmountInput(elements.amountInput.value);
+    customSplitTargetCents = Number.isFinite(amount) && amount > 0 ? amountToCents(amount) : null;
+    syncCustomSplitTotalField();
     renderNaturalEntry();
     return;
   }
@@ -9332,7 +9540,8 @@ function startEditExpense(expenseId) {
   smoothContainerResize(elements.entryPanel, () => {
     render();
   });
-  elements.amountInput.value = activeSplitMode === "custom" ? formatAmountInput(getActiveCustomSplitTotalCents()) : String(expense.amount);
+  elements.amountInput.value = activeSplitMode === "custom" ? formatAmountInput(customSplitTargetCents ?? getActiveCustomSplitTotalCents()) : String(expense.amount);
+  if (activeSplitMode === "custom") syncCustomSplitTotalField();
   elements.noteInput.value = expense.note;
   syncNoteInputHeight(elements.noteInput);
   renderNaturalEntry();
@@ -9373,6 +9582,7 @@ function captureEntryPreferenceState() {
     splitMode: activeSplitMode,
     splitFamilyIds: [...activeSplitFamilyIds],
     splitAmounts: { ...activeSplitAmounts },
+    customSplitTargetCents,
   };
 }
 
@@ -9392,6 +9602,10 @@ function restoreEntryPreferenceState() {
   );
   if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
   activeSplitAmounts = normalizeSplitAmounts(editReturnState.splitAmounts);
+  customSplitTargetCents = activeSplitMode === "custom" && Number.isFinite(editReturnState.customSplitTargetCents)
+    ? Math.max(0, Math.round(editReturnState.customSplitTargetCents))
+    : null;
+  customSplitSuspendedAmounts = {};
   splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
   editReturnState = null;
   editFormSnapshot = null;
@@ -9408,6 +9622,7 @@ function captureExpenseFormSnapshot() {
     splitMode: normalizeSplitMode(activeSplitMode),
     splitFamilyIds: normalizeSplitFamilyIds(activeSplitFamilyIds, state.families.map((family) => family.id)),
     splitAmounts: Object.fromEntries(state.families.map((family) => [family.id, amountToCents(splitAmounts[family.id])])),
+    customSplitTargetCents,
   };
 }
 
@@ -9626,6 +9841,7 @@ window.visualViewport?.addEventListener("scroll", scheduleNaturalEntryStagePosit
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
 elements.splitScopePanel.addEventListener("input", handleSplitAmountInput);
+elements.splitCustomAmounts?.addEventListener("keydown", handleSplitAmountKeydown);
 elements.splitCustomAmounts?.addEventListener("focusin", (event) => {
   const input = event.target.closest("[data-split-amount]");
   if (input) {
@@ -9744,6 +9960,13 @@ elements.amountInput.addEventListener("focus", updateAmountMotionState);
 elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
   elements.formError.textContent = "";
+  if (activeSplitMode === "custom") {
+    const amount = parseAmountInput(elements.amountInput.value);
+    customSplitTargetCents = Number.isFinite(amount) && amount > 0 ? amountToCents(amount) : null;
+    elements.amountInput.dataset.customTotalState = getCustomSplitDifferenceState();
+    if (elements.amountAutoBadge) elements.amountAutoBadge.textContent = customSplitTargetCents === null ? "合计" : "总额";
+    syncCustomSplitTotalLine();
+  }
   updateAmountMotionState();
   revealAmountInputCaret(elements.amountInput);
   animateAmountValueTrack(elements.amountInput);
