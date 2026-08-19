@@ -386,6 +386,36 @@ test.describe('mobile entry smoke flow', () => {
     expect(motion.shellSurface).toContain('0.21');
   });
 
+  test('mobile settlement surface keeps the ledger behind an opaque page layer', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '移动端平账面板背景层回归');
+    await page.addInitScript((seed) => {
+      localStorage.setItem('travel-ledger-v3', JSON.stringify(seed));
+      localStorage.setItem('travel-ledger-welcome-seen', '1');
+      localStorage.setItem('travel-ledger-entry-mode', 'natural');
+    }, editableMobileLedger);
+    await page.route('**/cdn.jsdelivr.net/npm/@supabase/supabase-js@2*', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: 'window.supabase = undefined;',
+    }));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#mobileSettlementEntryButton')).toBeVisible();
+    await page.locator('#mobileSettlementEntryButton').click();
+
+    const drawer = page.locator('#settingsView .settings-drawer');
+    await expect(drawer).toBeVisible();
+    const material = await drawer.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return {
+        backgroundImage: style.backgroundImage,
+        backgroundColor: style.backgroundColor,
+      };
+    });
+
+    expect(material.backgroundImage).toContain('radial-gradient');
+    expect(material.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
   test('bottom submit bar follows one anchored lift and landing rebound path', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '底部 Bar 路径只在移动端启用');
 

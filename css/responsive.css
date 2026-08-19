@@ -965,6 +965,18 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     animation-name: settings-drawer-enter-mobile;
   }
 
+  /* 平账建议是阅读型全屏面板。颜色必须包成图层，不能作为
+     background 简写的中间层，否则 Safari 会丢掉后续 var(--page-bg)
+     图层，让底下账单整页穿透。 */
+  .settings-view[data-mode="settlement"] .settings-drawer {
+    background:
+      var(--glass-grain),
+      linear-gradient(var(--glass-fade-strong-86), var(--glass-fade-strong-86)),
+      var(--page-bg);
+    -webkit-backdrop-filter: var(--blur-settings);
+    backdrop-filter: var(--blur-settings);
+  }
+
   .settings-view.is-closing .settings-drawer,
   .ledger-management-view.is-closing .ledger-management-drawer {
     animation-name: settings-drawer-exit-mobile;
@@ -3999,13 +4011,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     .settings-view .settings-drawer,
     .ledger-management-view .ledger-management-drawer {
       filter: none !important;
-    }
-
-    /* 平账建议是阅读型全屏面板，使用更强的遮罩模糊隔离底层账本文字。 */
-    .settings-view[data-mode="settlement"] .settings-drawer {
-      background: var(--glass-grain), var(--glass-fade-strong-86), var(--page-bg);
-      -webkit-backdrop-filter: var(--blur-settings);
-      backdrop-filter: var(--blur-settings);
     }
 
     .category-picker.is-category-morphing .category-chips-fade {
