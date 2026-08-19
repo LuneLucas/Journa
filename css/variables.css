@@ -235,6 +235,9 @@
   --blur-focus-dim: blur(12px) saturate(0.72) brightness(0.74);    /* 暗色记账焦点遮罩(压暗) */
   --blur-dim: blur(10px) saturate(0.82) brightness(0.96);          /* 暗色全屏压暗层 */
   --blur-overlay-strong: blur(24px) saturate(145%) brightness(1.04); /* 移动端强模糊面板 */
+  /* 自然编辑专用焦点层：背景保留主题色，层级由舞台本身的边缘与投影承担。 */
+  --natural-stage-focus-scrim: rgba(30, 28, 26, 0.07);
+  --natural-stage-focus-filter: blur(10px) saturate(1.10) brightness(0.99);
   /* 玻璃表面颗粒：与 body::before 同一套 feTurbulence 灰度噪点，作为玻璃面板自身的背景层，
      让面板表面（而非身后被 backdrop-filter 抹平的页面背景）具备可触摸的物理质感。只挂在实底
      玻璃面板上；渐隐/遮罩层不消费，避免透明区浮出游离颗粒。明暗主题共用（灰度、与底色无关）。
@@ -620,6 +623,7 @@
     --blur-focus-dim: none;
     --blur-dim: none;
     --blur-overlay-strong: none;
+    --natural-stage-focus-filter: none;
     --glass-bg: var(--glass-bg-strong);
     --surface: var(--glass-bg-strong);
     --surface-strong: var(--glass-bg-strong);
@@ -647,6 +651,7 @@
     --blur-focus-dim: none;
     --blur-dim: none;
     --blur-overlay-strong: none;
+    --natural-stage-focus-filter: none;
     --glass-bg: var(--glass-bg-strong);
     --surface: var(--glass-bg-strong);
     --surface-strong: var(--glass-bg-strong);

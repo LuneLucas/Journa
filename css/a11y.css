@@ -164,6 +164,7 @@
   --blur-focus-dim: none;
   --blur-dim: none;
   --blur-overlay-strong: none;
+  --natural-stage-focus-filter: none;
 }
 
 /* Safari/iPadOS motion semantics. These tokens are deliberately scoped to the
@@ -242,18 +243,19 @@
     will-change: auto;
   }
 
-  /* The moving material is an opaque, theme-neutral film. Glass returns only
-     after the geometry has settled and two compositor frames have passed. */
+  /* The moving material is a low-alpha, theme-neutral scrim that keeps the
+     page color visible. Glass returns only after geometry has settled and two
+     compositor frames have passed. */
   :root[data-safari-motion="true"] body:not(.natural-entry-focus-settled) .natural-entry-focus-backdrop.is-open {
-    background: color-mix(in srgb, var(--bg) 82%, var(--ink) 18%) !important;
+    background: var(--natural-stage-focus-scrim) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
 
   :root[data-safari-motion="true"] body.natural-entry-focus-settled .natural-entry-focus-backdrop.is-open {
-    background: rgba(30, 28, 26, 0.12) !important;
-    -webkit-backdrop-filter: var(--blur-dim) !important;
-    backdrop-filter: var(--blur-dim) !important;
+    background: var(--natural-stage-focus-scrim) !important;
+    -webkit-backdrop-filter: var(--natural-stage-focus-filter) !important;
+    backdrop-filter: var(--natural-stage-focus-filter) !important;
     transition:
       opacity 260ms var(--ease-card-settle),
       background-color 120ms var(--ease-text-out);
@@ -271,13 +273,7 @@
 
   :root[data-safari-motion="true"] body.natural-entry-focus-settled .natural-entry-stage.is-open .natural-entry-stage-shell,
   :root[data-safari-motion="true"] body.natural-entry-focus-settled .natural-entry-stage.is-open.is-relay-settled .natural-entry-stage-shell {
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--bg) 86%, white 14%) 0%,
-        color-mix(in srgb, var(--bg) 92%, white 8%) 44%,
-        var(--bg) 100%
-      ) !important;
+    background: var(--natural-stage-surface) !important;
     -webkit-backdrop-filter: var(--blur-overlay-strong) !important;
     backdrop-filter: var(--blur-overlay-strong) !important;
     will-change: auto;

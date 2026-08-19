@@ -142,6 +142,47 @@ test.describe('mobile entry smoke flow', () => {
     await expect(page.locator('.toast')).toContainText('已更新账单');
   });
 
+  test('expanded data cards do not hide the submit bar after returning to entry', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '数据卡片与提交栏回归只在移动端启用');
+    await page.addInitScript((state) => {
+      localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
+    }, editableMobileLedger);
+    await openAmountEditor(page, testInfo.project.name);
+
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#mobileDataTab').click();
+    await expect(page.locator('#ledgerView')).toHaveAttribute('data-mobile-panel', 'data');
+
+    const card = page.locator('[data-expense-id="mobile-edit-expense"]');
+    const bar = page.locator('#mobileSubmitBar');
+    await card.locator('.ledger-summary-toggle').click();
+    await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'true');
+    await expect(bar).toHaveCSS('opacity', '0');
+    await expect(bar).toHaveAttribute('aria-hidden', 'true');
+    await expect(bar).toHaveAttribute('inert', '');
+
+    await page.locator('#mobileEntryTab').click();
+    await expect(page.locator('#ledgerView')).toHaveAttribute('data-mobile-panel', 'entry');
+    await page.waitForTimeout(700);
+    await expect(bar).toHaveCSS('opacity', '1');
+    await expect(bar).toHaveAttribute('aria-hidden', 'false');
+    await expect(bar).not.toHaveAttribute('inert', '');
+
+    await page.locator('#mobileDataTab').click();
+    await expect(page.locator('#ledgerView')).toHaveAttribute('data-mobile-panel', 'data');
+    await page.waitForTimeout(700);
+    await expect(bar).toHaveCSS('opacity', '0');
+    await expect(bar).toHaveAttribute('aria-hidden', 'true');
+    await expect(bar).toHaveAttribute('inert', '');
+
+    await card.locator('.ledger-summary-toggle').click();
+    await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'false');
+    await expect(bar).toHaveCSS('opacity', '1');
+    await expect(bar).toHaveAttribute('aria-hidden', 'false');
+    await expect(bar).not.toHaveAttribute('inert', '');
+  });
+
   test('prefilled custom split amounts keep their full width after entering the natural stage', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '自定金额舞台只在移动端启用');
     await page.addInitScript((state) => {
@@ -275,6 +316,9 @@ test.describe('mobile entry smoke flow', () => {
       const style = getComputedStyle(root);
       const stage = document.querySelector('#naturalEntryStage');
       const shell = stage?.querySelector('.natural-entry-stage-shell');
+      const backdrop = document.querySelector('#naturalEntryFocusBackdrop');
+      const backdropStyle = backdrop ? getComputedStyle(backdrop) : null;
+      const shellStyle = shell ? getComputedStyle(shell) : null;
       return {
         safariMotion: root.dataset.safariMotion,
         feedback: style.getPropertyValue('--motion-feedback').trim(),
@@ -283,7 +327,12 @@ test.describe('mobile entry smoke flow', () => {
         card: style.getPropertyValue('--motion-card').trim(),
         structure: style.getPropertyValue('--motion-structure').trim(),
         settleClass: document.body.classList.contains('natural-entry-focus-settled'),
-        shellFilter: shell ? getComputedStyle(shell).backdropFilter : '',
+        focusScrim: style.getPropertyValue('--natural-stage-focus-scrim').trim(),
+        focusFilter: style.getPropertyValue('--natural-stage-focus-filter').trim(),
+        backdropColor: backdropStyle?.backgroundColor || '',
+        shellFilter: shellStyle?.backdropFilter || '',
+        shellSurface: shellStyle?.getPropertyValue('--natural-stage-surface').trim() || '',
+        shellShadow: shellStyle?.getPropertyValue('--natural-stage-shadow').trim() || '',
       };
     });
     expect(motion.safariMotion).toBe('true');
@@ -293,7 +342,48 @@ test.describe('mobile entry smoke flow', () => {
     expect(motion.card).toBe('440ms');
     expect(motion.structure).toBe('560ms');
     expect(motion.settleClass).toBeTruthy();
+    expect(motion.focusScrim).toContain('0.07');
+    expect(motion.focusFilter).toMatch(/saturate\(1\.1(?:0)?\)/);
+    expect(motion.backdropColor).toContain('0.07');
     expect(motion.shellFilter).toContain('blur');
+    expect(motion.shellSurface).toContain('0.88');
+    expect(motion.shellShadow).toContain('0 24px 48px -24px');
+
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalNoteToken').click({ force: true });
+    const openingFilter = await page.locator('.natural-entry-stage-shell').evaluate((shell) => getComputedStyle(shell).backdropFilter);
+    expect(openingFilter).toBe('none');
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+  });
+
+  test('Safari dark natural stage keeps the background vivid while the card remains elevated', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '暗色自然录入材质只在移动端启用');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await openAmountEditor(page, testInfo.project.name);
+    await page.waitForFunction(() => document.body.classList.contains('natural-entry-focus-settled'));
+
+    const motion = await page.evaluate(() => {
+      const root = document.documentElement;
+      const style = getComputedStyle(root);
+      const backdrop = document.querySelector('#naturalEntryFocusBackdrop');
+      const shell = document.querySelector('.natural-entry-stage-shell');
+      const backdropStyle = getComputedStyle(backdrop);
+      const shellStyle = getComputedStyle(shell);
+      return {
+        focusScrim: style.getPropertyValue('--natural-stage-focus-scrim').trim(),
+        focusFilter: style.getPropertyValue('--natural-stage-focus-filter').trim(),
+        backdropColor: backdropStyle.backgroundColor,
+        shellFilter: shellStyle.backdropFilter,
+        shellSurface: shellStyle.getPropertyValue('--natural-stage-surface').trim(),
+      };
+    });
+
+    expect(motion.focusScrim).toContain('0.12');
+    expect(motion.focusFilter).toMatch(/saturate\(1\.08\)/);
+    expect(motion.backdropColor).toContain('0.12');
+    expect(motion.shellFilter).toContain('blur');
+    expect(motion.shellSurface).toContain('0.21');
   });
 
   test('bottom submit bar follows one anchored lift and landing rebound path', async ({ page }, testInfo) => {

@@ -17,6 +17,8 @@
     /* 暗色 soft 档（iOS26-soft 增强）；与亮色同由 data-blur="soft" 拨档，这里给暗色调优值 */
     --glass-blur-soft: blur(22px) saturate(160%) brightness(1.02);
     --glass-blur-strong-soft: blur(30px) saturate(185%) brightness(1.03);
+    --natural-stage-focus-scrim: rgba(8, 8, 8, 0.12);
+    --natural-stage-focus-filter: blur(12px) saturate(1.08) brightness(0.90);
     --border-divider: rgba(235, 239, 237, 0.08);
     --border-surface: rgba(235, 239, 237, 0.12);
     --border-control: rgba(235, 239, 237, 0.16);
@@ -1641,9 +1643,9 @@
   }
 
   html[data-entry-mode="natural"] .natural-entry-focus-backdrop {
-    background: rgba(12, 11, 10, 0.18);
-    -webkit-backdrop-filter: var(--blur-focus-dim);
-    backdrop-filter: var(--blur-focus-dim);
+    background: var(--natural-stage-focus-scrim);
+    -webkit-backdrop-filter: var(--natural-stage-focus-filter);
+    backdrop-filter: var(--natural-stage-focus-filter);
   }
 
   html[data-entry-mode="natural"] .natural-entry-flow,
@@ -1661,21 +1663,23 @@
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage-shell {
-    background:
+    --natural-stage-surface:
       linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.17) 0%,
-        rgba(255, 255, 255, 0.085) 46%,
-        rgba(255, 255, 255, 0.04) 100%
+        rgba(255, 255, 255, 0.21) 0%,
+        rgba(255, 255, 255, 0.12) 46%,
+        rgba(255, 255, 255, 0.07) 100%
       );
-    box-shadow:
+    --natural-stage-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.22),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12),
       inset 1.5px 0 3px rgba(255, 255, 255, 0.065),
       inset -1.5px 0 3px rgba(0, 0, 0, 0.22),
       inset 0 -3px 6px rgba(0, 0, 0, 0.24),
-      0 2px 6px -4px rgba(0, 0, 0, 0.48),
-      0 14px 26px -17px rgba(0, 0, 0, 0.70);
+      0 4px 10px -6px rgba(0, 0, 0, 0.54),
+      0 24px 50px -24px rgba(0, 0, 0, 0.78);
+    background: var(--natural-stage-surface);
+    box-shadow: var(--natural-stage-shadow);
     mix-blend-mode: normal;
     -webkit-backdrop-filter: var(--blur-overlay-strong);
     backdrop-filter: var(--blur-overlay-strong);

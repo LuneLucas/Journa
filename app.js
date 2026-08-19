@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-scroll-edge-v2-20260815";
+const APP_VERSION = "journa-safari-stage-depth-v1-20260819";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -2605,6 +2605,10 @@ function renderMobilePanelState() {
   elements.mobilePanelSwitch?.setAttribute("data-active", activeMobilePanel);
   document.body.classList.toggle("mobile-panel-entry", activeMobilePanel === "entry");
   document.body.classList.toggle("mobile-panel-data", activeMobilePanel === "data");
+  syncLedgerMobileSubmitBar(
+    activeMobilePanel === "data"
+      && document.documentElement.dataset.ledgerExpanded === "true",
+  );
   [
     [elements.mobileEntryTab, "entry"],
     [elements.mobileDataTab, "data"],
@@ -6139,8 +6143,7 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
 
   if (!activeExpenses.length) {
     document.documentElement.dataset.ledgerExpanded = "false";
-    elements.mobileSubmitBar?.removeAttribute("aria-hidden");
-    elements.mobileSubmitBar?.removeAttribute("inert");
+    syncLedgerMobileSubmitBar(false);
     elements.ledgerList.innerHTML = renderLedgerEmptyState(
       "还没有账单",
       `<br><button class="secondary-button compact-button empty-state-action" type="button" data-goto-entry>记第一笔</button>`,
@@ -6152,8 +6155,7 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
 
   if (!visibleExpenses.length) {
     document.documentElement.dataset.ledgerExpanded = "false";
-    elements.mobileSubmitBar?.removeAttribute("aria-hidden");
-    elements.mobileSubmitBar?.removeAttribute("inert");
+    syncLedgerMobileSubmitBar(false);
     elements.ledgerList.innerHTML = renderLedgerEmptyState(
       "没有符合筛选的账单",
       `<button class="secondary-button compact-button empty-state-action" type="button" data-clear-filter-empty>清除筛选</button>`,
@@ -6167,8 +6169,7 @@ function renderLedger({ animateFinancialChanges = false } = {}) {
   scheduleLedgerNoteMeasurement();
   const expandedItem = elements.ledgerList.querySelector(".ledger-item.is-expanded");
   document.documentElement.dataset.ledgerExpanded = expandedItem ? "true" : "false";
-  elements.mobileSubmitBar?.toggleAttribute("inert", Boolean(expandedItem));
-  elements.mobileSubmitBar?.setAttribute("aria-hidden", String(Boolean(expandedItem)));
+  syncLedgerMobileSubmitBar(Boolean(expandedItem));
 }
 
 function renderLedgerEmptyState(message, suffix = "", enterClass = "", { includeArt = true, suffixIsHtml = false } = {}) {
@@ -7336,8 +7337,9 @@ function canAnimateLedgerMorph() {
 function syncLedgerMobileSubmitBar(isExpanded) {
   const mobileSubmitBar = elements.mobileSubmitBar;
   if (!mobileSubmitBar) return;
-  mobileSubmitBar.setAttribute("aria-hidden", String(isExpanded));
-  mobileSubmitBar.toggleAttribute("inert", isExpanded);
+  const suppressForExpandedLedger = activeMobilePanel === "data" && Boolean(isExpanded);
+  mobileSubmitBar.setAttribute("aria-hidden", String(suppressForExpandedLedger));
+  mobileSubmitBar.toggleAttribute("inert", suppressForExpandedLedger);
 }
 
 function cancelLedgerItemAnimations(item) {
