@@ -1,22 +1,9 @@
 const { test, expect } = require('@playwright/test');
-
-async function dismissWelcomeIfOpen(page) {
-  const welcome = page.locator('#welcomeView');
-  if (await welcome.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await page.locator('#welcomeSkipButton').click({ force: true });
-    await expect(welcome).toBeHidden();
-  }
-}
+const { dismissWelcomeIfOpen, seedLocalState, stubSupabase } = require('./support/test-helpers');
 
 async function openAmountEditor(page, projectName) {
-  await page.addInitScript(() => {
-    localStorage.setItem('travel-ledger-welcome-seen', '1');
-  });
-  await page.route('**/cdn.jsdelivr.net/npm/@supabase/supabase-js@2*', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/javascript',
-    body: 'window.supabase = undefined;',
-  }));
+  await seedLocalState(page, null, { welcomeSeen: true });
+  await stubSupabase(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await dismissWelcomeIfOpen(page);
   if (projectName.includes('mobile')) {
@@ -103,9 +90,7 @@ const customSplitEditableMobileLedger = {
 test.describe('mobile entry smoke flow', () => {
   test('mobile edit saves the existing expense from the floating submit button', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '移动端编辑保存回归');
-    await page.addInitScript((state) => {
-      localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
-    }, editableMobileLedger);
+    await seedLocalState(page, editableMobileLedger);
     await openAmountEditor(page, testInfo.project.name);
 
     await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
@@ -139,14 +124,12 @@ test.describe('mobile entry smoke flow', () => {
     await expect(page.locator('.ledger-item')).toHaveCount(1);
     await expect(page.locator('.ledger-item')).toContainText('¥45.67');
     await expect(page.locator('.ledger-item')).toContainText('编辑后备注');
-    await expect(page.locator('.toast')).toContainText('已更新账单');
+    await expect(page.locator('.toast')).toContainText('修改已保存');
   });
 
   test('expanded data cards do not hide the submit bar after returning to entry', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '数据卡片与提交栏回归只在移动端启用');
-    await page.addInitScript((state) => {
-      localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
-    }, editableMobileLedger);
+    await seedLocalState(page, editableMobileLedger);
     await openAmountEditor(page, testInfo.project.name);
 
     await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
@@ -185,9 +168,7 @@ test.describe('mobile entry smoke flow', () => {
 
   test('prefilled custom split amounts keep their full width after entering the natural stage', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '自定金额舞台只在移动端启用');
-    await page.addInitScript((state) => {
-      localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
-    }, customSplitEditableMobileLedger);
+    await seedLocalState(page, customSplitEditableMobileLedger);
     await openAmountEditor(page, testInfo.project.name);
 
     await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
@@ -307,6 +288,27 @@ test.describe('mobile entry smoke flow', () => {
     }
   });
 
+  test('natural stage close reverses the expanded clip path into the source lens', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自然录入舞台路径只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+
+    const closeKeyframes = await page.evaluate(() => {
+      const stage = document.querySelector('#naturalEntryStage');
+      const shell = stage?.querySelector('.natural-entry-stage-shell');
+      document.querySelector('#naturalEntryFocusBackdrop')?.click();
+      const animation = shell?.getAnimations?.().find((item) => item.animationName === 'natural-entry-stage-shell-relay-close');
+      return animation?.effect?.getKeyframes?.().map((frame) => ({
+        clipPath: frame.clipPath || '',
+        offset: frame.offset,
+      })) || [];
+    });
+
+    const clipFrames = closeKeyframes.filter((frame) => frame.clipPath);
+    expect(clipFrames.length).toBeGreaterThanOrEqual(2);
+    expect(clipFrames[0].clipPath).not.toBe(clipFrames[clipFrames.length - 1].clipPath);
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+  });
+
   test('Safari mobile uses semantic motion tokens without material blur during relay', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), 'Safari mobile token contract');
     await openAmountEditor(page, testInfo.project.name);
@@ -333,6 +335,8 @@ test.describe('mobile entry smoke flow', () => {
         shellFilter: shellStyle?.backdropFilter || '',
         shellSurface: shellStyle?.getPropertyValue('--natural-stage-surface').trim() || '',
         shellShadow: shellStyle?.getPropertyValue('--natural-stage-shadow').trim() || '',
+        stageRadius: stage ? getComputedStyle(stage).borderRadius : '',
+        stageExpandedRadius: shellStyle?.getPropertyValue('--natural-stage-expanded-radius').trim() || '',
       };
     });
     expect(motion.safariMotion).toBe('true');
@@ -346,8 +350,11 @@ test.describe('mobile entry smoke flow', () => {
     expect(motion.focusFilter).toMatch(/saturate\(1\.1(?:0)?\)/);
     expect(motion.backdropColor).toContain('0.07');
     expect(motion.shellFilter).toContain('blur');
-    expect(motion.shellSurface).toContain('0.88');
-    expect(motion.shellShadow).toContain('0 24px 48px -24px');
+    expect(motion.shellFilter).toContain('18px');
+    expect(motion.shellSurface).toContain('0.82');
+    expect(motion.shellShadow).toContain('0 18px 42px -28px');
+    expect(motion.stageRadius).toBe('24px');
+    expect(motion.stageExpandedRadius).toBe('24px');
 
     await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
     await expect(page.locator('#naturalEntryStage')).toBeHidden();
@@ -355,6 +362,7 @@ test.describe('mobile entry smoke flow', () => {
     const openingFilter = await page.locator('.natural-entry-stage-shell').evaluate((shell) => getComputedStyle(shell).backdropFilter);
     expect(openingFilter).toBe('none');
     await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+    await expect(page.locator('#naturalEntryStage')).toHaveCSS('border-radius', '24px');
   });
 
   test('Safari dark natural stage keeps the background vivid while the card remains elevated', async ({ page }, testInfo) => {
@@ -376,6 +384,7 @@ test.describe('mobile entry smoke flow', () => {
         backdropColor: backdropStyle.backgroundColor,
         shellFilter: shellStyle.backdropFilter,
         shellSurface: shellStyle.getPropertyValue('--natural-stage-surface').trim(),
+        shellShadow: shellStyle.getPropertyValue('--natural-stage-shadow').trim(),
       };
     });
 
@@ -383,21 +392,15 @@ test.describe('mobile entry smoke flow', () => {
     expect(motion.focusFilter).toMatch(/saturate\(1\.08\)/);
     expect(motion.backdropColor).toContain('0.12');
     expect(motion.shellFilter).toContain('blur');
-    expect(motion.shellSurface).toContain('0.21');
+    expect(motion.shellFilter).toContain('18px');
+    expect(motion.shellSurface).toContain('0.18');
+    expect(motion.shellShadow).toContain('0 18px 42px -28px');
   });
 
   test('mobile settlement surface keeps the ledger behind an opaque page layer', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '移动端平账面板背景层回归');
-    await page.addInitScript((seed) => {
-      localStorage.setItem('travel-ledger-v3', JSON.stringify(seed));
-      localStorage.setItem('travel-ledger-welcome-seen', '1');
-      localStorage.setItem('travel-ledger-entry-mode', 'natural');
-    }, editableMobileLedger);
-    await page.route('**/cdn.jsdelivr.net/npm/@supabase/supabase-js@2*', (route) => route.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: 'window.supabase = undefined;',
-    }));
+    await seedLocalState(page, editableMobileLedger, { entryMode: 'natural' });
+    await stubSupabase(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#mobileSettlementEntryButton')).toBeVisible();
     await page.locator('#mobileSettlementEntryButton').click();

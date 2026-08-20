@@ -5,5 +5,17 @@ TravelLedgerNative/DerivedData/
 .agents/
 .gemini/
 
+# Local dependencies and generated browser-test output.
+node_modules/
+.pnpm-store/
+playwright-report/
+test-results/
+
+# Local audit captures; curated reports under audits/ remain visible.
+experience-audit-*/
+interface-review-*/
+safari-audit-*/
+scripts/safari-audit-*/
+
 # WorkBuddy local agent state (never sync to remote)
 .workbuddy/

@@ -45,7 +45,6 @@
 .insights-panel,
 .ledger-section,
 .stat-block,
-.settlement-block,
 .ledger-item {
   border: 0 !important;
 }
@@ -81,6 +80,15 @@
 
 .empty-state {
   background: color-mix(in srgb, var(--surface) 76%, var(--bg));
+}
+
+/* 移动统计页只保留内容行，不再给“统计”再套一张玻璃卡。 */
+@media (max-width: 820px) {
+  .insights-panel {
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
 }
 
 /* 移动端分段切换：活动项由表面抬升表达，不再用环线强调。 */

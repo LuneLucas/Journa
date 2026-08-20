@@ -326,20 +326,6 @@
   }
 }
 
-@keyframes total-bloom {
-  0% {
-    transform: scale(1);
-  }
-
-  38% {
-    transform: scale(1.035);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
 @keyframes ledger-item-catch {
   0%,
   100% {
@@ -511,36 +497,6 @@
   }
 }
 
-/* 付款人标签光晕：跟随白炽灯主体同步过冲，先扩散再收回稳态。 */
-@keyframes family-halo-overshoot {
-  0% {
-    opacity: 0;
-    filter: blur(10px) saturate(1.08) brightness(0.96);
-    transform: scale(0.94);
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  38% {
-    opacity: 0.94;
-    filter: blur(13px) saturate(1.28) brightness(1.14);
-    transform: scale(1.18);
-    animation-timing-function: cubic-bezier(0.445, 0.05, 0.55, 0.95);
-  }
-
-  70% {
-    opacity: 0.68;
-    filter: blur(11px) saturate(1.16) brightness(1.04);
-    transform: scale(0.99);
-    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-
-  100% {
-    opacity: 0.72;
-    filter: blur(11px) saturate(1.18) brightness(1.08);
-    transform: scale(1);
-  }
-}
-
 /* 浅色玻璃上的家庭色只做单调渐入，不经过扩张或增亮峰值。 */
 @keyframes family-halo-soft-in {
   0% {
@@ -551,44 +507,6 @@
   100% {
     opacity: 0.72;
     transform: scale(1);
-  }
-}
-
-/* 付款人标签释放缩小：平滑缩放并回弹至稳态，避免昂贵的 filter 渲染 */
-@keyframes family-release-soft {
-  0% {
-    transform: scale(1);
-    box-shadow:
-      inset 0 0 0 1px var(--ring-family-soft),
-      0 8px 20px -12px var(--family-soft),
-      0 0 26px -16px color-mix(in srgb, var(--family-color) 62%, transparent);
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  35% {
-    transform: scale(0.965);
-    box-shadow:
-      inset 0 0 0 1px var(--ring-family-subtle),
-      0 4px 10px -8px var(--family-soft);
-    animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
-  }
-
-  100% {
-    transform: scale(1);
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-      var(--shadow-sm);
-  }
-}
-
-/* 分类外光晕：前 30% 按兵不动，之后再点亮 */
-@keyframes category-halo-ignite {
-  0%, 30% {
-    opacity: 0;
-  }
-
-  100% {
-    opacity: 1;
   }
 }
 
@@ -1198,12 +1116,12 @@
   }
 
   .settings-view.is-settlement-revealing .settings-hero > div,
-  .settings-view.is-settlement-revealing .settlement-panel > .settings-panel-title,
+  .settings-view.is-settlement-revealing .settlement-panel > .settlement-panel-status,
   .settings-view.is-settlement-revealing .settlement-panel > .settings-note {
     animation: settlement-ceremony-title 300ms var(--settle) both;
   }
 
-  .settings-view.is-settlement-revealing .settlement-panel > .settings-panel-title {
+  .settings-view.is-settlement-revealing .settlement-panel > .settlement-panel-status {
     animation-delay: 90ms;
   }
 

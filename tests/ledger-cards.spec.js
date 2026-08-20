@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { seedLocalState } = require('./support/test-helpers');
 
 const sampleState = {
   activeLedgerId: 'ledger-alignment-test',
@@ -44,11 +45,7 @@ const sampleState = {
 };
 
 async function openSeededLedger(page, state = sampleState) {
-  await page.addInitScript((state) => {
-    localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
-    localStorage.setItem('travel-ledger-welcome-seen', '1');
-    localStorage.setItem('travel-ledger-entry-mode', 'standard');
-  }, state);
+  await seedLocalState(page, state, { entryMode: 'standard' });
   await page.goto('/');
   await expect(page.locator('.ledger-item').first()).toBeVisible();
   await page.waitForTimeout(500);
@@ -96,11 +93,7 @@ const longNoteState = {
 };
 
 async function openSeededRecentPeek(page) {
-  await page.addInitScript((state) => {
-    localStorage.setItem('travel-ledger-v3', JSON.stringify(state));
-    localStorage.setItem('travel-ledger-welcome-seen', '1');
-    localStorage.setItem('travel-ledger-entry-mode', 'standard');
-  }, recentPeekState);
+  await seedLocalState(page, recentPeekState, { entryMode: 'standard' });
   await page.goto('/');
   const mobileEntryTab = page.locator('#mobileEntryTab');
   if (await mobileEntryTab.isVisible().catch(() => false)) {
@@ -339,6 +332,92 @@ test.describe('ledger card expansion', () => {
     await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('mobile summaries center amounts and reserve the outer edge for the expand cue', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'chromium-desktop', 'mobile geometry is covered by the mobile projects');
+
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await openSeededLedger(page);
+
+      const summaries = await page.locator('.ledger-item').evaluateAll((items) => items.map((item) => {
+        const card = item.getBoundingClientRect();
+        const amount = item.querySelector('.ledger-amount').getBoundingClientRect();
+        const cue = item.querySelector('.ledger-expand-cue').getBoundingClientRect();
+        return {
+          cardCenterY: card.top + card.height / 2,
+          amountCenterY: amount.top + amount.height / 2,
+          amountRight: amount.right,
+          cueLeft: cue.left,
+          cueRight: cue.right,
+          cardRight: card.right,
+        };
+      }));
+
+      summaries.forEach((summary) => {
+        expect(Math.abs(summary.amountCenterY - summary.cardCenterY)).toBeLessThanOrEqual(1.5);
+        expect(summary.amountRight).toBeLessThanOrEqual(summary.cueLeft - 7);
+        expect(summary.cueRight).toBeLessThanOrEqual(summary.cardRight - 9);
+      });
+    }
+  });
+
+  test('expanded content keeps the family rail inside details and removes the lower-left gap', async ({ page }) => {
+    for (const viewport of [
+      { width: 320, height: 568 },
+      { width: 390, height: 844 },
+      { width: 540, height: 326 },
+      { width: 1280, height: 800 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await openSeededLedger(page);
+
+      for (const cardIndex of [0, 1]) {
+        const card = page.locator('.ledger-item').nth(cardIndex);
+        await card.locator('.ledger-summary-toggle').evaluate((element) => element.click());
+        await expect.poll(async () => card.evaluate((item) => (
+          item.classList.contains('is-expanded')
+          && item.style.height === ''
+          && !item.closest('.ledger-list').classList.contains('is-morphing-ledger-items')
+        )), { timeout: 2_000 }).toBe(true);
+
+        const geometry = await card.evaluate((item) => {
+          const cardRect = item.getBoundingClientRect();
+          const content = item.querySelector('.ledger-expanded-content').getBoundingClientRect();
+          const details = item.querySelector('.ledger-expanded-details').getBoundingClientRect();
+          const rail = item.querySelector('.ledger-expanded-rail').getBoundingClientRect();
+          const actions = item.querySelector('.ledger-item-actions').getBoundingClientRect();
+          const buttons = [...item.querySelectorAll('.ledger-item-actions button')].map((button) => button.getBoundingClientRect());
+          return {
+            railInsetLeft: rail.left - cardRect.left,
+            railTopGap: rail.top - details.top,
+            railBottomGap: details.bottom - rail.bottom,
+            detailsCenterY: details.top + details.height / 2,
+            actionsCenterY: actions.top + actions.height / 2,
+            contentHeight: content.height,
+            detailsHeight: details.height,
+            actionsHeight: actions.height,
+            actionsWidth: actions.width,
+            buttonHeights: buttons.map((button) => button.height),
+            detailsRight: details.right,
+            actionsLeft: actions.left,
+          };
+        });
+
+        expect(geometry.railInsetLeft, `viewport ${viewport.width}x${viewport.height}, card ${cardIndex}`).toBeGreaterThanOrEqual(14);
+        expect(geometry.railTopGap).toBeGreaterThanOrEqual(-1);
+        expect(geometry.railBottomGap).toBeGreaterThanOrEqual(-1);
+        expect(Math.abs(geometry.detailsCenterY - geometry.actionsCenterY)).toBeLessThanOrEqual(1.5);
+        expect(geometry.contentHeight - Math.max(geometry.detailsHeight, geometry.actionsHeight)).toBeLessThanOrEqual(30);
+        expect(geometry.actionsWidth).toBeGreaterThanOrEqual(140);
+        geometry.buttonHeights.forEach((height) => expect(height).toBeGreaterThanOrEqual(44));
+        expect(geometry.detailsRight).toBeLessThanOrEqual(geometry.actionsLeft - 8);
+
+        await card.locator('.ledger-summary-toggle').evaluate((element) => element.click());
+        await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'false');
+      }
+    }
+  });
+
   test('expanded shell keeps the radius and horizontal content boundary stable', async ({ page }) => {
     for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 800 }]) {
       await page.setViewportSize(viewport);
@@ -366,7 +445,9 @@ test.describe('ledger card expansion', () => {
       });
 
       const folded = await readGeometry();
-      await card.locator('.ledger-summary-toggle').click();
+      /* 这里验证纯布局边界；程序化点击可避免桌面指针透视效果改变
+         getBoundingClientRect()，把刻意的 hover 倾斜误判成卡片宽度漂移。 */
+      await card.locator('.ledger-summary-toggle').evaluate((element) => element.click());
       await expect.poll(async () => card.evaluate((item) => (
         item.classList.contains('is-expanded')
         && item.style.height === ''
@@ -376,9 +457,13 @@ test.describe('ledger card expansion', () => {
 
       expect(expanded.radius).toBe(folded.radius);
       expect(expanded.summaryRadius).toBe(expanded.radius);
-      expect(expanded.summaryPadding).toBe(expanded.detailsPadding);
+      expect(Number.parseFloat(expanded.detailsPadding)).toBeGreaterThanOrEqual(Number.parseFloat(expanded.summaryPadding));
+      expect(Number.parseFloat(expanded.detailsPadding) - Number.parseFloat(expanded.summaryPadding)).toBeLessThanOrEqual(10);
       expect(Math.abs(expanded.cardX - folded.cardX)).toBeLessThan(1);
-      expect(Math.abs(expanded.cardWidth - folded.cardWidth)).toBeLessThan(1);
+      expect(
+        Math.abs(expanded.cardWidth - folded.cardWidth),
+        `viewport ${viewport.width}x${viewport.height}: ${JSON.stringify({ folded, expanded })}`,
+      ).toBeLessThan(1);
       expect(Math.abs(expanded.amountLeft - folded.amountLeft)).toBeLessThan(1);
     }
   });
@@ -439,6 +524,16 @@ test.describe('ledger card expansion', () => {
     await expect(longNote.locator('.ledger-expanded-content')).toHaveAttribute('aria-hidden', 'false');
     await expect(longNote.locator('.ledger-detail-note')).toBeVisible();
     await expect(longNote.locator('.ledger-detail-note')).toContainText('这是一段足够长的账单备注');
+    const longNoteGeometry = await longNote.evaluate((item) => {
+      const details = item.querySelector('.ledger-expanded-details').getBoundingClientRect();
+      const rail = item.querySelector('.ledger-expanded-rail').getBoundingClientRect();
+      return {
+        railTopGap: rail.top - details.top,
+        railBottomGap: details.bottom - rail.bottom,
+      };
+    });
+    expect(longNoteGeometry.railTopGap).toBeGreaterThanOrEqual(-1);
+    expect(longNoteGeometry.railBottomGap).toBeGreaterThanOrEqual(-1);
   });
 
   test('collapse keeps sibling geometry and scroll anchoring isolated', async ({ page }) => {
@@ -551,18 +646,32 @@ test.describe('ledger card expansion', () => {
     await expect(filterToggle).toHaveAttribute('aria-expanded', 'true');
   });
 
-  test('desktop expansion retains the date/action columns', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium-desktop', 'desktop geometry is covered by the desktop project');
+  test('desktop expansion keeps the amount centered and actions reachable', async ({ page }, testInfo) => {
+    test.skip(!['chromium-desktop', 'webkit-desktop'].includes(testInfo.project.name), 'desktop geometry is covered by the desktop projects');
     await page.setViewportSize({ width: 1280, height: 800 });
     await openSeededLedger(page);
 
     const card = page.locator('.ledger-item').first();
     await card.locator('.ledger-summary-toggle').click();
     await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'true');
-    await expect(card.locator('.ledger-date')).toBeVisible();
+    await expect(card.locator('.ledger-date')).toBeHidden();
     await expect(card.locator('.ledger-item-actions button')).toHaveCount(2);
     await expect(card.locator('.ledger-expanded-content')).toBeVisible();
     await expect(card.locator('.ledger-operator')).toBeVisible();
     await expect(card.locator('.ledger-operator')).toHaveText('乐家创建 · 祺家更新');
+
+    const geometry = await card.evaluate((item) => {
+      const summary = item.querySelector('.ledger-summary-toggle').getBoundingClientRect();
+      const amount = item.querySelector('.ledger-amount').getBoundingClientRect();
+      const cue = item.querySelector('.ledger-expand-cue').getBoundingClientRect();
+      return {
+        summaryCenterY: summary.top + summary.height / 2,
+        amountCenterY: amount.top + amount.height / 2,
+        amountRight: amount.right,
+        cueLeft: cue.left,
+      };
+    });
+    expect(Math.abs(geometry.amountCenterY - geometry.summaryCenterY)).toBeLessThanOrEqual(1.5);
+    expect(geometry.amountRight).toBeLessThanOrEqual(geometry.cueLeft - 9);
   });
 });

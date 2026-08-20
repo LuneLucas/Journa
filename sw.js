@@ -1,4 +1,4 @@
-const APP_VERSION = "journa-safari-stage-depth-v2-20260819";
+const APP_VERSION = "journa-code-reduction-v1-20260820";
 const CACHE_NAME = `ledger-cache-${APP_VERSION}`;
 /* CSS/JS 条目带与 index.html 引用一致的 ?v= 版本戳：Cache API 按完整 URL
    （含 query）匹配，不带戳的预缓存条目永远命中不了带戳请求，等于白缓存。 */
@@ -6,6 +6,18 @@ const PRECACHE_URLS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  `./src/core/money.js?v=${APP_VERSION}`,
+  `./src/core/split.js?v=${APP_VERSION}`,
+  `./src/core/ledger-calculation.js?v=${APP_VERSION}`,
+  `./src/core/motion.js?v=${APP_VERSION}`,
+  `./src/cloud/supabase-sdk.js?v=${APP_VERSION}`,
+  `./src/modules/natural-entry.js?v=${APP_VERSION}`,
+  `./src/modules/ledger-view.js?v=${APP_VERSION}`,
+  `./src/modules/ledger-interactions.js?v=${APP_VERSION}`,
+  `./src/modules/settings-preferences.js?v=${APP_VERSION}`,
+  `./src/modules/welcome-sources.js?v=${APP_VERSION}`,
+  `./src/modules/welcome.js?v=${APP_VERSION}`,
+  `./src/modules/mobile-viewport.js?v=${APP_VERSION}`,
   `./css/variables.css?v=${APP_VERSION}`,
   `./css/base.css?v=${APP_VERSION}`,
   `./css/layout.css?v=${APP_VERSION}`,

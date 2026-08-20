@@ -66,7 +66,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 }
 
 /* 自然录入舞台 relay：卡片收拢 → 家庭色退场 → 摘要透镜接手。
-   打开与关闭共用 550ms 主时间线，文字只在同一几何落点换层一次。 */
+   打开与关闭保持同一套缓动语言，收回只把打开的几何路径反向播放。 */
 @media (max-width: 820px) {
   html[data-entry-mode="natural"] .natural-entry-stage {
     --natural-stage-collapsed-clip: inset(
@@ -76,7 +76,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       calc(var(--natural-stage-anchor-x) - var(--natural-stage-lens-inset-left))
       round var(--natural-stage-morph-radius)
     );
-    --natural-stage-expanded-clip: inset(0 round var(--radius-lg));
+    --natural-stage-expanded-clip: inset(0 round var(--natural-stage-expanded-radius));
   }
 
   @keyframes natural-entry-stage-relay-open {
@@ -95,20 +95,12 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   @keyframes natural-entry-stage-shell-relay-close {
     from {
+      clip-path: var(--natural-stage-expanded-clip);
       transform: translateY(0) translateZ(0);
     }
-    38% {
-      /* A restrained gooey squeeze: the silhouette briefly widens as it
-         leaves the editor, then narrows into the destination lens. The
-         content layer stays unfiltered and the stage clip remains the
-         geometry source, so Safari never has to blur live text. */
-      transform: translateY(0) scaleX(1.014) scaleY(0.986) translateZ(0);
-    }
-    76% {
-      transform: translateY(0) scaleX(0.988) scaleY(1.012) translateZ(0);
-    }
     to {
-      transform: translateY(0) scaleX(1) scaleY(1) translateZ(0);
+      clip-path: var(--natural-stage-collapsed-clip);
+      transform: translateY(2px) translateZ(0);
     }
   }
 
@@ -166,17 +158,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     to {
       opacity: 0;
       transform: translateY(1px) scaleX(0.94) scaleY(0.96);
-    }
-  }
-
-  @keyframes natural-entry-stage-relay-summary-lens-in {
-    from {
-      opacity: 0;
-      transform: translateY(1px) scaleX(0.94) scaleY(0.96);
-    }
-    to {
-      opacity: var(--natural-entry-lens-opacity);
-      transform: translateY(0) scaleX(1) scaleY(1);
     }
   }
 
@@ -421,10 +402,10 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage.is-closing .natural-entry-stage-shell {
-    /* 保留卡片本体材质到收回尾段；目标 token 的透镜层在 390ms 后
-       从同一折叠区域接手，避免材质先跳成透镜、形态随后才收缩。 */
+    /* 从打开后的完整卡片形态开始，沿同一 clip-path 路径回到原入口；
+       目标 token 的透镜层在 390ms 后从同一折叠区域接手。 */
     opacity: 1;
-    clip-path: var(--natural-stage-collapsed-clip);
+    clip-path: var(--natural-stage-expanded-clip);
     transform-origin: var(--natural-stage-origin-x, 36px) 22px;
     transition: none !important;
     animation:
@@ -1077,11 +1058,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .settings-operator-form .secondary-button {
     width: auto;
     padding-inline: 12px;
-  }
-
-  .ledger-manager-item {
-    gap: 8px;
-    padding: 7px;
   }
 
   .ledger-delete-button,
@@ -1966,13 +1942,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     100% { opacity: 1; transform: translateX(0); max-width: 400px; }
   }
 
-  /* Plus icon springs into view with rotation + overshoot scale */
-  @keyframes icon-appear {
-    0%   { opacity: 0; transform: scale(0.48) rotate(-58deg); }
-    70%  { opacity: 0.9; transform: scale(0.98) rotate(-4deg); }
-    100% { opacity: 1; transform: scale(1) rotate(0deg); }
-  }
-
   /* Plus icon shrinks away */
   @keyframes icon-dismiss {
     0%   { opacity: 1; transform: scale(1) rotate(0deg); }
@@ -2554,7 +2523,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   /* 展开账单时让详情成为唯一焦点，避免固定圆形入口压住卡片操作区。 */
-  html[data-ledger-expanded="true"] body.mobile-panel-data .mobile-submit-bar {
+  html[data-ledger-expanded="true"] body.mobile-panel-data .mobile-submit-bar,
+  body.mobile-panel-data .mobile-submit-bar.is-ledger-expanded-hidden {
     opacity: 0;
     pointer-events: none;
     transform: translate3d(0, 18px, 0) scale(0.88);
@@ -2847,10 +2817,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     padding: 14px;
   }
 
-  .ledger-main {
-    grid-area: main;
-  }
-
   .ledger-date {
     grid-area: date;
     align-self: center;
@@ -2873,11 +2839,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     gap: 7px;
   }
 
-  .ledger-item.is-expanded .ledger-main {
-    align-self: start;
-    width: 100%;
-  }
-
   .ledger-item.is-expanded .ledger-edit-button,
   .ledger-item.is-expanded .delete-button {
     width: 46px;
@@ -2893,14 +2854,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     font-size: 1.34rem;
   }
 
-  .ledger-title {
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 3px;
-    font-size: 0.94rem;
-    line-height: 1.2;
-  }
-
   .category-pill {
     max-width: none;
     padding: 3px 7px;
@@ -2911,11 +2864,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     min-height: 20px;
     padding-inline: 6px;
     font-size: 0.64rem;
-  }
-
-  .ledger-note {
-    font-size: 0.78rem;
-    line-height: 1.25;
   }
 
   .ledger-amount {
@@ -2970,12 +2918,22 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .ledger-summary-toggle {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto 18px;
     grid-template-areas:
-      "primary amount"
-      "meta cue";
+      "primary amount cue"
+      "meta amount cue";
+    align-content: center;
+    column-gap: 8px;
+    row-gap: 3px;
     min-height: 64px;
     padding: 9px 11px;
+  }
+
+  .ledger-summary-toggle .ledger-expand-cue {
+    align-self: center;
+    justify-self: center;
+    width: 18px;
+    height: 24px;
   }
 
   .ledger-summary-toggle .ledger-date {
@@ -2987,18 +2945,22 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .ledger-expanded-content {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 144px;
     gap: 10px;
-    padding: 0 11px 14px;
+    align-items: center;
+    padding: 10px 12px 12px 18px;
   }
 
   .ledger-expanded-rail {
-    left: 5px;
-    bottom: 14px;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
   }
 
   .ledger-expanded-content .ledger-item-actions {
     display: flex;
+    align-self: center;
+    justify-self: end;
     width: 144px;
     min-width: 144px;
     height: 44px;
@@ -3241,10 +3203,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   /* viewBox 等比缩小后补偿字号：这些是 SVG 用户单位，窄屏下按约 0.8 的缩放放大回可读大小 */
   .settlement-flow-map .flow-name {
     font-size: 20px;
-  }
-
-  .settlement-flow-map .flow-col-label {
-    font-size: 12px;
   }
 
   .settlement-item {
@@ -3606,8 +3564,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .recent-peek-all,
   .category-add-fab,
   .ledger-item,
-  .settings-actions-details summary,
-  .family-color-details summary {
+  .family-color-details summary,
+  .family-color-details .family-color-summary {
     transition:
       transform var(--touch-release-motion) var(--touch-release-easing),
       box-shadow var(--touch-release-motion) var(--touch-release-easing),
@@ -3651,8 +3609,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .welcome-dot:active,
   .recent-peek-all:active,
   .category-add-fab:active,
-  .settings-actions-details summary:active,
-  .family-color-details summary:active {
+  .family-color-details summary:active,
+  .family-color-details .family-color-summary:active {
     box-shadow: inset 0 0 0 999px rgba(22, 26, 30, 0.09);
     transform: scale(0.975);
     transition-duration: var(--press-motion);
@@ -3931,10 +3889,19 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .settings-view[data-mode="settlement"] .settlement-panel {
-    border-radius: var(--radius-lg);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.36),
-      0 14px 36px -28px rgba(22, 26, 30, 0.26);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0 12px 12px;
+  }
+
+  .settings-view[data-mode="settlement"] .settlement-panel-status {
+    justify-content: flex-start;
+  }
+
+  .settings-view[data-mode="settlement"] .settlement-panel .settings-note {
+    max-width: 34rem;
   }
 
   .settings-mobile-group {
@@ -4626,8 +4593,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     /* 家庭/类别选项的退选反馈与 550ms 舞台收回保持同一节奏。 */
     --selection-release-motion: 550ms;
     --natural-stage-open-duration: 550ms;
-    /* 收回前段快速完成主要距离，最后约 160ms 留出明确减速尾段。 */
-    --natural-stage-curve: cubic-bezier(0.12, 0.68, 0.18, 1);
+    /* 打开与收回共用 ease-out 曲线；收回的反向 clip-path 负责“从哪来回哪去”。 */
+    --natural-stage-curve: cubic-bezier(0.20, 0, 0, 1);
     --natural-stage-open-curve: cubic-bezier(0.20, 0, 0, 1);
     /* Keep every return relay on the amount track's 504ms close path. */
     --natural-stage-close-duration: 504ms;
@@ -4647,6 +4614,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     --natural-stage-lens-inset-bottom: 5px;
     --natural-stage-lens-inset-left: 9px;
     --natural-stage-morph-radius: var(--radius-pill);
+    --natural-stage-expanded-radius: var(--radius-lg);
     --natural-stage-note-token-x: 0px;
     --natural-stage-note-token-y: 0px;
     --natural-stage-note-token-source-x: 0px;
@@ -4655,18 +4623,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     --natural-stage-surface:
       linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.88) 0%,
-        rgba(255, 252, 248, 0.74) 46%,
-        rgba(248, 247, 244, 0.64) 100%
+        rgba(255, 255, 255, 0.82) 0%,
+        rgba(252, 250, 247, 0.76) 52%,
+        rgba(247, 246, 243, 0.72) 100%
       );
     --natural-stage-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.94),
-      inset 0 0 0 1px rgba(74, 80, 87, 0.14),
-      inset 1.5px 0 3px rgba(255, 255, 255, 0.30),
-      inset -1.5px 0 3px rgba(74, 80, 87, 0.065),
-      inset 0 -3px 6px rgba(74, 80, 87, 0.10),
-      0 4px 10px -6px rgba(35, 40, 44, 0.26),
-      0 24px 48px -24px rgba(35, 40, 44, 0.48);
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      0 2px 5px -4px rgba(35, 40, 44, 0.18),
+      0 18px 42px -28px rgba(35, 40, 44, 0.26);
+    --natural-stage-shell-filter: blur(18px) saturate(1.08) brightness(1.01);
     box-sizing: border-box;
     position: fixed;
     top: var(--natural-stage-top, 20px);
@@ -4679,7 +4644,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     overflow-x: hidden;
     overscroll-behavior: contain;
     border: 0;
-    border-radius: var(--radius-lg);
+    border-radius: var(--natural-stage-expanded-radius);
     background: transparent;
     box-shadow: none;
     filter: none;
@@ -4736,17 +4701,21 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     height: 0;
   }
 
-  /* 这五种展开卡片固定使用 28px 外壳。收拢到短透镜时，CSS 会按
-     实际高度自然压成胶囊，不再经历 999px 到 28px 的夸张圆角插值。
-     金额编辑器此前仍用 999px 胶囊外壳：打字时输入框宽度变化→舞台尺寸
-     变化→ clip-path 420ms 过渡被反复触发，每帧重栅格化胶囊圆角遮罩 =
-     卡顿。现与 date/payer/split 一致改为 28px 廉价圆角。 */
+  /* 展开舞台使用与高度相称的圆角；收拢到短透镜时仍保留入口胶囊。
+     短舞台不再用接近胶囊的 28px 半径，减少塑料按钮感和边缘堆叠。 */
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="date"],
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="payer"],
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="category"],
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="split"],
-  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] {
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"],
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] {
     --natural-stage-morph-radius: var(--radius-lg);
+  }
+
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"],
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] {
+    --natural-stage-morph-radius: 24px;
+    --natural-stage-expanded-radius: 24px;
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage-shell {
@@ -4758,8 +4727,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     background: var(--natural-stage-surface);
     box-shadow: var(--natural-stage-shadow);
     mix-blend-mode: normal;
-    -webkit-backdrop-filter: var(--blur-overlay-strong);
-    backdrop-filter: var(--blur-overlay-strong);
+    -webkit-backdrop-filter: var(--natural-stage-shell-filter);
+    backdrop-filter: var(--natural-stage-shell-filter);
     opacity: 0.86;
     pointer-events: none;
     transform: translateY(2px) translateZ(0);
@@ -4788,9 +4757,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     background:
       linear-gradient(
         155deg,
-        color-mix(in srgb, var(--natural-entry-mark-color) 30%, transparent) 0%,
-        color-mix(in srgb, var(--natural-entry-mark-color) 20%, transparent) 54%,
-        color-mix(in srgb, var(--natural-entry-mark-color) 12%, transparent) 100%
+        color-mix(in srgb, var(--natural-entry-mark-color) 12%, transparent) 0%,
+        color-mix(in srgb, var(--natural-entry-mark-color) 8%, transparent) 54%,
+        color-mix(in srgb, var(--natural-entry-mark-color) 5%, transparent) 100%
       );
     opacity: 1;
     transform: translateZ(0);
@@ -4856,10 +4825,10 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     --natural-stage-top-light-alpha: 0;
     --natural-stage-left-light-alpha: 0;
     --natural-stage-right-light-alpha: 0;
-    --natural-stage-top-light-peak: 0.28;
-    --natural-stage-left-light-peak: 0.24;
-    --natural-stage-right-light-peak: 0.18;
-    --natural-stage-rim-opacity-peak: 0.46;
+    --natural-stage-top-light-peak: 0.14;
+    --natural-stage-left-light-peak: 0.11;
+    --natural-stage-right-light-peak: 0.08;
+    --natural-stage-rim-opacity-peak: 0.28;
     background:
       radial-gradient(
         ellipse 50% 16% at 50% 0%,
@@ -4902,7 +4871,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage.is-open {
-    clip-path: inset(0 round var(--radius-lg));
+    clip-path: inset(0 round var(--natural-stage-expanded-radius));
     opacity: 1;
     pointer-events: auto;
   }
@@ -5771,6 +5740,101 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   body.mobile-panel-data .mobile-submit-bar::after {
     opacity: 0.58;
+  }
+
+  /* 数据页只保留“记账”作为主入口；圆形加号不再与顶部切换器形成第二个同级入口。 */
+  body.mobile-panel-data .mobile-submit-bar:not(.is-flip-morphing):not(.is-bar-morphing-to-data) {
+    opacity: 0 !important;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translate3d(0, 18px, 0) scale(0.88);
+  }
+
+  @media (max-width: 360px) {
+    .welcome-view {
+      padding: 10px;
+    }
+
+    .welcome-slide {
+      gap: 5px;
+      padding: 30px 18px 2px;
+    }
+
+    .welcome-combined-art {
+      gap: 4px;
+      min-height: 96px;
+      margin-bottom: 2px;
+    }
+
+    .welcome-combined-art .welcome-mini-settle,
+    .welcome-combined-art .welcome-cloud-art {
+      transform: scale(0.78);
+    }
+
+    .welcome-combined-art .welcome-cloud-art {
+      gap: 5px;
+    }
+
+    .welcome-identity-slide .welcome-copy {
+      min-height: 0;
+      font-size: 0.78rem;
+      line-height: 1.38;
+    }
+
+    .welcome-identity-inline {
+      gap: 4px;
+      margin-top: 0;
+    }
+
+    .welcome-identity-inline > strong {
+      font-size: 0.78rem;
+    }
+
+    .welcome-identity-inline .welcome-family-choices {
+      transform: scale(0.92);
+      transform-origin: top center;
+      margin-bottom: -8px;
+    }
+
+    .welcome-footer {
+      gap: 0;
+      padding: 0 18px 10px;
+    }
+
+    .welcome-dot {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  /* 统计只保留一层内容面：页面背景 → 统计标题 → 两行可展开摘要。 */
+  .insights-panel {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 12px 0 8px;
+    overflow: visible;
+  }
+
+  .insights-panel > .section-heading {
+    padding: 0 16px;
+  }
+
+  .insight-details {
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--border-control) 64%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .insight-details > summary {
+    min-height: 48px;
+    padding-inline: 16px;
+  }
+
+  .insight-details > .stack-list {
+    padding-inline: 16px;
   }
 
   /* 浅色模式下切换器与浅背景拉开明度差，保留轻玻璃而不再“漂白”。 */

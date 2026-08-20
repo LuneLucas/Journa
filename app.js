@@ -2,10 +2,70 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-stage-depth-v2-20260819";
+const APP_VERSION = "journa-code-reduction-v1-20260820";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
+
+const {
+  formatMoney,
+  expenseToCents,
+  amountToCents,
+  parseAmountInput,
+  centsToAmount,
+  formatAmountInput,
+} = window.JournaCore.money;
+
+const loadSupabaseSdk = window.JournaCloud.loadSupabaseSdk;
+const {
+  MOTION_DELAYS,
+  resolveMotionDuration,
+  SPRING_BAR_COLLAPSE,
+  SPRING_BAR_EXPAND,
+  SPRING_CATEGORY_ADD_OPEN,
+  SPRING_CATEGORY_ADD_CLOSE,
+  springSamples,
+  barMotionSamples,
+  easeOutCubic,
+} = window.JournaCore.motion;
+
+/* Journa 文案基线：功能名保留，说明和反馈尽量短、直接、可执行。 */
+const COPY = {
+  appTitle: "Journa · 共享旅行账本",
+  localLedger: "本地账本",
+  cloudLedger: "云账本",
+  settlementTitle: "平账建议",
+  settlementHint: "查看谁该转给谁",
+  settlementDone: "已两清",
+  actions: {
+    addExpense: "记下这笔",
+    saveExpense: "保存修改",
+    choose: "选择",
+    confirmChoice: "确认选择",
+  },
+  identity: {
+    prompt: "选择你的家庭",
+    missing: "请选择你的家庭",
+    remembered: (family) => `已记住，你来自「${family}」`,
+    saved: (family) => `已保存，接下来以「${family}」记录`,
+  },
+  sync: {
+    savedLocally: "暂时无法同步，账单已保存在本机，联网后会重试",
+    pending: "还有内容未同步，已保留本地账本",
+  },
+  welcome: {
+    title: "三个家庭，一本账",
+    intro: "默认按各家人数分摊，也可以为单笔账指定家庭或金额，最后自动生成平账建议。",
+    splitTitle: "每笔账，都能单独分摊",
+    splitCopy: "谁没参加，就不选谁；有人请客或儿童免单，就直接填写各家金额。",
+    settlementTitle: "平账建议自动生成",
+    settlementCopy: "系统会按实际垫付关系算清谁该转给谁，打开「平账建议」就能看到。",
+    cloudTitle: "邀请家人一起记",
+    cloudCopy: "在「设置 → 同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。",
+    identityTitle: "你属于哪个家庭？",
+    identityCopy: "选好后，你记的每笔账都会带上你的家庭署名。",
+  },
+};
 
 /* 渐进增强：能力探测通过后给 <html> 打 data-blur="soft"，把整块玻璃模糊拨到 iOS26-soft 档。
    命中「降低透明度」偏好或不支持 backdrop-filter 时不开启（CSS 另有 reduced-transparency / @supports 兜底）。 */
@@ -38,19 +98,20 @@ document.documentElement.dataset.appVersion = APP_VERSION;
   const root = document.documentElement;
   const ua = navigator.userAgent || "";
   const isIOS = /iP(ad|hone|od)/.test(ua) || /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
-  const isSafariMobileSurface = isIOS || (window.matchMedia?.("(max-width: 820px)").matches
-    && /Safari/.test(ua)
-    && !/Chrome|CriOS|FxiOS|EdgiOS/.test(ua));
+  const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  const isSafariSurface = isIOS || (isSafari && /Macintosh/.test(ua));
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const reducedTransparency = window.matchMedia?.("(prefers-reduced-transparency: reduce)").matches;
-  if (isSafariMobileSurface) root.dataset.safariMotion = "true";
-  if (!isIOS) {
+  if (isSafariSurface) root.dataset.safariMotion = "true";
+  if (!isSafariSurface) {
     root.dataset.motionTier = reducedMotion ? "calm" : "full";
     return;
   }
 
   root.dataset.motionTier = reducedMotion ? "calm" : "full";
-  let materialTier = reducedTransparency ? "solid" : (root.dataset.materialTier || "balanced");
+  let materialTier = reducedTransparency
+    ? "solid"
+    : (root.dataset.materialTier || (isIOS ? "balanced" : "full"));
   let goodSamples = 0;
   let badSamples = 0;
   let sampleRunning = false;
@@ -100,83 +161,14 @@ document.documentElement.dataset.appVersion = APP_VERSION;
 
   const scheduleSample = () => {
     window.clearTimeout(sampleTimer);
-    sampleTimer = window.setTimeout(sampleFrames, 40);
+    sampleTimer = window.setTimeout(sampleFrames, 140);
   };
   document.addEventListener("pointerup", scheduleSample, { passive: true, capture: true });
   document.addEventListener("touchend", scheduleSample, { passive: true, capture: true });
+  window.addEventListener("scroll", scheduleSample, { passive: true });
+  window.visualViewport?.addEventListener("scroll", scheduleSample, { passive: true });
+  window.addEventListener("resize", scheduleSample, { passive: true });
 })();
-const MOTION_DELAYS = {
-  ledgerSettle: 1783,
-  ledgerClearBase: 580,
-  ledgerClearMax: 1159,
-  ledgerClearStagger: 63,
-  settlementStagger: 58,
-  categoryEnter: 1560,
-  categoryExit: 280,
-  payerActivate: 760,
-  categoryActivate: 760,
-  choiceRelease: 550,
-  splitSwitch: 260,
-  mobilePanelOut: 80,
-  mobilePanelIn: 360,
-  mobilePanelIndicator: 420,
-  barMorph: 500,
-  addCelebrate: 1560,
-  totalAbsorb: 1320,
-  tokenFlight: 680,
-  totalBloom: 460,
-  catchPulse: 420,
-  naturalEntryStageOpen: 560,
-  naturalEntryStageClose: 504,
-  naturalEntryStageMorph: 320,
-  naturalEntryStageTextTravelStart: 80,
-  naturalEntryStageTextHandoff: 414,
-  naturalEntryStageOpenTextHandoff: 360,
-  naturalEntryStageNoteOptionalHandoff: 180,
-  naturalEntryStageNoteValueHandoff: 220,
-  naturalEntryStageContentExit: 120,
-  naturalEntryStageLensStart: 390,
-  naturalEntryStageLensDuration: 160,
-  naturalEntryStageFamilyStart: 0,
-  naturalEntryStageFamilyDuration: 460,
-  naturalEntryStageShellDissolveStart: 460,
-  naturalEntryStageShellDissolveDuration: 90,
-  naturalEntryStageCloseCleanup: 590,
-  naturalEntryStageContentInStart: 360,
-  naturalEntryStageContentInDuration: 180,
-  naturalEntryStageSwap: 420,
-  naturalEntryFamilyTint: 360,
-  naturalEntryLensEntry: 260,
-  naturalEntryLensStagger: 0,
-  naturalEntryLensSettle: 260,
-  toast: 2600,
-  toastWithAction: 5200,
-};
-
-/* 以位移的平方根换算时长：远距离对象会变慢，但不会线性拖成长片段。
-   CSS 过渡使用语义 token；只有需要真实首末矩形的 FLIP/WAAPI 才调用这里。 */
-const MOTION_ROLE_PROFILES = {
-  text: { base: 160, factor: 18, min: 180, max: 260 },
-  control: { base: 200, factor: 20, min: 240, max: 360 },
-  card: { base: 280, factor: 22, min: 360, max: 520 },
-  structure: { base: 340, factor: 20, min: 440, max: 620 },
-};
-
-function resolveMotionDuration({ distancePx = 0, role = "control", direction = "enter" } = {}) {
-  const profile = MOTION_ROLE_PROFILES[role] || MOTION_ROLE_PROFILES.control;
-  const distance = Math.max(0, Number(distancePx) || 0);
-  const raw = profile.base + profile.factor * Math.sqrt(distance);
-  const directional = direction === "exit" ? raw * 0.85 : raw;
-  return Math.round(Math.min(profile.max, Math.max(profile.min, directional)));
-}
-/* Bottom bar FLIP durations. The actual mobile path is sampled below from a
-   shared Hermite timeline so Chromium and Safari receive the same lift and
-   single landing rebound. */
-const SPRING_BAR_COLLAPSE = { duration: 460, monotonic: true };
-const SPRING_BAR_EXPAND = { duration: 500, monotonic: true };
-const SPRING_CATEGORY_ADD_OPEN = { stiffness: 280, damping: 24, mass: 1 };
-const SPRING_CATEGORY_ADD_CLOSE = { stiffness: 320, damping: 28, mass: 1 };
-const SPRING_LANDING_TAIL_MS = 64;
 const defaultFamilies = [
   { id: "family-a", name: "乐家" },
   { id: "family-b", name: "祺家" },
@@ -215,6 +207,16 @@ const splitModeOptions = [
   { id: "families_equal", label: "指定家庭 · 各家均分", description: "旧账单：指定家庭平均承担" },
   { id: "custom", label: "自定金额", description: "分别填写每家金额" },
 ];
+const splitCore = window.JournaCore.createSplitCore({ splitModeOptions, defaultFamilies });
+const {
+  normalizePayerId,
+  normalizeSplitMode,
+  getSplitScopeFromMode,
+  getSplitRuleFromMode,
+  getSplitModeForState,
+  normalizeSplitFamilyIds,
+  normalizeSplitAmounts,
+} = splitCore;
 const categoryVisuals = {
   "交通": { bg: "#d9e8e2", text: "#486d62", border: "rgba(88, 126, 113, 0.28)", gradient: "#b9d8cc" },
   "住宿": { bg: "#dfe5f2", text: "#536782", border: "rgba(92, 112, 145, 0.26)", gradient: "#c1cde2" },
@@ -471,6 +473,85 @@ state.activeDate = todayIso();
 let activeSplitMode = "equal";
 let activeSplitFamilyIds = state.families.map((family) => family.id);
 let activeSplitAmounts = {};
+const naturalEntryHelpers = window.JournaModules.createNaturalEntryHelpers({
+  entryModeStorageKey: ENTRY_MODE_STORAGE_KEY,
+  marksHiddenStorageKey: NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY,
+  todayIso,
+  getElements: () => elements,
+  getState: () => state,
+  getActiveSplitMode: () => activeSplitMode,
+  getActiveSplitFamilyIds: () => activeSplitFamilyIds,
+  getFamilyName: (familyId) => getFamilyName(familyId),
+  getSplitRuleFromMode: (mode) => getSplitRuleFromMode(mode),
+  getSplitScopeFromMode: (mode) => getSplitScopeFromMode(mode),
+});
+const {
+  getEntryMode,
+  applyNaturalEntryMarksPreference,
+  formatNaturalEntryDate,
+  formatNaturalEntrySplit,
+  formatNaturalEntryAmount,
+  setNaturalAmountTokenDisplay,
+} = naturalEntryHelpers;
+const ledgerViewHelpers = window.JournaModules.createLedgerViewHelpers({
+  getState: () => state,
+  isCloudLedgerActive: () => isCloudLedgerActive(),
+  normalizeExpenseSyncState: (syncState) => normalizeExpenseSyncState(syncState),
+  expenseToCents,
+  escapeHtml: (value) => escapeHtml(value),
+});
+const {
+  getExpenseSyncState,
+  formatExpenseSyncState,
+  formatExpenseSyncBadge,
+  getVisibleExpenses,
+  isExpenseVisible,
+  hasActiveLedgerFilters,
+  calculateVisibleExpensesSummary,
+  groupExpensesByDate,
+  formatLedgerDate,
+  formatLedgerCardDate,
+} = ledgerViewHelpers;
+const ledgerInteractionHelpers = window.JournaModules.createLedgerInteractionHelpers({
+  getElements: () => elements,
+  getActiveMobilePanel: () => activeMobilePanel,
+  getMobileSubmitBarLedgerHidden: () => mobileSubmitBarLedgerHidden,
+  setMobileSubmitBarLedgerHidden: (value) => { mobileSubmitBarLedgerHidden = value; },
+  prefersReducedMotion: () => prefersReducedMotion(),
+  uiIconHtml: (name) => uiIconHtml(name),
+  syncLedgerItemNoteState: (item) => syncLedgerItemNoteState(item),
+});
+const {
+  canAnimateLedgerMorph,
+  syncLedgerMobileSubmitBar,
+  cancelLedgerItemAnimations,
+  syncLedgerItemExpandedState,
+  finalizeLedgerItemState,
+} = ledgerInteractionHelpers;
+const settingsPreferences = window.JournaModules.createSettingsPreferences({
+  themePresets: THEME_PRESETS,
+  legacyThemeIdMap: { lotus: "harbor", malt: "clay" },
+  themeStorageKey: THEME_STORAGE_KEY,
+  getElements: () => elements,
+  escapeHtml: (value) => escapeHtml(value),
+});
+const {
+  normalizeThemeId,
+  getActiveThemeId,
+  migrateThemePreference,
+  syncThemeColorMeta,
+  renderThemePresetList,
+} = settingsPreferences;
+const welcomeContent = window.JournaModules.createWelcomeContent({
+  copy: COPY.welcome,
+  getElements: () => elements,
+});
+const { applyShareSourceHero } = welcomeContent;
+const mobileViewportCoordinator = window.JournaModules.createMobileViewportCoordinator({
+  getNaturalEntryStageOpen: () => naturalEntryStageOpen,
+  getActiveEntryEditor: () => activeEntryEditor,
+  scrollNaturalEntrySplitInputIntoView: (input) => scrollNaturalEntrySplitInputIntoView(input),
+});
 // 自定金额允许“先填总额”或“先填各家金额”。null 表示总额尚未被用户明确指定，
 // 此时各家金额合计就是当前总额；保留为 UI 草稿，不改变持久化结构。
 let customSplitTargetCents = null;
@@ -585,6 +666,8 @@ let desktopPointerSinkFrame = 0;
 let desktopPointerSinkTarget = null;
 let desktopPointerSinkFocusTarget = null;
 let desktopPointerSinkPoint = null;
+let desktopPointerSinkRect = null;
+let desktopPointerSinkLastValues = null;
 let desktopInsightsTouched = false;
 const desktopPointerQuery = window.matchMedia("(min-width: 1180px) and (hover: hover) and (pointer: fine)");
 let cloudState = loadCloudState();
@@ -621,30 +704,40 @@ function leaveCloudBusy() {
 /* ── 实时协同：Supabase Realtime Broadcast ──
    每个云账本占用一个频道 ledger:<share_token>。写入方保存成功后广播 changed，
    其他同账本客户端收到后立即 pullCloudLedger()。生命周期拉取仍作兜底。
-   依赖全局 supabase（index.html 经 CDN 引入）；若未加载则全部静默降级，
-   不阻塞原有手动/生命周期同步。 */
+   SDK 按需加载；若网络或脚本失败则全部静默降级，不阻塞本地账本。 */
 let realtimeClient = null;
+let realtimeClientPromise = null;
 let realtimeChannel = null;
 let realtimePullTimer = null;
 let realtimeBroadcastTimer = null;
 let realtimeBroadcastPending = false;
 
-function getRealtimeClient() {
+async function getRealtimeClient() {
   if (realtimeClient) return realtimeClient;
-  if (typeof supabase === "undefined" || !isCloudConfigured()) return null;
-  try {
-    realtimeClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      realtime: { params: { eventsPerSecond: 5 } },
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-  } catch (error) {
-    realtimeClient = null;
-  }
-  return realtimeClient;
+  if (!isCloudConfigured()) return null;
+  /* 离线时不为实时通道加载第三方 SDK；online 事件会触发生命周期同步并重建订阅。 */
+  if (navigator.onLine === false) return null;
+  if (realtimeClientPromise) return realtimeClientPromise;
+
+  realtimeClientPromise = loadSupabaseSdk("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2").then((sdk) => {
+    try {
+      realtimeClient = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        realtime: { params: { eventsPerSecond: 5 } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+    } catch (error) {
+      realtimeClient = null;
+    }
+    return realtimeClient;
+  }).catch(() => null).finally(() => {
+    realtimeClientPromise = null;
+  });
+
+  return realtimeClientPromise;
 }
 
-function subscribeLedgerRealtime(shareToken) {
-  const client = getRealtimeClient();
+async function subscribeLedgerRealtime(shareToken) {
+  const client = await getRealtimeClient();
   if (!client || !shareToken) return;
   unsubscribeLedgerRealtime();
   const channel = client.channel(`ledger:${shareToken}`, {
@@ -668,7 +761,7 @@ function unsubscribeLedgerRealtime() {
 
 function syncRealtimeSubscription() {
   if (isCloudLedgerActive() && cloudState.shareToken) {
-    subscribeLedgerRealtime(cloudState.shareToken);
+    subscribeLedgerRealtime(cloudState.shareToken).catch(() => {});
   } else {
     unsubscribeLedgerRealtime();
   }
@@ -733,9 +826,12 @@ const SETTLEMENT_ENTRY_REMINDER_REPEAT_MS = 14000;
 const SETTLEMENT_ENTRY_REMINDER_DURATION_MS = 980;
 let settingsReturnFocus = null;
 let ledgerManagementReturnFocus = null;
+let ledgerManagementReturnToSettings = false;
+let settingsReturnScrollTop = 0;
 let confirmReturnFocus = null;
 let activeMobilePanel = "data";
 let settingsMode = "settings";
+let mobileSubmitBarLedgerHidden = null;
 let ledgerFiltersExpanded = false;
 
 function loadState() {
@@ -996,50 +1092,6 @@ function normalizeCategories(categories) {
   return [...new Set(merged)];
 }
 
-function normalizePayerId(payerId) {
-  return defaultFamilies.some((family) => family.id === payerId) ? payerId : "";
-}
-
-function normalizeSplitMode(mode) {
-  return splitModeOptions.some((option) => option.id === mode) ? mode : "all";
-}
-
-function getSplitScopeFromMode(mode) {
-  const normalized = normalizeSplitMode(mode);
-  return normalized === "families" || normalized === "families_equal" ? "selected" : "all";
-}
-
-function getSplitRuleFromMode(mode) {
-  const normalized = normalizeSplitMode(mode);
-  if (normalized === "custom") return "custom";
-  if (normalized === "equal" || normalized === "families_equal") return "equal";
-  return "per_person";
-}
-
-function getSplitModeForState(scope, rule) {
-  if (rule === "custom") return "custom";
-  if (scope === "selected") return rule === "equal" ? "families_equal" : "families";
-  return rule === "equal" ? "equal" : "all";
-}
-
-function normalizeSplitFamilyIds(familyIds = [], fallbackIds = []) {
-  const ids = Array.isArray(familyIds) ? familyIds : [];
-  const validIds = [...new Set(ids.map(normalizePayerId).filter(Boolean))];
-  const fallback = [...new Set(fallbackIds.map(normalizePayerId).filter(Boolean))];
-  return validIds.length ? validIds : fallback;
-}
-
-function normalizeSplitAmounts(amounts = {}) {
-  const source = amounts && typeof amounts === "object" ? amounts : {};
-  return Object.fromEntries(
-    defaultFamilies.map((family) => {
-      const amount = Number(source[family.id]);
-      const normalized = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0;
-      return [family.id, normalized];
-    }),
-  );
-}
-
 function normalizeDate(value, fallback = todayIso()) {
   const date = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fallback;
@@ -1080,7 +1132,7 @@ function normalizeExpense(expense) {
   const updatedAt = expense.updatedAt || new Date().toISOString();
   return {
     id: expense.id,
-    amount: Math.round(Number(expense.amount) * 100) / 100,
+    amount: centsToAmount(amountToCents(expense.amount)),
     payerId: normalizePayerId(expense.payerId),
     category: normalizeCategory(expense.category),
     note: String(expense.note || "").trim(),
@@ -1281,17 +1333,17 @@ function isCloudLedgerActive() {
 
 function getSyncSummary() {
   if (!isCloudConfigured()) {
-    return { state: "local", label: "本地账本", detail: "未启用云同步", pending: 0, failed: 0 };
+    return { state: "local", label: COPY.localLedger, detail: "尚未开启同步", pending: 0, failed: 0 };
   }
   if (!isCloudLedgerActive()) {
-    return { state: "local-ready", label: "本地账本", detail: "可创建云账本", pending: 0, failed: 0 };
+    return { state: "local-ready", label: COPY.localLedger, detail: "可以创建云账本", pending: 0, failed: 0 };
   }
   const pending = state.expenses.filter((expense) => normalizeExpenseSyncState(expense.syncState) === "pending").length;
   const failed = state.expenses.filter((expense) => normalizeExpenseSyncState(expense.syncState) === "failed").length;
-  if (cloudBusy) return { state: "syncing", label: "云账本同步中", detail: "正在保存或拉取最新数据", pending, failed };
-  if (failed) return { state: "failed", label: "同步失败待重试", detail: `${failed} 笔账单稍后会自动重试`, pending, failed };
-  if (pending) return { state: "pending", label: "待同步", detail: `${pending} 笔账单等待网络恢复`, pending, failed };
-  const pulledAt = cloudState.lastPulledAt ? `上次同步 ${formatUpdatedAt(cloudState.lastPulledAt)}` : "云端已启用";
+  if (cloudBusy) return { state: "syncing", label: "同步中", detail: "正在保存最新账单", pending, failed };
+  if (failed) return { state: "failed", label: "等待重试", detail: `${failed} 笔账单会在联网后重试`, pending, failed };
+  if (pending) return { state: "pending", label: "等待同步", detail: `${pending} 笔账单会在联网后同步`, pending, failed };
+  const pulledAt = cloudState.lastPulledAt ? `上次同步 ${formatUpdatedAt(cloudState.lastPulledAt)}` : "云账本已开启";
   return { state: "synced", label: "云账本已同步", detail: pulledAt, pending, failed };
 }
 
@@ -1351,7 +1403,7 @@ function normalizeRemotePayload(payload) {
     expenses: expenses
       .map((expense) => ({
         id: String(expense.id),
-        amount: Math.round(Number(expense.amount) * 100) / 100,
+        amount: centsToAmount(amountToCents(expense.amount)),
         payerId: normalizePayerId(expense.payer_id),
         category: normalizeCategory(expense.category),
         note: String(expense.note || "").trim(),
@@ -1437,7 +1489,7 @@ async function pullCloudLedger({ announce = false } = {}) {
     render({ skipCloudSave: true, animateFinancialChanges: announce && hasPlayedInitialTotalReveal });
     /* 远端墓碑已合并并对齐，清理本地已同步的墓碑释放存储（撤销窗口已过的删除条目）。 */
     gcDeletedExpenses();
-    if (announce) showToast({ message: "已同步云账本" });
+    if (announce) showToast({ message: "云账本已同步" });
     const unsyncedExpenses = state.expenses.filter((expense) => ["pending", "failed"].includes(normalizeExpenseSyncState(expense.syncState)));
     if (unsyncedExpenses.length) syncPendingCloudExpenses({ silent: true }).catch(() => {});
     return true;
@@ -1454,13 +1506,13 @@ async function pullCloudLedger({ announce = false } = {}) {
     let label, toast;
     if (backendDown) {
       label = "云端不可用";
-      toast = "云端服务暂时不可用，可能是项目被暂停或网络异常，请稍后重试（本地数据已保留）";
+      toast = "云端服务暂时不可用，账单已保存在本机，联网后会重试";
     } else if (ledgerMissing) {
       label = "链接已失效";
       toast = "邀请链接已失效：对应的云账本不存在或已被删除，请让创建者重新分享链接";
     } else {
       label = "同步失败";
-      toast = "云账本同步失败，请检查网络后重试（本地数据已保留）";
+      toast = COPY.sync.savedLocally;
     }
     cloudErrorLabel = label;
     showToast({ message: toast });
@@ -1481,10 +1533,11 @@ async function refreshCloudLedgerFromLifecycle() {
   lastLifecycleRefreshAt = now;
   const synced = await syncPendingCloudExpenses({ silent: true });
   if (!synced) {
-    showToast({ message: "还有账单未同步，先不覆盖本地账本" });
+    showToast({ message: COPY.sync.pending });
     return;
   }
   await pullCloudLedger();
+  syncRealtimeSubscription();
 }
 
 async function handleManualCloudSync() {
@@ -1493,12 +1546,12 @@ async function handleManualCloudSync() {
     return;
   }
   if (!isCloudLedgerActive()) {
-    showToast({ message: "先在设置里创建或加入云账本" });
+    showToast({ message: "请在设置里创建或加入云账本" });
     return;
   }
   if (cloudBusy) return;
   if (navigator.onLine === false) {
-    showToast({ message: "当前离线，恢复网络后再同步" });
+    showToast({ message: "当前离线，联网后会自动同步" });
     return;
   }
 
@@ -1518,7 +1571,7 @@ async function handleManualCloudSync() {
   leaveCloudBusy();
 
   if (!settingsSynced || !expensesSynced) {
-    showToast({ message: "还有内容未同步，先保留本地账本" });
+    showToast({ message: COPY.sync.pending });
     return;
   }
 
@@ -1543,7 +1596,7 @@ async function createCloudLedger() {
     syncRealtimeSubscription();
     checkOperatorFamilyPrompt();
   } catch (error) {
-    showToast({ message: "创建云账本失败，请确认 SQL 已执行" });
+    showToast({ message: "云账本创建失败，请确认数据库设置后重试" });
   } finally {
     leaveCloudBusy();
   }
@@ -1602,7 +1655,7 @@ function queueCloudSettingsSync() {
   window.clearTimeout(pendingSettingsSync);
   pendingSettingsSync = window.setTimeout(() => {
     syncCloudSettingsNow().catch(() => {
-      showToast({ message: "云端设置同步失败，本地已保留" });
+      showToast({ message: "设置暂时无法同步，已保存在本机，联网后会重试" });
     });
   }, 350);
 }
@@ -1676,12 +1729,12 @@ async function syncCloudExpense(expense) {
   try {
     const remoteExpense = await supabaseRpc("save_travel_expense", splitPayload);
     if ((splitMode === "equal" || splitMode === "families_equal") && remoteExpense?.split_mode !== splitMode) {
-      throw new Error("云端数据库尚未支持均分规则，请先执行最新 supabase-schema.sql");
+      throw new Error("云端数据库尚未支持均分规则，请更新数据库设置后重试");
     }
   } catch (error) {
     if (!isSplitRpcCompatibilityError(error)) throw error;
     if (splitMode === "equal" || splitMode === "families_equal") {
-      throw new Error("云端数据库尚未支持均分规则，请先执行最新 supabase-schema.sql");
+      throw new Error("云端数据库尚未支持均分规则，请更新数据库设置后重试");
     }
     await supabaseRpc("save_travel_expense", basePayload);
   }
@@ -1701,7 +1754,7 @@ async function syncCloudExpenseWithState(expenseId, { silent = false } = {}) {
     return true;
   } catch (error) {
     markExpenseSyncState(expenseId, "failed");
-    if (!silent) showToast({ message: "云端保存失败，本地已保留，稍后会重试" });
+    if (!silent) showToast({ message: COPY.sync.savedLocally });
     return false;
   } finally {
     leaveCloudBusy();
@@ -1735,21 +1788,6 @@ function isSplitRpcCompatibilityError(error) {
     || message.includes("schema cache")
     || message.includes("PGRST202")
     || message.includes("travel_expenses_split_mode_check");
-}
-
-async function deleteCloudExpense(expenseId) {
-  if (!isCloudLedgerActive()) return;
-  await supabaseRpc("delete_travel_expense", {
-    p_share_token: cloudState.shareToken,
-    p_id: expenseId,
-  });
-  notifyLedgerChanged();
-}
-
-async function clearCloudLedger() {
-  if (!isCloudLedgerActive()) return;
-  await supabaseRpc("clear_travel_ledger", { p_share_token: cloudState.shareToken });
-  notifyLedgerChanged();
 }
 
 function updateCloudControls(forcedStatus = "") {
@@ -1834,51 +1872,6 @@ function playSyncLampIgnite() {
   }, 820);
 }
 
-function formatMoney(cents) {
-  const showDecimals = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) === "true";
-  const hasCents = Math.abs(Math.round(Number(cents) || 0)) % 100 !== 0;
-  const fractionDigits = showDecimals || hasCents ? 2 : 0;
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(cents / 100);
-}
-
-function formatTotalMoney(cents) {
-  return formatMoney(cents);
-}
-
-function formatLedgerMoney(cents) {
-  return formatMoney(cents);
-}
-
-function expenseToCents(expense) {
-  return Math.round(Number(expense.amount) * 100);
-}
-
-function amountToCents(amount) {
-  return Math.round(Number(amount) * 100) || 0;
-}
-
-function parseAmountInput(value) {
-  const raw = String(value || "").trim().replace(/[，,]/g, ".");
-  if (!raw) return NaN;
-  if (!/^\d+(?:\.\d{0,2})?$/.test(raw) && !/^\.\d{1,2}$/.test(raw)) return NaN;
-  const amount = Number(raw);
-  return Number.isFinite(amount) ? amount : NaN;
-}
-
-function centsToAmount(cents) {
-  return Math.round(cents) / 100;
-}
-
-function formatAmountInput(cents) {
-  const amount = centsToAmount(cents);
-  return amount > 0 ? amount.toFixed(2).replace(/\.00$/, "") : "";
-}
-
 function getFamilyName(familyId) {
   return state.families.find((family) => family.id === familyId)?.name || "未知家庭";
 }
@@ -1918,168 +1911,26 @@ function stringHash(value) {
   return [...String(value)].reduce((hash, char) => (hash * 31 + char.codePointAt(0)) >>> 0, 7);
 }
 
-function calculateSummary() {
-  const paidByFamily = Object.fromEntries(state.families.map((family) => [family.id, 0]));
-  const shareByFamily = Object.fromEntries(state.families.map((family) => [family.id, 0]));
-  const owedByFamily = Object.fromEntries(
-    state.families.map((family) => [
-      family.id,
-      Object.fromEntries(state.families.map((otherFamily) => [otherFamily.id, 0])),
-    ]),
-  );
-  const categoryTotals = Object.fromEntries(state.categories.map((category) => [category, 0]));
-  let totalCents = 0;
-  let scopedExpenseCount = 0;
-
-  for (const expense of getActiveExpenses()) {
-    const cents = expenseToCents(expense);
-    const expenseShares = calculateExpenseShares(expense);
-    totalCents += cents;
-    paidByFamily[expense.payerId] = (paidByFamily[expense.payerId] || 0) + cents;
-    categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + cents;
-    state.families.forEach((family) => {
-      const shareCents = expenseShares[family.id] || 0;
-      shareByFamily[family.id] = (shareByFamily[family.id] || 0) + shareCents;
-      if (family.id !== expense.payerId && shareCents > 0) {
-        owedByFamily[family.id][expense.payerId] += shareCents;
-      }
-    });
-    const expenseSplitMode = normalizeSplitMode(expense.splitMode);
-    if (getSplitScopeFromMode(expenseSplitMode) === "selected" || getSplitRuleFromMode(expenseSplitMode) === "custom") scopedExpenseCount += 1;
-  }
-
-  const totalMembers = getTotalMembers();
-  const perPersonCents = totalMembers ? Math.round(totalCents / totalMembers) : 0;
-
-  return {
-    totalCents,
-    shareCents: perPersonCents,
-    totalMembers,
-    shareByFamily,
-    paidByFamily,
-    categoryTotals,
-    scopedExpenseCount,
-    settlements: calculatePairwiseSettlements(owedByFamily),
-  };
-}
-
-function getTotalMembers() {
-  return state.families.reduce((sum, family) => sum + (state.familyMembers[family.id] || 1), 0);
-}
-
-function calculateExpenseShares(expense) {
-  const totalCents = expenseToCents(expense);
-  const emptyShares = Object.fromEntries(state.families.map((family) => [family.id, 0]));
-  const splitMode = normalizeSplitMode(expense.splitMode);
-
-  if (splitMode === "custom") {
-    const splitAmounts = normalizeSplitAmounts(expense.splitAmounts);
-    let assignedCents = 0;
-    let largestFamilyId = state.families[0]?.id || "";
-
-    for (const family of state.families) {
-      const cents = amountToCents(splitAmounts[family.id]);
-      emptyShares[family.id] = cents;
-      assignedCents += cents;
-      if (cents > emptyShares[largestFamilyId]) largestFamilyId = family.id;
-    }
-
-    if (assignedCents > 0 && largestFamilyId) {
-      emptyShares[largestFamilyId] += totalCents - assignedCents;
-      return emptyShares;
-    }
-  }
-
-  const allFamilyIds = state.families.map((family) => family.id);
-  const splitFamilyIds = getSplitScopeFromMode(splitMode) === "selected"
-    ? normalizeSplitFamilyIds(expense.splitFamilyIds, allFamilyIds)
-    : allFamilyIds;
-  if (getSplitRuleFromMode(splitMode) === "equal") return calculateEqualFamilySharesForIds(totalCents, splitFamilyIds);
-  return calculateFamilySharesForIds(totalCents, splitFamilyIds);
-}
-
-function calculateEqualFamilySharesForIds(totalCents, familyIds) {
-  const shares = Object.fromEntries(state.families.map((family) => [family.id, 0]));
-  const selectedFamilies = normalizeSplitFamilyIds(familyIds, state.families.map((family) => family.id))
-    .map((familyId) => state.families.find((family) => family.id === familyId))
-    .filter(Boolean);
-
-  if (!selectedFamilies.length) return shares;
-
-  const baseCents = Math.floor(totalCents / selectedFamilies.length);
-  let remainingCents = totalCents - baseCents * selectedFamilies.length;
-  selectedFamilies.forEach((family) => {
-    shares[family.id] = baseCents + (remainingCents > 0 ? 1 : 0);
-    remainingCents -= 1;
-  });
-  return shares;
-}
-
-function calculateFamilySharesForIds(totalCents, familyIds) {
-  const shares = Object.fromEntries(state.families.map((family) => [family.id, 0]));
-  const selectedFamilies = normalizeSplitFamilyIds(familyIds, state.families.map((family) => family.id))
-    .map((familyId) => state.families.find((family) => family.id === familyId))
-    .filter(Boolean);
-  const totalMembers = selectedFamilies.reduce((sum, family) => sum + (state.familyMembers[family.id] || 1), 0);
-
-  if (!totalMembers || !selectedFamilies.length) return shares;
-
-  const roughShares = selectedFamilies.map((family) => {
-    const members = state.familyMembers[family.id] || 1;
-    const exactShare = (totalCents * members) / totalMembers;
-    const cents = Math.floor(exactShare);
-    return {
-      family,
-      cents,
-      remainder: exactShare - cents,
-    };
-  });
-
-  let remainingCents = totalCents - roughShares.reduce((sum, item) => sum + item.cents, 0);
-  const sortedByRemainder = [...roughShares].sort((a, b) => b.remainder - a.remainder);
-  for (const item of sortedByRemainder) {
-    if (remainingCents <= 0) break;
-    item.cents += 1;
-    remainingCents -= 1;
-  }
-
-  roughShares.forEach((item) => {
-    shares[item.family.id] = item.cents;
-  });
-  return shares;
-}
-
-function calculatePairwiseSettlements(owedByFamily) {
-  const settlements = [];
-
-  for (let firstIndex = 0; firstIndex < state.families.length; firstIndex += 1) {
-    for (let secondIndex = firstIndex + 1; secondIndex < state.families.length; secondIndex += 1) {
-      const firstFamily = state.families[firstIndex];
-      const secondFamily = state.families[secondIndex];
-      const firstOwesSecond = owedByFamily[firstFamily.id]?.[secondFamily.id] || 0;
-      const secondOwesFirst = owedByFamily[secondFamily.id]?.[firstFamily.id] || 0;
-      const netCents = firstOwesSecond - secondOwesFirst;
-
-      if (netCents === 0) continue;
-      const fromFamily = netCents > 0 ? firstFamily : secondFamily;
-      const toFamily = netCents > 0 ? secondFamily : firstFamily;
-      settlements.push({
-        from: fromFamily.name,
-        fromFamilyId: fromFamily.id,
-        to: toFamily.name,
-        toFamilyId: toFamily.id,
-        cents: Math.abs(netCents),
-      });
-    }
-  }
-
-  return settlements.sort((first, second) => second.cents - first.cents);
-}
+const ledgerCalculator = window.JournaCore.createLedgerCalculator({
+  getState: () => state,
+  getActiveExpenses,
+  expenseToCents,
+  amountToCents,
+  normalizeSplitMode,
+  getSplitScopeFromMode,
+  getSplitRuleFromMode,
+  normalizeSplitFamilyIds,
+  normalizeSplitAmounts,
+});
+const {
+  calculateSummary,
+} = ledgerCalculator;
 
 function render(options = {}) {
   const { animateFinancialChanges = false } = options;
 
   const performUpdate = () => {
+    const summary = calculateSummary();
     resetDesktopPointerSink({ preserveFocus: true });
     renderCurrentLedgerLabel();
     updateClearLedgerButton();
@@ -2090,9 +1941,11 @@ function render(options = {}) {
     renderSplitScope();
     renderNaturalEntry();
     renderLedgerFilters();
-    renderSummary({ animateFinancialChanges });
+    renderSummary({ animateFinancialChanges, summary });
     renderLedger({ animateFinancialChanges });
-    renderSettings();
+    /* 设置抽屉打开时需要跟随账本状态更新；隐藏时由 openSettings() 的
+       renderPanel 负责首次/重新打开前的渲染，避免每次普通点击都重建整套设置 DOM。 */
+    if (!elements.settingsView?.hidden) renderSettings({ summary });
     renderEditState();
     renderMobilePanelState();
     renderMobileSubmitBar();
@@ -2110,87 +1963,6 @@ function render(options = {}) {
   } else {
     performUpdate();
   }
-}
-
-function springSamples({ stiffness, damping, mass = 1, duration: monotonicDuration = 0 }, epsilon = 0.005) {
-  if (monotonicDuration) {
-    const duration = monotonicDuration;
-    const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
-    const settleRate = 6 / duration;
-    const rawResponseAt = (time) => 1 - Math.exp(-settleRate * time) * (1 + settleRate * time);
-    const finalResponse = rawResponseAt(duration);
-    /* The truncated critically-damped response still has a small non-zero
-       velocity at its final sample. Add a terminal correction that preserves
-       the existing travel, but makes the last frame arrive at rest instead of
-       snapping to the final layout when the WAAPI animation is removed. */
-    const terminalVelocity = Math.exp(-settleRate * duration)
-      * settleRate
-      * settleRate
-      * duration
-      / finalResponse;
-    const values = [];
-    for (let i = 0; i <= count; i++) {
-      const time = (duration * i) / count;
-      const progress = time / duration;
-      const baseResponse = rawResponseAt(time) / finalResponse;
-      const terminalEase = terminalVelocity * progress ** 2 * (1 - progress);
-      values.push(Math.min(1, Math.max(0, baseResponse + terminalEase)));
-    }
-    return { values, duration };
-  }
-  const w0 = Math.sqrt(stiffness / mass);
-  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
-  const settle = Math.log(1 / epsilon) / (zeta * w0);
-  const duration = Math.min(900, Math.max(250, settle * 1000));
-  const landingTail = Math.min(SPRING_LANDING_TAIL_MS, duration * 0.18);
-  const landingStart = duration - landingTail;
-  const count = Math.max(24, Math.min(96, Math.round(duration / 8)));
-  const values = [];
-
-  const springStateAt = (time) => {
-    if (zeta < 1) {
-      const wd = w0 * Math.sqrt(1 - zeta * zeta);
-      const envelope = Math.exp(-zeta * w0 * time);
-      const angle = wd * time;
-      const position = 1 - envelope * (Math.cos(angle) + ((zeta * w0) / wd) * Math.sin(angle));
-      const velocity = envelope * (w0 * w0 / wd) * Math.sin(angle);
-      return { position, velocity };
-    }
-
-    const envelope = Math.exp(-w0 * time);
-    return {
-      position: 1 - envelope,
-      velocity: w0 * envelope,
-    };
-  };
-
-  const landingStateAt = (time, startState) => {
-    const tailSeconds = landingTail / 1000;
-    const u = Math.min(1, Math.max(0, (time - landingStart) / landingTail));
-    if (u >= 1) return 1;
-
-    // Cubic Hermite interpolation preserves the spring's position and velocity
-    // at the handoff, then eases both displacement and velocity to zero at rest.
-    const u2 = u * u;
-    const u3 = u2 * u;
-    const h00 = 2 * u3 - 3 * u2 + 1;
-    const h10 = u3 - 2 * u2 + u;
-    const h01 = -2 * u3 + 3 * u2;
-    return h00 * startState.position
-      + h10 * tailSeconds * startState.velocity
-      + h01;
-  };
-
-  const landingStartState = springStateAt(landingStart / 1000);
-
-  for (let i = 0; i <= count; i++) {
-    const time = (duration * i) / count;
-    values.push(time < landingStart
-      ? springStateAt(time / 1000).position
-      : landingStateAt(time, landingStartState));
-  }
-
-  return { values, duration };
 }
 
 function getBarMorphDuration(nextPanel) {
@@ -2325,63 +2097,6 @@ function spawnBarFamilyTintMembrane(bar, background, duration) {
     if (membrane.isConnected) membrane.remove();
   }, duration + 150);
   return animation;
-}
-
-function cubicHermite(value0, value1, velocity0, velocity1, span, localOffset) {
-  const u = Math.min(1, Math.max(0, localOffset));
-  const u2 = u * u;
-  const u3 = u2 * u;
-  const h00 = 2 * u3 - 3 * u2 + 1;
-  const h10 = u3 - 2 * u2 + u;
-  const h01 = -2 * u3 + 3 * u2;
-  const h11 = u3 - u2;
-  return h00 * value0
-    + h10 * velocity0 * span
-    + h01 * value1
-    + h11 * velocity1 * span;
-}
-
-function sampleHermitePath(anchors, count) {
-  const values = [];
-  for (let index = 0; index <= count; index++) {
-    const offset = index / count;
-    let segment = anchors.length - 2;
-    for (let anchorIndex = 0; anchorIndex < anchors.length - 1; anchorIndex++) {
-      if (offset <= anchors[anchorIndex + 1].offset) {
-        segment = anchorIndex;
-        break;
-      }
-    }
-    const start = anchors[segment];
-    const end = anchors[segment + 1];
-    const span = end.offset - start.offset;
-    values.push(cubicHermite(
-      start.value,
-      end.value,
-      start.velocity,
-      end.velocity,
-      span,
-      (offset - start.offset) / span,
-    ));
-  }
-  return values;
-}
-
-function barMotionSamples({ duration }) {
-  const count = Math.max(32, Math.min(96, Math.round(duration / 8)));
-  const progress = sampleHermitePath([
-    { offset: 0, value: 0, velocity: 0 },
-    { offset: 0.28, value: 0.50, velocity: 1.35 },
-    { offset: 0.68, value: 0.97, velocity: 0.34 },
-    { offset: 0.80, value: 1.01, velocity: 0 },
-    { offset: 1, value: 1, velocity: 0 },
-  ], count);
-  const lift = sampleHermitePath([
-    { offset: 0, value: 0, velocity: 0 },
-    { offset: 0.55, value: -3, velocity: 0 },
-    { offset: 1, value: 0, velocity: 0 },
-  ], count);
-  return { values: progress, lifts: lift, duration };
 }
 
 function animateBarFlip(nextPanel) {
@@ -2831,9 +2546,13 @@ function positionNaturalEntryStage() {
   }
 }
 
-function scheduleNaturalEntryStagePosition() {
+function scheduleNaturalEntryStagePosition({ reason = "layout" } = {}) {
   if (naturalEntryStagePositionFrame || !naturalEntryStageOpen) return;
   if (naturalEntryAmountHandoffRunning) return;
+  /* 舞台是 fixed，打开后的页面滚动不会改变它的最终几何；更重要的是，
+     页面滚动期间不应每帧重新读取 anchor/stage/token 的布局。打开、编辑器
+     切换、resize/键盘变化仍会走默认 layout 路径重新测量。 */
+  if (reason === "scroll") return;
   // The split editor can change the summary token's wrapping while its panel
   // is open. Re-anchoring the fixed stage to that moving token makes the card
   // drift downward during option changes; keep the stage in place until the
@@ -3240,7 +2959,7 @@ function animateNaturalAmountTrackToAnchor(anchor, onReached = null) {
       { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1 },
       { transform: mapping.transform, opacity: 1 },
     ],
-    { duration: MOTION_DELAYS.naturalEntryStageClose, easing: getNaturalEntryStageCurve("cubic-bezier(0.12, 0.68, 0.18, 1)"), fill: "both" },
+    { duration: MOTION_DELAYS.naturalEntryStageClose, easing: getNaturalEntryStageCurve("cubic-bezier(0.20, 0, 0, 1)"), fill: "both" },
   );
   naturalEntryMotionAnims.push(animation);
   animation.finished.then(() => onReached?.(), () => {});
@@ -3365,7 +3084,7 @@ function animateNaturalEntryNoteTrackToAnchor(anchor, onReached = null) {
     ],
     {
       duration: MOTION_DELAYS.naturalEntryStageClose,
-      easing: getNaturalEntryStageCurve("cubic-bezier(0.12, 0.68, 0.18, 1)"),
+      easing: getNaturalEntryStageCurve("cubic-bezier(0.20, 0, 0, 1)"),
       fill: "both",
     },
   );
@@ -3406,7 +3125,7 @@ function animateNaturalEntryNoteTokenToAnchor(anchor, onReached = null) {
     ],
     {
       duration: MOTION_DELAYS.naturalEntryStageClose,
-      easing: getNaturalEntryStageCurve("cubic-bezier(0.12, 0.68, 0.18, 1)"),
+      easing: getNaturalEntryStageCurve("cubic-bezier(0.20, 0, 0, 1)"),
       fill: "both",
     },
   );
@@ -3587,7 +3306,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   // 文字和 shell 从同一个 CSS 内部变量读取收回曲线，避免两条时间线
   // 轻微漂移；文字在 414ms 交接，与后段卡片减速共同收尾。
   const closeCurve = getComputedStyle(stage).getPropertyValue("--natural-stage-curve").trim()
-    || "cubic-bezier(0.12, 0.68, 0.18, 1)";
+    || "cubic-bezier(0.20, 0, 0, 1)";
   const flight = ghost.animate(
     [
       {
@@ -3813,90 +3532,6 @@ function openNaturalEntryStage(editor) {
     }, MOTION_DELAYS.naturalEntryStageOpen);
   });
   return true;
-}
-
-function getEntryMode() {
-  return localStorage.getItem(ENTRY_MODE_STORAGE_KEY) === "standard" ? "standard" : "natural";
-}
-
-function areNaturalEntryMarksHidden() {
-  return localStorage.getItem(NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY) !== "false";
-}
-
-function applyNaturalEntryMarksPreference() {
-  const hidden = areNaturalEntryMarksHidden();
-  document.documentElement.dataset.naturalEntryMarksHidden = String(hidden);
-  if (elements.settingsNaturalEntryMarksHiddenInput) {
-    elements.settingsNaturalEntryMarksHiddenInput.checked = !hidden;
-  }
-  if (elements.naturalEntryHint) {
-    elements.naturalEntryHint.textContent = hidden ? "点按文字修改" : "点按标记文字修改";
-  }
-}
-
-function formatNaturalEntryDate(date) {
-  if (!date || date === todayIso()) return "今天";
-  const [, month, day] = String(date).split("-");
-  if (!month || !day) return date;
-  return `${Number(month)}月${Number(day)}日`;
-}
-
-function formatNaturalFamilyCount(count) {
-  const chinese = ["零", "一", "两", "三", "四", "五", "六", "七", "八", "九", "十"];
-  return chinese[count] || String(count);
-}
-
-function formatNaturalEntrySplit() {
-  if (activeSplitMode === "custom") return "自定金额分摊";
-  const ruleLabel = getSplitRuleFromMode(activeSplitMode) === "equal" ? "均分" : "按人数分摊";
-  if (getSplitScopeFromMode(activeSplitMode) === "selected") {
-    const names = activeSplitFamilyIds.map(getFamilyName).filter(Boolean);
-    if (!names.length) return `指定家庭 · ${ruleLabel}`;
-    if (names.length === 1) return `${names[0]}承担全部`;
-    if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家${ruleLabel}`;
-    if (names.length === 2) {
-      return `${names.join("、")}${ruleLabel}`;
-    }
-    return `${names.join("、")}${ruleLabel}`;
-  }
-  const familyCount = state.families.length;
-  return familyCount >= 3
-    ? `${formatNaturalFamilyCount(familyCount)}家${ruleLabel}`
-    : `全部家庭${ruleLabel}`;
-}
-
-function formatNaturalEntryAmount(cents) {
-  const normalizedCents = Math.round(Number(cents) || 0);
-  const hasCents = Math.abs(normalizedCents) % 100 !== 0;
-  const digits = new Intl.NumberFormat("zh-CN", {
-    useGrouping: false,
-    minimumFractionDigits: hasCents ? 2 : 0,
-    maximumFractionDigits: hasCents ? 2 : 0,
-  }).format(normalizedCents / 100);
-  return `¥ ${digits}`;
-}
-
-function setNaturalAmountTokenDisplay(token, displayText) {
-  if (!token) return;
-  const label = token.querySelector(".natural-entry-token-label") || token;
-  const text = String(displayText || "¥ 0.00");
-  const digits = text.replace(/^¥\s*/, "") || "0.00";
-  if (!label.classList.contains("natural-entry-token-label")) {
-    label.textContent = text;
-    return;
-  }
-  let currency = label.querySelector(".natural-entry-amount-currency");
-  let value = label.querySelector(".natural-entry-amount-digits");
-  if (!currency || !value) {
-    currency = document.createElement("span");
-    currency.className = "natural-entry-amount-currency";
-    value = document.createElement("span");
-    value.className = "natural-entry-amount-digits";
-    label.replaceChildren(currency, value);
-  }
-  currency.textContent = "¥";
-  value.textContent = digits;
-  token.setAttribute("aria-label", text);
 }
 
 function getNaturalEntryTintTargets() {
@@ -4355,7 +3990,7 @@ function renderRecentPeek() {
         <li class="recent-peek-item">
           <span class="category-pill">${categoryLabelHtml(expense.category)}</span>
           ${noteMarkup}
-          <span class="recent-peek-amount">${formatMoney(Math.round(Number(expense.amount) * 100))}</span>
+          <span class="recent-peek-amount">${formatMoney(expenseToCents(expense))}</span>
         </li>`;
         })
         .join("")}
@@ -4735,10 +4370,11 @@ function renderSplitScope() {
 
   syncSplitModeButtons();
   const isCustom = activeSplitMode === "custom";
+  const isAllFamilies = getSplitScopeFromMode(activeSplitMode) === "all";
   elements.splitDetailArea.hidden = false;
-  elements.splitParticipantToggle.hidden = isCustom;
-  elements.splitParticipantToggle.setAttribute("aria-expanded", String(splitFamilyChoicesOpen));
-  elements.splitFamilyChoices.hidden = isCustom || !splitFamilyChoicesOpen;
+  elements.splitParticipantToggle.hidden = isCustom || isAllFamilies;
+  elements.splitParticipantToggle.setAttribute("aria-expanded", String(!isAllFamilies && splitFamilyChoicesOpen));
+  elements.splitFamilyChoices.hidden = isCustom || (!isAllFamilies && !splitFamilyChoicesOpen);
   syncSplitParticipantSummary();
   syncSplitFamilyChoices();
   elements.splitCustomAmounts.hidden = !isCustom;
@@ -4824,7 +4460,7 @@ function syncSplitParticipantSummary() {
     return;
   }
   if (!activeSplitFamilyIds.length) {
-    elements.splitParticipantSummary.textContent = "请选择家庭";
+    elements.splitParticipantSummary.textContent = "选择参与分摊的家庭";
     return;
   }
   if (activeSplitFamilyIds.length === state.families.length) {
@@ -5047,8 +4683,7 @@ function updateAmountFieldForSplitMode() {
   syncCustomSplitTotalField();
 }
 
-function renderSettings() {
-  const summary = calculateSummary();
+function renderSettings({ summary = calculateSummary() } = {}) {
   const usedCategories = new Set(state.expenses.map((expense) => expense.category));
   const syncSummary = getSyncSummary();
   elements.currentLedgerNameInput.value = state.name;
@@ -5142,72 +4777,10 @@ function renderEntryModeSettings() {
   });
 }
 
-function getActiveThemeId() {
-  const current = document.documentElement.dataset.theme;
-  const normalized = normalizeThemeId(current);
-  if (current !== normalized) document.documentElement.dataset.theme = normalized;
-  return normalized;
-}
-
-const LEGACY_THEME_ID_MAP = { lotus: "harbor", malt: "clay" };
-
-function normalizeThemeId(value) {
-  const mapped = LEGACY_THEME_ID_MAP[String(value || "")] || String(value || "");
-  return THEME_PRESETS.some((preset) => preset.id === mapped) ? mapped : THEME_PRESETS[0].id;
-}
-
-function migrateThemePreference() {
-  const current = document.documentElement.dataset.theme;
-  const normalized = normalizeThemeId(current);
-  document.documentElement.dataset.theme = normalized;
-  if (current !== normalized) {
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, normalized);
-    } catch (error) {
-      /* 私密模式等场景存不了就只在本次会话生效 */
-    }
-  }
-  return normalized;
-}
-
-/* 让 Safari 状态栏/工具栏 tint 跟随应用内主题预设：
-   把与当前明暗模式匹配的 theme-color meta 更新为主题实际背景色（--bg）。 */
-function syncThemeColorMeta() {
-  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
-  if (!bg) return;
-  const isDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  const meta = document.querySelector(`meta[name="theme-color"][media*="${isDark ? "dark" : "light"}"]`);
-  meta?.setAttribute("content", bg);
-}
-
-function renderThemePresetList() {
-  if (!elements.settingsThemeList) return;
-  const activeThemeId = getActiveThemeId();
-  elements.settingsThemeList.innerHTML = THEME_PRESETS
-    .map((preset) => {
-      const isSelected = preset.id === activeThemeId;
-      return `
-        <button class="theme-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-theme-id="${escapeHtml(preset.id)}" aria-checked="${isSelected}">
-          <span class="theme-choice-preview" aria-hidden="true">
-            <span class="theme-preview-glow"></span>
-            <span class="theme-preview-surface"></span>
-            <span class="theme-preview-accent"></span>
-          </span>
-          <span class="theme-choice-copy">
-            <strong>${escapeHtml(preset.name)}</strong>
-            <small>${escapeHtml(preset.description)}</small>
-          </span>
-          <span class="theme-choice-check" aria-hidden="true">✓</span>
-        </button>
-      `;
-    })
-    .join("");
-}
-
 function renderPersonalizationSettings() {
   renderThemePresetList();
   if (!elements.settingsFamilyColorList) return;
-  const detailsOpen = Boolean(elements.settingsFamilyColorList.querySelector(".family-color-details")?.open);
+  const detailsOpen = elements.settingsFamilyColorList.querySelector(".family-color-details")?.dataset.open === "true";
   syncFamilyVisualRows();
   const presetColors = getFamilyColorChoices();
   const currentFamily = state.families.find((family) => family.id === activeFamilyColorFamilyId) || state.families[0];
@@ -5240,12 +4813,12 @@ function renderPersonalizationSettings() {
     .join("");
 
   elements.settingsFamilyColorList.innerHTML = `
-    <details class="family-color-details"${detailsOpen ? " open" : ""}>
-      <summary>
+    <div class="family-color-details${detailsOpen ? " is-open" : ""}" data-open="${detailsOpen}">
+      <button class="family-color-summary" type="button" aria-expanded="${detailsOpen}">
         <span>高级：家庭身份色</span>
         <small>${customStatus}</small>
-      </summary>
-      <div class="family-color-detail-body">
+      </button>
+      <div class="family-color-detail-body" aria-hidden="${!detailsOpen}"${detailsOpen ? "" : " inert"}>
         <div class="family-color-detail-inner">
           <div class="family-color-targets" role="radiogroup" aria-label="选择要调整的家庭">
             ${familyTargets}
@@ -5262,9 +4835,25 @@ function renderPersonalizationSettings() {
           </div>
         </div>
       </div>
-    </details>
+    </div>
   `;
-  bindAnimatedDetails(elements.settingsFamilyColorList);
+  bindFamilyColorDisclosure(elements.settingsFamilyColorList);
+}
+
+function bindFamilyColorDisclosure(root = document) {
+  const details = root.querySelector(".family-color-details");
+  const summary = details?.querySelector(".family-color-summary");
+  const body = details?.querySelector(".family-color-detail-body");
+  if (!details || !summary || !body || summary.dataset.familyColorDisclosureBound) return;
+  summary.dataset.familyColorDisclosureBound = "1";
+  summary.addEventListener("click", () => {
+    const opening = !details.classList.contains("is-open");
+    details.classList.toggle("is-open", opening);
+    details.dataset.open = String(opening);
+    summary.setAttribute("aria-expanded", String(opening));
+    body.setAttribute("aria-hidden", String(!opening));
+    body.toggleAttribute("inert", !opening);
+  });
 }
 
 /* 让原生 <details> 的「收起」也平滑过渡。
@@ -5273,7 +4862,7 @@ function renderPersonalizationSettings() {
    播完过渡再真正移除 open；展开则直接加 open 走 CSS 0fr→1fr。*/
 function bindAnimatedDetails(root = document) {
   root
-    .querySelectorAll(".settings-actions-details > summary, .family-color-details > summary, .settings-mobile-group > summary, .insight-details > summary")
+    .querySelectorAll(".settings-mobile-group > summary, .insight-details > summary")
     .forEach((summary) => {
       if (summary.dataset.animatedDetailsBound) return;
       summary.dataset.animatedDetailsBound = "1";
@@ -5375,7 +4964,7 @@ function familyVisualSwatchStyle(visual) {
 
 function renderCurrentLedgerSummary(summary) {
   const syncSummary = getSyncSummary();
-  const status = state.cloudShareToken ? syncSummary.label : "本地账本";
+  const status = state.cloudShareToken ? syncSummary.label : COPY.localLedger;
   return `
     <div class="current-ledger-card">
       <div>
@@ -5399,7 +4988,7 @@ function renderLedgerManagerItem(ledger) {
   const summary = calculateLedgerSummary(ledger);
   const isActive = ledger.id === state.id;
   const canDelete = appState.ledgers.length > 1;
-  const cloudLabel = ledger.cloudShareToken ? "云账本" : "本地账本";
+  const cloudLabel = ledger.cloudShareToken ? COPY.cloudLedger : COPY.localLedger;
   const updatedLabel = formatUpdatedAt(ledger.updatedAt || ledger.createdAt);
   const familySummary = defaultFamilies
     .map((family) => `${family.name}${ledger.familyMembers?.[family.id] || 1}`)
@@ -5494,7 +5083,7 @@ function renderTotalAmount(nextText, shouldAnimate, options = {}) {
 }
 
 function revealInitialTotalAmount() {
-  renderTotalAmount(formatTotalMoney(calculateSummary().totalCents), false, { revealOnEntry: true });
+  renderTotalAmount(formatMoney(calculateSummary().totalCents), false, { revealOnEntry: true });
 }
 
 function playInitialTotalReveal(targetText) {
@@ -5571,10 +5160,6 @@ function playInitialTotalReveal(targetText) {
   };
 
   totalRevealFrameId = window.requestAnimationFrame(renderFrame);
-}
-
-function easeOutCubic(value) {
-  return 1 - Math.pow(1 - value, 3);
 }
 
 function cancelInitialTotalReveal() {
@@ -5691,8 +5276,7 @@ function renderSoftText(element, nextText, shouldAnimate = false) {
   }, getCssDurationMs("--motion-text", 240) + 80);
 }
 
-function renderSummary({ animateFinancialChanges = false } = {}) {
-  const summary = calculateSummary();
+function renderSummary({ animateFinancialChanges = false, summary = calculateSummary() } = {}) {
   const visibleExpenseCount = state.expenses.filter((expense) => !expense.isDeleted).length;
   /* paidByFamily / categorySummary / settlementList 三个容器都带有独立的
      view-transition-name，VT 生效时整块交叉淡变已覆盖刷新；若子项再挂
@@ -5704,7 +5288,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
   const vtActive = document.startViewTransition && animateFinancialChanges && !mobilePanelFlow && !prefersReducedMotion();
   const animateSummaryContents = animateFinancialChanges && !mobilePanelFlow;
   const enterClass = vtActive ? "" : " is-entering";
-  renderTotalAmount(formatTotalMoney(summary.totalCents), animateSummaryContents);
+  renderTotalAmount(formatMoney(summary.totalCents), animateSummaryContents);
   renderSoftText(elements.shareAmount, formatMoney(summary.shareCents), animateSummaryContents);
   renderExpenseCount(String(visibleExpenseCount), animateSummaryContents);
   renderSoftText(elements.mobileExpenseCount, String(visibleExpenseCount), animateSummaryContents);
@@ -5735,7 +5319,7 @@ function renderSummary({ animateFinancialChanges = false } = {}) {
           `,
         )
         .join("")
-    : `<div class="empty-state${enterClass}">${emptyStateArt}暂无类别支出<br><small>添加账单后按类别自动汇总。</small></div>`;
+    : `<div class="empty-state${enterClass}">${emptyStateArt}还没有类别支出<br><small>记下账单后会自动汇总。</small></div>`;
 
   renderSettlementEntry(summary, animateSummaryContents);
 }
@@ -5754,10 +5338,10 @@ function renderJourneyHero(summary) {
   elements.journeyLedgerName.textContent = state.name;
   elements.journeyStateLabel.textContent = expenses.length
     ? `共 ${dayCount} 天`
-    : "旅程尚未开始";
+    : "还没有账单";
   elements.journeyDateRange.textContent = expenses.length
     ? formatJourneyDateRange(firstDate, lastDate)
-    : "记下第一笔，旅程就会在这里展开";
+    : "记下第一笔，支出会从这里开始";
 
   const dailyTotals = new Map();
   expenses.forEach((expense) => {
@@ -5786,7 +5370,7 @@ function renderJourneyHero(summary) {
   if (elements.journeyDayGrid) {
     elements.journeyDayGrid.innerHTML = dayCells.length
       ? dayCells.join("")
-      : `<span class="journey-day-empty">添加账单后显示每天的支出节奏</span>`;
+      : `<span class="journey-day-empty">记下账单后显示每天的支出节奏</span>`;
   }
   if (elements.journeyPeak) {
     const peakEntry = [...dailyTotals.entries()].sort((first, second) => second[1] - first[1])[0];
@@ -5794,7 +5378,7 @@ function renderJourneyHero(summary) {
       const [, month, day] = peakEntry[0].split("-").map(Number);
       elements.journeyPeak.textContent = `峰值 ${month}月${day}日 · ${formatMoney(peakEntry[1])}`;
     } else {
-      elements.journeyPeak.textContent = "添加第一笔后显示支出峰值";
+      elements.journeyPeak.textContent = "记下第一笔后显示支出峰值";
     }
   }
 
@@ -5849,8 +5433,8 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
     button.style.setProperty("--settlement-to-color", toVisual.color);
     button.style.setProperty("--settlement-flow-glow", colorWithAlpha(fromVisual.color, 0.34));
   });
-  elements.settlementEntrySub.textContent = count ? "查看承担与转账" : "已两清";
-  elements.settlementEntryCount.textContent = count ? `${count} 笔待结算` : "已两清";
+  elements.settlementEntrySub.textContent = count ? COPY.settlementHint : COPY.settlementDone;
+  elements.settlementEntryCount.textContent = count ? `${count} 笔待结算` : COPY.settlementDone;
   elements.settlementEntryButton.classList.toggle("is-settled", count === 0);
 
   if (shouldAnimate && leadingSettlement && !prefersReducedMotion()) {
@@ -5861,7 +5445,7 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
 
   if (!elements.mobileSettlementEntryButton) return;
   elements.mobileSettlementEntryButton.hidden = !hasExpenses || count === 0;
-  elements.mobileSettlementEntrySub.textContent = "查看转账方案";
+  elements.mobileSettlementEntrySub.textContent = COPY.settlementHint;
   renderSoftText(elements.mobileSettlementEntryCount, `${count} 笔`, shouldAnimate);
   if (shouldAnimate && !prefersReducedMotion()) {
     elements.mobileSettlementEntryButton.classList.remove("is-soft-refresh");
@@ -5871,7 +5455,7 @@ function renderSettlementEntry(summary, shouldAnimate = false) {
   }
   elements.mobileSettlementEntryButton.setAttribute(
     "aria-label",
-    `平账建议：${count} 笔转账。`,
+    `${COPY.settlementTitle}：${count} 笔转账。`,
   );
   syncSettlementEntryReminder(Boolean(leadingSettlement));
 }
@@ -5973,9 +5557,9 @@ function buildSettlementHtml(summary, enterClass = "") {
   if (!summary.settlements.length) {
     return `<div class="settlement-done${enterClass}">
         <span class="settlement-done-mark" aria-hidden="true">${uiIconHtml("check")}</span>
-        <span class="settlement-done-kicker">平账建议</span>
-        <strong>当前已经两清</strong>
-        <small>各家已付金额已经覆盖应承担金额，这趟旅行无需再转账。</small>
+        <span class="settlement-done-kicker">${COPY.settlementTitle}</span>
+        <strong>${COPY.settlementDone}</strong>
+        <small>各家已付金额已经覆盖应承担金额，这趟旅行不用再转账。</small>
       </div>`;
   }
 
@@ -6182,7 +5766,7 @@ function renderLedgerDayGroup(group, enterClass = "") {
     <section class="ledger-day-group${enterClass}" data-ledger-date="${escapeHtml(group.date)}">
       <div class="ledger-day-heading">
         <time datetime="${escapeHtml(group.date)}">${escapeHtml(formatLedgerDate(group.date))}</time>
-        <strong>${formatLedgerMoney(group.totalCents)}</strong>
+        <strong>${formatMoney(group.totalCents)}</strong>
       </div>
       <div class="ledger-day-items">
         ${group.expenses.map(renderLedgerItem).join("")}
@@ -6219,7 +5803,7 @@ function renderLedgerItem(expense) {
   const actionTabIndex = isExpanded ? "0" : "-1";
   const familyName = getFamilyName(expense.payerId);
   const categoryName = formatCategoryLabel(expense.category);
-  const amountLabel = formatLedgerMoney(expenseToCents(expense));
+  const amountLabel = formatMoney(expenseToCents(expense));
   const primaryText = noteText || `${familyName} · ${categoryName}`;
   const detailsId = `ledger-details-${String(expense.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   const summaryLabel = [
@@ -6258,8 +5842,8 @@ function renderLedgerItem(expense) {
         <time class="ledger-date" datetime="${escapeHtml(expense.date)}">${formatLedgerCardDate(expense.date)}</time>
       </button>
       <div class="ledger-expanded-content" id="${detailsId}" aria-hidden="${String(!isExpanded)}" ${isExpanded ? "" : "inert hidden"}>
-        <span class="ledger-expanded-rail" aria-hidden="true"></span>
         <div class="ledger-expanded-details">
+          <span class="ledger-expanded-rail" aria-hidden="true"></span>
           ${fullNoteHtml}
           ${operatorHtml}
           <small class="ledger-scope">${escapeHtml(formatExpenseSplitSummary(expense))}</small>
@@ -6289,50 +5873,6 @@ function scheduleLedgerNoteMeasurement() {
     ledgerNoteMeasureFrame = 0;
     elements.ledgerList?.querySelectorAll(".ledger-item").forEach(syncLedgerItemNoteState);
   });
-}
-
-function getExpenseSyncState(expense) {
-  if (!isCloudLedgerActive()) return "";
-  const syncState = normalizeExpenseSyncState(expense.syncState);
-  return syncState === "synced" ? "" : syncState;
-}
-
-function formatExpenseSyncState(syncState) {
-  return syncState === "failed" ? "未同步，回到前台会重试" : "同步中";
-}
-
-function formatExpenseSyncBadge(syncState) {
-  return syncState === "failed" ? "未同步" : "同步中";
-}
-
-function getVisibleExpenses() {
-  return state.expenses
-    .filter(isExpenseVisible)
-    .sort(compareExpensesNewestFirst);
-}
-
-function compareExpensesNewestFirst(a, b) {
-  if (a.date !== b.date) return b.date.localeCompare(a.date);
-  return (b.createdAt || b.updatedAt || "").localeCompare(a.createdAt || a.updatedAt || "")
-    || (b.updatedAt || "").localeCompare(a.updatedAt || "")
-    || b.id.localeCompare(a.id);
-}
-
-function isExpenseVisible(expense) {
-  if (expense.isDeleted) return false;
-  return (!state.ledgerFamilyFilter || expense.payerId === state.ledgerFamilyFilter) && (!state.ledgerCategoryFilter || expense.category === state.ledgerCategoryFilter);
-}
-
-function hasActiveLedgerFilters() {
-  return Boolean(state.ledgerFamilyFilter || state.ledgerCategoryFilter);
-}
-
-function calculateVisibleExpensesSummary() {
-  const expenses = state.expenses.filter(isExpenseVisible);
-  return {
-    count: expenses.length,
-    totalCents: expenses.reduce((sum, expense) => sum + expenseToCents(expense), 0),
-  };
 }
 
 function clearLedgerFilters() {
@@ -6390,39 +5930,12 @@ function focusExpenseMissingTarget(target = getExpenseMissingState().target) {
   }
 }
 
-function groupExpensesByDate(expenses) {
-  const groups = [];
-  for (const expense of expenses) {
-    let group = groups[groups.length - 1];
-    if (!group || group.date !== expense.date) {
-      group = { date: expense.date, totalCents: 0, expenses: [] };
-      groups.push(group);
-    }
-    group.expenses.push(expense);
-    group.totalCents += expenseToCents(expense);
-  }
-  return groups;
-}
-
-function formatLedgerDate(date) {
-  const parsed = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return date;
-  const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(parsed);
-  return `${parsed.getMonth() + 1}/${parsed.getDate()} ${weekday}`;
-}
-
-function formatLedgerCardDate(date) {
-  const [month, day] = String(date || "").split("-").slice(1);
-  if (!month || !day) return escapeHtml(date || "");
-  return `<span>${escapeHtml(month)}月</span><strong>${escapeHtml(day)}日</strong>`;
-}
-
 function renderEditState() {
   const isEditing = Boolean(editingExpenseId);
   elements.editBanner.hidden = !isEditing;
   
   const label = elements.submitButtonLabel;
-  const newText = isEditing ? "保存修改" : "添加账单";
+  const newText = isEditing ? COPY.actions.saveExpense : COPY.actions.addExpense;
   
   if (label.textContent !== newText) {
     label.classList.add("text-slide-out");
@@ -6441,15 +5954,6 @@ function renderEditState() {
   elements.expenseForm.classList.toggle("is-editing", isEditing);
 }
 
-// 是否已填齐提交所需信息：有效金额 + 已选家庭 + 已选类别
-function isExpenseReady() {
-  return getExpenseMissingState().target === "";
-}
-
-function getExpenseMissingPrompt() {
-  return getExpenseMissingState().summary;
-}
-
 function getExpenseMissingState() {
   const amount = activeSplitMode === "custom"
     ? centsToAmount(customSplitTargetCents === null ? getActiveCustomSplitTotalCents() : customSplitTargetCents)
@@ -6460,7 +5964,7 @@ function getExpenseMissingState() {
   if (!hasPayer) {
     return {
       target: "payer",
-      summary: "请选择付款家庭",
+      summary: "选择付款家庭",
       action: "选择",
     };
   }
@@ -6474,7 +5978,7 @@ function getExpenseMissingState() {
   if (!hasCategory) {
     return {
       target: "category",
-      summary: "请选择类别",
+      summary: "选择类别",
       action: "选择",
     };
   }
@@ -6589,7 +6093,7 @@ function handleExpenseSubmit(event) {
 
   if (isCloudLedgerActive() && !getOperatorFamilyId()) {
     showOperatorModal();
-    showToast({ message: "请先选择你所属的家庭，再继续记账" });
+    showToast({ message: "请选择你的家庭，再继续记账" });
     return;
   }
 
@@ -6620,7 +6124,7 @@ function handleExpenseSubmit(event) {
   }
 
   if (!Number.isFinite(amount) || amount <= 0) {
-    elements.formError.textContent = "请输入大于 0 的有效金额。";
+    elements.formError.textContent = "请输入有效金额（大于 0）。";
     elements.amountInput.focus();
     return;
   }
@@ -6677,7 +6181,7 @@ function handleExpenseSubmit(event) {
     state.expenses = state.expenses.map((expense) => (expense.id === editingExpenseId ? savedExpense : expense));
     editingExpenseId = "";
     lastAddedExpenseId = expenseId;
-    showToast({ message: "已更新账单" });
+    showToast({ message: "修改已保存" });
   } else {
     state.expenses.push(savedExpense);
     lastAddedExpenseId = expenseId;
@@ -6709,7 +6213,7 @@ function handleExpenseSubmit(event) {
       onAction: clearLedgerFilters,
     });
   } else if (!wasEditing && mobileDataFlow) {
-    showToast({ message: "账单已添加" });
+    showToast({ message: "这笔账已记下" });
   }
   if (mobileDataFlow) {
     setMobilePanel("data", { animate: true, scroll: false });
@@ -6720,13 +6224,13 @@ function handleExpenseSubmit(event) {
     }, prefersReducedMotion() ? 0 : MOTION_DELAYS.mobilePanelOut + MOTION_DELAYS.mobilePanelIn);
   }
   syncCloudExpenseWithState(expenseId).catch(() => {
-    showToast({ message: "云端保存失败，本地已保留，稍后会重试" });
-    showMobileSubmitFeedback("error", "稍后重试", "本地已保留 · 云端稍后重试");
+    showToast({ message: COPY.sync.savedLocally });
+    showMobileSubmitFeedback("error", "稍后重试", "已保存在本机 · 联网后重试");
   });
   window.setTimeout(() => {
     showMobileSubmitFeedback(
       "success",
-      wasEditing ? "已保存 ✓" : "已添加 ✓",
+      wasEditing ? "已保存 ✓" : "已记下 ✓",
       wasEditing ? "这笔账已更新" : `${getFamilyName(payerId)} · ${formatCategoryLabel(category)}`,
     );
   }, 32);
@@ -7324,83 +6828,6 @@ function toggleLedgerItem(expenseId) {
     return;
   }
   expandLedgerItem(expenseId);
-}
-
-function canAnimateLedgerMorph() {
-  return Boolean(
-    elements.ledgerList
-      && !prefersReducedMotion()
-      && typeof Element.prototype.animate === "function",
-  );
-}
-
-function syncLedgerMobileSubmitBar(isExpanded) {
-  const mobileSubmitBar = elements.mobileSubmitBar;
-  if (!mobileSubmitBar) return;
-  const suppressForExpandedLedger = activeMobilePanel === "data" && Boolean(isExpanded);
-  mobileSubmitBar.setAttribute("aria-hidden", String(suppressForExpandedLedger));
-  mobileSubmitBar.toggleAttribute("inert", suppressForExpandedLedger);
-}
-
-function cancelLedgerItemAnimations(item) {
-  item?._heightAnimation?.cancel();
-  item?._ledgerDetailsAnimation?.cancel();
-  item?._ledgerActionsAnimation?.cancel();
-  item?._ledgerRailAnimation?.cancel();
-  if (!item) return;
-  item._heightAnimation = null;
-  item._ledgerDetailsAnimation = null;
-  item._ledgerActionsAnimation = null;
-  item._ledgerRailAnimation = null;
-}
-
-function syncLedgerItemExpandedState(item, isExpanded, { deferHide = false } = {}) {
-  if (!item) return;
-  item.classList.toggle("is-expanded", isExpanded);
-  item.classList.remove("is-ledger-expanding", "is-ledger-collapsing");
-  const summaryToggle = item.querySelector(".ledger-summary-toggle");
-  const content = item.querySelector(".ledger-expanded-content");
-  summaryToggle?.setAttribute("aria-expanded", String(isExpanded));
-  summaryToggle?.setAttribute("aria-controls", content?.id || "");
-  if (summaryToggle) {
-    const suffix = isExpanded ? "收起详情" : "展开详情";
-    const baseLabel = summaryToggle.getAttribute("aria-label") || "这笔账单";
-    summaryToggle.setAttribute("aria-label", baseLabel.replace(/，(?:收起详情|展开详情)$/, `，${suffix}`));
-  }
-
-  const cue = item.querySelector(".ledger-expand-cue");
-  if (cue) cue.innerHTML = uiIconHtml(isExpanded ? "chevron-up" : "chevron-down");
-
-  if (content) {
-    content.toggleAttribute("inert", !isExpanded);
-    content.setAttribute("aria-hidden", String(!isExpanded));
-    if (isExpanded) content.hidden = false;
-    else if (!deferHide) content.hidden = true;
-  }
-
-  const actions = item.querySelector(".ledger-item-actions");
-  actions?.querySelectorAll("button").forEach((button) => {
-    button.tabIndex = isExpanded ? 0 : -1;
-  });
-  syncLedgerItemNoteState(item);
-
-  if (!isExpanded && item.contains(document.activeElement)) {
-    summaryToggle?.focus({ preventScroll: true });
-  }
-}
-
-function finalizeLedgerItemState(item, isExpanded) {
-  const content = item.querySelector(".ledger-expanded-content");
-  if (content) {
-    content.hidden = !isExpanded;
-    content.toggleAttribute("inert", !isExpanded);
-    content.setAttribute("aria-hidden", String(!isExpanded));
-  }
-  item.style.height = "";
-  item.style.minHeight = "";
-  item.style.maxHeight = "";
-  item.classList.remove("is-ledger-expanding", "is-ledger-collapsing");
-  syncLedgerItemNoteState(item);
 }
 
 function expandLedgerItem(expenseId) {
@@ -8069,8 +7496,8 @@ async function deleteLedger(ledgerId) {
   showToast({ message: `已删除“${ledger.name}”` });
 }
 
-function openDismissiblePanel({ view, bodyClass, closeButton, fallbackFocus, renderPanel, getCloseTimer, setCloseTimer, setReturnFocus }) {
-  setReturnFocus(document.activeElement instanceof HTMLElement ? document.activeElement : fallbackFocus);
+function openDismissiblePanel({ view, bodyClass, closeButton, fallbackFocus, renderPanel, getCloseTimer, setCloseTimer, setReturnFocus, returnFocus = null }) {
+  setReturnFocus(returnFocus || (document.activeElement instanceof HTMLElement ? document.activeElement : fallbackFocus));
   window.clearTimeout(getCloseTimer());
   view.hidden = false;
   view.classList.remove("is-closing");
@@ -8079,7 +7506,15 @@ function openDismissiblePanel({ view, bodyClass, closeButton, fallbackFocus, ren
   closeButton.focus();
 }
 
-function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, setCloseTimer, getReturnFocus, setReturnFocus, restoreReturnFocus = true }) {
+function hideDismissiblePanelImmediately({ view, bodyClass, getCloseTimer, setCloseTimer, setReturnFocus }) {
+  window.clearTimeout(getCloseTimer());
+  view.hidden = true;
+  view.classList.remove("is-closing");
+  document.body.classList.remove(bodyClass);
+  setReturnFocus(null);
+}
+
+function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, setCloseTimer, getReturnFocus, setReturnFocus, restoreReturnFocus = true, afterClose = null }) {
   if (view.hidden || view.classList.contains("is-closing")) return;
 
   view.classList.add("is-closing");
@@ -8092,6 +7527,7 @@ function closeDismissiblePanel({ view, bodyClass, fallbackFocus, getCloseTimer, 
     document.body.classList.remove(bodyClass);
     if (restoreReturnFocus) restoreFocus(getReturnFocus() || fallbackFocus);
     setReturnFocus(null);
+    afterClose?.();
   }, delay));
 }
 
@@ -8223,6 +7659,19 @@ function startSettlementReveal() {
 }
 
 function openSettings(options = {}) {
+  if (!elements.ledgerManagementView.hidden) {
+    hideDismissiblePanelImmediately({
+      view: elements.ledgerManagementView,
+      bodyClass: "ledger-management-open",
+      getCloseTimer: () => ledgerManagementCloseTimer,
+      setCloseTimer: (timer) => {
+        ledgerManagementCloseTimer = timer;
+      },
+      setReturnFocus: (element) => {
+        ledgerManagementReturnFocus = element;
+      },
+    });
+  }
   applySettingsMode(options.mode);
   clearSettlementEntryReminder();
   clearSettlementReveal();
@@ -8245,6 +7694,7 @@ function openSettings(options = {}) {
     setReturnFocus: (element) => {
       settingsReturnFocus = element;
     },
+    returnFocus: options.returnFocus || null,
   });
   if (elements.settingsDrawer) elements.settingsDrawer.scrollTop = 0;
   startSettlementReveal();
@@ -8278,6 +7728,23 @@ function closeSettings({ restoreFocus = true } = {}) {
 }
 
 function openLedgerManager() {
+  const settingsWasVisible = !elements.settingsView.hidden && !elements.settingsView.classList.contains("is-closing");
+  ledgerManagementReturnToSettings = settingsWasVisible;
+  if (settingsWasVisible) {
+    settingsReturnScrollTop = elements.settingsDrawer?.scrollTop || 0;
+    clearSettlementReveal({ settle: true });
+    hideDismissiblePanelImmediately({
+      view: elements.settingsView,
+      bodyClass: "settings-open",
+      getCloseTimer: () => settingsCloseTimer,
+      setCloseTimer: (timer) => {
+        settingsCloseTimer = timer;
+      },
+      setReturnFocus: (element) => {
+        settingsReturnFocus = element;
+      },
+    });
+  }
   openDismissiblePanel({
     view: elements.ledgerManagementView,
     bodyClass: "ledger-management-open",
@@ -8295,6 +7762,8 @@ function openLedgerManager() {
 }
 
 function closeLedgerManager() {
+  const returnToSettings = ledgerManagementReturnToSettings;
+  ledgerManagementReturnToSettings = false;
   closeDismissiblePanel({
     view: elements.ledgerManagementView,
     bodyClass: "ledger-management-open",
@@ -8307,10 +7776,22 @@ function closeLedgerManager() {
     setReturnFocus: (element) => {
       ledgerManagementReturnFocus = element;
     },
+    restoreReturnFocus: !returnToSettings,
+    afterClose: returnToSettings
+      ? () => {
+        openSettings({
+          mode: "settings",
+          returnFocus: elements.openLedgerManagerButton,
+        });
+        window.requestAnimationFrame(() => {
+          if (elements.settingsDrawer) elements.settingsDrawer.scrollTop = settingsReturnScrollTop;
+        });
+      }
+      : null,
   });
 }
 
-function showConfirmDialog({ eyebrow = "请确认", title, message, confirmLabel = "确认", danger = false }) {
+function showConfirmDialog({ eyebrow = "确认操作", title, message, confirmLabel = "确认", danger = false }) {
   if (confirmResolve) closeConfirmDialog(false);
   /* 若上一个对话框仍在退场动画中，立即复位以复用视图 */
   window.clearTimeout(confirmCloseTimer);
@@ -8404,7 +7885,7 @@ function handleOperatorModalSubmit(event) {
   event.preventDefault();
   const familyId = getSelectedOperatorFamilyId(elements.operatorModalFamilyList);
   if (!familyId) {
-    showToast({ message: "还差一步：请选择一个家庭" });
+    showToast({ message: COPY.identity.missing });
     elements.operatorModalFamilyList.querySelector("button")?.focus();
     return;
   }
@@ -8413,20 +7894,20 @@ function handleOperatorModalSubmit(event) {
   renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, familyId);
   renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList, familyId);
   closeOperatorModal();
-  showToast({ message: `已记住，你来自「${getFamilyName(familyId)}」` });
+  showToast({ message: COPY.identity.remembered(getFamilyName(familyId)) });
 }
 
 function handleSettingsOperatorSubmit(event) {
   event.preventDefault();
   const familyId = getSelectedOperatorFamilyId(elements.settingsOperatorFamilyList);
   if (!familyId) {
-    showToast({ message: "还差一步：请选择一个家庭" });
+    showToast({ message: COPY.identity.missing });
     return;
   }
 
   localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
   renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList, familyId);
-  showToast({ message: `已保存，接下来将以「${getFamilyName(familyId)}」记录` });
+  showToast({ message: COPY.identity.saved(getFamilyName(familyId)) });
 }
 
 /* ── 欢迎引导浮层 ──
@@ -8448,82 +7929,6 @@ function isWelcomeOpen() {
 
 function welcomeRequiresFamily() {
   return isCloudLedgerActive() || Boolean(getLedgerTokenFromLocation());
-}
-
-/* 分享来源感知：来源文案 + 徽标。复制与预览原型 share-welcome.html 的 SOURCES 保持一致。 */
-const SHARE_SOURCES = {
-  default: {
-    badge: "共享账本",
-    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>',
-    eyebrow: "欢迎加入",
-    title: "三个家庭，一本账",
-    copy: "这是你们三家的共享旅行账本。打开就能看到每个人记的每一笔，也能随手记一笔。"
-  },
-  qr: {
-    badge: "扫码加入",
-    icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h3v3H8zM13 8h3v3h-3zM8 13h3v3H8zM14 14h2M16 16h.01"/>',
-    eyebrow: "扫码加入",
-    title: "账本，就在你手边",
-    copy: "扫一下就进来了。这是家人共享的旅行账本，谁花了多少，打开全看得见。"
-  },
-  email: {
-    badge: "邮件邀请",
-    icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/>',
-    eyebrow: "来自一封邀请邮件",
-    title: "家人喊你一起记账啦",
-    copy: "点开链接就能加入。之后你记的每一笔，都会实时同步给其他两家。"
-  },
-  social: {
-    badge: "社交分享",
-    icon: '<path d="M4 12a8 8 0 0 1 8-8 8 8 0 0 1 0 16c-1.4 0-2.5-.4-3.6-1l-3 1 1-3c-.6-1-1-2.1-1-3.4z"/>',
-    eyebrow: "来自社交分享",
-    title: "朋友分享了一个共享账本",
-    copy: "三家同行，账单一目了然。点进来认个家，旅程花销从此清清楚楚。"
-  },
-  message: {
-    badge: "私信邀请",
-    icon: '<path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 21l2-6a8.4 8.4 0 1 1 16-3.5z"/>',
-    eyebrow: "家人邀请你",
-    title: "来一起算清这趟旅行",
-    copy: "先选好你来自哪个家庭，之后每笔记账都带上你的名字。"
-  }
-};
-
-function detectShareSource() {
-  const params = new URLSearchParams(location.search);
-  let from = params.get("from");
-  if (!from) {
-    const hashMatch = location.hash.match(/[?&]from=([^&]+)/);
-    if (hashMatch) from = hashMatch[1];
-  }
-  const valid = ["qr", "email", "social", "message"];
-  if (from && valid.includes(from)) {
-    return { key: from, inviter: params.get("inviter") || "" };
-  }
-  const referrer = document.referrer || "";
-  if (referrer) {
-    if (/mail|email|outlook|gmail/i.test(referrer)) return { key: "email", inviter: "" };
-    if (/weibo|twitter|facebook|instagram|t\.me|line\.me|reddit|douban/i.test(referrer)) return { key: "social", inviter: "" };
-    if (/im\.qq|wx\.qq|message|wetransfer|dingtalk|feishu/i.test(referrer)) return { key: "message", inviter: "" };
-  }
-  return { key: "default", inviter: "" };
-}
-
-function applyShareSourceHero() {
-  const src = detectShareSource();
-  const s = SHARE_SOURCES[src.key] || SHARE_SOURCES.default;
-  elements.welcomeHeroEyebrow.textContent = (src.inviter && (src.key === "message" || src.key === "email"))
-    ? src.inviter + " 邀请你"
-    : s.eyebrow;
-  elements.welcomeTitle.textContent = s.title;
-  elements.welcomeHeroCopy.textContent = s.copy;
-  const badge = elements.welcomeSourceBadge;
-  if (!badge) return;
-  const badgeText = elements.welcomeSourceBadgeText;
-  const badgeIcon = badge.querySelector("svg");
-  badgeText.textContent = s.badge;
-  if (badgeIcon) badgeIcon.innerHTML = s.icon;
-  badge.hidden = false;
 }
 
 function maybeShowWelcome() {
@@ -8552,19 +7957,19 @@ function openWelcome({ invitedArrival = false } = {}) {
     applyShareSourceHero();
   } else {
     elements.welcomeHeroEyebrow.textContent = "欢迎使用";
-    elements.welcomeTitle.textContent = "三个家庭，一本账";
-    elements.welcomeHeroCopy.textContent = "默认按各家人数分摊，也能为单笔账指定家庭或金额，最后自动算出平账建议。";
+    elements.welcomeTitle.textContent = COPY.welcome.title;
+    elements.welcomeHeroCopy.textContent = COPY.welcome.intro;
     if (elements.welcomeSourceBadge) elements.welcomeSourceBadge.hidden = true;
   }
   const cloudActive = invitedArrival || isCloudLedgerActive();
-  elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : "邀请家人一起记";
+  elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : COPY.welcome.cloudTitle;
   elements.welcomeCloudCopy.textContent = cloudActive
-    ? "云账本已开启，账单会自动同步；再选好家庭，每次编辑也都有迹可循。"
-    : "在「设置 → 云同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。";
+    ? "云账本已开启，账单会自动同步；选好家庭后，每笔编辑都有记录。"
+    : COPY.welcome.cloudCopy;
   renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList);
   elements.welcomeIdentityHint.textContent = cloudActive
-    ? "选一下家庭，之后你记的每笔账都会带上你的名字。"
-    : "本地账本可以稍后再选；开启云同步后，请先完成家庭选择。";
+    ? COPY.welcome.identityCopy
+    : "本地账本可以稍后再选；开启云同步后，需要选择你的家庭。";
 
   view.hidden = false;
   document.body.classList.add("confirm-open");
@@ -8582,7 +7987,7 @@ function closeWelcome({ goToEntry = false } = {}) {
   elements.welcomeNextButton.classList.remove("pending-reveal", "is-revealed");
   if (welcomeRequiresFamily() && !getOperatorFamilyId()) {
     setWelcomeSlide(getWelcomeSlides().length - 1);
-    showToast({ message: "还差一步：选好家庭，就可以一起记账了" });
+    showToast({ message: "请选择你的家庭，就可以一起记账了" });
     return;
   }
   try {
@@ -8725,7 +8130,7 @@ function handleWelcomeNext() {
       renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, familyId);
     }
     if (welcomeRequiresFamily() && !getOperatorFamilyId()) {
-      showToast({ message: "还差一步：请选择一个家庭" });
+      showToast({ message: COPY.identity.missing });
       return;
     }
     closeWelcome({ goToEntry: true });
@@ -9754,7 +9159,7 @@ function flyLedgerTokenToCard(visual, amount, startRect, cardRect, onLand) {
 
   const token = document.createElement("div");
   token.className = "ledger-token is-flying";
-  token.textContent = formatMoney(Math.round(Number(amount) * 100));
+  token.textContent = formatMoney(amountToCents(amount));
   token.style.setProperty("--token-color", visual.color);
   token.style.setProperty("--token-text", visual.text);
   token.style.setProperty("--token-glow", colorWithAlpha(visual.color, 0.34));
@@ -9837,9 +9242,9 @@ elements.categoryChips.addEventListener("scroll", scheduleCategoryEdgeFades, { p
 setupCategoryOverscroll(elements.categoryChips);
 window.addEventListener("resize", scheduleCategoryEdgeFades);
 window.addEventListener("resize", scheduleNaturalEntryStagePosition);
-window.addEventListener("scroll", scheduleNaturalEntryStagePosition, { passive: true });
+window.addEventListener("scroll", () => scheduleNaturalEntryStagePosition({ reason: "scroll" }), { passive: true });
 window.visualViewport?.addEventListener("resize", scheduleNaturalEntryStagePosition);
-window.visualViewport?.addEventListener("scroll", scheduleNaturalEntryStagePosition);
+window.visualViewport?.addEventListener("scroll", () => scheduleNaturalEntryStagePosition({ reason: "scroll" }), { passive: true });
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);
 elements.splitScopePanel.addEventListener("input", handleSplitAmountInput);
@@ -10110,12 +9515,7 @@ function setupDesktopImmersiveDetails() {
   const details = [...document.querySelectorAll(".insights-panel .insight-details")];
   const sync = () => {
     details.forEach((item) => {
-      if (desktopPointerQuery.matches && !desktopInsightsTouched) {
-        item.setAttribute("open", "");
-        item.dataset.desktopAutoOpened = "1";
-        return;
-      }
-      if (!desktopPointerQuery.matches && item.dataset.desktopAutoOpened === "1") {
+      if (!desktopInsightsTouched) {
         item.removeAttribute("open");
         delete item.dataset.desktopAutoOpened;
       }
@@ -10171,6 +9571,10 @@ function clearDesktopPointerTarget(target) {
     "--pointer-rotate-x",
     "--pointer-rotate-y",
   ].forEach((property) => target.style.removeProperty(property));
+  if (target === desktopPointerSinkTarget) {
+    desktopPointerSinkRect = null;
+    desktopPointerSinkLastValues = null;
+  }
 }
 
 function deactivateDesktopPointerSink() {
@@ -10181,6 +9585,8 @@ function deactivateDesktopPointerSink() {
   clearDesktopPointerTarget(desktopPointerSinkTarget);
   desktopPointerSinkTarget = null;
   desktopPointerSinkPoint = null;
+  desktopPointerSinkRect = null;
+  desktopPointerSinkLastValues = null;
   syncPointerRelatedHighlights(desktopPointerSinkFocusTarget);
 }
 
@@ -10198,16 +9604,34 @@ function flushDesktopPointerSink() {
   const target = desktopPointerSinkTarget;
   const point = desktopPointerSinkPoint;
   if (!target?.isConnected || !point || !desktopPointerQuery.matches || prefersReducedMotion()) return;
-  const rect = target.getBoundingClientRect();
+  /* 卡片进入 hover 区域时测一次；pointermove 热路径只消费缓存的 rect，
+     避免 Safari 每帧因为 getBoundingClientRect() 强制布局。滚动/resize 会
+     使缓存失效，下一次真实 pointermove 再重新测量。 */
+  const rect = desktopPointerSinkRect || (desktopPointerSinkRect = target.getBoundingClientRect());
   if (!rect.width || !rect.height) return;
   const x = Math.max(0, Math.min(rect.width, point.x - rect.left));
   const y = Math.max(0, Math.min(rect.height, point.y - rect.top));
   const normalizedX = (x / rect.width - 0.5) * 2;
   const normalizedY = (y / rect.height - 0.5) * 2;
+  const nextValues = {
+    x,
+    y,
+    rotateX: -normalizedY * 2.6,
+    rotateY: normalizedX * 2.6,
+  };
+  const previous = desktopPointerSinkLastValues;
+  if (previous
+    && Math.abs(nextValues.x - previous.x) < 0.5
+    && Math.abs(nextValues.y - previous.y) < 0.5
+    && Math.abs(nextValues.rotateX - previous.rotateX) < 0.08
+    && Math.abs(nextValues.rotateY - previous.rotateY) < 0.08) {
+    return;
+  }
+  desktopPointerSinkLastValues = nextValues;
   target.style.setProperty("--pointer-sink-x", `${x.toFixed(1)}px`);
   target.style.setProperty("--pointer-sink-y", `${y.toFixed(1)}px`);
-  target.style.setProperty("--pointer-rotate-x", `${(-normalizedY * 2.6).toFixed(3)}deg`);
-  target.style.setProperty("--pointer-rotate-y", `${(normalizedX * 2.6).toFixed(3)}deg`);
+  target.style.setProperty("--pointer-rotate-x", `${nextValues.rotateX.toFixed(3)}deg`);
+  target.style.setProperty("--pointer-rotate-y", `${nextValues.rotateY.toFixed(3)}deg`);
 }
 
 function scheduleDesktopPointerSink(point) {
@@ -10226,6 +9650,8 @@ function setupDesktopPointerSink() {
     if (target !== desktopPointerSinkTarget) {
       clearDesktopPointerTarget(desktopPointerSinkTarget);
       desktopPointerSinkTarget = target;
+      desktopPointerSinkRect = target?.getBoundingClientRect?.() || null;
+      desktopPointerSinkLastValues = null;
       if (target) target.classList.add("is-pointer-sunk");
       syncPointerRelatedHighlights(target || desktopPointerSinkFocusTarget);
     }
@@ -10241,6 +9667,12 @@ function setupDesktopPointerSink() {
   window.addEventListener("pointercancel", deactivateDesktopPointerSink, { passive: true });
   elements.ledgerView.addEventListener("pointerleave", deactivateDesktopPointerSink, { passive: true });
   window.addEventListener("blur", () => resetDesktopPointerSink());
+  const invalidatePointerRect = () => {
+    desktopPointerSinkRect = null;
+    desktopPointerSinkLastValues = null;
+  };
+  window.addEventListener("scroll", invalidatePointerRect, { passive: true });
+  window.addEventListener("resize", invalidatePointerRect, { passive: true });
   desktopPointerQuery.addEventListener?.("change", () => resetDesktopPointerSink());
 
   elements.ledgerView.addEventListener("focusin", (event) => {
@@ -10436,10 +9868,20 @@ function updateSyncLampDock(force = false) {
 
 function setupScrollCollapse() {
   const appHeader = document.querySelector(".app-header");
-  const isMobile = () => window.matchMedia?.("(max-width: 820px)").matches ?? false;
+  const mobileQuery = window.matchMedia?.("(max-width: 820px)");
+  const isMobile = () => mobileQuery?.matches ?? window.innerWidth <= 820;
   let headerFrame = 0;
   let lastProgress = -1;
   let wasCollapsed = false;
+  let wasDocking = false;
+  let collapseEnabled = true;
+  let collapseDistance = 47;
+
+  const syncHeaderCollapseConfig = () => {
+    const headerStyle = window.getComputedStyle(appHeader);
+    collapseEnabled = (Number.parseFloat(headerStyle.getPropertyValue("--mobile-header-collapse-enabled")) || 0) >= 0.5;
+    collapseDistance = Number.parseFloat(headerStyle.getPropertyValue("--mobile-header-expand-offset")) || 47;
+  };
 
   const playDockFlash = () => {
     if (!elements.syncStatus || elements.syncStatus.classList.contains("is-syncing") || prefersReducedMotion()) return;
@@ -10470,6 +9912,7 @@ function setupScrollCollapse() {
     if (!isMobile()) {
       lastProgress = 0;
       wasCollapsed = false;
+      wasDocking = false;
       appHeader.style.setProperty("--mobile-header-progress", "0");
       appHeader.style.setProperty("--mobile-header-edge-opacity", "0");
       appHeader.classList.remove("is-docking", "is-collapsed");
@@ -10479,14 +9922,10 @@ function setupScrollCollapse() {
       updateSyncLampDock(true);
       dockCoordsDirty = false;
     }
-    const headerStyle = window.getComputedStyle(appHeader);
-    const collapseEnabled =
-      (Number.parseFloat(headerStyle.getPropertyValue("--mobile-header-collapse-enabled")) || 0) >= 0.5;
-    const collapseDistance =
-      Number.parseFloat(headerStyle.getPropertyValue("--mobile-header-expand-offset")) || 47;
     if (!collapseEnabled) {
       lastProgress = 0;
       wasCollapsed = false;
+      wasDocking = false;
       appHeader.style.setProperty("--mobile-header-progress", "0");
       appHeader.style.setProperty("--mobile-header-edge-opacity", "0");
       appHeader.classList.remove("is-docking", "is-collapsed");
@@ -10501,8 +9940,13 @@ function setupScrollCollapse() {
     }
     const isDocking = progress > 0.001 && progress < 0.999;
     const isCollapsed = progress >= 0.999;
-    appHeader.classList.toggle("is-docking", isDocking);
-    appHeader.classList.toggle("is-collapsed", isCollapsed);
+    if (isDocking !== wasDocking) {
+      appHeader.classList.toggle("is-docking", isDocking);
+      wasDocking = isDocking;
+    }
+    if (isCollapsed !== wasCollapsed) {
+      appHeader.classList.toggle("is-collapsed", isCollapsed);
+    }
     if (isCollapsed && !wasCollapsed) {
       playDockFlash();
     }
@@ -10519,11 +9963,18 @@ function setupScrollCollapse() {
     if (headerResizeFrame) return;
     headerResizeFrame = window.requestAnimationFrame(() => {
       headerResizeFrame = 0;
+      syncHeaderCollapseConfig();
       dockCoordsDirty = true;
       applyHeaderProgress();
     });
   });
 
+  syncHeaderCollapseConfig();
+  mobileQuery?.addEventListener?.("change", () => {
+    syncHeaderCollapseConfig();
+    dockCoordsDirty = true;
+    applyHeaderProgress();
+  });
   applyHeaderProgress();
 
   // 设置侧边栏滚动监听
@@ -10707,67 +10158,7 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-// 屏幕键盘弹出标记：body 加 keyboard-open 后 CSS 隐藏移动端固定提交栏，
-// 避免悬在键盘上方挡住表单。优先用 visualViewport 的实际高度收缩判断
-// （外接键盘、桌面端聚焦不会误判），不支持时退回焦点推断。
-// focusout 延迟一拍再判断，防止焦点在输入间切换时提交栏闪烁。
-(() => {
-  const KEYBOARD_MIN_OVERLAP = 140;
-  const viewport = window.visualViewport;
-  const isTextEntry = (el) =>
-    el && (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
-  const isKeyboardOpen = () => {
-    if (!isTextEntry(document.activeElement)) return false;
-    if (!viewport) return true;
-    return window.innerHeight - viewport.height > KEYBOARD_MIN_OVERLAP;
-  };
-  const syncKeyboardFlag = () => {
-    document.body.classList.toggle("keyboard-open", isKeyboardOpen());
-  };
-  viewport?.addEventListener("resize", syncKeyboardFlag);
-  document.addEventListener("focusin", syncKeyboardFlag);
-  document.addEventListener("focusout", () => setTimeout(syncKeyboardFlag, 0));
-})();
-
-// P0-2: iOS/Safari 软键盘避让。interactive-widget=resizes-content 仅 Chromium 生效，
-// Safari 是键盘悬浮覆盖、页面不 resize，直点输入框时不会自动滚入可视区，
-// 偶发被固定头部/键盘遮挡。这里在窄屏聚焦文本输入后显式滚入视区中央，
-// 复用 inputs/select 已有的 scroll-margin-block（12px 96px）避开头部与提交栏。
-(() => {
-  const mobileQuery = window.matchMedia("(max-width: 820px)");
-  const isTextEntry = (el) =>
-    el && (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["button", "checkbox", "radio", "range", "submit"].includes(el.type)));
-  let focusedEl = null;
-
-  const scrollFocusedIntoView = () => {
-    if (!focusedEl || document.activeElement !== focusedEl) return;
-    if (naturalEntryStageOpen && activeEntryEditor === "split" && focusedEl.matches("[data-split-amount]")) {
-      scrollNaturalEntrySplitInputIntoView(focusedEl);
-      return;
-    }
-    focusedEl.scrollIntoView({ block: "center", behavior: "auto" });
-  };
-
-  document.addEventListener("focusin", (e) => {
-    if (!mobileQuery.matches) return;
-    const t = e.target;
-    if (isTextEntry(t)) {
-      focusedEl = t;
-      // 等键盘动画基本结束再滚（iOS 约 250-300ms），避免与 resize 抢滚动
-      window.setTimeout(scrollFocusedIntoView, 300);
-    }
-  });
-  document.addEventListener("focusout", (e) => {
-    if (e.target === focusedEl) focusedEl = null;
-  });
-  // 键盘高度变化（含悬浮键盘完全弹起到位）后再校正一次
-  window.visualViewport?.addEventListener("resize", () => {
-    if (focusedEl && document.activeElement === focusedEl) {
-      window.setTimeout(scrollFocusedIntoView, 50);
-    }
-  });
-})();
+mobileViewportCoordinator.setup();
 
 // 滚动期间给 body 挂 is-scrolling：CSS 借此暂停装饰性无限动画（同步呼吸灯等），
 // 降低 iOS 滚动时合成器每帧的重绘工作量；停止滚动 180ms 后恢复，视觉上无差异。

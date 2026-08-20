@@ -167,6 +167,10 @@
   --natural-stage-focus-filter: none;
 }
 
+:root[data-material-tier="solid"] .natural-entry-stage {
+  --natural-stage-shell-filter: none;
+}
+
 /* Safari/iPadOS motion semantics. These tokens are deliberately scoped to the
    narrow touch surface so desktop Safari and every non-WebKit browser keep the
    established timing. Geometry remains monotonic; the long tail belongs to
@@ -274,8 +278,20 @@
   :root[data-safari-motion="true"] body.natural-entry-focus-settled .natural-entry-stage.is-open .natural-entry-stage-shell,
   :root[data-safari-motion="true"] body.natural-entry-focus-settled .natural-entry-stage.is-open.is-relay-settled .natural-entry-stage-shell {
     background: var(--natural-stage-surface) !important;
-    -webkit-backdrop-filter: var(--blur-overlay-strong) !important;
-    backdrop-filter: var(--blur-overlay-strong) !important;
+    -webkit-backdrop-filter: var(--natural-stage-shell-filter) !important;
+    backdrop-filter: var(--natural-stage-shell-filter) !important;
     will-change: auto;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .natural-entry-stage {
+    --natural-stage-shell-filter: none;
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .natural-entry-stage {
+    --natural-stage-shell-filter: none;
   }
 }

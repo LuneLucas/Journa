@@ -124,7 +124,16 @@ button:disabled {
 /* 键盘导航统一光环：按钮/摘要等其余可交互元素兜底 */
 button:focus-visible,
 summary:focus-visible,
-a:focus-visible {
+a:focus-visible,
+.settings-preference-row input:focus-visible,
+.settings-entry-mode-choice:focus-visible,
+.family-color-target:focus-visible,
+.family-color-choice:focus-visible,
+.theme-choice:focus-visible,
+.settlement-entry:focus-visible,
+.family-tag:focus-visible,
+.ledger-summary-toggle:focus-visible,
+.selectable-category-chip:focus-visible {
   outline: 0;
   box-shadow: var(--focus-ring);
 }
