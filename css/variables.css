@@ -166,7 +166,7 @@
   --mobile-shell-top: 20px;
   --mobile-header-top: calc(13px + var(--safe-area-top));
   --mobile-header-collapsed-top: calc(8px + var(--safe-area-top));
-  --mobile-submit-bottom: calc(16px + var(--safe-area-bottom));
+  --mobile-submit-bottom: calc(20px + var(--safe-area-bottom));
   --mobile-scroll-bottom: calc(108px + var(--safe-area-bottom));
   /* 数据页提交栏收成 62px 圆形「+」按钮：底部预留 = 按钮离底偏移 + 按钮直径 + 一点呼吸间距，
      跟着 --mobile-submit-bottom 走，按钮挪位/让位键盘时预留量自动同步，不再是脱节的固定像素。 */

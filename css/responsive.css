@@ -434,6 +434,14 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     animation: none !important;
   }
 
+  /* WAAPI 到达落点后会先取消移动源，再显示摘要文字。这个状态由 JS
+     在同一交接点提交，防止 fill: both 的旧 transform 与摘要副本叠字。 */
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"][data-note-source-state="hidden"] .note-value-track,
+  html[data-entry-mode="natural"] .natural-entry-stage.is-closing[data-editor="note"][data-note-source-state="hidden"] .natural-entry-stage-token {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
   html[data-entry-mode="natural"] .natural-entry-stage.is-closing .natural-entry-stage-token {
     left: 50%;
     width: max-content !important;
@@ -515,7 +523,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 }
 
 :root.viewport-bottom-occluded:not(.mobile-fullscreen) {
-  --mobile-submit-bottom: calc(16px + max(var(--safe-area-bottom), var(--visual-viewport-bottom)));
+  --mobile-submit-bottom: calc(20px + max(var(--safe-area-bottom), var(--visual-viewport-bottom)));
 }
 
 /* 独立全屏已经由系统状态栏提供顶部边界，避免页面壳层与头部再次叠加大块留白。 */
@@ -648,9 +656,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     z-index: 0;
     top: 0;
     right: -14px;
-    /* 主玻璃随切换器一起收起，并在切换器下方实际延伸 4px；展开态的
-       现有几何本身留有 4px 安全差，因此这里补足 8px 才能落到目标位置。 */
-    bottom: calc(-50px * (1 - var(--mobile-header-progress)) - 8px);
+    /* 主玻璃随切换器一起收起；保留原有 4px 安全差，并把模糊起始点
+       相对当前再下移 8px，避免边缘过早收束。 */
+    bottom: calc(-50px * (1 - var(--mobile-header-progress)) - 16px);
     left: -14px;
     border-bottom: 0;
     /* Soar 风格的单一背景采样层：上缘保持材质，下缘由渐变和 mask 自然收束。
@@ -2342,6 +2350,30 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     backdrop-filter: var(--blur-category);
   }
 
+  /* 让类别胶囊在 + 圆钮前渐进交接：复用顶栏的单层滚动边缘玻璃，
+     左侧透明、向圆钮方向逐渐加深；图标在上层保持清晰，避免两块玻璃硬碰硬。 */
+  .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    top: -8px;
+    right: -10px;
+    bottom: -8px;
+    left: -34px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      var(--scroll-edge-surface-soft) 48%,
+      var(--scroll-edge-surface-strong) 100%
+    );
+    -webkit-backdrop-filter: var(--blur-scroll-edge);
+    backdrop-filter: var(--blur-scroll-edge);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 42%, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 42%, #000 100%);
+    pointer-events: none;
+  }
+
   .category-picker:not(.is-adding):not(.is-category-morph-closing) .category-add-control {
     border-color: color-mix(in srgb, var(--theme-color) 16%, var(--line));
     background: color-mix(in srgb, var(--theme-color) 4%, rgba(255, 255, 255, 0.13));
@@ -3253,7 +3285,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .split-scope-toggle {
     grid-template-columns: 1fr;
     gap: 3px;
-    align-items: start;
+    align-items: baseline;
     padding-block: 7px;
   }
 
@@ -4183,7 +4215,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
        透镜留在 token 的独立负层级，文字始终由原本的清晰前景层绘制。 */
     z-index: -1;
     pointer-events: none;
-    inset: 6px -9px 5px;
+    /* 纵向各外扩 1px，让短透镜更圆润；舞台折叠裁剪使用相同几何。 */
+    inset: 5px -9px 4px;
     border-radius: var(--radius-pill);
     mix-blend-mode: normal;
     --natural-entry-lens-opacity: 0.94;
@@ -4244,15 +4277,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   html[data-entry-mode="natural"] .natural-entry-flow {
     --natural-entry-mark-color: color-mix(in srgb, var(--muted) 74%, var(--ink));
     --natural-entry-lens-surface:
-      radial-gradient(ellipse 20% 92% at 100% 42%, rgba(76, 83, 91, 0.20) 0%, rgba(76, 83, 91, 0.12) 26%, transparent 60%),
+      radial-gradient(ellipse 20% 92% at 100% 42%, rgba(76, 83, 91, 0.18) 0%, rgba(76, 83, 91, 0.11) 26%, transparent 60%),
       radial-gradient(ellipse 58% 74% at 12% 4%, rgba(255, 255, 255, 0.54) 0%, rgba(255, 255, 255, 0.14) 48%, transparent 78%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.07) 56%, rgba(72, 79, 87, 0.035) 100%);
+      linear-gradient(145deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.066) 56%, rgba(72, 79, 87, 0.030) 100%);
     --natural-entry-lens-shadow:
       inset 0.8px 0.9px 0.8px rgba(255, 255, 255, 0.72),
-      inset -2.4px 0.6px 2.2px -1px rgba(76, 83, 91, 0.28),
-      inset 0 -1.3px 1.8px -1px rgba(76, 83, 91, 0.18),
-      0 1px 1.5px -1px rgba(55, 60, 64, 0.12),
-      0 9px 18px -13px rgba(35, 40, 44, 0.28);
+      inset -2.4px 0.6px 2.2px -1px rgba(76, 83, 91, 0.25),
+      inset 0 -1.3px 1.8px -1px rgba(76, 83, 91, 0.16),
+      0 1px 1.5px -1px rgba(55, 60, 64, 0.11),
+      0 9px 18px -13px rgba(35, 40, 44, 0.25);
   }
 
   html[data-entry-mode="natural"] .natural-entry-flow[data-family-selected="true"] .natural-entry-token {
@@ -4262,15 +4295,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   html[data-entry-mode="natural"] .expense-form {
     --natural-entry-mark-color: color-mix(in srgb, var(--muted) 74%, var(--ink));
     --natural-entry-lens-surface:
-      radial-gradient(ellipse 20% 92% at 100% 42%, rgba(76, 83, 91, 0.20) 0%, rgba(76, 83, 91, 0.12) 26%, transparent 60%),
+      radial-gradient(ellipse 20% 92% at 100% 42%, rgba(76, 83, 91, 0.18) 0%, rgba(76, 83, 91, 0.11) 26%, transparent 60%),
       radial-gradient(ellipse 58% 74% at 12% 4%, rgba(255, 255, 255, 0.54) 0%, rgba(255, 255, 255, 0.14) 48%, transparent 78%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.07) 56%, rgba(72, 79, 87, 0.035) 100%);
+      linear-gradient(145deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.066) 56%, rgba(72, 79, 87, 0.030) 100%);
     --natural-entry-lens-shadow:
       inset 0.8px 0.9px 0.8px rgba(255, 255, 255, 0.72),
-      inset -2.4px 0.6px 2.2px -1px rgba(76, 83, 91, 0.28),
-      inset 0 -1.3px 1.8px -1px rgba(76, 83, 91, 0.18),
-      0 1px 1.5px -1px rgba(55, 60, 64, 0.12),
-      0 9px 18px -13px rgba(35, 40, 44, 0.28);
+      inset -2.4px 0.6px 2.2px -1px rgba(76, 83, 91, 0.25),
+      inset 0 -1.3px 1.8px -1px rgba(76, 83, 91, 0.16),
+      0 1px 1.5px -1px rgba(55, 60, 64, 0.11),
+      0 9px 18px -13px rgba(35, 40, 44, 0.25);
   }
 
   html[data-entry-mode="natural"] .natural-entry-token[data-value-state="placeholder"] {
@@ -4314,15 +4347,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   html[data-entry-mode="natural"] .natural-entry-token.is-active::before {
     --natural-entry-lens-opacity: 1;
     --natural-entry-lens-surface:
-      radial-gradient(ellipse 20% 92% at 100% 42%, rgba(70, 78, 87, 0.24) 0%, rgba(70, 78, 87, 0.14) 27%, transparent 61%),
+      radial-gradient(ellipse 20% 92% at 100% 42%, rgba(70, 78, 87, 0.21) 0%, rgba(70, 78, 87, 0.12) 27%, transparent 61%),
       radial-gradient(ellipse 58% 74% at 12% 4%, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.18) 48%, transparent 78%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.09) 56%, rgba(72, 79, 87, 0.045) 100%);
+      linear-gradient(145deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.085) 56%, rgba(72, 79, 87, 0.040) 100%);
     --natural-entry-lens-shadow:
       inset 0.8px 0.9px 0.8px rgba(255, 255, 255, 0.82),
-      inset -2.6px 0.6px 2.4px -1px rgba(70, 78, 87, 0.34),
-      inset 0 -1.4px 2px -1px rgba(70, 78, 87, 0.22),
-      0 1px 1.5px -1px rgba(55, 60, 64, 0.14),
-      0 10px 20px -13px rgba(35, 40, 44, 0.31);
+      inset -2.6px 0.6px 2.4px -1px rgba(70, 78, 87, 0.30),
+      inset 0 -1.4px 2px -1px rgba(70, 78, 87, 0.19),
+      0 1px 1.5px -1px rgba(55, 60, 64, 0.12),
+      0 10px 20px -13px rgba(35, 40, 44, 0.27);
     background: var(--natural-entry-lens-surface);
     box-shadow: var(--natural-entry-lens-shadow);
   }
@@ -4613,9 +4646,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     --natural-stage-shell-dissolve-start: 460ms;
     --natural-stage-shell-dissolve-duration: 90ms;
     --natural-stage-token-scale: 1.006;
-    --natural-stage-lens-inset-top: 6px;
+    --natural-stage-lens-inset-top: 5px;
     --natural-stage-lens-inset-right: 9px;
-    --natural-stage-lens-inset-bottom: 5px;
+    --natural-stage-lens-inset-bottom: 4px;
     --natural-stage-lens-inset-left: 9px;
     --natural-stage-morph-radius: var(--radius-pill);
     --natural-stage-expanded-radius: var(--radius-lg);
@@ -5744,14 +5777,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   body.mobile-panel-data .mobile-submit-bar::after {
     opacity: 0.58;
-  }
-
-  /* 数据页只保留“记账”作为主入口；圆形加号不再与顶部切换器形成第二个同级入口。 */
-  body.mobile-panel-data .mobile-submit-bar:not(.is-flip-morphing):not(.is-bar-morphing-to-data) {
-    opacity: 0 !important;
-    pointer-events: none;
-    visibility: hidden;
-    transform: translate3d(0, 18px, 0) scale(0.88);
   }
 
   @media (max-width: 360px) {

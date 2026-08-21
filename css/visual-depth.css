@@ -137,6 +137,44 @@
   box-shadow: var(--surface-choice-shadow);
 }
 
+/* 家庭单选组统一由一条胶囊轨道承托：外层负责分组和边界，内层只保留
+   家庭身份色与选中态，避免“面板 + 内圈 + 胶囊”叠出不必要的层级。 */
+.family-roster,
+.operator-family-choices {
+  box-sizing: border-box;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.family-roster > .family-tag:first-child {
+  margin-left: 0;
+}
+
+.family-roster > .family-tag,
+.operator-family-choices > .family-tag {
+  box-shadow: none;
+}
+
+.family-roster > .family-tag.is-selected,
+.operator-family-choices > .family-tag.is-selected {
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.30),
+    0 4px 12px -10px var(--family-soft);
+}
+
+.family-roster > .family-tag:active,
+.operator-family-choices > .family-tag:active {
+  box-shadow: var(--surface-recess-shadow);
+}
+
+.family-roster > .family-tag:focus-visible,
+.operator-family-choices > .family-tag:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 /* 结算项是阅读型列表卡，hover 只增加卡片抬升，不冒充“已选中”。 */
 .settlement-item {
   box-shadow: var(--surface-list-shadow);

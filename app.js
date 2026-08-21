@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-lens-card-relay-v1-20260821";
+const APP_VERSION = "journa-family-choice-capsule-v1-20260822";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -569,6 +569,7 @@ let naturalEntryMotionAnims = [];
 let naturalEntryFrozenAnchor = null;
 let naturalEntryStageHeightTransitionHandler = null;
 let naturalEntryStageHeightResetTimer = 0;
+const naturalEntryNoteFinishedAnimations = new WeakSet();
 const naturalEntryEditorHomes = new Map();
 let splitScopeCloseTimer = 0;
 let naturalEntryStageCloseTimer = 0;
@@ -661,6 +662,7 @@ let expenseCountRevealTargetText = "";
 let amountLabelScrollFrameId = 0;
 const amountTrackAnimations = new WeakMap();
 const naturalEntryTokenAnimations = new WeakMap();
+const splitTextMorphAnimations = new WeakMap();
 let amountMeasureContext = null;
 let desktopPointerSinkFrame = 0;
 let desktopPointerSinkTarget = null;
@@ -2390,10 +2392,9 @@ function restoreNaturalEntryEditorHome(editor) {
 
 function getNaturalEntryStageWidth(editor, anchorWidth) {
   const viewportWidth = window.visualViewport?.width || window.innerWidth;
-  /* 付款家庭与类别的展开内容是横向选择带：在较宽的移动视口里若仍
-     固定 356px，positionNaturalEntryStage() 会把舞台夹到右侧，英雄文字
-     虽然仍在舞台中心，却不再对应页面中心。让这两类卡片吃满可用宽度，
-     从入口胶囊展开时只改变宽度，不改变最终文字的中心落点。 */
+  /* 付款家庭与类别的展开内容是横向选择带，因此吃满移动端可用宽度；
+     其他编辑器保留各自的内容宽度。positionNaturalEntryStage() 会统一
+     把这些宽度放到视觉视口中央，入口词只负责内部裁剪原点。 */
   const preferred = editor === "payer" || editor === "category"
     ? viewportWidth - 16
     : editor === "split" ? 370 : 344;
@@ -2451,10 +2452,9 @@ function positionNaturalEntryStage() {
   const viewportHeight = viewport?.height || window.innerHeight;
   const edge = 8;
   const width = getNaturalEntryStageWidth(activeEntryEditor, anchorRect.width);
-  const left = Math.min(
-    Math.max(anchorRect.left, viewportLeft + edge),
-    viewportLeft + viewportWidth - width - edge,
-  );
+  // 展开外框始终相对当前视觉视口居中。anchorX 仍从入口词的真实位置
+  // 推导，因此 clip-path 可以从居中的卡片内部准确展开并收回到原词。
+  const left = viewportLeft + ((viewportWidth - width) / 2);
   const top = Math.max(anchorRect.top, viewportTop + edge);
   const safeAreaBottom = Number.parseFloat(
     getComputedStyle(document.documentElement).getPropertyValue("--safe-area-bottom"),
@@ -2593,8 +2593,13 @@ function syncNaturalEntryStageToken({ animate = false, text = null } = {}) {
     || elements.naturalEntryStage.classList.contains("is-closing");
   if (animate && activeEntryEditor !== "note" && !prefersReducedMotion() && !relayIsRunning) {
     const duration = activeEntryEditor === "date" ? 240 : activeEntryEditor === "split" ? 300 : 280;
-    animateNaturalEntryToken(stageToken, nextText, { duration });
+    if (activeEntryEditor === "split") {
+      animateSplitSummaryText(stageToken, nextText, { textElement: stageLabel });
+    } else {
+      animateNaturalEntryToken(stageToken, nextText, { duration });
+    }
   } else {
+    if (activeEntryEditor === "split") cancelSplitSummaryText(stageToken, nextText);
     const previous = naturalEntryTokenAnimations.get(stageToken);
     previous?.cancel();
     naturalEntryTokenAnimations.delete(stageToken);
@@ -2702,6 +2707,7 @@ function finishNaturalEntryStageClose({ restoreFocus = false } = {}) {
   stage.style.removeProperty("--natural-stage-note-token-source-y");
   stage.style.removeProperty("--natural-stage-note-token-source-scale");
   stage.style.removeProperty("--natural-stage-value-state");
+  stage.removeAttribute("data-note-source-state");
   clearNaturalEntryNoteTrackStyles();
   stage.scrollTop = 0;
   stage.scrollLeft = 0;
@@ -2734,6 +2740,10 @@ function cancelNaturalEntryMotion() {
     });
   });
   clearNaturalEntryNoteTrackStyles();
+  [
+    elements.naturalSplitToken,
+    elements.naturalEntryStageToken,
+  ].forEach((target) => cancelSplitSummaryText(target));
   const amountTrack = elements.amountInput?.closest(".amount-value-track");
   amountTrack?.getAnimations?.().forEach((animation) => {
     if (animation.animationName === "") {
@@ -3068,11 +3078,41 @@ function clearNaturalEntryNoteTrackStyles() {
     track.style.removeProperty("transform-origin");
     track.style.removeProperty("will-change");
     track.style.removeProperty("pointer-events");
+    track.style.removeProperty("opacity");
   }
   const stageToken = elements.naturalEntryStageToken;
-  stageToken?.style.removeProperty("transform");
-  stageToken?.style.removeProperty("transform-origin");
-  stageToken?.style.removeProperty("will-change");
+  if (stageToken) {
+    stageToken.style.removeProperty("transform");
+    stageToken.style.removeProperty("transform-origin");
+    stageToken.style.removeProperty("will-change");
+    stageToken.style.removeProperty("visibility");
+  }
+  elements.naturalEntryStage?.removeAttribute("data-note-source-state");
+}
+
+function hideNaturalEntryNoteSource(source) {
+  const track = elements.noteInput?.closest(".note-value-track");
+  const stageToken = elements.naturalEntryStageToken;
+  if (source === track && track) {
+    track.style.opacity = "0";
+  } else if (source === stageToken && stageToken) {
+    stageToken.style.visibility = "hidden";
+  }
+  elements.naturalEntryStage?.setAttribute("data-note-source-state", "hidden");
+}
+
+function finishNaturalEntryNoteHandoff(animation, source, onReached = null) {
+  naturalEntryNoteFinishedAnimations.add(animation);
+  if (naturalEntryMotionAnims.includes(animation)) {
+    naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
+    // A finished WAAPI animation with `fill: both` continues to paint its
+    // final transform until it is cancelled. Cancel it before revealing the
+    // summary copy so the moving source and anchor can never overlap.
+    try { animation.cancel(); } catch (_) {}
+  }
+  clearNaturalEntryNoteTrackStyles();
+  hideNaturalEntryNoteSource(source);
+  onReached?.();
 }
 
 function animateNaturalEntryNoteTrackToAnchor(anchor, onReached = null) {
@@ -3082,6 +3122,7 @@ function animateNaturalEntryNoteTrackToAnchor(anchor, onReached = null) {
   const mapping = getNaturalEntryTrackTransform(source, target);
   if (!source || !target || !track || !mapping || prefersReducedMotion() || typeof track.animate !== "function") {
     clearNaturalEntryNoteTrackStyles();
+    hideNaturalEntryNoteSource(track);
     onReached?.();
     return;
   }
@@ -3101,15 +3142,15 @@ function animateNaturalEntryNoteTrackToAnchor(anchor, onReached = null) {
   );
   naturalEntryMotionAnims.push(animation);
   const cleanup = () => {
+    if (naturalEntryNoteFinishedAnimations.has(animation)) return;
     if (naturalEntryMotionAnims.includes(animation)) {
       naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
     }
     clearNaturalEntryNoteTrackStyles();
   };
-  animation.addEventListener("finish", () => {
-    cleanup();
-    onReached?.();
-  }, { once: true });
+  animation.finished.then(() => {
+    finishNaturalEntryNoteHandoff(animation, track, onReached);
+  }, () => {});
   animation.addEventListener("cancel", cleanup, { once: true });
 }
 
@@ -3119,6 +3160,7 @@ function animateNaturalEntryNoteTokenToAnchor(anchor, onReached = null) {
   const target = getNaturalEntryTextMetrics(anchor);
   if (!source || !target || !stageToken || prefersReducedMotion() || typeof stageToken.animate !== "function") {
     clearNaturalEntryNoteTrackStyles();
+    hideNaturalEntryNoteSource(stageToken);
     onReached?.();
     return;
   }
@@ -3142,15 +3184,15 @@ function animateNaturalEntryNoteTokenToAnchor(anchor, onReached = null) {
   );
   naturalEntryMotionAnims.push(animation);
   const cleanup = () => {
+    if (naturalEntryNoteFinishedAnimations.has(animation)) return;
     if (naturalEntryMotionAnims.includes(animation)) {
       naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
     }
     clearNaturalEntryNoteTrackStyles();
   };
-  animation.addEventListener("finish", () => {
-    cleanup();
-    onReached?.();
-  }, { once: true });
+  animation.finished.then(() => {
+    finishNaturalEntryNoteHandoff(animation, stageToken, onReached);
+  }, () => {});
   animation.addEventListener("cancel", cleanup, { once: true });
 }
 
@@ -3183,6 +3225,10 @@ function settleNaturalEntryCloseText(anchor, stageToken, editor) {
       : "value";
   }
   if (anchor && stageToken) {
+    if (editor === "split") {
+      cancelSplitSummaryText(anchor, finalText);
+      cancelSplitSummaryText(stageToken, finalText);
+    }
     naturalEntryTokenAnimations.get(stageToken)?.cancel();
     naturalEntryTokenAnimations.delete(stageToken);
     const anchorLabel = anchor.querySelector(".natural-entry-token-label") || anchor;
@@ -3211,6 +3257,7 @@ function closeNaturalEntryStage({ restoreFocus = false, immediate = false } = {}
   const token = elements.naturalEntryStageToken;
   const anchor = naturalEntryStageAnchor;
   captureNaturalEntryStageFamilyTint(stage);
+  stage?.removeAttribute("data-note-source-state");
 
   // Settle only the already-pending token text. Calling renderNaturalEntry()
   // here used to move the editor into a new display state, schedule another
@@ -3675,7 +3722,7 @@ function renderNaturalEntry({ positionStage = true } = {}) {
   });
   elements.naturalNoteToken.title = note || "备注可选";
   elements.naturalNoteToken.setAttribute("aria-label", note || "备注可选");
-  animateNaturalEntryToken(elements.naturalSplitToken, formatNaturalEntrySplit(), { duration: 300 });
+  animateSplitSummaryText(elements.naturalSplitToken, formatNaturalEntrySplit());
 
   elements.naturalEntryFlow.querySelectorAll("[data-entry-target]").forEach((button) => {
     const expanded = naturalEntryStageOpen && button.dataset.entryTarget === activeEntryEditor;
@@ -4372,7 +4419,12 @@ function getRecentCategories(limit = 3) {
 function renderSplitScope() {
   ensureActiveSplitState();
   elements.splitScopeToggle.setAttribute("aria-expanded", String(splitScopeOpen));
-  elements.splitScopeSummary.textContent = formatActiveSplitSummary();
+  const splitSummary = formatActiveSplitSummary();
+  animateSplitSummaryText(elements.splitScopeSummary, splitSummary, {
+    ariaElement: elements.splitScopeToggle,
+    ariaLabel: `分摊，${splitSummary}`,
+    animate: activeSplitMode !== "custom",
+  });
   elements.splitScopePanel.classList.toggle("is-switching", splitScopeSwitching);
   elements.splitScopePanel.dataset.activeSplitMode = activeSplitMode;
   elements.splitScopePanel.dataset.activeSplitRule = getSplitRuleFromMode(activeSplitMode);
@@ -4467,18 +4519,26 @@ function syncSplitParticipantSummary() {
   if (!elements.splitParticipantSummary) return;
   const selectedScope = getSplitScopeFromMode(activeSplitMode);
   if (selectedScope === "all") {
-    elements.splitParticipantSummary.textContent = "全部家庭";
+    setSplitParticipantSummaryText("全部家庭");
     return;
   }
   if (!activeSplitFamilyIds.length) {
-    elements.splitParticipantSummary.textContent = "选择参与分摊的家庭";
+    setSplitParticipantSummaryText("选择参与分摊的家庭");
     return;
   }
   if (activeSplitFamilyIds.length === state.families.length) {
-    elements.splitParticipantSummary.textContent = "全部家庭";
+    setSplitParticipantSummaryText("全部家庭");
     return;
   }
-  elements.splitParticipantSummary.textContent = `${activeSplitFamilyIds.length}家`;
+  setSplitParticipantSummaryText(`${activeSplitFamilyIds.length}家`);
+}
+
+function setSplitParticipantSummaryText(nextText) {
+  const text = String(nextText ?? "");
+  animateSplitSummaryText(elements.splitParticipantSummary, text, {
+    ariaElement: elements.splitParticipantToggle,
+    ariaLabel: `参与家庭，${text}`,
+  });
 }
 
 function syncSplitFamilyChoices() {
@@ -6675,7 +6735,12 @@ function handleSplitAmountInput(event) {
   syncCustomSplitTotalField();
   if (customSplitTargetCents === null) animateAmountValueTrack(elements.amountInput, { soft: true });
 
-  elements.splitScopeSummary.textContent = formatActiveSplitSummary();
+  const splitSummary = formatActiveSplitSummary();
+  animateSplitSummaryText(elements.splitScopeSummary, splitSummary, {
+    ariaElement: elements.splitScopeToggle,
+    ariaLabel: `分摊，${splitSummary}`,
+    animate: false,
+  });
   syncCustomSplitTotalLine();
   scheduleNaturalEntryRender({ positionStage: false });
   updateAmountMotionState();
@@ -8697,6 +8762,195 @@ function animateAmountValueTrack(input, { compact = false, soft = false } = {}) 
   animation.addEventListener("cancel", clearTrackLayer, { once: true });
 }
 
+function splitTextGraphemes(value) {
+  const text = String(value ?? "");
+  if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
+    try {
+      const segmenter = new Intl.Segmenter("zh-Hans", { granularity: "grapheme" });
+      return [...segmenter.segment(text)].map((part) => part.segment);
+    } catch (_) {
+      /* Older WebKit builds may expose Segmenter but reject the locale/options. */
+    }
+  }
+  return Array.from(text);
+}
+
+function cancelSplitSummaryText(element, finalText = null) {
+  if (!element) return;
+  const state = splitTextMorphAnimations.get(element);
+  const textElement = element.querySelector?.(".natural-entry-token-label") || element;
+  if (state) {
+    state.cancel(finalText == null ? state.target : String(finalText));
+    return;
+  }
+  if (finalText != null) textElement.textContent = String(finalText);
+}
+
+function animateSplitSummaryText(
+  element,
+  nextText,
+  {
+    textElement = null,
+    animate = true,
+    ariaElement = null,
+    ariaLabel = null,
+  } = {},
+) {
+  if (!element) return;
+  const targetElement = textElement || element.querySelector?.(".natural-entry-token-label") || element;
+  const next = String(nextText ?? "");
+  const previous = splitTextMorphAnimations.get(element);
+  if (previous?.target === next) {
+    if (ariaElement) ariaElement.setAttribute("aria-label", ariaLabel || next);
+    else if (element.matches?.("button")) element.setAttribute("aria-label", next);
+    return;
+  }
+
+  const previousTarget = previous?.target || null;
+  previous?.cancel();
+  const current = previousTarget == null ? targetElement.textContent : previousTarget;
+  const setAccessibleName = () => {
+    if (ariaElement) ariaElement.setAttribute("aria-label", ariaLabel || next);
+    else if (element.matches?.("button")) element.setAttribute("aria-label", next);
+  };
+
+  if (current === next) {
+    targetElement.textContent = next;
+    setAccessibleName();
+    return;
+  }
+
+  if (!animate || prefersReducedMotion() || typeof targetElement.animate !== "function") {
+    targetElement.textContent = next;
+    setAccessibleName();
+    return;
+  }
+
+  const currentChars = splitTextGraphemes(current);
+  const nextChars = splitTextGraphemes(next);
+  let prefixLength = 0;
+  while (
+    prefixLength < currentChars.length
+    && prefixLength < nextChars.length
+    && currentChars[prefixLength] === nextChars[prefixLength]
+  ) {
+    prefixLength += 1;
+  }
+
+  let suffixLength = 0;
+  while (
+    suffixLength < currentChars.length - prefixLength
+    && suffixLength < nextChars.length - prefixLength
+    && currentChars[currentChars.length - 1 - suffixLength]
+      === nextChars[nextChars.length - 1 - suffixLength]
+  ) {
+    suffixLength += 1;
+  }
+
+  const prefix = currentChars.slice(0, prefixLength).join("");
+  const oldMiddle = currentChars.slice(prefixLength, currentChars.length - suffixLength).join("");
+  const newMiddle = nextChars.slice(prefixLength, nextChars.length - suffixLength).join("");
+  const suffix = currentChars.slice(currentChars.length - suffixLength).join("");
+
+  const visual = document.createElement("span");
+  visual.className = "split-text-morph";
+  visual.setAttribute("aria-hidden", "true");
+
+  const prefixNode = document.createElement("span");
+  prefixNode.className = "split-text-morph-fixed";
+  prefixNode.textContent = prefix;
+
+  const slot = document.createElement("span");
+  slot.className = "split-text-morph-slot";
+
+  const oldLayer = document.createElement("span");
+  oldLayer.className = "split-text-morph-layer split-text-morph-old";
+  oldLayer.textContent = oldMiddle;
+
+  const newLayer = document.createElement("span");
+  newLayer.className = "split-text-morph-layer split-text-morph-new";
+  newLayer.textContent = newMiddle;
+
+  const suffixNode = document.createElement("span");
+  suffixNode.className = "split-text-morph-fixed";
+  suffixNode.textContent = suffix;
+
+  slot.append(oldLayer, newLayer);
+  visual.append(prefixNode, slot, suffixNode);
+  targetElement.replaceChildren(visual);
+
+  /* Absolute layers do not contribute to intrinsic width. Measure both glyph
+     runs while they are in normal flow, then reserve the old slot width before
+     the browser paints the first morph frame. */
+  oldLayer.style.position = "static";
+  newLayer.style.position = "static";
+  const oldWidth = oldLayer.getBoundingClientRect().width;
+  const newWidth = newLayer.getBoundingClientRect().width;
+  oldLayer.style.position = "absolute";
+  newLayer.style.position = "absolute";
+  slot.style.width = `${Math.max(0, oldWidth)}px`;
+
+  const duration = 220;
+  const enterDelay = 40;
+  const oldExitDuration = 90;
+  const enterDuration = 180;
+  const easing = "cubic-bezier(0.16, 1, 0.3, 1)";
+  const widthAnimation = slot.animate(
+    [
+      { width: `${Math.max(0, oldWidth)}px` },
+      { width: `${Math.max(0, newWidth)}px` },
+    ],
+    { duration, easing, fill: "forwards" },
+  );
+  const oldAnimation = oldLayer.animate(
+    [
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0px)" },
+      { opacity: 0, transform: "translate3d(0, -3px, 0)", filter: "blur(1.2px)" },
+    ],
+    { duration: oldExitDuration, easing, fill: "both" },
+  );
+  const newAnimation = newLayer.animate(
+    [
+      { opacity: 0, transform: "translate3d(0, 4px, 0)", filter: "blur(1.2px)" },
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0px)" },
+    ],
+    { duration: enterDuration, delay: enterDelay, easing, fill: "both" },
+  );
+
+  let cleanupTimer = 0;
+  let settled = false;
+  const state = {
+    target: next,
+    cancelled: false,
+    cancel(finalText = next) {
+      if (settled) return;
+      this.cancelled = true;
+      window.clearTimeout(cleanupTimer);
+      widthAnimation.cancel();
+      oldAnimation.cancel();
+      newAnimation.cancel();
+      finish(String(finalText));
+    },
+  };
+  splitTextMorphAnimations.set(element, state);
+  targetElement.dataset.splitTextMorphValue = next;
+  targetElement.classList.add("is-split-text-morphing");
+  setAccessibleName();
+
+  function finish(finalText) {
+    if (settled) return;
+    settled = true;
+    window.clearTimeout(cleanupTimer);
+    targetElement.replaceChildren();
+    targetElement.textContent = finalText;
+    targetElement.classList.remove("is-split-text-morphing");
+    delete targetElement.dataset.splitTextMorphValue;
+    if (splitTextMorphAnimations.get(element) === state) splitTextMorphAnimations.delete(element);
+  }
+
+  cleanupTimer = window.setTimeout(() => finish(next), duration + enterDelay + 50);
+}
+
 function animateNaturalEntryToken(element, nextText, { duration = 260, animate = true } = {}) {
   if (!element) return;
   const textElement = element.querySelector(".natural-entry-token-label") || element;
@@ -8843,6 +9097,31 @@ function animateNaturalEntryToken(element, nextText, { duration = 260, animate =
 function syncAllAmountValueTracks() {
   syncAmountValueTrack(elements.amountInput);
   syncSplitAmountValueTracks();
+}
+
+/* 字体、旋转或浏览器地址栏变化会改变金额输入的字号；输入框的 inline
+   width 不能沿用上一个视口的测量值，否则宽屏字形会被旧窄宽度截掉。只
+   重测当前实际有几何的输入，避免隐藏的标准/自定分摊控件被写成 12px。 */
+function syncVisibleAmountValueTracks() {
+  const inputs = [
+    elements.amountInput,
+    ...elements.splitCustomAmounts.querySelectorAll("[data-split-amount]"),
+  ];
+  inputs.forEach((input) => {
+    if (!input || !input.getClientRects().length) return;
+    const style = getComputedStyle(input);
+    if (style.display === "none" || style.visibility === "hidden") return;
+    syncAmountValueTrack(input);
+  });
+}
+
+let amountValueResizeFrame = 0;
+function scheduleAmountValueTrackResize() {
+  if (amountValueResizeFrame) return;
+  amountValueResizeFrame = window.requestAnimationFrame(() => {
+    amountValueResizeFrame = 0;
+    syncVisibleAmountValueTracks();
+  });
 }
 
 function syncSplitAmountValueTracks() {
@@ -9253,8 +9532,10 @@ elements.categoryChips.addEventListener("scroll", scheduleCategoryEdgeFades, { p
 setupCategoryOverscroll(elements.categoryChips);
 window.addEventListener("resize", scheduleCategoryEdgeFades);
 window.addEventListener("resize", scheduleNaturalEntryStagePosition);
+window.addEventListener("resize", scheduleAmountValueTrackResize, { passive: true });
 window.addEventListener("scroll", () => scheduleNaturalEntryStagePosition({ reason: "scroll" }), { passive: true });
 window.visualViewport?.addEventListener("resize", scheduleNaturalEntryStagePosition);
+window.visualViewport?.addEventListener("resize", scheduleAmountValueTrackResize, { passive: true });
 window.visualViewport?.addEventListener("scroll", () => scheduleNaturalEntryStagePosition({ reason: "scroll" }), { passive: true });
 elements.splitScopeToggle.addEventListener("click", handleSplitScopeToggle);
 elements.splitScopePanel.addEventListener("click", handleSplitScopeClick);

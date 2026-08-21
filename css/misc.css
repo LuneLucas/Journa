@@ -944,7 +944,9 @@ label,
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 10px;
-  align-items: center;
+  /* 左侧标签与右侧动态摘要共享文字基线；center 会把不同字号的
+     strong 行盒整体居中，摘要接力期间会显得比“分摊”低一截。 */
+  align-items: baseline;
   gap: 12px;
   width: 100%;
   min-height: var(--control-height);
@@ -965,6 +967,7 @@ label,
 
 .split-scope-toggle::after {
   grid-column: 3;
+  align-self: center;
   width: 8px;
   height: 8px;
   margin-left: 2px;
@@ -1001,6 +1004,7 @@ label,
   color: color-mix(in srgb, var(--submit-text, var(--theme-color)) 84%, var(--ink));
   font-size: 0.9rem;
   font-weight: var(--fw-cjk-heavy);
+  line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1054,7 +1058,7 @@ label,
 .split-participant-toggle {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 10px;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
   width: 100%;
   min-height: 42px;
@@ -1069,6 +1073,7 @@ label,
 
 .split-participant-toggle::after {
   grid-column: 3;
+  align-self: center;
   width: 7px;
   height: 7px;
   border-right: 1.5px solid currentColor;
@@ -1094,6 +1099,7 @@ label,
   color: color-mix(in srgb, var(--submit-text, var(--theme-color)) 78%, var(--ink));
   font-size: var(--label-sm);
   font-weight: var(--fw-cjk-heavy);
+  line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

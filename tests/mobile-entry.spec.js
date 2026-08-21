@@ -28,6 +28,83 @@ async function openAmountEditor(page, projectName) {
   await page.reload({ waitUntil: 'commit' });
 }
 
+async function closeAndSampleNoteReturn(page) {
+  const framesPromise = page.evaluate(() => new Promise((resolve) => {
+    const started = performance.now();
+    const frames = [];
+    const read = (element) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      const opacity = Number.parseFloat(style.opacity) || 0;
+      const visible = rect.width > 0 && rect.height > 0
+        && style.visibility !== 'hidden'
+        && opacity > 0.05;
+      return {
+        visible,
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+        centerX: rect.left + (rect.width / 2),
+        centerY: rect.top + (rect.height / 2),
+      };
+    };
+    const sample = (now) => {
+      const stage = document.querySelector('#naturalEntryStage');
+      const stageToken = document.querySelector('#naturalEntryStageToken');
+      const noteInput = document.querySelector('#noteInput');
+      const noteTrack = noteInput?.closest('.note-value-track');
+      const anchorLabel = document.querySelector('#naturalNoteToken .natural-entry-token-label');
+      const source = read(stageToken);
+      const input = read(noteInput);
+      const trackOpacity = noteTrack ? getComputedStyle(noteTrack).opacity : '';
+      if (input && Number.parseFloat(trackOpacity) <= 0.05) input.visible = false;
+      const anchor = read(anchorLabel);
+      frames.push({
+        ms: now - started,
+        stageHidden: Boolean(stage?.hidden),
+        source,
+        input,
+        trackOpacity,
+        anchor,
+        layerCount: [source, input, anchor].filter((item) => item?.visible).length,
+      });
+      if (now - started < 700) window.requestAnimationFrame(sample);
+      else resolve(frames);
+    };
+    window.requestAnimationFrame(sample);
+  }));
+  await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+  return framesPromise;
+}
+
+function assertNoteReturnFrames(frames) {
+  expect(frames.length).toBeGreaterThan(20);
+  expect(frames.every((frame) => frame.layerCount <= 1)).toBeTruthy();
+  expect(frames.every((frame) => frame.layerCount >= 1)).toBeTruthy();
+
+  const movingFrames = frames.filter((frame) => frame.source?.visible || frame.input?.visible);
+  const maxStep = movingFrames.slice(1).reduce((largest, frame, index) => {
+    const previous = movingFrames[index];
+    const current = frame.source?.visible ? frame.source : frame.input;
+    const prior = previous.source?.visible ? previous.source : previous.input;
+    if (!current || !prior) return largest;
+    return Math.max(largest, Math.hypot(current.centerX - prior.centerX, current.centerY - prior.centerY));
+  }, 0);
+  // A 60 Hz RAF sample can straddle the source/anchor metric switch by a
+  // small amount; keep the guard tight enough to catch a visible jump while
+  // allowing that one-frame handoff variance.
+  expect(maxStep).toBeLessThan(20);
+
+  const handoff = frames.find((frame) => frame.anchor?.visible && !(frame.source?.visible || frame.input?.visible));
+  expect(handoff).toBeTruthy();
+  const priorMoving = [...frames].reverse().find((frame) => frame.ms < handoff.ms && (frame.source?.visible || frame.input?.visible));
+  const priorText = priorMoving?.source?.visible ? priorMoving.source : priorMoving?.input;
+  expect(priorText).toBeTruthy();
+  expect(Math.hypot(priorText.centerX - handoff.anchor.centerX, priorText.centerY - handoff.anchor.centerY)).toBeLessThan(6);
+}
+
 const editableMobileLedger = {
   activeLedgerId: 'mobile-edit-ledger',
   ledgers: [{
@@ -210,15 +287,99 @@ test.describe('mobile entry smoke flow', () => {
 
     const lens = await page.locator('#naturalAmountToken').evaluate((token) => {
       const lensStyle = getComputedStyle(token, '::before');
+      const tokenRect = token.getBoundingClientRect();
       return {
         tokenOverflow: getComputedStyle(token).overflow,
+        tokenHeight: tokenRect.height,
         lensRadius: lensStyle.borderRadius,
         lensShadow: lensStyle.boxShadow,
+        lensTop: lensStyle.top,
+        lensBottom: lensStyle.bottom,
+        lensHeight: Number.parseFloat(lensStyle.height),
       };
     });
     expect(lens.tokenOverflow).toBe('visible');
     expect(lens.lensRadius).not.toBe('0px');
     expect(lens.lensShadow).not.toBe('none');
+    expect(lens.lensTop).toBe('5px');
+    expect(lens.lensBottom).toBe('4px');
+    expect(Math.abs(lens.lensHeight - (lens.tokenHeight - 9))).toBeLessThanOrEqual(0.5);
+  });
+
+  test('every natural entry stage stays centered in the visual viewport', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自然录入舞台居中只在移动端启用');
+    test.setTimeout(90_000);
+
+    const editors = [
+      { selector: '#naturalDateToken', width390: 344 },
+      { selector: '#naturalPayerToken', width390: 374 },
+      { selector: '#naturalAmountToken', width390: 344 },
+      { selector: '#naturalCategoryToken', width390: 374 },
+      { selector: '#naturalNoteToken', width390: 344 },
+      { selector: '#naturalSplitToken', width390: 370 },
+    ];
+
+    for (const viewportWidth of [320, 390]) {
+      await page.setViewportSize({ width: viewportWidth, height: viewportWidth === 320 ? 568 : 844 });
+      await openAmountEditor(page, testInfo.project.name);
+      await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+      for (const editor of editors) {
+        await page.locator(editor.selector).click({ force: true });
+        const stage = page.locator('#naturalEntryStage');
+        await expect(stage).toHaveClass(/is-relay-settled/);
+        const geometry = await stage.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const viewport = window.visualViewport;
+          const viewportLeft = viewport?.offsetLeft || 0;
+          const viewportWidth = viewport?.width || window.innerWidth;
+          return {
+            width: rect.width,
+            leftInset: rect.left - viewportLeft,
+            rightInset: viewportLeft + viewportWidth - rect.right,
+            centerDelta: (rect.left + (rect.width / 2)) - (viewportLeft + (viewportWidth / 2)),
+          };
+        });
+        const expectedWidth = viewportWidth === 320 ? 304 : editor.width390;
+        expect(Math.abs(geometry.width - expectedWidth)).toBeLessThanOrEqual(1);
+        expect(Math.abs(geometry.leftInset - geometry.rightInset)).toBeLessThanOrEqual(1);
+        expect(Math.abs(geometry.centerDelta)).toBeLessThanOrEqual(1);
+        await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+        await expect(stage).toBeHidden();
+      }
+    }
+
+    // 付款人舞台较宽，金额舞台较窄；两者使用相同的 left/width easing，
+    // 因此切换全过程的外框中心都应锁在视觉视口中央。
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalPayerToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+    const switchFrames = await page.evaluate(() => new Promise((resolve) => {
+      const stage = document.querySelector('#naturalEntryStage');
+      const target = document.querySelector('#naturalAmountToken');
+      const frames = [];
+      const started = performance.now();
+      target.click();
+      const sample = (now) => {
+        const rect = stage.getBoundingClientRect();
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport?.offsetLeft || 0;
+        const viewportWidth = viewport?.width || window.innerWidth;
+        frames.push((rect.left + (rect.width / 2)) - (viewportLeft + (viewportWidth / 2)));
+        if (now - started < 420) window.requestAnimationFrame(sample);
+        else resolve(frames);
+      };
+      window.requestAnimationFrame(sample);
+    }));
+    expect(Math.max(...switchFrames.map((delta) => Math.abs(delta)))).toBeLessThanOrEqual(1);
+    await expect(page.locator('#naturalEntryStage')).toHaveAttribute('data-editor', 'amount');
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
   });
 
   test('note relay keeps one anchored origin through open and close', async ({ page }, testInfo) => {
@@ -286,6 +447,85 @@ test.describe('mobile entry smoke flow', () => {
       await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
       await expect(page.locator('#naturalEntryStage')).toBeHidden();
     }
+  });
+
+  test('note return keeps one visible text layer through the landing handoff', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '备注返回文字接力只在移动端启用');
+
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
+      await openAmountEditor(page, testInfo.project.name);
+      await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+      await page.locator('#naturalNoteToken').click({ force: true });
+      await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+      const emptyFrames = await closeAndSampleNoteReturn(page);
+      assertNoteReturnFrames(emptyFrames);
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+      await page.locator('#naturalNoteToken').click({ force: true });
+      await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+      await page.locator('#noteInput').fill('返回交接单层检查');
+      const filledFrames = await closeAndSampleNoteReturn(page);
+      assertNoteReturnFrames(filledFrames);
+      await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    }
+  });
+
+  test('note return interruption clears relay styles before switching editor', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '备注返回中断只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalNoteToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await page.waitForTimeout(120);
+    await page.locator('#naturalAmountToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveAttribute('data-editor', 'amount');
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+    const residual = await page.evaluate(() => ({
+      noteInputOpacity: document.querySelector('#noteInput')?.style.opacity || '',
+      noteTrackOpacity: document.querySelector('#noteInput')?.closest('.note-value-track')?.style.opacity || '',
+      stageTokenVisibility: document.querySelector('#naturalEntryStageToken')?.style.visibility || '',
+      sourceState: document.querySelector('#naturalEntryStage')?.dataset.noteSourceState || '',
+      flightTokens: document.querySelectorAll('.natural-entry-flight-token').length,
+    }));
+    expect(residual.noteInputOpacity).toBe('');
+    expect(residual.noteTrackOpacity).toBe('');
+    expect(residual.stageTokenVisibility).toBe('');
+    expect(residual.sourceState).toBe('');
+    expect(residual.flightTokens).toBe(0);
+
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+  });
+
+  test('note return leaves no relay styles with reduced motion', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '备注减少动态效果只在移动端启用');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalNoteToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+    await page.locator('#noteInput').fill('减少动态效果检查');
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+    const residual = await page.evaluate(() => ({
+      noteInputOpacity: document.querySelector('#noteInput')?.style.opacity || '',
+      noteTrackOpacity: document.querySelector('#noteInput')?.closest('.note-value-track')?.style.opacity || '',
+      stageTokenVisibility: document.querySelector('#naturalEntryStageToken')?.style.visibility || '',
+      sourceState: document.querySelector('#naturalEntryStage')?.dataset.noteSourceState || '',
+    }));
+    expect(residual.noteInputOpacity).toBe('');
+    expect(residual.noteTrackOpacity).toBe('');
+    expect(residual.stageTokenVisibility).toBe('');
+    expect(residual.sourceState).toBe('');
   });
 
   test('natural stage close reverses the expanded clip path into the source lens', async ({ page }, testInfo) => {
@@ -649,6 +889,143 @@ test.describe('mobile entry smoke flow', () => {
     await expect(page.locator('.split-total-line')).toHaveText('¥169 ≠ ¥268.50');
   });
 
+  test('split summaries hand off shared Chinese glyphs without an empty frame', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '分摊汉字接力只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalSplitToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+    const sampleMorph = async (radioName) => {
+      const framesPromise = page.evaluate(() => new Promise((resolve) => {
+        const started = performance.now();
+        const frames = [];
+        const sample = (now) => {
+          const label = document.querySelector('#naturalEntryStageToken .natural-entry-token-label');
+          const oldLayer = label?.querySelector('.split-text-morph-old');
+          const newLayer = label?.querySelector('.split-text-morph-new');
+          const slot = label?.querySelector('.split-text-morph-slot');
+          frames.push({
+            ms: now - started,
+            text: label?.textContent || '',
+            morph: Boolean(label?.querySelector('.split-text-morph')),
+            oldOpacity: oldLayer ? Number.parseFloat(getComputedStyle(oldLayer).opacity) : null,
+            newOpacity: newLayer ? Number.parseFloat(getComputedStyle(newLayer).opacity) : null,
+            slotWidth: slot ? Number.parseFloat(getComputedStyle(slot).width) : null,
+            scheduledOverlap: Boolean(
+              oldLayer?.getAnimations?.()[0]
+              && newLayer?.getAnimations?.()[0]
+              && oldLayer.getAnimations()[0].effect.getTiming().duration > newLayer.getAnimations()[0].effect.getTiming().delay,
+            ),
+          });
+          if (now - started < 360) window.setTimeout(() => sample(performance.now()), 4);
+          else resolve(frames);
+        };
+        requestAnimationFrame(sample);
+      }));
+      await page.getByRole('radio', { name: radioName, exact: true }).click();
+      return framesPromise;
+    };
+
+    const widerFrames = await sampleMorph('按家庭人数');
+    expect(widerFrames.some((frame) => frame.morph)).toBeTruthy();
+    // Headless Chromium may coalesce compositor frames across the short 50ms
+    // overlap; the animation schedule itself still guarantees the old/new
+    // layers coexist for that handoff window.
+    expect(widerFrames.some((frame) => frame.oldOpacity > 0.05 && frame.newOpacity > 0.05)
+      || widerFrames.some((frame) => frame.scheduledOverlap)).toBeTruthy();
+    expect(Math.max(...widerFrames.filter((frame) => frame.slotWidth !== null).map((frame) => frame.slotWidth))
+      - Math.min(...widerFrames.filter((frame) => frame.slotWidth !== null).map((frame) => frame.slotWidth))).toBeGreaterThan(10);
+    expect(widerFrames.every((frame) => frame.text.length > 0)).toBeTruthy();
+    await expect(page.locator('#naturalEntryStageToken .natural-entry-token-label')).toHaveText('三家按人数分摊');
+
+    // 重新打开舞台再验证自定金额：标准模式的选择保留现有自动收起节奏，
+    // 试点本身不把这个收起计时器改成另一套交互规则。
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#naturalSplitToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+    const noPrefixFrames = await sampleMorph('自定金额');
+    expect(noPrefixFrames.some((frame) => frame.morph)).toBeTruthy();
+    expect(noPrefixFrames.some((frame) => frame.oldOpacity > 0.05 && frame.newOpacity > 0.05)
+      || noPrefixFrames.some((frame) => frame.scheduledOverlap)).toBeTruthy();
+    await expect(page.locator('#naturalEntryStageToken .natural-entry-token-label')).toHaveText('自定金额分摊');
+  });
+
+  test('split summaries settle atomically with reduced motion', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '分摊减少动态效果只在移动端启用');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await page.locator('#naturalSplitToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+    await page.getByRole('radio', { name: /^按家庭人数/ }).click();
+    await expect(page.locator('#naturalEntryStageToken .natural-entry-token-label')).toHaveText('三家按人数分摊');
+    await expect(page.locator('#naturalEntryStageToken .split-text-morph')).toHaveCount(0);
+    await expect(page.locator('#naturalSplitToken')).toHaveAttribute('aria-label', '三家按人数分摊');
+  });
+
+  test('standard split summaries hand off and publish the final accessible names', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.includes('mobile'), '标准录入摘要只在桌面端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    const scopeToggle = page.locator('#splitScopeToggle');
+    const scopeSummary = page.locator('#splitScopeSummary');
+    await scopeToggle.click();
+    await expect(page.locator('#splitScopePanel')).toBeVisible();
+
+    const framesPromise = page.evaluate(() => new Promise((resolve) => {
+      const started = performance.now();
+      const frames = [];
+      const sample = (now) => {
+        const label = document.querySelector('#splitScopeSummary');
+        const oldLayer = label?.querySelector('.split-text-morph-old');
+        const newLayer = label?.querySelector('.split-text-morph-new');
+        frames.push({
+          text: label?.textContent || '',
+          morph: Boolean(label?.querySelector('.split-text-morph')),
+          oldOpacity: oldLayer ? Number.parseFloat(getComputedStyle(oldLayer).opacity) : null,
+          newOpacity: newLayer ? Number.parseFloat(getComputedStyle(newLayer).opacity) : null,
+          scheduledOverlap: Boolean(
+            oldLayer?.getAnimations?.()[0]
+            && newLayer?.getAnimations?.()[0]
+            && oldLayer.getAnimations()[0].effect.getTiming().duration > newLayer.getAnimations()[0].effect.getTiming().delay,
+          ),
+          ms: now - started,
+        });
+        if (now - started < 330) requestAnimationFrame(sample);
+        else resolve(frames);
+      };
+      requestAnimationFrame(sample);
+    }));
+    await page.getByRole('radio', { name: /^按家庭人数/ }).click();
+    const frames = await framesPromise;
+    expect(frames.some((frame) => frame.morph)).toBeTruthy();
+    expect(frames.some((frame) => frame.oldOpacity > 0.05 && frame.newOpacity > 0.05)
+      || frames.some((frame) => frame.scheduledOverlap)).toBeTruthy();
+    expect(frames.every((frame) => frame.text.length > 0)).toBeTruthy();
+    await expect(scopeSummary).toHaveText('3家按家庭人数');
+    await expect(scopeToggle).toHaveAttribute('aria-label', '分摊，3家按家庭人数');
+    const scopeBaselineDelta = await scopeToggle.evaluate((toggle) => {
+      const label = toggle.children[0]?.getBoundingClientRect();
+      const summary = toggle.children[1]?.getBoundingClientRect();
+      return label && summary ? Math.abs(label.bottom - summary.bottom) : Infinity;
+    });
+    expect(scopeBaselineDelta).toBeLessThanOrEqual(2.5);
+
+    const firstFamily = page.locator('#splitFamilyChoices [data-split-family]').first();
+    await firstFamily.click();
+    await expect(page.locator('#splitParticipantSummary')).toHaveText('2家');
+    await expect(page.locator('#splitParticipantToggle')).toHaveAttribute('aria-label', '参与家庭，2家');
+    const participantBaselineDelta = await page.locator('#splitParticipantToggle').evaluate((toggle) => {
+      const label = toggle.children[0]?.getBoundingClientRect();
+      const summary = toggle.children[1]?.getBoundingClientRect();
+      return label && summary ? Math.abs(label.bottom - summary.bottom) : Infinity;
+    });
+    expect(participantBaselineDelta).toBeLessThanOrEqual(2.5);
+  });
+
   test('note expands to a bounded textarea and split amounts remain editable', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '自然录入舞台只在移动端启用');
     await openAmountEditor(page, testInfo.project.name);
@@ -734,5 +1111,36 @@ test.describe('mobile entry smoke flow', () => {
     expect(geometry.digitsWhiteSpace).toBe('nowrap');
     expect(geometry.digitsOverflow).toBe('ellipsis');
     expect(geometry.digitsScrollWidth).toBeGreaterThan(geometry.digitsClientWidth);
+  });
+
+  test('amount input remeasures when a mobile viewport changes width', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '金额轨道视口重测只在移动端启用');
+    await page.setViewportSize({ width: 320, height: 568 });
+    await openAmountEditor(page, testInfo.project.name);
+    const amount = page.locator('#amountInput');
+    const narrow = await amount.evaluate((input) => ({
+      width: input.getBoundingClientRect().width,
+      fontSize: Number.parseFloat(getComputedStyle(input).fontSize),
+    }));
+
+    /* 模拟横屏/地址栏变化：字号已经变大，但 inline width 不能停留在窄屏
+       的旧测量值，否则 0.00 的右半会被 amount-field 截掉。 */
+    await page.setViewportSize({ width: 596, height: 568 });
+    await page.waitForTimeout(120);
+    const wide = await amount.evaluate((input) => {
+      const inputRect = input.getBoundingClientRect();
+      const fieldRect = input.closest('.amount-field').getBoundingClientRect();
+      return {
+        width: inputRect.width,
+        fontSize: Number.parseFloat(getComputedStyle(input).fontSize),
+        inputRight: inputRect.right,
+        fieldRight: fieldRect.right,
+      };
+    });
+
+    expect(wide.fontSize).toBeGreaterThan(narrow.fontSize);
+    expect(wide.width).toBeGreaterThan(narrow.width + 20);
+    expect(wide.width).toBeGreaterThanOrEqual(wide.fontSize * 2.5);
+    expect(wide.inputRight).toBeLessThanOrEqual(wide.fieldRight + 1);
   });
 });

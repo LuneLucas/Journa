@@ -139,6 +139,57 @@
   }
 }
 
+/* 分摊摘要的汉字接力：共同字保留在原位，变化字在同一墨迹槽内交接。
+   槽宽由 JS 做 220ms 的小幅 FLIP，等宽文字也保留上下落墨，不退化成删空重打。 */
+.split-text-morph {
+  display: inline-flex;
+  align-items: baseline;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.split-text-morph-fixed {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.split-text-morph-slot {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 1.2em;
+  overflow: visible;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.split-text-morph-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  white-space: nowrap;
+  transform-origin: center bottom;
+  will-change: transform, opacity, filter;
+}
+
+.split-text-morph-new {
+  opacity: 0;
+}
+
+.is-split-text-morphing {
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .split-text-morph-layer {
+    filter: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 @keyframes add-button-glow {
   0% {
     box-shadow:

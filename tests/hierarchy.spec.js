@@ -1,16 +1,45 @@
 const { test, expect } = require('@playwright/test');
 const { seedLocalState, stubSupabase } = require('./support/test-helpers');
 
-async function openFreshApp(page) {
-  await seedLocalState(page, null, { entryMode: 'natural', welcomeSeen: true });
+async function openFreshApp(page, initialState = null) {
+  await seedLocalState(page, initialState, { entryMode: 'natural', welcomeSeen: true });
   await stubSupabase(page);
   await page.goto('/index.html?audit=hierarchy-tests', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.app-shell')).toBeVisible();
 }
 
+const settlementLedger = {
+  activeLedgerId: 'hierarchy-settlement-ledger',
+  ledgers: [{
+    id: 'hierarchy-settlement-ledger',
+    name: '层级平账回归账本',
+    families: [
+      { id: 'family-a', name: '乐家' },
+      { id: 'family-b', name: '祺家' },
+    ],
+    categories: ['餐饮'],
+    familyMembers: { 'family-a': 1, 'family-b': 1 },
+    expenses: [{
+      id: 'hierarchy-settlement-expense',
+      amount: 100,
+      payerId: 'family-a',
+      category: '餐饮',
+      date: '2026-08-22',
+      note: '层级平账测试',
+      splitMode: 'equal',
+      splitFamilyIds: [],
+      splitAmounts: {},
+      createdBy: { familyId: 'family-a' },
+      updatedBy: null,
+      createdAt: '2026-08-22T12:00:00.000Z',
+      updatedAt: '2026-08-22T12:00:00.000Z',
+    }],
+  }],
+};
+
 test.describe('层级优化回归', () => {
   test('设置、账本管理与平账最多显示一个抽屉', async ({ page }) => {
-    await openFreshApp(page);
+    await openFreshApp(page, settlementLedger);
 
     await page.locator('#openSettingsButton').click();
     await expect(page.locator('#settingsView')).toBeVisible();
@@ -30,7 +59,7 @@ test.describe('层级优化回归', () => {
     await expect(page.locator('#settingsView h2')).toHaveText('平账建议');
   });
 
-  test('设置最多一层折叠，数据页不显示独立浮动主操作', async ({ page }, testInfo) => {
+  test('设置最多一层折叠，数据页保留独立浮动新增入口', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '移动端层级回归');
     await page.setViewportSize({ width: 390, height: 844 });
     await openFreshApp(page);
@@ -42,8 +71,9 @@ test.describe('层级优化回归', () => {
 
     await page.locator('#closeSettingsButton').click();
     await page.locator('#mobileDataTab').click();
-    await expect(page.locator('#mobileSubmitBar')).toHaveCSS('opacity', '0');
-    await expect(page.locator('#mobileSubmitBar')).toHaveCSS('visibility', 'hidden');
+    await expect(page.locator('#mobileSubmitBar')).toHaveCSS('opacity', '1');
+    await expect(page.locator('#mobileSubmitBar')).toHaveCSS('visibility', 'visible');
+    await expect(page.locator('#mobileSubmitButton')).toHaveAttribute('aria-label', '选择付款家庭');
     await page.locator('#mobileEntryTab').click();
     await expect(page.locator('#mobileSubmitBar')).toHaveCSS('opacity', '1');
     await expect(page.locator('#mobileSubmitBar')).toHaveCSS('visibility', 'visible');
