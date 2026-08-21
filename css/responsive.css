@@ -483,12 +483,16 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   html[data-entry-mode="natural"] .natural-entry-token.is-stage-anchor.is-stage-handoff.is-lens-returning::before {
     animation:
-      natural-entry-capsule-motion var(--natural-stage-lens-duration) var(--natural-stage-curve) var(--natural-stage-lens-start) both !important;
+      natural-entry-capsule-motion
+      var(--natural-stage-lens-duration, 160ms)
+      var(--natural-stage-curve, cubic-bezier(0.20, 0, 0, 1))
+      var(--natural-stage-lens-start, 390ms)
+      both !important;
   }
 
   html[data-entry-mode="natural"] .natural-entry-token.is-stage-anchor.is-stage-handoff.is-lens-returning[data-mark]::after {
     opacity: 0;
-    animation: natural-entry-stage-relay-mark-in 90ms var(--natural-stage-curve) var(--natural-stage-text-handoff) both !important;
+    animation: natural-entry-stage-relay-mark-in 90ms var(--natural-stage-curve, cubic-bezier(0.20, 0, 0, 1)) var(--natural-stage-text-handoff, 414ms) both !important;
   }
 }
 
@@ -4583,7 +4587,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   html[data-entry-mode="natural"] .natural-entry-token.is-stage-handoff.is-lens-returning.is-stage-mark-handoff[data-mark]::after {
     opacity: 0 !important;
-    animation: natural-entry-stage-relay-mark-in 90ms var(--natural-stage-curve) var(--natural-stage-text-handoff) both !important;
+    animation: natural-entry-stage-relay-mark-in 90ms var(--natural-stage-curve, cubic-bezier(0.20, 0, 0, 1)) var(--natural-stage-text-handoff, 414ms) both !important;
   }
 
   html[data-entry-mode="natural"] .natural-entry-stage {

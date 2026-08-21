@@ -309,6 +309,57 @@ test.describe('mobile entry smoke flow', () => {
     await expect(page.locator('#naturalEntryStage')).toBeHidden();
   });
 
+  test('natural stage close overlaps the lens relay and hands off one amount layer', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自然录入透镜接力只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+
+    const relay = await page.evaluate(() => {
+      const anchor = document.querySelector('#naturalAmountToken');
+      const backdrop = document.querySelector('#naturalEntryFocusBackdrop');
+      backdrop?.click();
+      const lensStyle = anchor ? getComputedStyle(anchor, '::before') : null;
+      const lensAnimation = anchor?.getAnimations?.({ subtree: true }).find((animation) => (
+        animation.effect?.pseudoElement === '::before'
+        && animation.animationName === 'natural-entry-capsule-motion'
+      ));
+      const timing = lensAnimation?.effect?.getComputedTiming?.();
+      return {
+        animationName: lensStyle?.animationName || '',
+        animationDuration: lensStyle?.animationDuration || '',
+        animationDelay: lensStyle?.animationDelay || '',
+        duration: timing?.duration || 0,
+        delay: timing?.delay || 0,
+      };
+    });
+
+    expect(relay.animationName).toBe('natural-entry-capsule-motion');
+    expect(relay.animationDuration).toBe('0.16s');
+    expect(relay.animationDelay).toBe('0.39s');
+    expect(relay.duration).toBe(160);
+    expect(relay.delay).toBe(390);
+
+    const handoff = await page.evaluate(() => new Promise((resolve) => {
+      const started = performance.now();
+      const read = () => {
+        const track = document.querySelector('#amountInput')?.closest('.amount-value-track');
+        const label = document.querySelector('#naturalAmountToken .natural-entry-token-label');
+        const result = {
+          trackOpacity: track ? getComputedStyle(track).opacity : '',
+          labelOpacity: label ? getComputedStyle(label).opacity : '',
+        };
+        if (result.trackOpacity === '0' || performance.now() - started >= 580) {
+          resolve(result);
+          return;
+        }
+        requestAnimationFrame(read);
+      };
+      requestAnimationFrame(read);
+    }));
+    expect(handoff.trackOpacity).toBe('0');
+    expect(handoff.labelOpacity).toBe('1');
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+  });
+
   test('Safari mobile uses semantic motion tokens without material blur during relay', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), 'Safari mobile token contract');
     await openAmountEditor(page, testInfo.project.name);

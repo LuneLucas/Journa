@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-code-reduction-v1-20260820";
+const APP_VERSION = "journa-lens-card-relay-v1-20260821";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -2962,7 +2962,18 @@ function animateNaturalAmountTrackToAnchor(anchor, onReached = null) {
     { duration: MOTION_DELAYS.naturalEntryStageClose, easing: getNaturalEntryStageCurve("cubic-bezier(0.20, 0, 0, 1)"), fill: "both" },
   );
   naturalEntryMotionAnims.push(animation);
-  animation.finished.then(() => onReached?.(), () => {});
+  animation.finished.then(() => {
+    /* The summary token lands on the same baseline as the native amount track.
+       Hide the moved input before revealing the summary copy so the lens relay
+       never paints two amount layers on the same frame. The finished WAAPI
+       effect is cancelled first because its `fill: both` opacity would
+       otherwise override the inline handoff state. Cleanup still removes this
+       inline opacity when the stage is finally returned home or reopened. */
+    naturalEntryMotionAnims = naturalEntryMotionAnims.filter((item) => item !== animation);
+    animation.cancel();
+    track.style.opacity = "0";
+    onReached?.();
+  }, () => {});
 }
 
 function getNaturalEntryFlightSourceMetrics(stage, editor) {
