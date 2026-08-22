@@ -68,6 +68,25 @@ const visualGeometryLedger = {
 };
 
 test.describe('层级优化回归', () => {
+  test('平账方式默认最简方案并可切换当前方案', async ({ page }) => {
+    await openFreshApp(page, settlementLedger);
+
+    await page.locator('#openSettingsButton').click();
+    const simpleChoice = page.locator('#settingsSettlementMethodList [data-settlement-method-choice="simple"]');
+    const pairwiseChoice = page.locator('#settingsSettlementMethodList [data-settlement-method-choice="pairwise"]');
+    await expect(simpleChoice).toHaveAttribute('aria-checked', 'true');
+    await expect(pairwiseChoice).toHaveAttribute('aria-checked', 'false');
+
+    await pairwiseChoice.click();
+    await expect(simpleChoice).toHaveAttribute('aria-checked', 'false');
+    await expect(pairwiseChoice).toHaveAttribute('aria-checked', 'true');
+    expect(await page.evaluate(() => localStorage.getItem('travel-ledger-settlement-method'))).toBe('pairwise');
+
+    await simpleChoice.click();
+    await expect(simpleChoice).toHaveAttribute('aria-checked', 'true');
+    await expect(pairwiseChoice).toHaveAttribute('aria-checked', 'false');
+  });
+
   test('设置、账本管理与平账最多显示一个抽屉', async ({ page }) => {
     await openFreshApp(page, settlementLedger);
 

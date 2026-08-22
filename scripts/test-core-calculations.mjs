@@ -74,6 +74,7 @@ const calculator = globalThis.JournaCore.createLedgerCalculator({
   getSplitRuleFromMode: split.getSplitRuleFromMode,
   normalizeSplitFamilyIds: split.normalizeSplitFamilyIds,
   normalizeSplitAmounts: split.normalizeSplitAmounts,
+  getSettlementMethod: () => "simple",
 });
 const summary = calculator.calculateSummary();
 assert.equal(summary.totalCents, 9000);
@@ -85,6 +86,37 @@ assert.equal(summary.scopedExpenseCount, 1);
 assert.deepEqual(summary.settlements, [
   { from: "乙家", fromFamilyId: "family-b", to: "甲家", toFamilyId: "family-a", cents: 2000 },
   { from: "丙家", fromFamilyId: "family-c", to: "甲家", toFamilyId: "family-a", cents: 1000 },
+]);
+
+const cycleState = {
+  ...state,
+  familyMembers: { "family-a": 1, "family-b": 1, "family-c": 1 },
+};
+const cycleExpenses = [
+  { amount: 40, payerId: "family-b", category: "餐饮", splitMode: "custom", splitAmounts: { "family-a": 40, "family-b": 0, "family-c": 0 } },
+  { amount: 30, payerId: "family-c", category: "餐饮", splitMode: "custom", splitAmounts: { "family-a": 0, "family-b": 30, "family-c": 0 } },
+  { amount: 20, payerId: "family-a", category: "餐饮", splitMode: "custom", splitAmounts: { "family-a": 0, "family-b": 0, "family-c": 20 } },
+];
+const createCycleCalculator = (settlementMethod) => globalThis.JournaCore.createLedgerCalculator({
+  getState: () => cycleState,
+  getActiveExpenses: () => cycleExpenses,
+  expenseToCents: money.expenseToCents,
+  amountToCents: money.amountToCents,
+  normalizeSplitMode: split.normalizeSplitMode,
+  getSplitScopeFromMode: split.getSplitScopeFromMode,
+  getSplitRuleFromMode: split.getSplitRuleFromMode,
+  normalizeSplitFamilyIds: split.normalizeSplitFamilyIds,
+  normalizeSplitAmounts: split.normalizeSplitAmounts,
+  getSettlementMethod: () => settlementMethod,
+});
+assert.deepEqual(createCycleCalculator("simple").calculateSummary().settlements, [
+  { from: "甲家", fromFamilyId: "family-a", to: "乙家", toFamilyId: "family-b", cents: 1000 },
+  { from: "甲家", fromFamilyId: "family-a", to: "丙家", toFamilyId: "family-c", cents: 1000 },
+]);
+assert.deepEqual(createCycleCalculator("pairwise").calculateSummary().settlements, [
+  { from: "甲家", fromFamilyId: "family-a", to: "乙家", toFamilyId: "family-b", cents: 4000 },
+  { from: "乙家", fromFamilyId: "family-b", to: "丙家", toFamilyId: "family-c", cents: 3000 },
+  { from: "丙家", fromFamilyId: "family-c", to: "甲家", toFamilyId: "family-a", cents: 2000 },
 ]);
 
 assert.deepEqual(globalThis.JournaWelcomeSources.detectShareSource({

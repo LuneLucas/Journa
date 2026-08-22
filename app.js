@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-custom-split-repair-v1-20260822";
+const APP_VERSION = "journa-settlement-method-v1-20260822";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -182,6 +182,12 @@ const THEME_STORAGE_KEY = "travel-ledger-theme";
 const MONEY_DECIMALS_STORAGE_KEY = "travel-ledger-show-money-decimals";
 const ENTRY_MODE_STORAGE_KEY = "travel-ledger-entry-mode";
 const NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY = "travel-ledger-natural-entry-marks-hidden";
+const SETTLEMENT_METHOD_STORAGE_KEY = "travel-ledger-settlement-method";
+const DEFAULT_SETTLEMENT_METHOD = "simple";
+const SETTLEMENT_METHOD_OPTIONS = [
+  { id: "simple", label: "最简方案", description: "合并收支，三家最多两笔" },
+  { id: "pairwise", label: "当前方案", description: "按家庭之间逐笔对冲" },
+];
 const THEME_PRESETS = [
   { id: "clay", name: "暖陶", description: "温暖、柔和", color: "#a45e48" },
   { id: "pine", name: "松林", description: "沉静、自然", color: "#2f7b6c" },
@@ -404,6 +410,7 @@ const elements = {
   settingsMoneyDecimalsInput: document.querySelector("#settingsMoneyDecimalsInput"),
   settingsNaturalEntryMarksHiddenInput: document.querySelector("#settingsNaturalEntryMarksHiddenInput"),
   settingsEntryModeList: document.querySelector("#settingsEntryModeList"),
+  settingsSettlementMethodList: document.querySelector("#settingsSettlementMethodList"),
   operatorModalView: document.querySelector("#operatorModalView"),
   operatorModalForm: document.querySelector("#operatorModalForm"),
   operatorModalFamilyList: document.querySelector("#operatorModalFamilyList"),
@@ -1942,6 +1949,7 @@ const ledgerCalculator = window.JournaCore.createLedgerCalculator({
   getSplitRuleFromMode,
   normalizeSplitFamilyIds,
   normalizeSplitAmounts,
+  getSettlementMethod: () => getSettlementMethod(),
 });
 const {
   calculateSummary,
@@ -4785,6 +4793,7 @@ function renderSettings({ summary = calculateSummary() } = {}) {
   elements.settingsMoneyDecimalsInput.checked = localStorage.getItem(MONEY_DECIMALS_STORAGE_KEY) === "true";
   applyNaturalEntryMarksPreference();
   renderEntryModeSettings();
+  renderSettlementMethodSettings();
   elements.currentLedgerSummary.innerHTML = renderCurrentLedgerSummary(summary);
   renderLedgerManager();
 
@@ -4850,6 +4859,23 @@ function renderEntryModeSettings() {
   document.documentElement.dataset.entryMode = activeMode;
   elements.settingsEntryModeList?.querySelectorAll("[data-entry-mode-choice]").forEach((button) => {
     const isSelected = button.dataset.entryModeChoice === activeMode;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-checked", String(isSelected));
+  });
+}
+
+function normalizeSettlementMethod(value) {
+  return SETTLEMENT_METHOD_OPTIONS.some((option) => option.id === value) ? value : DEFAULT_SETTLEMENT_METHOD;
+}
+
+function getSettlementMethod() {
+  return normalizeSettlementMethod(localStorage.getItem(SETTLEMENT_METHOD_STORAGE_KEY));
+}
+
+function renderSettlementMethodSettings() {
+  const activeMethod = getSettlementMethod();
+  elements.settingsSettlementMethodList?.querySelectorAll("[data-settlement-method-choice]").forEach((button) => {
+    const isSelected = button.dataset.settlementMethodChoice === activeMethod;
     button.classList.toggle("is-selected", isSelected);
     button.setAttribute("aria-checked", String(isSelected));
   });
@@ -5792,6 +5818,19 @@ function handleEntryModeSelection(event) {
     window.requestAnimationFrame(() => triggerNaturalEntryLensEntry({ force: true }));
   }
   showToast({ message: nextMode === "natural" ? "已切换为自然语言录入" : "已切换为标准录入" });
+}
+
+function handleSettlementMethodSelection(event) {
+  const button = event.target.closest("[data-settlement-method-choice]");
+  if (!button) return;
+
+  const nextMethod = normalizeSettlementMethod(button.dataset.settlementMethodChoice);
+  if (nextMethod === getSettlementMethod()) return;
+
+  localStorage.setItem(SETTLEMENT_METHOD_STORAGE_KEY, nextMethod);
+  render();
+  const selectedOption = SETTLEMENT_METHOD_OPTIONS.find((option) => option.id === nextMethod);
+  showToast({ message: `已切换为${selectedOption?.label || "最简方案"}` });
 }
 
 function renderLedger({ animateFinancialChanges = false } = {}) {
@@ -9588,6 +9627,7 @@ elements.settingsOperatorFamilyList.addEventListener("click", handleOperatorFami
 elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
 elements.settingsNaturalEntryMarksHiddenInput?.addEventListener("change", handleNaturalEntryMarksHiddenChange);
 elements.settingsEntryModeList?.addEventListener("click", handleEntryModeSelection);
+elements.settingsSettlementMethodList?.addEventListener("click", handleSettlementMethodSelection);
 elements.operatorModalForm.addEventListener("submit", handleOperatorModalSubmit);
 elements.operatorModalFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 /* Operator modal 背景 点击可关闭：原实现无关闭路径，用户被强制选家庭才能退出。

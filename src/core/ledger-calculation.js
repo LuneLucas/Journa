@@ -1,4 +1,4 @@
-/* Journa core: expense shares, summaries, and pairwise settlements.
+/* Journa core: expense shares, summaries, and configurable settlements.
    The factory receives the current state and normalization functions so this
    module stays independent from DOM, storage, and cloud transport. */
 (function exposeLedgerCalculation(global) {
@@ -12,6 +12,7 @@
     getSplitRuleFromMode,
     normalizeSplitFamilyIds,
     normalizeSplitAmounts,
+    getSettlementMethod = () => "simple",
   }) {
     function getTotalMembers() {
       const state = getState();
@@ -127,6 +128,55 @@
       return settlements.sort((first, second) => second.cents - first.cents);
     }
 
+    function calculateSimplifiedSettlements(owedByFamily) {
+      const state = getState();
+      const netByFamily = Object.fromEntries(state.families.map((family) => [family.id, 0]));
+
+      state.families.forEach((debtor) => {
+        state.families.forEach((creditor) => {
+          const cents = owedByFamily[debtor.id]?.[creditor.id] || 0;
+          if (cents <= 0) return;
+          netByFamily[debtor.id] -= cents;
+          netByFamily[creditor.id] += cents;
+        });
+      });
+
+      const debtors = state.families
+        .map((family) => ({ family, cents: Math.max(0, -netByFamily[family.id]) }))
+        .filter((item) => item.cents > 0);
+      const creditors = state.families
+        .map((family) => ({ family, cents: Math.max(0, netByFamily[family.id]) }))
+        .filter((item) => item.cents > 0);
+      const settlements = [];
+      let debtorIndex = 0;
+      let creditorIndex = 0;
+
+      while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+        const debtor = debtors[debtorIndex];
+        const creditor = creditors[creditorIndex];
+        const cents = Math.min(debtor.cents, creditor.cents);
+        settlements.push({
+          from: debtor.family.name,
+          fromFamilyId: debtor.family.id,
+          to: creditor.family.name,
+          toFamilyId: creditor.family.id,
+          cents,
+        });
+        debtor.cents -= cents;
+        creditor.cents -= cents;
+        if (debtor.cents === 0) debtorIndex += 1;
+        if (creditor.cents === 0) creditorIndex += 1;
+      }
+
+      return settlements.sort((first, second) => second.cents - first.cents);
+    }
+
+    function calculateSettlements(owedByFamily) {
+      return getSettlementMethod() === "pairwise"
+        ? calculatePairwiseSettlements(owedByFamily)
+        : calculateSimplifiedSettlements(owedByFamily);
+    }
+
     function calculateSummary() {
       const state = getState();
       const paidByFamily = Object.fromEntries(state.families.map((family) => [family.id, 0]));
@@ -169,7 +219,7 @@
         paidByFamily,
         categoryTotals,
         scopedExpenseCount,
-        settlements: calculatePairwiseSettlements(owedByFamily),
+        settlements: calculateSettlements(owedByFamily),
       };
     }
 
