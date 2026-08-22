@@ -181,8 +181,7 @@
     color: rgba(230, 235, 232, 0.58);
   }
 
-  .family-color-details .family-color-summary small,
-  .settings-actions-heading small {
+  .family-color-details .family-color-summary small {
     color: rgba(230, 235, 232, 0.58);
   }
 
@@ -1247,6 +1246,21 @@
   .secondary-button {
     background: rgba(234, 223, 191, 0.14);
     color: #ecd9a8;
+  }
+
+  /* 设置模式沿用亮色下的扁平分组；暗色也只保留分隔线，不把行重新铺成卡片。 */
+  .settings-view[data-mode="settings"] .current-ledger-card,
+  .settings-view[data-mode="settings"] .settings-family,
+  .settings-view[data-mode="settings"] .settings-rule,
+  .settings-view[data-mode="settings"] .settings-data-item,
+  .settings-view[data-mode="settings"] .family-color-details,
+  .settings-view[data-mode="settings"] .settings-guide-link {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .settings-view[data-mode="settings"] .settings-guide-link {
+    color: var(--ink);
   }
 
   /* 主按钮静息态（账本"打开"等）白渐变底 + 亮边转暗，绿字保留 */

@@ -43,20 +43,20 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/base.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/visual-depth.css?v=journa-family-choice-capsule-v1-20260822">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-family-choice-capsule-v1-20260822">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/base.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/visual-depth.css?v=journa-radius-consistency-v1-20260822">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-radius-consistency-v1-20260822">
     <script>
       // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
       // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
@@ -346,11 +346,10 @@
               <div class="settlement-panel-status">
                 <span class="readonly-badge" id="settlementCountBadge">待结算</span>
               </div>
-              <p class="settings-note">按实际垫付关系算清谁该转给谁，照着转账就能两清。</p>
               <div id="settlementList" class="settlement-list"></div>
             </section>
 
-            <section class="settings-panel">
+            <section class="settings-panel settings-ledger-panel">
               <div class="settings-panel-title">
                 <h3>当前账本</h3>
                 <button class="secondary-button compact-button" id="openLedgerManagerButton" type="button">
@@ -365,9 +364,9 @@
               <div id="currentLedgerSummary" class="current-ledger-summary"></div>
             </section>
 
-            <section class="settings-panel">
+            <section class="settings-panel settings-preferences-panel">
               <h3>个人设置</h3>
-              <p class="settings-note">选择你的家庭。之后创建或修改账单时，会自动留下清楚的家庭署名。</p>
+              <p class="settings-note">记账会显示家庭署名。</p>
               <form id="settingsOperatorForm" class="settings-operator-form">
                 <div id="settingsOperatorFamilyList" class="operator-family-choices" role="radiogroup" aria-label="选择你的家庭"></div>
                 <button class="secondary-button" id="saveOperatorButton" type="submit">保存选择</button>
@@ -375,21 +374,20 @@
               <label class="settings-preference-row" for="settingsMoneyDecimalsInput">
                 <span>
                   <strong>始终显示两位小数</strong>
-                  <small>关闭时仅在确有角分时显示两位；计算与导出仍精确到分</small>
+                  <small>关闭后，有角分时才显示。</small>
                 </span>
                 <input id="settingsMoneyDecimalsInput" type="checkbox" role="switch" />
               </label>
               <label class="settings-preference-row" for="settingsNaturalEntryMarksHiddenInput">
                 <span>
                   <strong>显示手写标记</strong>
-                  <small>显示自然语言句子里的圈选和双下划线</small>
+                  <small>圈选与双下划线</small>
                 </span>
                 <input id="settingsNaturalEntryMarksHiddenInput" type="checkbox" role="switch" />
               </label>
               <div class="settings-entry-mode">
                 <span>
                   <strong>录入方式</strong>
-                  <small>自然语言更轻量，标准模式一次展示全部字段</small>
                 </span>
                 <div class="settings-entry-mode-list" id="settingsEntryModeList" role="radiogroup" aria-label="选择记账录入方式">
                   <button class="settings-entry-mode-choice" type="button" role="radio" data-entry-mode-choice="natural" aria-checked="true">
@@ -407,9 +405,8 @@
             <details class="settings-panel personalization-panel settings-mobile-group" open>
               <summary><span>个性化</span><small>主题与家庭颜色</small></summary>
               <div class="settings-mobile-group-body">
-                <p class="settings-note">背景、玻璃与强调色一起变化，仅在本机生效。</p>
+                <p class="settings-note">仅在本机生效。</p>
                 <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="页面氛围主题"></div>
-                <p class="settings-note">家庭颜色保持稳定，需要时可在高级设置中逐家调整。</p>
                 <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="高级家庭身份色调整"></div>
               </div>
             </details>
@@ -417,7 +414,6 @@
             <details class="settings-panel settings-mobile-group" open>
               <summary><span>家庭与规则</span><small>人数、分摊与货币</small></summary>
               <div class="settings-mobile-group-body">
-                <p class="settings-note">家庭名称固定，按各家人数比例计算分摊金额。</p>
                 <div id="settingsFamilyList" class="settings-family-list"></div>
                 <div class="settings-rule-list">
                   <div class="settings-rule">
@@ -427,10 +423,6 @@
                   <div class="settings-rule">
                     <span>货币</span>
                     <strong>人民币 ¥</strong>
-                  </div>
-                  <div class="settings-rule">
-                    <span>保存位置</span>
-                    <strong id="storageModeLabel">当前浏览器</strong>
                   </div>
                 </div>
               </div>
@@ -447,17 +439,12 @@
               </div>
             </details>
 
-            <details class="settings-panel settings-mobile-group" open>
-              <summary><span>数据与备份</span><small>状态、同步、导出</small></summary>
+            <details class="settings-panel settings-mobile-group settings-data-panel" open>
+              <summary><span>同步与数据</span><small>状态、导入与导出</small></summary>
               <div class="settings-mobile-group-body">
                 <div id="settingsDataSummary" class="settings-data-summary"></div>
                 <section class="settings-actions-section" aria-labelledby="settingsActionsTitle">
-                  <div class="settings-actions-heading">
-                    <div>
-                      <strong id="settingsActionsTitle">同步与备份</strong>
-                      <small>分享、导出、清空</small>
-                    </div>
-                  </div>
+                  <h3 class="visually-hidden" id="settingsActionsTitle">同步与数据操作</h3>
                   <div class="settings-actions-body">
                     <div class="details-body-inner">
                       <div class="settings-action-stack">
@@ -493,12 +480,11 @@
               </div>
             </details>
 
-            <section class="settings-panel">
-              <h3>使用指南</h3>
-              <p class="settings-note">重新了解分摊规则、平账建议和云账本邀请。</p>
-              <button class="secondary-button" id="openWelcomeButton" type="button">
+            <section class="settings-panel settings-guide-panel">
+              <button class="secondary-button settings-guide-link" id="openWelcomeButton" type="button">
                 <span class="ui-icon-host" data-ui-icon="help" aria-hidden="true"></span>
-                <span>重新查看指南</span>
+                <span>使用指南</span>
+                <small>重新查看</small>
               </button>
             </section>
           </div>
@@ -598,28 +584,27 @@
               </div>
               <p class="eyebrow welcome-eyebrow" id="welcomeHeroEyebrow">欢迎使用</p>
               <h2 id="welcomeTitle">三个家庭，一本账</h2>
-              <p class="welcome-copy" id="welcomeHeroCopy">默认按各家人数分摊，也可以为单笔账指定家庭或金额，最后自动生成平账建议。</p>
+              <p class="welcome-copy" id="welcomeHeroCopy">默认按人数分，也可逐笔调整。</p>
             </article>
             <article class="welcome-slide">
               <div class="welcome-art welcome-split-art">
                 <div class="welcome-split-modes" role="list" aria-label="三种分摊方式">
                   <div class="welcome-split-mode is-default" role="listitem">
                     <span class="welcome-split-mark">3 家</span>
-                    <span><strong>全部家庭</strong><small>三家参与，按各家人数分</small></span>
+                    <span><strong>全部家庭</strong><small>三家按人数分</small></span>
                   </div>
                   <div class="welcome-split-mode" role="listitem">
                     <span class="welcome-split-mark">2 家</span>
-                    <span><strong>指定家庭</strong><small>只选参与家庭，再按人数分</small></span>
+                    <span><strong>指定家庭</strong><small>选参与家庭</small></span>
                   </div>
                   <div class="welcome-split-mode is-custom" role="listitem">
                     <span class="welcome-split-mark">¥</span>
-                    <span><strong>自定金额</strong><small>逐家填写，合计自动成为总额</small></span>
+                    <span><strong>自定金额</strong><small>逐家填金额</small></span>
                   </div>
                 </div>
               </div>
               <p class="eyebrow welcome-eyebrow">每笔都能单独选择</p>
               <h3>每笔账，都能单独分摊</h3>
-              <p class="welcome-copy welcome-split-copy">谁没参加，就不选谁；有人请客或儿童免单，就直接填写各家金额。</p>
             </article>
             <article class="welcome-slide welcome-identity-slide">
               <div class="welcome-art welcome-combined-art" aria-hidden="true">
@@ -639,12 +624,12 @@
               </div>
               <p class="eyebrow welcome-eyebrow">最后一步</p>
               <h3 id="welcomeCloudTitle">平账、同步，一起记</h3>
-              <p class="welcome-copy" id="welcomeCloudCopy">系统会算清谁该转给谁；在「设置 → 同步与备份」创建云账本，就能邀请家人实时同步。</p>
+              <p class="welcome-copy" id="welcomeCloudCopy">创建云账本后，三家实时同步。</p>
               <div class="welcome-identity-inline">
                 <strong>你属于哪个家庭？</strong>
                 <div id="welcomeIdentityFamilyList" class="operator-family-choices welcome-family-choices" role="radiogroup" aria-label="选择你的家庭"></div>
               </div>
-              <p class="welcome-copy" id="welcomeIdentityHint">选好后，你记的每笔账都会带上你的家庭署名。</p>
+              <p class="welcome-copy" id="welcomeIdentityHint">记账会显示家庭署名。</p>
             </article>
           </div>
           <div class="welcome-footer">
@@ -661,19 +646,19 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <script src="./src/core/money.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/core/split.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/core/ledger-calculation.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/core/motion.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/cloud/supabase-sdk.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/natural-entry.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/ledger-view.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/ledger-interactions.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/settings-preferences.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/welcome-sources.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/welcome.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./src/modules/mobile-viewport.js?v=journa-family-choice-capsule-v1-20260822"></script>
-    <script src="./app.js?v=journa-family-choice-capsule-v1-20260822"></script>
+    <script src="./src/core/money.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/core/split.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/core/ledger-calculation.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/core/motion.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/cloud/supabase-sdk.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/natural-entry.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/ledger-view.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/ledger-interactions.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/settings-preferences.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/welcome-sources.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/welcome.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./src/modules/mobile-viewport.js?v=journa-radius-consistency-v1-20260822"></script>
+    <script src="./app.js?v=journa-radius-consistency-v1-20260822"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

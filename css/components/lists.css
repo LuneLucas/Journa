@@ -175,6 +175,7 @@
 }
 
 .ledger-item {
+  --ledger-item-radius: var(--radius-md);
   position: relative;
   display: grid;
   overflow: visible;
@@ -186,7 +187,7 @@
   min-height: 60px;
   max-height: 94px;
   border: none;
-  border-radius: var(--control-radius-large);
+  border-radius: var(--ledger-item-radius);
   background: var(--ledger-card-background);
   padding: 8px 12px;
   box-shadow:
@@ -242,7 +243,7 @@
   gap: 12px 14px;
   min-height: 124px;
   max-height: 280px;
-  border-radius: var(--control-radius-large);
+  border-radius: var(--ledger-item-radius);
   background: var(--ledger-card-background);
   padding: 14px;
   box-shadow:
@@ -272,7 +273,7 @@
   width: 100%;
   min-width: 0;
   border: 0;
-  border-radius: calc(var(--control-radius-large) - 4px);
+  border-radius: calc(var(--ledger-item-radius) - 4px);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -507,7 +508,7 @@
 .ledger-item,
 .ledger-item.is-expanded {
   display: block;
-  border-radius: var(--control-radius-large);
+  border-radius: var(--ledger-item-radius);
   grid-template: none;
   min-height: 0;
   max-height: none;

@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-family-choice-capsule-v1-20260822";
+const APP_VERSION = "journa-radius-consistency-v1-20260822";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -11,6 +11,7 @@ const {
   formatMoney,
   expenseToCents,
   amountToCents,
+  normalizeAmountDecimalSeparators,
   parseAmountInput,
   centsToAmount,
   formatAmountInput,
@@ -55,15 +56,11 @@ const COPY = {
   },
   welcome: {
     title: "三个家庭，一本账",
-    intro: "默认按各家人数分摊，也可以为单笔账指定家庭或金额，最后自动生成平账建议。",
-    splitTitle: "每笔账，都能单独分摊",
-    splitCopy: "谁没参加，就不选谁；有人请客或儿童免单，就直接填写各家金额。",
-    settlementTitle: "平账建议自动生成",
-    settlementCopy: "系统会按实际垫付关系算清谁该转给谁，打开「平账建议」就能看到。",
+    intro: "默认按人数分，也可逐笔调整。",
     cloudTitle: "邀请家人一起记",
-    cloudCopy: "在「设置 → 同步与备份」创建云账本，把邀请链接发给家人，三家实时同步。",
+    cloudCopy: "创建云账本后，三家实时同步。",
     identityTitle: "你属于哪个家庭？",
-    identityCopy: "选好后，你记的每笔账都会带上你的家庭署名。",
+    identityCopy: "记账会显示家庭署名。",
   },
 };
 
@@ -430,7 +427,6 @@ const elements = {
   currentLedgerSummary: document.querySelector("#currentLedgerSummary"),
   ledgerManagerList: document.querySelector("#ledgerManagerList"),
   settingsDataSummary: document.querySelector("#settingsDataSummary"),
-  storageModeLabel: document.querySelector("#storageModeLabel"),
   paidByFamily: document.querySelector("#paidByFamily"),
   categorySummaryBlock: document.querySelector("#categorySummaryBlock"),
   categorySummary: document.querySelector("#categorySummary"),
@@ -556,6 +552,7 @@ const mobileViewportCoordinator = window.JournaModules.createMobileViewportCoord
 // 此时各家金额合计就是当前总额；保留为 UI 草稿，不改变持久化结构。
 let customSplitTargetCents = null;
 let customSplitSuspendedAmounts = {};
+let customSplitAmountDrafts = {};
 let splitScopeOpen = false;
 let splitFamilyChoicesOpen = true;
 let activeFamilyColorFamilyId = state.families[0]?.id || defaultFamilies[0].id;
@@ -1826,7 +1823,6 @@ function updateCloudControls(forcedStatus = "") {
 }
 
 function renderCloudControls(forcedStatus = "") {
-  const configured = isCloudConfigured();
   const active = isCloudLedgerActive();
   /* 非同步中且存在持久化云端错误时，沿用错误态（覆盖正常摘要标签与配色） */
   const effectiveForced = (!cloudBusy && cloudErrorLabel) ? cloudErrorLabel : forcedStatus;
@@ -1856,9 +1852,6 @@ function renderCloudControls(forcedStatus = "") {
   elements.createCloudLedgerButton.disabled = cloudBusy;
   elements.copyShareLinkButton.hidden = !active;
   elements.copyShareLinkButton.disabled = cloudBusy;
-  if (elements.storageModeLabel) {
-    elements.storageModeLabel.textContent = active ? syncSummary.label : configured ? "当前浏览器" : "当前浏览器";
-  }
 }
 
 function playSyncLampIgnite() {
@@ -4458,19 +4451,17 @@ function syncSplitModeButtons() {
     container.innerHTML = `
       <div class="split-mode-single-summary" role="status" hidden>
         <span>该家庭承担全部</span>
-        <small>只有一家参与，金额会全部记入该家庭</small>
       </div>
       <button class="split-mode-button" type="button" data-split-rule="equal" role="radio" aria-checked="false">
         <span>各家均分</span>
-        <small>每个家庭承担相同金额</small>
       </button>
       <button class="split-mode-button" type="button" data-split-rule="per-person" role="radio" aria-checked="false">
         <span>按家庭人数</span>
-        <small>人数多的家庭承担更多</small>
+        <small>人数多，承担多</small>
       </button>
       <button class="split-mode-button" type="button" data-split-mode="custom" role="radio" aria-checked="false">
         <span>自定金额</span>
-        <small>分别填写每家金额</small>
+        <small>逐家填写</small>
       </button>
     `;
     container.dataset.splitModeReady = "true";
@@ -4576,7 +4567,7 @@ function syncSplitCustomAmounts() {
             <span class="split-amount-input-shell">
               <span class="currency-mark" aria-hidden="true">¥</span>
               <span class="amount-value-track is-compact">
-                <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" data-split-amount="${escapeHtml(family.id)}" aria-label="${escapeHtml(family.name)}金额" placeholder="0.00" />
+                <input type="text" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="next" data-split-amount="${escapeHtml(family.id)}" aria-label="${escapeHtml(family.name)}金额" placeholder="0.00" />
               </span>
             </span>
           </div>
@@ -4590,9 +4581,13 @@ function syncSplitCustomAmounts() {
   inputs.forEach((input) => {
     if (document.activeElement === input) return; // 正在输入时不回写，避免打断
     const familyId = input.dataset.splitAmount;
-    const amount = activeSplitFamilyIds.includes(familyId) ? Number(activeSplitAmounts[familyId]) || 0 : 0;
-    input.value = amount > 0 ? String(amount) : "";
-    input.disabled = !activeSplitFamilyIds.includes(familyId);
+    const selected = activeSplitFamilyIds.includes(familyId);
+    const amount = selected ? Number(activeSplitAmounts[familyId]) || 0 : 0;
+    const hasDraft = Object.prototype.hasOwnProperty.call(customSplitAmountDrafts, familyId);
+    input.value = selected && hasDraft
+      ? customSplitAmountDrafts[familyId]
+      : amount > 0 ? String(amount) : "";
+    input.disabled = !selected;
     syncAmountValueTrack(input);
   });
   container.querySelectorAll("[data-split-family]").forEach((button) => {
@@ -4811,22 +4806,6 @@ function renderSettings({ summary = calculateSummary() } = {}) {
     .join("");
 
   elements.settingsDataSummary.innerHTML = `
-    <div class="settings-data-item">
-      <span>总支出</span>
-      <strong>${formatMoney(summary.totalCents)}</strong>
-    </div>
-    <div class="settings-data-item">
-      <span>账单笔数</span>
-      <strong>${state.expenses.length}</strong>
-    </div>
-    <div class="settings-data-item">
-      <span>总人数</span>
-      <strong>${summary.totalMembers}</strong>
-    </div>
-    <div class="settings-data-item">
-      <span>类别数量</span>
-      <strong>${state.categories.length}</strong>
-    </div>
     <div class="settings-data-item is-${escapeHtml(syncSummary.state)}">
       <span>同步状态</span>
       <strong>${escapeHtml(syncSummary.label)}</strong>
@@ -5038,10 +5017,7 @@ function renderCurrentLedgerSummary(summary) {
   const status = state.cloudShareToken ? syncSummary.label : COPY.localLedger;
   return `
     <div class="current-ledger-card">
-      <div>
-        <span>${escapeHtml(status)}</span>
-        <strong>${escapeHtml(state.name)}</strong>
-      </div>
+      <span>${escapeHtml(status)}</span>
       <small>${state.expenses.length} 笔 · ${formatMoney(summary.totalCents)} · ${summary.totalMembers} 人 · ${escapeHtml(syncSummary.detail)}</small>
     </div>
   `;
@@ -5630,7 +5606,6 @@ function buildSettlementHtml(summary, enterClass = "") {
         <span class="settlement-done-mark" aria-hidden="true">${uiIconHtml("check")}</span>
         <span class="settlement-done-kicker">${COPY.settlementTitle}</span>
         <strong>${COPY.settlementDone}</strong>
-        <small>各家已付金额已经覆盖应承担金额，这趟旅行不用再转账。</small>
       </div>`;
   }
 
@@ -6463,6 +6438,7 @@ function handleSplitScopeClick(event) {
       if (previousMode === "custom" && nextMode !== "custom") {
         customSplitTargetCents = null;
         customSplitSuspendedAmounts = {};
+        customSplitAmountDrafts = {};
       }
       markSplitScopeSwitching();
       markSplitModeDeactivating(previousMode);
@@ -6724,11 +6700,13 @@ function handleSplitAmountInput(event) {
   if (!input) return;
 
   elements.formError.textContent = "";
+  normalizeAmountInputDecimalPoint(input);
   syncAmountValueTrack(input);
   animateAmountValueTrack(input, { compact: true });
   revealAmountInputCaret(input);
   const familyId = normalizePayerId(input.dataset.splitAmount);
   if (!familyId) return;
+  customSplitAmountDrafts[familyId] = input.value;
   const amount = parseAmountInput(input.value);
   activeSplitAmounts[familyId] = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0;
 
@@ -6766,6 +6744,7 @@ function resetSplitScope() {
   activeSplitAmounts = {};
   customSplitTargetCents = null;
   customSplitSuspendedAmounts = {};
+  customSplitAmountDrafts = {};
   splitScopeOpen = false;
   splitFamilyChoicesOpen = true;
   activeEntryEditor = "amount";
@@ -6781,6 +6760,7 @@ function setSplitScopeFromExpense(expense) {
   activeSplitAmounts = normalizeSplitAmounts(expense.splitAmounts);
   customSplitTargetCents = activeSplitMode === "custom" ? amountToCents(expense.amount) : null;
   customSplitSuspendedAmounts = {};
+  customSplitAmountDrafts = {};
   splitScopeOpen = activeSplitMode !== "equal";
   splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
 }
@@ -8040,12 +8020,12 @@ function openWelcome({ invitedArrival = false } = {}) {
   const cloudActive = invitedArrival || isCloudLedgerActive();
   elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : COPY.welcome.cloudTitle;
   elements.welcomeCloudCopy.textContent = cloudActive
-    ? "云账本已开启，账单会自动同步；选好家庭后，每笔编辑都有记录。"
+    ? "账单实时同步，编辑保留家庭记录。"
     : COPY.welcome.cloudCopy;
   renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList);
   elements.welcomeIdentityHint.textContent = cloudActive
     ? COPY.welcome.identityCopy
-    : "本地账本可以稍后再选；开启云同步后，需要选择你的家庭。";
+    : "本地账本可稍后再选；云账本需要选择家庭。";
 
   view.hidden = false;
   document.body.classList.add("confirm-open");
@@ -9149,6 +9129,19 @@ function normalizeAmountInputDisplayValue(input = elements.amountInput) {
   return nextValue;
 }
 
+function normalizeAmountInputDecimalPoint(input) {
+  if (!input) return "";
+  const normalized = normalizeAmountDecimalSeparators(input.value);
+  if (normalized === input.value) return normalized;
+  const selectionStart = input.selectionStart;
+  const selectionEnd = input.selectionEnd;
+  input.value = normalized;
+  if (document.activeElement === input && selectionStart !== null && selectionEnd !== null) {
+    input.setSelectionRange(selectionStart, selectionEnd);
+  }
+  return normalized;
+}
+
 const NOTE_MAX_LINES = 3;
 
 function syncNoteInputHeight(input = elements.noteInput) {
@@ -9303,6 +9296,7 @@ function restoreEntryPreferenceState() {
     ? Math.max(0, Math.round(editReturnState.customSplitTargetCents))
     : null;
   customSplitSuspendedAmounts = {};
+  customSplitAmountDrafts = {};
   splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
   editReturnState = null;
   editFormSnapshot = null;
@@ -9659,6 +9653,7 @@ elements.amountInput.addEventListener("focus", updateAmountMotionState);
 elements.amountInput.addEventListener("blur", formatAmountFieldOnBlur);
 elements.amountInput.addEventListener("input", () => {
   elements.formError.textContent = "";
+  normalizeAmountInputDecimalPoint(elements.amountInput);
   if (activeSplitMode === "custom") {
     const amount = parseAmountInput(elements.amountInput.value);
     customSplitTargetCents = Number.isFinite(amount) && amount > 0 ? amountToCents(amount) : null;

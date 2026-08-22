@@ -1355,9 +1355,13 @@ label,
 }
 
 .operator-family-choice {
+  display: inline-flex;
+  align-items: center;
   width: 100%;
   min-width: 0;
   justify-content: center;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -1397,6 +1401,26 @@ label,
   padding: var(--panel-padding);
 }
 
+/* 设置抽屉本身已经是一张完整表面。设置模式不再让每个分组继续悬浮成卡片，
+   改用留白与细分隔线组织内容，减少“抽屉 → 大卡 → 行卡 → 控件”的视觉层级。 */
+.settings-view[data-mode="settings"] .settings-grid {
+  gap: 0;
+  padding: 0 22px 26px;
+}
+
+.settings-view[data-mode="settings"] .settings-panel {
+  border-radius: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border-divider) 74%, transparent);
+  padding: 22px 2px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-view[data-mode="settings"] .settings-ledger-panel {
+  border-top: 0;
+  padding-top: 10px;
+}
+
 .settings-panel h3 {
   margin-bottom: 12px;
 }
@@ -1426,8 +1450,7 @@ label,
 .settings-entry-mode-choice small,
 .family-color-details summary small,
 .family-color-editor-heading small,
-.family-color-custom-note,
-.settings-actions-heading small {
+.family-color-custom-note {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: var(--fw-bold);
@@ -1499,20 +1522,16 @@ label,
 }
 
 .current-ledger-card {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
   border: none;
-  box-shadow: var(--glass-edge);
-  border-radius: var(--control-radius-large);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.60), rgba(255, 255, 255, 0.36)),
-    rgba(169, 206, 181, 0.16);
-  padding: 12px;
-}
-
-.current-ledger-card div {
-  display: grid;
-  gap: 3px;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 2px;
 }
 
 .current-ledger-card span,
@@ -1522,10 +1541,13 @@ label,
   font-weight: var(--fw-bold);
 }
 
-.current-ledger-card strong {
+.current-ledger-card span {
   color: var(--theme-color-strong);
-  font-weight: var(--fw-medium);
-  font-size: 1.05rem;
+}
+
+.current-ledger-card small {
+  flex: 1 1 210px;
+  text-align: right;
 }
 
 .ledger-name-form,
@@ -1641,7 +1663,7 @@ label,
   gap: 3px;
   min-height: 58px;
   border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
-  border-radius: var(--control-radius-large);
+  border-radius: var(--control-radius);
   padding: 10px 12px;
   background: var(--glass-fade-strong-70);
   box-shadow: var(--glass-edge), 0 9px 22px -20px rgba(22, 26, 30, 0.30);
@@ -1769,7 +1791,7 @@ label,
 .settings-rule-list,
 .settings-data-summary {
   display: grid;
-  gap: 10px;
+  gap: 0;
 }
 
 .settings-family,
@@ -1780,9 +1802,16 @@ label,
   gap: 12px;
   align-items: center;
   min-height: 44px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.34);
-  padding: 10px 12px;
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-divider) 62%, transparent);
+  background: transparent;
+  padding: 10px 2px;
+}
+
+.settings-family:last-child,
+.settings-rule:last-child,
+.settings-data-item:last-child {
+  border-bottom: 0;
 }
 
 .settings-family span {
@@ -1846,6 +1875,17 @@ label,
   align-items: center;
 }
 
+/* categoryLabelHtml() 在设置标签和统计行里都是「图标 + 文字」两件套。
+   外层若仍是普通行盒，15px 图标会贴到 19.5px 文字行盒顶部，视觉中心
+   比文字高约 2px；统一改成 flex 中线，避免不同 SF/Lucide 图形看起来上下漂。 */
+.settings-category-chip > span:first-child,
+.category-row > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .settings-category-chip small {
   color: color-mix(in srgb, var(--category-text) 68%, transparent);
   font-size: 0.72rem;
@@ -1891,10 +1931,11 @@ label,
 }
 
 .family-color-details {
-  border: none;
-  box-shadow: inset 0 0 0 1px var(--ring-subtle), var(--glass-edge);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.28);
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border-divider) 62%, transparent);
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
   overflow: clip;
 }
 
@@ -2236,7 +2277,7 @@ label,
   align-items: center;
   width: 100%;
   min-height: 48px;
-  padding: 10px 12px;
+  padding: 10px 2px;
   border: 0;
   color: var(--ink);
   background: transparent;
@@ -2277,25 +2318,28 @@ label,
 .settings-actions-section {
   margin-top: 14px;
   border-top: 1px solid color-mix(in oklch, var(--brand-primary) 10%, var(--control-border));
-  padding-top: 12px;
+  padding-top: 14px;
 }
 
-.settings-actions-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 2px 10px;
-}
-
-.settings-actions-heading > div {
-  display: grid;
-  gap: 3px;
-}
-
-.settings-actions-heading strong {
+.settings-guide-panel .settings-guide-link {
+  width: 100%;
+  justify-content: flex-start;
+  padding-inline: 2px;
+  background: transparent;
   color: var(--ink);
-  font-size: 0.88rem;
+  box-shadow: none;
+}
+
+.settings-guide-panel .settings-guide-link:hover {
+  background: color-mix(in srgb, var(--control-surface) 58%, transparent);
+  box-shadow: none;
+}
+
+.settings-guide-link small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: var(--fw-bold);
 }
 
 .settings-actions-body {
@@ -2381,7 +2425,7 @@ label,
 }
 
 .stat-block {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--glass-grain), var(--surface-soft);
   padding: 16px;
 }
@@ -2442,7 +2486,7 @@ label,
   width: 100%;
   border: none;
   box-shadow: inset 0 0 0 1px rgba(217, 164, 65, 0.16), var(--glass-edge);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.26)),
     radial-gradient(ellipse at 100% 120%, rgba(217, 164, 65, 0.16), transparent 60%),
@@ -4679,7 +4723,7 @@ label,
     position: absolute;
     inset: 3px;
     border: 1px solid color-mix(in srgb, var(--family-color) 22%, transparent);
-    border-radius: calc(var(--control-radius-large) - 3px);
+    border-radius: calc(var(--ledger-item-radius, var(--radius-md)) - 3px);
     content: "";
     opacity: 0;
     transition: opacity 150ms ease;

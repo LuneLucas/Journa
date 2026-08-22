@@ -868,6 +868,29 @@ test.describe('mobile entry smoke flow', () => {
     await expect(page.locator('.split-total-line')).toHaveText('¥268.50');
   });
 
+  test('custom split preserves decimal input across typing and rerenders', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自定金额入口只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await page.locator('#naturalSplitToken').click();
+    await page.getByRole('radio', { name: '自定金额' }).click();
+
+    const splitInputs = page.locator('[data-split-amount]');
+    const first = splitInputs.nth(0);
+    await first.pressSequentially('12.', { delay: 30 });
+    await splitInputs.nth(1).focus();
+    await page.evaluate(() => renderSplitScope());
+    await expect(first).toHaveValue('12.');
+
+    await first.focus();
+    await first.pressSequentially('34', { delay: 30 });
+    await expect(first).toHaveValue('12.34');
+
+    await splitInputs.nth(1).fill('56。78');
+    await expect(splitInputs.nth(1)).toHaveValue('56.78');
+    await expect(page.locator('.split-total-line')).toHaveText('¥69.12');
+  });
+
   test('custom split marks a mismatch and lets a family be excluded inline', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '自定金额入口只在移动端启用');
     await openAmountEditor(page, testInfo.project.name);

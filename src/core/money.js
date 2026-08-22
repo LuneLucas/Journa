@@ -25,8 +25,12 @@
     return Math.round(Number(amount) * 100) || 0;
   }
 
+  function normalizeAmountDecimalSeparators(value) {
+    return String(value ?? "").replace(/[，,。．٫]/g, ".");
+  }
+
   function parseAmountInput(value) {
-    const raw = String(value || "").trim().replace(/[，,]/g, ".");
+    const raw = normalizeAmountDecimalSeparators(value).trim();
     if (!raw) return NaN;
     if (!/^\d+(?:\.\d{0,2})?$/.test(raw) && !/^\.\d{1,2}$/.test(raw)) return NaN;
     const amount = Number(raw);
@@ -47,6 +51,7 @@
     formatMoney,
     expenseToCents,
     amountToCents,
+    normalizeAmountDecimalSeparators,
     parseAmountInput,
     centsToAmount,
     formatAmountInput,

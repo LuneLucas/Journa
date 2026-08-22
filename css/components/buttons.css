@@ -621,6 +621,12 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
+/* 设置标题里的紧凑动作与同卡片内的输入/保存按钮属于同一控件层级；
+   高度仍保持 compact，曲率统一走常规控件 md，避免同组按钮一方一圆。 */
+.settings-panel-title .compact-button {
+  border-radius: var(--control-radius);
+}
+
 .ledger-name-form .secondary-button,
 .settings-operator-form .secondary-button,
 .ledger-create-form .secondary-button,

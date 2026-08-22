@@ -22,12 +22,15 @@ assert.deepEqual(Object.keys(money).sort(), [
   "expenseToCents",
   "formatAmountInput",
   "formatMoney",
+  "normalizeAmountDecimalSeparators",
   "parseAmountInput",
 ]);
 assert.equal(money.expenseToCents({ amount: 12.34 }), 1234);
 assert.equal(money.amountToCents("8.88"), 888);
 assert.equal(money.centsToAmount(1234), 12.34);
 assert.match(money.formatMoney(1234), /12\.34/);
+assert.equal(money.parseAmountInput("12。34"), 12.34);
+assert.equal(money.parseAmountInput("12．34"), 12.34);
 
 const families = [
   { id: "family-a", name: "甲家" },
