@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-radius-consistency-v1-20260822";
+const APP_VERSION = "journa-custom-split-repair-v1-20260822";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -1124,6 +1124,32 @@ function normalizeOperator(val) {
   return name ? { name } : null;
 }
 
+/* 兼容旧版本把自定分摊金额按“分”写进了“元”字段的历史账单。
+   仅在分摊合计恰好是账单总额的 100 倍时修复，避免改变任何正常的自定金额。 */
+function normalizePersistedSplitAmounts(amount, splitMode, rawAmounts) {
+  const normalized = normalizeSplitAmounts(rawAmounts);
+  if (normalizeSplitMode(splitMode) !== "custom") return normalized;
+
+  const totalCents = amountToCents(amount);
+  const storedTotalCents = defaultFamilies.reduce(
+    (sum, family) => sum + amountToCents(normalized[family.id]),
+    0,
+  );
+  if (!totalCents || storedTotalCents !== totalCents * 100) return normalized;
+
+  const repaired = Object.fromEntries(
+    defaultFamilies.map((family) => [
+      family.id,
+      centsToAmount(amountToCents(normalized[family.id]) / 100),
+    ]),
+  );
+  const repairedTotalCents = defaultFamilies.reduce(
+    (sum, family) => sum + amountToCents(repaired[family.id]),
+    0,
+  );
+  return repairedTotalCents === totalCents ? repaired : normalized;
+}
+
 function normalizeExpense(expense) {
   const splitMode = normalizeSplitMode(expense.splitMode);
   const splitScope = getSplitScopeFromMode(splitMode);
@@ -1140,7 +1166,7 @@ function normalizeExpense(expense) {
     splitScope,
     splitRule,
     splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitScope === "selected" ? defaultFamilies.map((family) => family.id) : []),
-    splitAmounts: normalizeSplitAmounts(expense.splitAmounts),
+    splitAmounts: normalizePersistedSplitAmounts(expense.amount, splitMode, expense.splitAmounts),
     createdBy: normalizeOperator(expense.createdBy),
     updatedBy: normalizeOperator(expense.updatedBy),
     syncState: normalizeExpenseSyncState(expense.syncState),
@@ -1411,7 +1437,7 @@ function normalizeRemotePayload(payload) {
         splitScope: getSplitScopeFromMode(expense.split_mode),
         splitRule: getSplitRuleFromMode(expense.split_mode),
         splitFamilyIds: normalizeSplitFamilyIds(expense.split_family_ids),
-        splitAmounts: normalizeSplitAmounts(expense.split_amounts),
+        splitAmounts: normalizePersistedSplitAmounts(expense.amount, expense.split_mode, expense.split_amounts),
         createdBy: normalizeOperator(expense.created_by),
         updatedBy: normalizeOperator(expense.updated_by),
         syncState: "synced",
@@ -4694,7 +4720,9 @@ function getActiveCustomSplitAmounts() {
   return Object.fromEntries(
     state.families.map((family) => [
       family.id,
-      activeSplitFamilyIds.includes(family.id) ? amountToCents(activeSplitAmounts[family.id]) : 0,
+      activeSplitFamilyIds.includes(family.id)
+        ? centsToAmount(amountToCents(activeSplitAmounts[family.id]))
+        : 0,
     ]),
   );
 }

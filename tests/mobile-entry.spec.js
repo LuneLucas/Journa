@@ -268,6 +268,36 @@ test.describe('mobile entry smoke flow', () => {
     expect(geometry.every(({ width, scrollWidth }) => width > 24 && scrollWidth <= width + 1)).toBeTruthy();
   });
 
+  test('saving custom split amounts keeps persisted values in yuan', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '自定金额保存单位回归只在移动端启用');
+    await seedLocalState(page, customSplitEditableMobileLedger);
+    await openAmountEditor(page, testInfo.project.name);
+
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#mobileDataTab').click();
+    const card = page.locator('[data-expense-id="mobile-custom-split-expense"]');
+    await card.click();
+    await card.locator('[data-edit-id="mobile-custom-split-expense"]').click();
+    await page.locator('#naturalSplitToken').click({ force: true });
+    await expect(page.locator('#naturalEntryStage')).toHaveClass(/is-relay-settled/);
+
+    const splitInputs = page.locator('[data-split-amount]');
+    await splitInputs.nth(0).fill('345.67');
+    await splitInputs.nth(1).fill('64.00');
+    await splitInputs.nth(2).fill('12.34');
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+    await page.locator('#mobileSubmitButton').click();
+
+    await expect(page.locator('#editBanner')).toBeHidden();
+    const persisted = await page.evaluate(() => {
+      const appState = JSON.parse(localStorage.getItem('travel-ledger-v3'));
+      return appState.ledgers[0].expenses.find((expense) => expense.id === 'mobile-custom-split-expense').splitAmounts;
+    });
+    expect(persisted).toEqual({ 'family-a': 345.67, 'family-b': 64, 'family-c': 12.34 });
+  });
+
   test('amount entry exposes one visible input and preserves the form flow', async ({ page }, testInfo) => {
     await openAmountEditor(page, testInfo.project.name);
 
