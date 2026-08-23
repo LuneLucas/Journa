@@ -502,6 +502,46 @@ test.describe('ledger card expansion', () => {
     expect(Math.abs(after.x - before.x)).toBeLessThan(1);
   });
 
+  test('Safari keeps the ledger glass live throughout expansion', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.startsWith('webkit'), 'Safari material is covered by WebKit projects');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openSeededLedger(page);
+
+    const samples = await page.evaluate(async () => {
+      const card = document.querySelector('.ledger-item');
+      const summary = card.querySelector('.ledger-summary-toggle');
+      const read = () => {
+        const style = getComputedStyle(card);
+        return {
+          backdropFilter: style.webkitBackdropFilter || style.backdropFilter,
+          backgroundImage: style.backgroundImage,
+        };
+      };
+      const before = read();
+      summary.click();
+      await new Promise(requestAnimationFrame);
+      const firstFrame = read();
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      const middle = read();
+      await new Promise((resolve) => setTimeout(resolve, 520));
+      const settled = read();
+      return {
+        safariMotion: document.documentElement.dataset.safariMotion,
+        before,
+        firstFrame,
+        middle,
+        settled,
+      };
+    });
+
+    expect(samples.safariMotion).toBe('true');
+    for (const sample of [samples.before, samples.firstFrame, samples.middle, samples.settled]) {
+      expect(sample.backdropFilter).toContain('blur(12px)');
+      expect(sample.backdropFilter).not.toBe('none');
+      expect(sample.backgroundImage).toBe(samples.before.backgroundImage);
+    }
+  });
+
   test('note-first summaries keep fallback metadata compact and reveal only truncated notes', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await openSeededLedger(page);

@@ -231,6 +231,7 @@
   --blur-panel-switch: blur(12px) saturate(150%) brightness(1.015);  /* 移动端面板切换器 */
   --blur-panel-switch-soft: blur(18px) saturate(160%) brightness(1.02); /* [data-blur=soft] 切换器 */
   --blur-category: blur(12px) saturate(1.08);                      /* 类别添加控件(明/暗同值) */
+  --blur-ledger-card: blur(12px) saturate(118%) brightness(1.01);  /* 账单卡实时取景，展开中保持 */
   --blur-submit: blur(14px) saturate(185%) brightness(1.06);       /* 移动端提交按钮玻璃 */
   --blur-focus-dim: blur(12px) saturate(0.72) brightness(0.74);    /* 暗色记账焦点遮罩(压暗) */
   --blur-dim: blur(10px) saturate(0.82) brightness(0.96);          /* 暗色全屏压暗层 */
@@ -619,6 +620,7 @@
     --blur-panel-switch: none;
     --blur-panel-switch-soft: none;
     --blur-category: none;
+    --blur-ledger-card: none;
     --blur-submit: none;
     --blur-focus-dim: none;
     --blur-dim: none;
@@ -647,6 +649,7 @@
     --blur-panel-switch: none;
     --blur-panel-switch-soft: none;
     --blur-category: none;
+    --blur-ledger-card: none;
     --blur-submit: none;
     --blur-focus-dim: none;
     --blur-dim: none;

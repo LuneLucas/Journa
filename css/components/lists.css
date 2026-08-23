@@ -205,6 +205,13 @@
     opacity var(--motion-fast) var(--settle);
 }
 
+/* Safari 卡面从折叠到展开始终保留同一取景层。永久挂载滤镜可避免
+   高度动画开始时才创建玻璃层造成透明度突变，同时不改变其它浏览器材质。 */
+:root[data-safari-motion="true"] .ledger-item {
+  -webkit-backdrop-filter: var(--blur-ledger-card);
+  backdrop-filter: var(--blur-ledger-card);
+}
+
 .ledger-item::before,
 .ledger-item::after {
   position: absolute;
