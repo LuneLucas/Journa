@@ -509,12 +509,19 @@ test.describe('ledger card expansion', () => {
 
     const samples = await page.evaluate(async () => {
       const card = document.querySelector('.ledger-item');
+      const material = card.querySelector('.ledger-item-material');
       const summary = card.querySelector('.ledger-summary-toggle');
       const read = () => {
-        const style = getComputedStyle(card);
+        const cardStyle = getComputedStyle(card);
+        const materialStyle = getComputedStyle(material);
         return {
-          backdropFilter: style.webkitBackdropFilter || style.backdropFilter,
-          backgroundImage: style.backgroundImage,
+          cardBackdropFilter: cardStyle.webkitBackdropFilter || cardStyle.backdropFilter,
+          materialBackdropFilter: materialStyle.webkitBackdropFilter || materialStyle.backdropFilter,
+          materialBackgroundImage: materialStyle.backgroundImage,
+          cardHeight: card.getBoundingClientRect().height,
+          materialHeight: material.getBoundingClientRect().height,
+          summaryHeight: summary.getBoundingClientRect().height,
+          materialPosition: materialStyle.position,
         };
       };
       const before = read();
@@ -536,9 +543,13 @@ test.describe('ledger card expansion', () => {
 
     expect(samples.safariMotion).toBe('true');
     for (const sample of [samples.before, samples.firstFrame, samples.middle, samples.settled]) {
-      expect(sample.backdropFilter).toContain('blur(12px)');
-      expect(sample.backdropFilter).not.toBe('none');
-      expect(sample.backgroundImage).toBe(samples.before.backgroundImage);
+      expect(sample.cardBackdropFilter).toBe('none');
+      expect(sample.materialBackdropFilter).toContain('blur(12px)');
+      expect(sample.materialBackdropFilter).not.toBe('none');
+      expect(sample.materialBackgroundImage).toBe(samples.before.materialBackgroundImage);
+      expect(sample.materialPosition).toBe('absolute');
+      expect(Math.abs(sample.materialHeight - sample.cardHeight)).toBeLessThan(1);
+      expect(sample.summaryHeight).toBeGreaterThanOrEqual(64);
     }
   });
 

@@ -205,11 +205,36 @@
     opacity var(--motion-fast) var(--settle);
 }
 
-/* Safari 卡面从折叠到展开始终保留同一取景层。永久挂载滤镜可避免
-   高度动画开始时才创建玻璃层造成透明度突变，同时不改变其它浏览器材质。 */
+/* Safari 卡面从折叠到展开始终保留同一取景层。滤镜放在不参与布局的
+   独立材质层，避免 WebKit 在高度动画重栅格化时压缩摘要控件。 */
+.ledger-item-material {
+  display: none;
+}
+
 :root[data-safari-motion="true"] .ledger-item {
+  isolation: isolate;
+  background: transparent !important;
+}
+
+:root[data-safari-motion="true"] .ledger-item-material {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  background: var(--ledger-card-background);
   -webkit-backdrop-filter: var(--blur-ledger-card);
   backdrop-filter: var(--blur-ledger-card);
+  pointer-events: none;
+}
+
+:root[data-safari-motion="true"] .ledger-item > .pointer-sink-sheen {
+  z-index: 1;
+}
+
+:root[data-safari-motion="true"] .ledger-item > :not(.ledger-item-material):not(.pointer-sink-sheen) {
+  position: relative;
+  z-index: 2;
 }
 
 .ledger-item::before,

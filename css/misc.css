@@ -4676,7 +4676,7 @@ label,
       opacity var(--motion-fast) var(--settle);
   }
 
-  .pointer-sink-target > :not(.pointer-sink-sheen) {
+  .pointer-sink-target > :not(.pointer-sink-sheen):not(.ledger-item-material) {
     position: relative;
     z-index: 1;
   }

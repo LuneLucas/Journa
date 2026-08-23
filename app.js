@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-ledger-live-blur-v1-20260822";
+const APP_VERSION = "journa-safari-ledger-material-layer-v1-20260823";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -5944,6 +5944,7 @@ function renderLedgerItem(expense) {
       data-pointer-family-id="${escapeHtml(expense.payerId)}"
       data-pointer-category="${escapeHtml(expense.category)}"
       data-pointer-date="${escapeHtml(expense.date)}">
+      <span class="ledger-item-material" aria-hidden="true"></span>
       <span class="pointer-sink-sheen" aria-hidden="true"></span>
       <button class="ledger-summary-toggle" type="button" aria-expanded="${isExpanded}" aria-controls="${detailsId}" aria-label="${escapeHtml(summaryLabel)}">
         <span class="ledger-summary-primary">
