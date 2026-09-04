@@ -377,9 +377,7 @@ input[type="date"]:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  overflow: hidden;
-  max-width: 100%;
-  text-overflow: ellipsis;
+  max-width: none;
   white-space: nowrap;
   transition:
     color calc(var(--selection-motion) * 0.74) var(--settle),

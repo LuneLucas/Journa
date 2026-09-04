@@ -15,8 +15,8 @@
     splitSwitch: 260,
     mobilePanelOut: 80,
     mobilePanelIn: 360,
-    mobilePanelIndicator: 420,
-    barMorph: 500,
+    mobilePanelIndicator: 440,
+    barMorph: 440,
     addCelebrate: 1560,
     totalAbsorb: 1320,
     tokenFlight: 680,
@@ -64,8 +64,8 @@
     return Math.round(Math.min(profile.max, Math.max(profile.min, directional)));
   }
 
-  const SPRING_BAR_COLLAPSE = Object.freeze({ duration: 460, monotonic: true });
-  const SPRING_BAR_EXPAND = Object.freeze({ duration: 500, monotonic: true });
+  const SPRING_BAR_COLLAPSE = Object.freeze({ duration: 440, direction: "collapse", monotonic: true });
+  const SPRING_BAR_EXPAND = Object.freeze({ duration: 440, direction: "expand", monotonic: true });
   const SPRING_CATEGORY_ADD_OPEN = Object.freeze({ stiffness: 280, damping: 24, mass: 1 });
   const SPRING_CATEGORY_ADD_CLOSE = Object.freeze({ stiffness: 320, damping: 28, mass: 1 });
   const SPRING_LANDING_TAIL_MS = 64;
@@ -174,21 +174,65 @@
     return values;
   }
 
-  function barMotionSamples({ duration }) {
+  function barMotionSamples({ duration, direction = "collapse" }) {
     const count = Math.max(32, Math.min(96, Math.round(duration / 8)));
-    const progress = sampleHermitePath([
+    /* 页面切换总节拍为 80ms 退场 + 360ms 入场 = 440ms。底部条使用同一
+       时长；前段克制蓄力，中段形成明确速度峰值，最后 35% 保留约 16% 的可见
+       形变并持续减速。速度反差由一条单调轨迹完成，不叠加回弹。 */
+    const progressAnchors = [
       { offset: 0, value: 0, velocity: 0 },
-      { offset: 0.28, value: 0.50, velocity: 1.35 },
-      { offset: 0.68, value: 0.97, velocity: 0.34 },
-      { offset: 0.80, value: 1.01, velocity: 0 },
+      { offset: 0.12, value: 0.045, velocity: 0.80 },
+      { offset: 0.40, value: 0.40, velocity: 1.90 },
+      { offset: 0.58, value: 0.76, velocity: 0.80 },
       { offset: 1, value: 1, velocity: 0 },
-    ], count);
+    ];
+    const progress = sampleHermitePath(progressAnchors, count);
+    const liftPeak = direction === "expand" ? -3.6 : -3.2;
     const lift = sampleHermitePath([
       { offset: 0, value: 0, velocity: 0 },
-      { offset: 0.55, value: -3, velocity: 0 },
+      { offset: 0.50, value: liftPeak, velocity: 0 },
       { offset: 1, value: 0, velocity: 0 },
     ], count);
     return { values: progress, lifts: lift, duration };
+  }
+
+  function barTransferSamples({ duration, direction = "collapse", positionValues = null }) {
+    const reusablePosition = Array.isArray(positionValues) && positionValues.length > 1
+      ? positionValues
+      : null;
+    const count = reusablePosition
+      ? reusablePosition.length - 1
+      : Math.max(32, Math.min(96, Math.round(duration / 8)));
+    /* The glyphs and shell must share one normalized travel clock. Reusing the
+       bar path keeps their terminal deceleration continuous instead of letting
+       the text arrive early and making the shell feel like it catches up. */
+    const position = reusablePosition || barMotionSamples({ duration, direction }).values;
+    const collapse = {
+      position,
+      opacity: sampleHermitePath([
+        { offset: 0, value: 1, velocity: 0 },
+        { offset: 0.12, value: 1, velocity: 0 },
+        { offset: 0.48, value: 0.92, velocity: -0.12 },
+        { offset: 0.62, value: 0.16, velocity: -1.2 },
+        { offset: 0.72, value: 0, velocity: 0 },
+        { offset: 1, value: 0, velocity: 0 },
+      ], count),
+      scale: sampleHermitePath([
+        { offset: 0, value: 1, velocity: 0 },
+        { offset: 0.12, value: 1, velocity: 0 },
+        { offset: 0.48, value: 0.82, velocity: -0.20 },
+        { offset: 0.62, value: 0.26, velocity: -0.70 },
+        { offset: 0.72, value: 0.18, velocity: 0 },
+        { offset: 1, value: 0.18, velocity: 0 },
+      ], count),
+    };
+    if (direction === "collapse") return { ...collapse, duration };
+    return {
+      position: collapse.position.slice().reverse().map((value) => 1 - value),
+      opacity: collapse.opacity.slice().reverse(),
+      scale: collapse.scale.slice().reverse(),
+      duration,
+    };
   }
 
   function easeOutCubic(value) {
@@ -206,6 +250,7 @@
     SPRING_CATEGORY_ADD_CLOSE,
     springSamples,
     barMotionSamples,
+    barTransferSamples,
     easeOutCubic,
   });
 })(window);

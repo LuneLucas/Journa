@@ -19,7 +19,7 @@ test.describe("Journa 文案一致性", () => {
     await expect(page.locator("#operatorModalTitle")).toHaveText("你属于哪个家庭？");
     await expect(page.locator("#settlementEntrySub")).toHaveText("已两清");
     await expect(page.locator("#welcomeHeroCopy")).toHaveText("默认按人数分，也可逐笔调整。");
-    await expect(page.locator("#welcomeCloudCopy")).toHaveText("创建云账本后，三家实时同步。");
+    await expect(page.locator("#welcomeCloudCopy")).toHaveText("创建云账本后，所有家庭实时同步。");
     await expect(page.locator("#welcomeIdentityHint")).toHaveText("本地账本可稍后再选；云账本需要选择家庭。");
 
     const bodyText = await page.locator("body").innerText();
@@ -32,7 +32,7 @@ test.describe("Journa 文案一致性", () => {
     await expect(page).toHaveTitle("Journa · 共享旅行账本");
     await expect(page.locator("#swSourceBadgeText")).toHaveText("共享旅行账本");
     await expect(page.locator("#swHeroCopy")).toHaveText("查看账单，也能随手记一笔。");
-    await expect(page.locator(".welcome-slide[data-slide='1'] .welcome-split-mode").nth(0).locator("small")).toHaveText("三家按人数分");
+    await expect(page.locator(".welcome-slide[data-slide='1'] .welcome-split-mode").nth(0).locator("small")).toHaveText("按家庭人数分");
     await expect(page.locator(".welcome-slide[data-slide='2'] h3")).toHaveText("平账建议自动生成");
     await expect(page.locator(".welcome-slide[data-slide='2'] .welcome-copy")).toHaveCount(0);
     await expect(page.locator(".welcome-slide[data-slide='4'] h3")).toHaveText("你属于哪个家庭？");

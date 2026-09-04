@@ -1081,7 +1081,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   .ledger-name-form,
   .settings-operator-form {
-    grid-template-columns: minmax(0, 1fr) 104px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 
@@ -1353,6 +1353,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     transform-origin: center;
     /* resting fallback (keyboard/no-anim); real switches use the keyframes below */
     transition: transform var(--spring-glide-motion) var(--spring-glide);
+    will-change: transform;
+    backface-visibility: hidden;
     z-index: 0;
     pointer-events: none;
   }
@@ -1370,19 +1372,17 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     transform: translateX(0);
   }
 
-  /*
-   * The segment pill uses a single uninterrupted glide. The previous mid-flight
-   * scale/settle stops looked expressive in isolation, but felt like a tiny
-   * pause when the page and bottom bar were moving at the same time.
-   */
+  /* The segment pill keeps one uninterrupted travel clock. The stretch is
+     layered on its independent scale channel below, so it cannot reset the
+     translation velocity at every shape keyframe. */
   .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator {
     transform-origin: center;
-    animation: mps-indicator-forward var(--spring-glide-motion) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: mps-indicator-forward var(--mobile-panel-indicator-motion, 440ms) cubic-bezier(0.46, 0, 0.08, 1) both;
   }
 
   .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
     transform-origin: center;
-    animation: mps-indicator-backward var(--spring-glide-motion) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation: mps-indicator-backward var(--mobile-panel-indicator-motion, 440ms) cubic-bezier(0.46, 0, 0.08, 1) both;
   }
 
   @keyframes mps-indicator-forward {
@@ -1395,6 +1395,56 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     to   { transform: translateX(0); }
   }
 
+  /* Modern mobile engines can animate translate and scale independently. Keep
+     the page-matched cubic glide on translate, while the lens stretches on a
+     short linear channel; this removes the velocity resets that made the pill
+     feel sticky without changing the shared 440ms duration. */
+  @supports (translate: 1px) and (scale: 1) {
+    .mobile-panel-indicator {
+      transform: none;
+      translate: 0 0;
+      scale: 1;
+      will-change: translate, scale;
+    }
+
+    .mobile-panel-switch[data-active="entry"] .mobile-panel-indicator {
+      translate: calc(100% + 4px) 0;
+    }
+
+    .mobile-panel-switch[data-active="data"] .mobile-panel-indicator {
+      translate: 0 0;
+    }
+
+    .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator {
+      animation:
+        mps-indicator-forward-translate var(--mobile-panel-indicator-motion, 440ms) cubic-bezier(0.46, 0, 0.08, 1) 0ms 1 both,
+        mps-indicator-stretch var(--mobile-panel-indicator-motion, 440ms) linear 0ms 1 both;
+    }
+
+    .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
+      animation:
+        mps-indicator-backward-translate var(--mobile-panel-indicator-motion, 440ms) cubic-bezier(0.46, 0, 0.08, 1) 0ms 1 both,
+        mps-indicator-stretch var(--mobile-panel-indicator-motion, 440ms) linear 0ms 1 both;
+    }
+
+    @keyframes mps-indicator-forward-translate {
+      from { translate: 0 0; }
+      to   { translate: calc(100% + 4px) 0; }
+    }
+
+    @keyframes mps-indicator-backward-translate {
+      from { translate: calc(100% + 4px) 0; }
+      to   { translate: 0 0; }
+    }
+
+    @keyframes mps-indicator-stretch {
+      0% { scale: 1; }
+      46% { scale: 1.13; }
+      64% { scale: 1.13; }
+      100% { scale: 1; }
+    }
+  }
+
   /*
    * The incoming tab's label pops as the pill lands (delayed to meet the slide's
    * overshoot), so the switch reads as one coordinated impulse rather than a pill
@@ -1403,8 +1453,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
    */
   .mobile-panel-switch.is-indicator-forward #mobileEntryTab,
   .mobile-panel-switch.is-indicator-backward #mobileDataTab {
-    animation: mps-tab-pop 180ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
-    animation-delay: 360ms;
+    animation: mps-tab-pop 140ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
+    animation-delay: 300ms;
   }
 
   @keyframes mps-tab-pop {
@@ -1465,8 +1515,10 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
        且黑暗模式各卡片层数不一），none→多层阴影无法插值，会在动画末帧“啪”地
        弹出。改为随 mobile-panel-fade-in 的 opacity 一起淡入，平滑且跨主题/跨卡片安全。 */
     will-change: opacity, transform, filter;
+    --mobile-panel-cascade-delay: 0ms;
     animation:
-      mobile-panel-fade-in var(--mobile-panel-in-motion, 300ms) cubic-bezier(0.22, 0.74, 0.24, 1) both;
+      mobile-panel-fade-in calc(var(--mobile-panel-in-motion, 360ms) - var(--mobile-panel-cascade-delay)) cubic-bezier(0.46, 0, 0.08, 1) both;
+    animation-delay: var(--mobile-panel-cascade-delay);
   }
 
   /* 上中下形成轻微级联，保留同一条位移路径，只让后面的卡片稍晚跟上。 */
@@ -1475,11 +1527,11 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .app-view.is-mobile-panel-switching-in .mobile-settlement-entry {
-    animation-delay: 42ms;
+    --mobile-panel-cascade-delay: 42ms;
   }
 
   .app-view.is-mobile-panel-switching-in .ledger-section {
-    animation-delay: 84ms;
+    --mobile-panel-cascade-delay: 84ms;
   }
 
   body.mobile-panel-data .mobile-submit-bar {
@@ -1669,8 +1721,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   .mobile-submit-bar.is-flip-morphing::before {
     /* Kill the aura keyframes (they run on their own 320-360ms clock, drifting
        off the spring-driven shell) and simply fade the blurred glow out during
-       flight — a blur(14px) layer squashed 6x looks wrong. It re-blooms from the
-       base rule once the class is removed. */
+       flight — a blur(14px) layer squashed 6x looks wrong. 移动端最终态也由
+       visual-depth.css 保持关闭，只留下跟随同一几何载体的接触影。 */
     animation: none !important;
     opacity: 0 !important;
     transition: opacity 180ms ease !important;
@@ -1766,38 +1818,25 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     animation: bar-aura-expand 440ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
 
-  /* Themed halo that fades in as the bar collapses into the circle. Sits just
-     BEHIND the bar so the glow reads as emanating from the forming button.
-     Fixed-position (outside the scaled bar) so it never shears. */
-  .bar-morph-glow {
+  .bar-content-transfer {
     position: fixed;
-    z-index: calc(var(--z-mobile-submit) - 1);
+    z-index: calc(var(--z-mobile-submit) + 2);
+    inset: 0;
     pointer-events: none;
-    border-radius: var(--radius-pill);
-    transform-origin: center;
-    background:
-      radial-gradient(circle, color-mix(in srgb, white 18%, var(--submit-glow, rgba(23, 108, 95, 0.5))) 0%, transparent 66%);
-    filter: blur(16px);
+    overflow: visible;
   }
 
-  .bar-summary-ghost {
+  .bar-content-transfer > span {
     position: fixed;
-    z-index: calc(var(--z-mobile-submit) + 1);
-    pointer-events: none;
+    display: block;
     overflow: hidden;
-    color: var(--ink);
-    font-size: var(--label-sm);
-    font-weight: var(--fw-bold);
-    line-height: 1.25;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    padding-left: 4px;
-    animation: bar-summary-ghost-out 160ms cubic-bezier(0.35, 0, 0.65, 1) both;
+    transform-origin: center;
+    will-change: transform, opacity;
+    pointer-events: none;
   }
 
-  @keyframes bar-summary-ghost-out {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(-16px); }
+  .bar-content-transfer__summary {
+    padding-left: 4px;
   }
 
   @keyframes bar-aura-collapse {
@@ -1822,7 +1861,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
        pivot the squash at right-bottom: it grows upward when it gets taller
        rather than pushing off the bottom of the screen. */
     transform-origin: right bottom;
-    animation: bar-collapse-squash 460ms linear both;
+    animation: bar-collapse-squash 440ms linear both;
     /* Collapse-only geometry easing: fluid and elegant */
     transition-timing-function:
       cubic-bezier(0.22, 0.74, 0.24, 1),
@@ -1847,6 +1886,10 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     animation: summary-collapse 170ms cubic-bezier(0.35, 0, 0.65, 1) both;
   }
 
+  .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button .button-label {
+    animation: label-collapse 220ms cubic-bezier(0.35, 0, 0.65, 1) both;
+  }
+
   .mobile-submit-bar.is-bar-morphing-to-data .mobile-submit-button::after {
     animation: mobile-plus-morph-reveal 360ms cubic-bezier(0.22, 0.74, 0.24, 1) both;
   }
@@ -1857,7 +1900,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
      - summary text fades in delayed after bar has mostly expanded */
   .mobile-submit-bar.is-bar-morphing-to-entry {
     transform-origin: right bottom;
-    animation: bar-expand-stretch 500ms linear both;
+    animation: bar-expand-stretch 440ms linear both;
     /* Keep the outer glass shell pill-shaped throughout expand and final state. */
     border-radius: var(--radius-pill) !important;
   }
@@ -1888,19 +1931,19 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data .mobile-submit-button::after {
-    animation: mobile-plus-morph-reveal-sync var(--bar-motion-duration, 460ms) linear both !important;
+    animation: mobile-plus-morph-reveal-sync var(--bar-motion-duration, 440ms) linear both !important;
   }
 
   .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-summary {
-    animation: summary-expand-sync var(--bar-motion-duration, 500ms) linear both !important;
+    animation: summary-expand-sync var(--bar-motion-duration, 440ms) linear both !important;
   }
 
   .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-button .button-label {
-    animation: label-appear-sync var(--bar-motion-duration, 500ms) linear both !important;
+    animation: label-appear-sync var(--bar-motion-duration, 440ms) linear both !important;
   }
 
   .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-button::after {
-    animation: icon-dismiss-sync var(--bar-motion-duration, 500ms) linear both !important;
+    animation: icon-dismiss-sync var(--bar-motion-duration, 440ms) linear both !important;
   }
 
   .mobile-submit-bar.is-flip-morphing::before,
@@ -1909,9 +1952,9 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     animation: none !important;
   }
 
-  /* Expand starts from the collapsed circle. Keep its blurred aura absent
-     during the shape flight, then let the normal resting aura fade in after
-     the FLIP releases; this prevents a full-size halo from flashing on frame 1. */
+  /* Expand starts from the collapsed circle. Keep its blurred aura absent for
+     the whole path; the shell shadow alone follows the FLIP, so first帧与落点
+     不会再多一次独立的光晕交接。 */
   .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry::before {
     opacity: 0 !important;
     transform: none !important;
@@ -1919,28 +1962,74 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   }
 
   @keyframes mobile-plus-morph-reveal-sync {
-    0%, 28% { opacity: 0; transform: scale(0.48) rotate(-58deg); }
-    46% { opacity: 0.32; transform: scale(0.68) rotate(-30deg); }
-    62% { opacity: 1; transform: scale(1) rotate(0deg); }
+    0%, 32% { opacity: 0; transform: scale(0.48) rotate(-58deg); }
+    48% { opacity: 0.68; transform: scale(0.84) rotate(-14deg); }
+    64% { opacity: 1; transform: scale(1.035) rotate(1deg); }
     100% { opacity: 1; transform: scale(1) rotate(0deg); }
   }
 
   @keyframes summary-expand-sync {
-    0%, 36% { opacity: 0; transform: translateX(-14px); max-width: 0; }
-    52% { opacity: 0.72; transform: translateX(-2px); max-width: 400px; }
-    68%, 100% { opacity: 1; transform: translateX(0); max-width: 400px; }
+    0%, 34% { opacity: 0; transform: translateX(-12px); max-width: 0; }
+    48% { opacity: 0.90; transform: translateX(-1px); max-width: 400px; }
+    64% { opacity: 1; transform: translateX(0.5px); max-width: 400px; }
+    100% { opacity: 1; transform: translateX(0); max-width: 400px; }
   }
 
   @keyframes label-appear-sync {
-    0%, 36% { opacity: 0; transform: scale(0.5); }
-    54% { opacity: 0.76; transform: scale(0.94); }
-    68%, 100% { opacity: 1; transform: scale(1); }
+    0%, 34% { opacity: 0; transform: scale(0.62); }
+    48% { opacity: 0.92; transform: scale(0.99); }
+    64% { opacity: 1; transform: scale(1.012); }
+    100% { opacity: 1; transform: scale(1); }
   }
 
   @keyframes icon-dismiss-sync {
     0% { opacity: 1; transform: scale(1) rotate(0deg); }
-    22% { opacity: 0; transform: scale(0.3) rotate(90deg); }
-    100% { opacity: 0; transform: scale(0.3) rotate(90deg); }
+    26% { opacity: 0; transform: scale(0.42) rotate(64deg); }
+    100% { opacity: 0; transform: scale(0.42) rotate(64deg); }
+  }
+
+  /* FLIP content handoff: keep one visible text layer for the whole flight.
+     The transfer spans carry both the summary and action label; the real
+     nodes return only after the shell has landed. */
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data .mobile-submit-summary,
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data .mobile-submit-button .button-label,
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-summary,
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-button .button-label {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    animation: none !important;
+  }
+
+  /* The transfer glyph lands on the same frame that the real labels are
+     released. Suppress their resting opacity transition for that handoff;
+     otherwise the transition starts from the hidden FLIP state and briefly
+     paints the labels back at their original position after the transfer is
+     removed. */
+  .mobile-submit-bar.is-bar-text-handoff .mobile-submit-summary,
+  .mobile-submit-bar.is-bar-text-handoff .mobile-submit-button .button-label {
+    transition: none !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-data .mobile-submit-button::after {
+    animation: mobile-plus-catch var(--bar-motion-duration, 440ms) linear both !important;
+  }
+
+  .mobile-submit-bar.is-flip-morphing.is-bar-morphing-to-entry .mobile-submit-button::after {
+    animation: mobile-plus-release var(--bar-motion-duration, 440ms) linear both !important;
+  }
+
+  @keyframes mobile-plus-catch {
+    0%, 42% { opacity: 0; transform: scale(0.56) rotate(-18deg); }
+    56% { opacity: 0.82; transform: scale(0.88) rotate(-5deg); }
+    66% { opacity: 1; transform: scale(1.04) rotate(1deg); }
+    76%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes mobile-plus-release {
+    0% { opacity: 1; transform: scale(1) rotate(0deg); }
+    24% { opacity: 1; transform: scale(1.04) rotate(1deg); }
+    44% { opacity: 0.82; transform: scale(0.88) rotate(-5deg); }
+    58%, 100% { opacity: 0; transform: scale(0.56) rotate(-18deg); }
   }
 
   /* Fallback-only shape accents. Keep them small; FLIP is the real motion. */
@@ -1960,16 +2049,21 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     100% { transform: translateY(0) scaleX(1) scaleY(1); border-radius: var(--radius-pill); }
   }
 
-  /* Summary text collapses: fast fade + slide left */
+  /* No-WAAPI fallback keeps the content moving toward the right-side plus. */
   @keyframes summary-collapse {
-    0%   { opacity: 1; transform: translateX(0); max-width: 400px; }
-    100% { opacity: 0; transform: translateX(-16px); max-width: 0; }
+    0%   { opacity: 1; transform: translateX(0) scale(1); max-width: 400px; }
+    100% { opacity: 0; transform: translateX(18px) scale(0.84); max-width: 0; }
   }
 
-  /* Summary text expands: delayed fade-in + slide from left with overshoot */
+  @keyframes label-collapse {
+    0%   { opacity: 1; transform: translateX(0) scale(1); }
+    100% { opacity: 0; transform: translateX(8px) scale(0.72); }
+  }
+
+  /* Reverse fallback releases from the right anchor back to its resting slot. */
   @keyframes summary-expand {
-    0%   { opacity: 0; transform: translateX(-20px); max-width: 0; }
-    60%  { opacity: 0.82; transform: translateX(0); max-width: 400px; }
+    0%   { opacity: 0; transform: translateX(18px) scale(0.84); max-width: 0; }
+    60%  { opacity: 0.82; transform: translateX(0) scale(1); max-width: 400px; }
     100% { opacity: 1; transform: translateX(0); max-width: 400px; }
   }
 
@@ -2838,38 +2932,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       radial-gradient(ellipse at 50% -20%, rgba(255, 255, 255, 0.4), transparent 60%);
   }
 
-  .ledger-item {
-    grid-template: "main amount" / minmax(0, 1fr) auto !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    grid-template-rows: auto !important;
-    grid-template-areas: "main amount" !important;
-    gap: 8px 10px;
-    min-height: 64px;
-    max-height: 88px;
-    padding: 8px 8px 8px 11px;
-  }
-
   .ledger-item:not(.is-expanded) .ledger-date {
     display: none;
-  }
-
-  .ledger-item:not(.is-expanded) .ledger-item-actions {
-    display: flex;
-    height: 0;
-    visibility: hidden;
-  }
-
-  .ledger-item.is-expanded {
-    grid-template: "main amount" "actions actions" / minmax(0, 1fr) auto !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    grid-template-rows: auto auto !important;
-    grid-template-areas:
-      "main amount"
-      "actions actions" !important;
-    gap: 10px;
-    min-height: 142px;
-    max-height: 260px;
-    padding: 14px;
   }
 
   .ledger-date {
@@ -2886,18 +2950,6 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 
   .ledger-item.is-expanded .ledger-date {
     display: none;
-  }
-
-  .ledger-item.is-expanded .ledger-item-actions {
-    width: 144px;
-    min-width: 144px;
-    gap: 7px;
-  }
-
-  .ledger-item.is-expanded .ledger-edit-button,
-  .ledger-item.is-expanded .delete-button {
-    width: 46px;
-    min-width: 46px;
   }
 
   .ledger-date span {
@@ -2939,39 +2991,8 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     font-size: var(--ledger-amount-expanded-size);
   }
 
-  .ledger-item-actions {
-    grid-area: actions;
-    align-self: center;
-    justify-self: end;
-    width: 0;
-    min-width: 0;
-  }
-
-  .ledger-item.is-expanded .ledger-item-actions {
-    width: 144px;
-    min-width: 144px;
-    height: 44px;
-    visibility: visible;
-  }
-
-  .ledger-item.is-expanded .ledger-edit-button,
-  .ledger-item.is-expanded .delete-button {
-    width: 68px;
-    min-width: 68px;
-    min-height: 44px;
-  }
-
   /* 账单摘要现在是唯一的移动端网格；展开内容在摘要下方独立成行，
      收起时不再让操作栏参与其它卡片的列计算。 */
-  .ledger-item,
-  .ledger-item.is-expanded {
-    display: block;
-    grid-template: none !important;
-    min-height: 0;
-    max-height: none;
-    padding: 0;
-  }
-
   .ledger-summary-toggle {
     grid-template-columns: minmax(0, 1fr) auto 18px;
     grid-template-areas:
@@ -3083,14 +3104,21 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     grid-template-columns: 1fr;
   }
 
-  .settings-category-form {
+  .settings-category-form,
+  .settings-family-form {
     grid-template-columns: minmax(0, 1fr) 88px;
     gap: 8px;
   }
 
-  .settings-category-form .secondary-button {
+  .settings-category-form .secondary-button,
+  .settings-family-form .secondary-button {
     width: auto;
     min-width: 88px;
+  }
+
+  .settings-manage-toggle,
+  .settings-category-actions button {
+    min-height: 44px;
   }
 
   .expense-form > .primary-button {
@@ -3128,10 +3156,19 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     padding: calc(12px + var(--safe-area-top)) 16px 14px;
   }
 
-  .settings-family,
   .settings-rule,
   .settings-data-item {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-family {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .settings-family-controls {
+    justify-content: space-between;
+    padding-left: 18px;
   }
 
   .settings-action-stack,
@@ -3292,6 +3329,23 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
 }
 
 @media (max-width: 359px) {
+  .ledger-expanded-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: stretch;
+  }
+
+  .ledger-expanded-details {
+    width: 100%;
+  }
+
+  .ledger-expanded-content .ledger-item-actions {
+    grid-column: 1;
+    justify-self: end;
+    width: 144px;
+    min-width: 144px;
+  }
+
   .expense-form {
     grid-template-columns: 1fr;
   }
@@ -4060,9 +4114,7 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     }
 
     :root[data-material-tier="balanced"] .mobile-submit-bar::before,
-    :root[data-material-tier="solid"] .mobile-submit-bar::before,
-    :root[data-material-tier="balanced"] .bar-morph-glow,
-    :root[data-material-tier="solid"] .bar-morph-glow {
+    :root[data-material-tier="solid"] .mobile-submit-bar::before {
       filter: none !important;
     }
 
@@ -4319,6 +4371,14 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
       inset 0 -1.3px 1.8px -1px rgba(76, 83, 91, 0.16),
       0 1px 1.5px -1px rgba(55, 60, 64, 0.11),
       0 9px 18px -13px rgba(35, 40, 44, 0.25);
+  }
+
+  /* 分摊摘要是句子的收束点，给它一圈更完整的内侧高光，
+     让这枚透镜在深色底上有一点厚度，但不改变其它 token 的轻薄边界。 */
+  html[data-entry-mode="natural"] #naturalSplitToken::before {
+    box-shadow:
+      var(--natural-entry-lens-shadow),
+      inset 0 0 0 0.55px rgba(255, 255, 255, 0.22);
   }
 
   html[data-entry-mode="natural"] .natural-entry-flow[data-family-selected="true"] .natural-entry-token {
@@ -5377,6 +5437,13 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     padding: 0;
   }
 
+  /* 类别胶囊与舞台外壳之间保留完整触控安全边距；只调整类别编辑器，
+     不改变其他自然录入舞台已经校准好的交接几何。 */
+  html[data-entry-mode="natural"] .natural-entry-stage[data-editor="category"] .natural-entry-stage-content {
+    padding-inline: 16px;
+    padding-bottom: 16px;
+  }
+
   html[data-entry-mode="natural"] .natural-entry-stage[data-editor="note"] .natural-entry-stage-content {
     padding: 10px 18px;
   }
@@ -5529,6 +5596,15 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor] input,
   html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] :is(input, textarea) {
     min-height: 52px;
+  }
+
+  /* 日期是可点击的原生控件，保留移动端常规输入的 18px 圆角；
+     备注仍与舞台正文无缝衔接，不跟随这条批注改变。 */
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .date-label[data-entry-editor] input {
+    border-radius: var(--control-radius);
+  }
+
+  html[data-entry-mode="natural"] .expense-form .natural-entry-stage .note-label[data-entry-editor] :is(input, textarea) {
     border-radius: 0;
   }
 
@@ -5684,6 +5760,14 @@ html[data-entry-mode="natural"] .natural-entry-stage[data-editor="amount"] .amou
     justify-self: end;
     align-self: center;
     transform: none;
+  }
+
+  /* 记账态仍必须保留这枚悬浮视图切换胶囊；它不应因面板切换动画
+     或旧缓存中的默认 display:none 规则而从页头消失。 */
+  body.mobile-panel-entry .app-header .mobile-panel-switch {
+    display: grid;
+    visibility: visible;
+    opacity: 1;
   }
 
   .app-header .sync-status,

@@ -1,4 +1,7 @@
 const { defineConfig, devices } = require('@playwright/test');
+// 本地可复用已安装的 Chrome；CI 不设置该变量，仍使用 lockfile 对应的 Playwright Chromium。
+const chromiumChannel = process.env.JOURNA_PLAYWRIGHT_CHROMIUM_CHANNEL;
+const chromiumChannelUse = chromiumChannel ? { channel: chromiumChannel } : {};
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -20,9 +23,9 @@ module.exports = defineConfig({
     reuseExistingServer: !process.env.CI,
   },
   projects: [
-    { name: 'chromium-mobile', use: { ...devices['iPhone 13'] } },
+    { name: 'chromium-mobile', use: { ...devices['iPhone 13'], browserName: 'chromium', ...chromiumChannelUse } },
     { name: 'webkit-mobile', use: { ...devices['iPhone 13'] } },
     { name: 'webkit-desktop', use: { ...devices['Desktop Safari'] } },
-    { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], ...chromiumChannelUse } },
   ],
 });

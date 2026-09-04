@@ -56,7 +56,7 @@
         if (names.length >= 3) return `${formatNaturalFamilyCount(names.length)}家${ruleLabel}`;
         return `${names.join("、")}${ruleLabel}`;
       }
-      const familyCount = getState().families.length;
+      const familyCount = getState().families.filter((family) => family.active !== false).length;
       return familyCount >= 3
         ? `${formatNaturalFamilyCount(familyCount)}家${ruleLabel}`
         : `全部家庭${ruleLabel}`;

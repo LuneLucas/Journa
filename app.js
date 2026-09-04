@@ -2,7 +2,7 @@ const STORAGE_KEY = "travel-ledger-v3";
 const LEGACY_STORAGE_KEYS = ["travel-ledger-v2", "travel-ledger-v1"];
 const CLOUD_STATE_KEY = "travel-ledger-cloud";
 const OPERATOR_FAMILY_STORAGE_KEY = "travel-ledger-operator-family-id";
-const APP_VERSION = "journa-safari-ledger-material-layer-v1-20260823";
+const APP_VERSION = "journa-runtime-quality-v1-20260904";
 const SUPABASE_URL = "https://qvphpeetzyvnwaehrifa.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cGhwZWV0enl2bndhZWhyaWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzIxMTAsImV4cCI6MjA5ODE0ODExMH0.k3FL_Ywt377guTfjzTu1bgucShpRfmnQCdxn4SqikuA";
 document.documentElement.dataset.appVersion = APP_VERSION;
@@ -27,6 +27,7 @@ const {
   SPRING_CATEGORY_ADD_CLOSE,
   springSamples,
   barMotionSamples,
+  barTransferSamples,
   easeOutCubic,
 } = window.JournaCore.motion;
 
@@ -55,10 +56,10 @@ const COPY = {
     pending: "还有内容未同步，已保留本地账本",
   },
   welcome: {
-    title: "三个家庭，一本账",
+    title: "多个家庭，一本账",
     intro: "默认按人数分，也可逐笔调整。",
     cloudTitle: "邀请家人一起记",
-    cloudCopy: "创建云账本后，三家实时同步。",
+    cloudCopy: "创建云账本后，所有家庭实时同步。",
     identityTitle: "你属于哪个家庭？",
     identityCopy: "记账会显示家庭署名。",
   },
@@ -167,10 +168,12 @@ const COPY = {
   window.addEventListener("resize", scheduleSample, { passive: true });
 })();
 const defaultFamilies = [
-  { id: "family-a", name: "乐家" },
-  { id: "family-b", name: "祺家" },
-  { id: "family-c", name: "旦家" },
+  { id: "family-a", name: "家庭1", active: true },
+  { id: "family-b", name: "家庭2", active: true },
 ];
+const MIN_ACTIVE_FAMILIES = 2;
+const MAX_ACTIVE_FAMILIES = 8;
+const MAX_FAMILY_NAME_LENGTH = 12;
 const defaultFamilyVisuals = {
   "family-a": deriveFamilyVisual("#7eab98"),
   "family-b": deriveFamilyVisual("#849fcd"),
@@ -185,7 +188,7 @@ const NATURAL_ENTRY_MARKS_HIDDEN_STORAGE_KEY = "travel-ledger-natural-entry-mark
 const SETTLEMENT_METHOD_STORAGE_KEY = "travel-ledger-settlement-method";
 const DEFAULT_SETTLEMENT_METHOD = "simple";
 const SETTLEMENT_METHOD_OPTIONS = [
-  { id: "simple", label: "最简方案", description: "合并收支，三家最多两笔" },
+  { id: "simple", label: "最简方案", description: "合并收支，减少转账笔数" },
   { id: "pairwise", label: "当前方案", description: "按家庭之间逐笔对冲" },
 ];
 const THEME_PRESETS = [
@@ -201,7 +204,7 @@ const familyColorChoices = [
   { color: "#9b8aba", label: "藕紫" },
 ];
 const defaultCategories = ["交通", "住宿", "餐饮", "门票", "购物", "其他"];
-// 空状态插画：复用 favicon 的三个交叠圆母题（三家庭色，低饱和）
+// 空状态插画：复用 favicon 的交叠圆母题（家庭色，低饱和）
 const emptyStateArt = `<svg class="empty-state-art" viewBox="0 0 96 64" aria-hidden="true" focusable="false"><circle cx="38" cy="26" r="17" fill="#bddbc8" opacity="0.6"/><circle cx="58" cy="25" r="17" fill="#cbd9ef" opacity="0.6"/><circle cx="48" cy="39" r="17" fill="#f2cfce" opacity="0.55"/></svg>`;
 const splitModeOptions = [
   { id: "equal", label: "各家均分", description: "每个家庭承担相同金额" },
@@ -212,6 +215,7 @@ const splitModeOptions = [
 ];
 const splitCore = window.JournaCore.createSplitCore({ splitModeOptions, defaultFamilies });
 const {
+  setFamilyIds,
   normalizePayerId,
   normalizeSplitMode,
   getSplitScopeFromMode,
@@ -318,6 +322,7 @@ const elements = {
   settingsEyebrow: document.querySelector("#settingsEyebrow"),
   settingsTitle: document.querySelector("#settingsTitle"),
   currentLedgerTitle: document.querySelector("#currentLedgerTitle"),
+  headerLedgerSwitcher: document.querySelector("#headerLedgerSwitcher"),
   syncStatus: document.querySelector("#syncStatus"),
   syncStatusLabel: document.querySelector("#syncStatusLabel"),
   createCloudLedgerButton: document.querySelector("#createCloudLedgerButton"),
@@ -387,6 +392,11 @@ const elements = {
   newCategoryInput: document.querySelector("#newCategoryInput"),
   settingsCategoryForm: document.querySelector("#settingsCategoryForm"),
   settingsNewCategoryInput: document.querySelector("#settingsNewCategoryInput"),
+  settingsCategoryManageButton: document.querySelector("#settingsCategoryManageButton"),
+  settingsCategoryHint: document.querySelector("#settingsCategoryHint"),
+  settingsFamilyForm: document.querySelector("#settingsFamilyForm"),
+  settingsNewFamilyInput: document.querySelector("#settingsNewFamilyInput"),
+  settingsFamilyError: document.querySelector("#settingsFamilyError"),
   categoryChips: document.querySelector("#categoryChips"),
   splitScope: document.querySelector("#splitScope"),
   splitScopeToggle: document.querySelector("#splitScopeToggle"),
@@ -401,10 +411,8 @@ const elements = {
   settingsCategoryChips: document.querySelector("#settingsCategoryChips"),
   settingsFamilyList: document.querySelector("#settingsFamilyList"),
   settingsThemeList: document.querySelector("#settingsThemeList"),
-  settingsFamilyColorList: document.querySelector("#settingsFamilyColorList"),
   ledgerNameForm: document.querySelector("#ledgerNameForm"),
   currentLedgerNameInput: document.querySelector("#currentLedgerNameInput"),
-  saveLedgerNameButton: document.querySelector("#saveLedgerNameButton"),
   settingsOperatorForm: document.querySelector("#settingsOperatorForm"),
   settingsOperatorFamilyList: document.querySelector("#settingsOperatorFamilyList"),
   settingsMoneyDecimalsInput: document.querySelector("#settingsMoneyDecimalsInput"),
@@ -467,14 +475,16 @@ const elements = {
   toastHost: document.querySelector("#toastHost"),
 };
 
+let state = null;
 let appState = loadState();
 activateLedgerFromUrl();
-let state = getActiveLedger();
+state = getActiveLedger();
+setFamilyIds(state.families);
 // 每次重新打开应用都从今天开始填写新账单；进入编辑已有账单时，
 // startEditExpense() 会用账单原日期覆盖这个默认值。
 state.activeDate = todayIso();
 let activeSplitMode = "equal";
-let activeSplitFamilyIds = state.families.map((family) => family.id);
+let activeSplitFamilyIds = getActiveFamilies().map((family) => family.id);
 let activeSplitAmounts = {};
 const naturalEntryHelpers = window.JournaModules.createNaturalEntryHelpers({
   entryModeStorageKey: ENTRY_MODE_STORAGE_KEY,
@@ -562,7 +572,6 @@ let customSplitSuspendedAmounts = {};
 let customSplitAmountDrafts = {};
 let splitScopeOpen = false;
 let splitFamilyChoicesOpen = true;
-let activeFamilyColorFamilyId = state.families[0]?.id || defaultFamilies[0].id;
 let activeEntryEditor = "amount";
 let naturalEntryStageOpen = false;
 let naturalEntryStageEditor = null;
@@ -631,6 +640,8 @@ const deactivatingSplitFamilyIds = new Set();
 let lastAddedExpenseId = "";
 let expandedExpenseId = "";
 let lastAddedCategory = "";
+let settingsCategoryManageMode = false;
+let selectedSettingsCategory = "";
 let activatingPayerId = "";
 let deactivatingPayerId = "";
 let activatingCategory = "";
@@ -649,6 +660,7 @@ let barMorphTimer = 0;
 let ledgerMorphRunId = 0;
 let barFlipAnimations = [];
 let barFlipRunId = 0;
+let barContentTransfer = null;
 let categoryAddMorphAnimations = [];
 let categoryAddMorphRunId = 0;
 let categoryAddViewportTimer = 0;
@@ -886,24 +898,28 @@ function normalizeAppState(saved) {
 
 function normalizeLedger(raw = {}, fallbackName = "旅行账本") {
   const today = todayIso();
-  const expenses = Array.isArray(raw.expenses) ? raw.expenses.filter(isValidExpense).map(normalizeExpense) : [];
+  const families = normalizeFamilies(raw.families || defaultFamilies);
+  const familyIds = families.map((family) => family.id);
+  const expenses = Array.isArray(raw.expenses)
+    ? raw.expenses.map((expense) => normalizeExpense(expense, families)).filter((expense) => isValidExpense(expense, familyIds))
+    : [];
   const savedCategories = Array.isArray(raw.categories) ? raw.categories : defaultCategories;
   const categories = normalizeCategories([...savedCategories, ...expenses.map((expense) => expense.category)]);
-  const families = normalizeFamilies(raw.families || defaultFamilies);
   const familyVisuals = normalizeFamilyVisuals(raw.familyVisuals, families);
+  const activeFamilyIds = getActiveFamilies(families).map((family) => family.id);
 
   return {
     id: typeof raw.id === "string" && raw.id ? raw.id : createId("ledger"),
     name: normalizeLedgerName(raw.name, fallbackName),
     families: families.map((family) => ({ ...family, visual: familyVisuals[family.id] })),
     familyVisuals,
-    familyMembers: normalizeFamilyMembers(raw.familyMembers),
+    familyMembers: normalizeFamilyMembers(raw.familyMembers, families),
     categories,
     expenses,
     activeDate: expenses.length ? normalizeDate(raw.activeDate, today) : today,
     activeCategory: normalizeCategorySelection(raw.activeCategory, categories),
-    selectedPayerId: normalizePayerId(raw.selectedPayerId),
-    ledgerFamilyFilter: normalizePayerId(raw.ledgerFamilyFilter),
+    selectedPayerId: normalizePayerId(raw.selectedPayerId, activeFamilyIds),
+    ledgerFamilyFilter: normalizePayerId(raw.ledgerFamilyFilter, familyIds),
     ledgerCategoryFilter: normalizeCategoryFilter(raw.ledgerCategoryFilter, categories),
     cloudShareToken: typeof raw.cloudShareToken === "string" ? raw.cloudShareToken : "",
     createdAt: normalizeTimestamp(raw.createdAt),
@@ -1008,15 +1024,41 @@ function replaceActiveLedger(nextLedger) {
   }
   appState.activeLedgerId = normalizedLedger.id;
   state = normalizedLedger;
+  setFamilyIds(state.families);
 }
 
 function normalizeFamilies(families) {
-  const source = Array.isArray(families) ? families : [];
-  const visualsById = Object.fromEntries(source.map((family) => [family?.id, family?.visual]).filter(([id]) => typeof id === "string"));
-  return defaultFamilies.map((family) => {
-    const visual = normalizeFamilyVisual(visualsById[family.id] || defaultFamilyVisuals[family.id]);
-    return { ...family, visual };
+  const source = Array.isArray(families) && families.length ? families : defaultFamilies;
+  const seenIds = new Set();
+  const normalized = source.flatMap((family, index) => {
+    const id = String(family?.id || "").trim();
+    if (!id || id.length > 128 || seenIds.has(id)) return [];
+    seenIds.add(id);
+    const name = normalizeFamilyName(family?.name, `家庭${index + 1}`);
+    const fallbackVisual = defaultFamilyVisuals[id]
+      || deriveFamilyVisual(familyColorChoices[index % familyColorChoices.length].color);
+    return [{
+      id,
+      name,
+      active: family?.active !== false,
+      visual: normalizeFamilyVisual(family?.visual || fallbackVisual),
+    }];
   });
+
+  for (const fallback of defaultFamilies) {
+    if (normalized.length >= MIN_ACTIVE_FAMILIES) break;
+    if (!seenIds.has(fallback.id)) {
+      normalized.push({ ...fallback, visual: normalizeFamilyVisual(defaultFamilyVisuals[fallback.id]) });
+      seenIds.add(fallback.id);
+    }
+  }
+
+  if (normalized.filter((family) => family.active).length < MIN_ACTIVE_FAMILIES) {
+    normalized.forEach((family) => {
+      if (normalized.filter((item) => item.active).length < MIN_ACTIVE_FAMILIES) family.active = true;
+    });
+  }
+  return normalized.length ? normalized : defaultFamilies.map((family) => ({ ...family, visual: defaultFamilyVisuals[family.id] }));
 }
 
 function normalizeFamilyVisuals(visuals = {}, families = defaultFamilies) {
@@ -1028,8 +1070,10 @@ function normalizeFamilyVisuals(visuals = {}, families = defaultFamilies) {
   );
 
   return Object.fromEntries(
-    defaultFamilies.map((family) => {
-      const visual = source[family.id] || familyVisualsFromRows[family.id] || defaultFamilyVisuals[family.id];
+    families.map((family, index) => {
+      const fallback = defaultFamilyVisuals[family.id]
+        || deriveFamilyVisual(familyColorChoices[index % familyColorChoices.length].color);
+      const visual = source[family.id] || familyVisualsFromRows[family.id] || fallback;
       return [family.id, normalizeFamilyVisual(visual)];
     }),
   );
@@ -1075,18 +1119,44 @@ function syncFamilyVisualRows() {
   state.families = normalizeFamilies(state.families).map((family) => ({ ...family, visual: visuals[family.id] }));
 }
 
-function serializeFamiliesForCloud() {
-  syncFamilyVisualRows();
-  return state.families.map((family) => ({
+function normalizeFamilyName(name, fallback = "家庭") {
+  const normalized = String(name || "").trim().replace(/\s+/g, " ");
+  return (normalized || fallback).slice(0, MAX_FAMILY_NAME_LENGTH);
+}
+
+function getActiveFamilies(families = state?.families || defaultFamilies) {
+  return (Array.isArray(families) ? families : []).filter((family) => family.active !== false);
+}
+
+function getFamilyIds(families = state?.families || defaultFamilies, { activeOnly = false } = {}) {
+  return (activeOnly ? getActiveFamilies(families) : families).map((family) => family.id);
+}
+
+function getEntryFamilies() {
+  const activeIds = new Set(getFamilyIds(state.families, { activeOnly: true }));
+  if (!editingExpenseId) return state.families.filter((family) => activeIds.has(family.id));
+  const expense = state.expenses.find((item) => item.id === editingExpenseId);
+  if (!expense) return state.families.filter((family) => activeIds.has(family.id));
+  const referencedIds = new Set([
+    expense.payerId,
+    ...normalizeSplitFamilyIds(expense.splitFamilyIds, [], getFamilyIds(state.families)),
+    ...getFamilyIds(state.families).filter((familyId) => amountToCents(expense.splitAmounts?.[familyId]) > 0),
+  ]);
+  return state.families.filter((family) => activeIds.has(family.id) || referencedIds.has(family.id));
+}
+
+function serializeFamiliesForCloud(families = state.families, familyVisuals = state.familyVisuals) {
+  return families.map((family) => ({
     id: family.id,
     name: family.name,
-    visual: state.familyVisuals[family.id],
+    active: family.active !== false,
+    visual: familyVisuals[family.id],
   }));
 }
 
-function normalizeFamilyMembers(memberCounts = {}) {
+function normalizeFamilyMembers(memberCounts = {}, families = state?.families || defaultFamilies) {
   return Object.fromEntries(
-    defaultFamilies.map((family) => {
+    families.map((family) => {
       const count = Number(memberCounts[family.id]);
       return [family.id, Number.isInteger(count) && count > 0 ? Math.min(count, 20) : 1];
     }),
@@ -1119,10 +1189,10 @@ function normalizeCategoryFilter(category, categories) {
   return categories.includes(normalized) ? normalized : "";
 }
 
-function normalizeOperator(val) {
+function normalizeOperator(val, families = state?.families || defaultFamilies) {
   if (!val) return null;
   if (typeof val === "object") {
-    const familyId = normalizePayerId(val.familyId);
+    const familyId = normalizePayerId(val.familyId, getFamilyIds(families));
     const name = String(val.name || "").trim();
     if (familyId) return { familyId };
     return name ? { name } : null;
@@ -1133,49 +1203,56 @@ function normalizeOperator(val) {
 
 /* 兼容旧版本把自定分摊金额按“分”写进了“元”字段的历史账单。
    仅在分摊合计恰好是账单总额的 100 倍时修复，避免改变任何正常的自定金额。 */
-function normalizePersistedSplitAmounts(amount, splitMode, rawAmounts) {
-  const normalized = normalizeSplitAmounts(rawAmounts);
+function normalizePersistedSplitAmounts(amount, splitMode, rawAmounts, families = state?.families || defaultFamilies) {
+  const familyIds = getFamilyIds(families);
+  const normalized = normalizeSplitAmounts(rawAmounts, familyIds);
   if (normalizeSplitMode(splitMode) !== "custom") return normalized;
 
   const totalCents = amountToCents(amount);
-  const storedTotalCents = defaultFamilies.reduce(
-    (sum, family) => sum + amountToCents(normalized[family.id]),
+  const storedTotalCents = familyIds.reduce(
+    (sum, familyId) => sum + amountToCents(normalized[familyId]),
     0,
   );
   if (!totalCents || storedTotalCents !== totalCents * 100) return normalized;
 
   const repaired = Object.fromEntries(
-    defaultFamilies.map((family) => [
-      family.id,
-      centsToAmount(amountToCents(normalized[family.id]) / 100),
+    familyIds.map((familyId) => [
+      familyId,
+      centsToAmount(amountToCents(normalized[familyId]) / 100),
     ]),
   );
-  const repairedTotalCents = defaultFamilies.reduce(
-    (sum, family) => sum + amountToCents(repaired[family.id]),
+  const repairedTotalCents = familyIds.reduce(
+    (sum, familyId) => sum + amountToCents(repaired[familyId]),
     0,
   );
   return repairedTotalCents === totalCents ? repaired : normalized;
 }
 
-function normalizeExpense(expense) {
+function normalizeExpense(expense = {}, families = state?.families || defaultFamilies) {
+  const familyIds = getFamilyIds(families);
+  const activeFamilyIds = getFamilyIds(families, { activeOnly: true });
   const splitMode = normalizeSplitMode(expense.splitMode);
   const splitScope = getSplitScopeFromMode(splitMode);
   const splitRule = getSplitRuleFromMode(splitMode);
   const updatedAt = expense.updatedAt || new Date().toISOString();
+  const splitAmounts = normalizePersistedSplitAmounts(expense.amount, splitMode, expense.splitAmounts, families);
+  const customFamilyIds = familyIds.filter((familyId) => amountToCents(splitAmounts[familyId]) > 0);
+  const splitFallbackIds = splitMode === "custom" && customFamilyIds.length ? customFamilyIds : activeFamilyIds;
   return {
     id: expense.id,
     amount: centsToAmount(amountToCents(expense.amount)),
-    payerId: normalizePayerId(expense.payerId),
+    payerId: normalizePayerId(expense.payerId, familyIds),
     category: normalizeCategory(expense.category),
     note: String(expense.note || "").trim(),
     date: normalizeDate(expense.date),
     splitMode,
     splitScope,
     splitRule,
-    splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitScope === "selected" ? defaultFamilies.map((family) => family.id) : []),
-    splitAmounts: normalizePersistedSplitAmounts(expense.amount, splitMode, expense.splitAmounts),
-    createdBy: normalizeOperator(expense.createdBy),
-    updatedBy: normalizeOperator(expense.updatedBy),
+    // 所有模式都保存参与家庭快照，避免以后新增/停用家庭时改写旧账承担结果。
+    splitFamilyIds: normalizeSplitFamilyIds(expense.splitFamilyIds, splitFallbackIds, familyIds),
+    splitAmounts,
+    createdBy: normalizeOperator(expense.createdBy, families),
+    updatedBy: normalizeOperator(expense.updatedBy, families),
     syncState: normalizeExpenseSyncState(expense.syncState),
     isDeleted: Boolean(expense.isDeleted),
     // 旧账单没有 createdAt 时，用现有更新时间兼容回填；后续编辑不会改变时间线位置。
@@ -1188,13 +1265,13 @@ function normalizeExpenseSyncState(syncState) {
   return ["pending", "synced", "failed"].includes(syncState) ? syncState : "synced";
 }
 
-function isValidExpense(expense) {
+function isValidExpense(expense, validFamilyIds = state?.families?.map((family) => family.id) || defaultFamilies.map((family) => family.id)) {
   return (
     expense &&
     typeof expense.id === "string" &&
     Number.isFinite(Number(expense.amount)) &&
     Number(expense.amount) > 0 &&
-    Boolean(normalizePayerId(expense.payerId)) &&
+    Boolean(normalizePayerId(expense.payerId, validFamilyIds)) &&
     typeof expense.category === "string" &&
     typeof expense.date === "string"
   );
@@ -1423,40 +1500,40 @@ function normalizeRemotePayload(payload) {
   const categories = Array.isArray(ledger.categories) ? ledger.categories : defaultCategories;
   const familyMembers = ledger.family_members && typeof ledger.family_members === "object" ? ledger.family_members : {};
   const families = normalizeFamilies(ledger.families || defaultFamilies);
+  const familyIds = getFamilyIds(families);
+  const activeFamilyIds = getFamilyIds(families, { activeOnly: true });
   const familyVisuals = normalizeFamilyVisuals(ledger.family_visuals || ledger.familyVisuals, families);
 
   return {
     name: normalizeRemoteLedgerName(ledger.name),
     families: families.map((family) => ({ ...family, visual: familyVisuals[family.id] })),
     familyVisuals,
-    familyMembers: normalizeFamilyMembers(familyMembers),
+    familyMembers: normalizeFamilyMembers(familyMembers, families),
     categories: normalizeCategories([...categories, ...expenses.map((expense) => expense.category)]),
     updatedAt: ledger.updated_at || new Date().toISOString(),
     expenses: expenses
-      .map((expense) => ({
+      .map((expense) => normalizeExpense({
         id: String(expense.id),
-        amount: centsToAmount(amountToCents(expense.amount)),
-        payerId: normalizePayerId(expense.payer_id),
-        category: normalizeCategory(expense.category),
-        note: String(expense.note || "").trim(),
-        date: normalizeDate(expense.expense_date),
-        splitMode: normalizeSplitMode(expense.split_mode),
-        splitScope: getSplitScopeFromMode(expense.split_mode),
-        splitRule: getSplitRuleFromMode(expense.split_mode),
-        splitFamilyIds: normalizeSplitFamilyIds(expense.split_family_ids),
-        splitAmounts: normalizePersistedSplitAmounts(expense.amount, expense.split_mode, expense.split_amounts),
-        createdBy: normalizeOperator(expense.created_by),
-        updatedBy: normalizeOperator(expense.updated_by),
+        amount: expense.amount,
+        payerId: expense.payer_id,
+        category: expense.category,
+        note: expense.note,
+        date: expense.expense_date,
+        splitMode: expense.split_mode,
+        splitFamilyIds: expense.split_family_ids,
+        splitAmounts: expense.split_amounts,
+        createdBy: expense.created_by,
+        updatedBy: expense.updated_by,
         syncState: "synced",
         isDeleted: Boolean(expense.is_deleted),
         createdAt: expense.created_at || expense.updated_at || new Date().toISOString(),
         updatedAt: expense.updated_at || new Date().toISOString(),
-      }))
-      .filter(isValidExpense),
+      }, families))
+      .filter((expense) => isValidExpense(expense, familyIds)),
     activeDate: state.activeDate || todayIso(),
     activeCategory: normalizeCategorySelection(state.activeCategory, categories),
-    selectedPayerId: normalizePayerId(state.selectedPayerId),
-    ledgerFamilyFilter: normalizePayerId(state.ledgerFamilyFilter),
+    selectedPayerId: normalizePayerId(state.selectedPayerId, activeFamilyIds),
+    ledgerFamilyFilter: normalizePayerId(state.ledgerFamilyFilter, familyIds),
     ledgerCategoryFilter: normalizeCategoryFilter(state.ledgerCategoryFilter, categories),
   };
 }
@@ -1994,16 +2071,24 @@ function render(options = {}) {
   }
 }
 
-function getBarMorphDuration(nextPanel) {
-  return barMotionSamples(nextPanel === "data" ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND).duration;
+function getBarMotionProfile(nextPanel) {
+  return nextPanel === "data" ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND;
 }
 
-function cancelBarFlip() {
+function getBarMorphDuration(nextPanel) {
+  return getBarMotionProfile(nextPanel).duration;
+}
+
+function cancelBarFlip({ preserveTransfer = false } = {}) {
   barFlipRunId += 1;
   barFlipAnimations.forEach((animation) => animation.cancel());
   barFlipAnimations = [];
-  document.querySelectorAll(".bar-morph-glow").forEach((node) => node.remove());
   document.querySelectorAll(".bar-family-tint-membrane").forEach((node) => node.remove());
+  if (!preserveTransfer) {
+    barContentTransfer?.animations?.forEach((animation) => animation.cancel());
+    barContentTransfer?.layer?.remove();
+    barContentTransfer = null;
+  }
 }
 
 function clearBarMorphState() {
@@ -2011,92 +2096,114 @@ function clearBarMorphState() {
   elements.mobileSubmitBar.style.removeProperty("--bar-motion-duration");
 }
 
-function spawnSummaryGhost(rect, duration) {
-  if (!rect.width) return;
-
-  document.querySelectorAll(".bar-summary-ghost").forEach((ghost) => ghost.remove());
-  const ghost = document.createElement("span");
-  ghost.className = "bar-summary-ghost";
-  ghost.textContent = elements.mobileSubmitSummary.textContent;
-  ghost.style.left = `${rect.left}px`;
-  ghost.style.top = `${rect.top}px`;
-  ghost.style.maxWidth = `${rect.width}px`;
-  document.body.appendChild(ghost);
-  ghost.style.animation = "none";
-  const animation = ghost.animate(
-    [
-      { offset: 0, opacity: 1, transform: "translateX(0)" },
-      { offset: 0.28, opacity: 0, transform: "translateX(-16px)" },
-      { offset: 1, opacity: 0, transform: "translateX(-16px)" },
-    ],
-    { duration, easing: "linear", fill: "both" },
-  );
-  const cleanup = () => ghost.remove();
-  animation.onfinish = cleanup;
-  animation.oncancel = cleanup;
-  window.setTimeout(() => {
-    if (ghost.isConnected) ghost.remove();
-  }, duration + 80);
-  return animation;
+function readBarTransferSnapshot() {
+  if (!barContentTransfer?.layer?.isConnected) return null;
+  const read = (selector) => {
+    const node = barContentTransfer.layer.querySelector(selector);
+    if (!node) return null;
+    return {
+      rect: node.getBoundingClientRect(),
+      opacity: Number.parseFloat(getComputedStyle(node).opacity) || 0,
+    };
+  };
+  return {
+    summary: read(".bar-content-transfer__summary"),
+    label: read(".bar-content-transfer__label"),
+  };
 }
 
-/*
- * A soft themed halo that lives OUTSIDE the transformed bar (fixed-position, not
- * a child), so the FLIP's non-uniform scale never shears it. On collapse it
- * ramps up as the shape becomes a circle — the button "lights up" as it forms —
- * and finishes with the FLIP, so it reads as part of the same colour/shape
- * morph instead of a second glow pass after landing. On expand it eases away as
- * the pill stretches open.
- */
-function spawnBarMorphGlow(rect, toData, duration) {
-  if (!rect.width || !rect.height) return null;
+function copyTransferTextStyle(source, target) {
+  const style = getComputedStyle(source);
+  target.style.font = style.font;
+  target.style.fontSize = style.fontSize;
+  target.style.fontWeight = style.fontWeight;
+  target.style.letterSpacing = style.letterSpacing;
+  target.style.lineHeight = style.lineHeight;
+  target.style.color = style.color;
+  target.style.textAlign = style.textAlign;
+  target.style.whiteSpace = "nowrap";
+}
 
-  document.querySelectorAll(".bar-morph-glow").forEach((node) => node.remove());
-  const glow = document.createElement("span");
-  glow.className = "bar-morph-glow";
-  glow.style.left = `${rect.left}px`;
-  glow.style.top = `${rect.top}px`;
-  glow.style.width = `${rect.width}px`;
-  glow.style.height = `${rect.height}px`;
-  document.body.appendChild(glow);
+function spawnBarContentTransfer({ startRects, endRects, targetButtonRect, duration, direction, samples, snapshot = null }) {
+  const summaryText = elements.mobileSubmitSummary.textContent;
+  const labelNode = elements.mobileSubmitButton.querySelector(".button-label");
+  const labelText = labelNode?.textContent || "";
+  if (!startRects.summary?.width || !startRects.label?.width || !targetButtonRect?.width) return null;
 
-  let frames;
-  let total;
-  if (toData) {
-    total = duration;
-    frames = [
-      { offset: 0, opacity: 0.20, transform: "scale(0.94)" },
-      { offset: 0.20, opacity: 0.16, transform: "scale(0.98)" },
-      { offset: 0.76, opacity: 0.04, transform: "scale(1.04)" },
-      { offset: 0.82, opacity: 0, transform: "scale(1.07)" },
-      { offset: 1, opacity: 0, transform: "scale(1.07)" },
-    ];
-  } else {
-    total = duration;
-    frames = [
-      { offset: 0, opacity: 1, transform: "scale(1)" },
-      { offset: 0.20, opacity: 0.78, transform: "scale(1.02)" },
-      { offset: 0.78, opacity: 0.08, transform: "scale(1.08)" },
-      { offset: 0.86, opacity: 0, transform: "scale(1.10)" },
-      { offset: 1, opacity: 0, transform: "scale(1.10)" },
-    ];
-  }
+  document.querySelectorAll(".bar-content-transfer").forEach((node) => node.remove());
+  const layer = document.createElement("span");
+  layer.className = "bar-content-transfer";
+  layer.setAttribute("aria-hidden", "true");
+  const targetX = targetButtonRect.left + targetButtonRect.width / 2;
+  const targetY = targetButtonRect.top + targetButtonRect.height / 2;
+  const transferAnimations = [];
 
-  const animation = glow.animate(frames, {
-    duration: total,
-    easing: "linear",
-    fill: "forwards",
+  [
+    { key: "summary", text: summaryText, source: elements.mobileSubmitSummary, className: "bar-content-transfer__summary" },
+    { key: "label", text: labelText, source: labelNode, className: "bar-content-transfer__label" },
+  ].forEach(({ key, text, source, className }) => {
+    const start = startRects[key];
+    const end = endRects[key];
+    if (!source || !start?.width || !end?.width) return;
+    const node = document.createElement("span");
+    node.className = className;
+    node.textContent = text;
+    copyTransferTextStyle(source, node);
+    const isCollapse = direction === "collapse";
+    const initial = snapshot?.[key];
+    const startCenterX = start.left + start.width / 2;
+    const startCenterY = start.top + start.height / 2;
+    const endCenterX = end.left + end.width / 2;
+    const endCenterY = end.top + end.height / 2;
+    const fromCenterX = initial ? initial.rect.left + initial.rect.width / 2 : (isCollapse ? startCenterX : targetX);
+    const fromCenterY = initial ? initial.rect.top + initial.rect.height / 2 : (isCollapse ? startCenterY : targetY);
+    const toCenterX = isCollapse ? targetX : endCenterX;
+    const toCenterY = isCollapse ? targetY : endCenterY;
+    const deltaX = toCenterX - fromCenterX;
+    const deltaY = toCenterY - fromCenterY;
+    const initialOpacity = initial ? Math.max(0, Math.min(1, initial.opacity)) : samples.opacity[0];
+    const baseRect = initial?.rect || (isCollapse ? start : end);
+    node.style.left = `${baseRect.left}px`;
+    node.style.top = `${baseRect.top}px`;
+    node.style.width = `${baseRect.width}px`;
+    node.style.height = `${baseRect.height}px`;
+    const keyframes = samples.position.map((position, index) => {
+      const offset = index / (samples.position.length - 1);
+      const opacity = initial
+        ? initialOpacity + (samples.opacity.at(-1) - initialOpacity) * position
+        : samples.opacity[index];
+      const scale = initial
+        ? 1 + (samples.scale.at(-1) - 1) * position
+        : samples.scale[index];
+      const translateProgress = initial || isCollapse ? position : position - 1;
+      return {
+        offset,
+        opacity,
+        transform: `translate(${deltaX * translateProgress}px, ${deltaY * translateProgress}px) scale(${scale})`,
+      };
+    });
+    layer.appendChild(node);
+    transferAnimations.push(node.animate(keyframes, { duration, easing: "linear", fill: "both", composite: "replace" }));
   });
-  const cleanup = () => glow.remove();
-  animation.onfinish = cleanup;
-  animation.oncancel = cleanup;
-  window.setTimeout(() => {
-    if (glow.isConnected) glow.remove();
-  }, total + 150);
-  return animation;
+  if (!transferAnimations.length) return null;
+  document.body.appendChild(layer);
+  const cleanupOnCancel = () => {
+    if (barContentTransfer?.layer !== layer) return;
+    barContentTransfer = null;
+    layer.remove();
+  };
+  transferAnimations.forEach((animation) => {
+    /* Keep the final transfer glyph painted until cleanupFlip removes it and
+       releases the real label in the same rAF. This avoids both a blank frame
+       and a doubled/bright text frame at the end of expand. */
+    animation.onfinish = () => {};
+    animation.oncancel = cleanupOnCancel;
+  });
+  barContentTransfer = { layer, animations: transferAnimations, direction };
+  return transferAnimations;
 }
 
-function spawnBarFamilyTintMembrane(bar, background, duration) {
+function spawnBarFamilyTintMembrane(bar, background, duration, opacitySamples) {
   if (!background) return null;
 
   bar.querySelectorAll(".bar-family-tint-membrane").forEach((node) => node.remove());
@@ -2106,13 +2213,10 @@ function spawnBarFamilyTintMembrane(bar, background, duration) {
   bar.prepend(membrane);
 
   const animation = membrane.animate(
-    [
-      { offset: 0, opacity: 1 },
-      { offset: 0.20, opacity: 0.86 },
-      { offset: 0.76, opacity: 0.24 },
-      { offset: 0.82, opacity: 0 },
-      { offset: 1, opacity: 0 },
-    ],
+    opacitySamples.map((opacity, index, values) => ({
+      offset: index / (values.length - 1),
+      opacity,
+    })),
     {
       duration,
       easing: "linear",
@@ -2132,12 +2236,16 @@ function animateBarFlip(nextPanel) {
   const bar = elements.mobileSubmitBar;
   const button = elements.mobileSubmitButton;
   const summary = elements.mobileSubmitSummary;
+  const buttonLabel = button.querySelector(".button-label");
   const toData = nextPanel === "data";
+  const direction = toData ? "collapse" : "expand";
   const flipRunId = barFlipRunId + 1;
-  const motion = barMotionSamples(toData ? SPRING_BAR_COLLAPSE : SPRING_BAR_EXPAND);
+  const motion = barMotionSamples(getBarMotionProfile(nextPanel));
+  const transferSnapshot = readBarTransferSnapshot();
   const firstBar = bar.getBoundingClientRect();
   const firstButton = button.getBoundingClientRect();
   const firstSummary = summary.getBoundingClientRect();
+  const firstLabel = buttonLabel?.getBoundingClientRect();
   const firstBarBackground = getComputedStyle(bar).background;
 
   cancelBarFlip();
@@ -2152,12 +2260,15 @@ function animateBarFlip(nextPanel) {
 
   const lastBar = bar.getBoundingClientRect();
   const lastButton = button.getBoundingClientRect();
+  const lastSummary = summary.getBoundingClientRect();
+  const lastLabel = buttonLabel?.getBoundingClientRect();
   if (!firstBar.width || !lastBar.width || !firstButton.width || !lastButton.width) {
     clearBarMorphState();
     return;
   }
 
   const { values, lifts, duration } = motion;
+  const transferSamples = barTransferSamples({ duration, direction, positionValues: values });
   const relX = lastButton.left - lastBar.left;
   const relY = lastButton.top - lastBar.top;
   const barFrames = [];
@@ -2196,20 +2307,25 @@ function animateBarFlip(nextPanel) {
   barFlipAnimations = [barAnimation, buttonAnimation];
 
   if (toData) {
-    const tintAnimation = spawnBarFamilyTintMembrane(bar, firstBarBackground, duration);
+    const tintAnimation = spawnBarFamilyTintMembrane(bar, firstBarBackground, duration, transferSamples.opacity);
     if (tintAnimation) barFlipAnimations.push(tintAnimation);
   }
 
-  /* The collapse halo is useful as the circle forms. During expand the resting
-     pill aura and the old fixed circle halo overlap, producing a brief flash
-     and leaving a shadow-looking ring behind the settled bar. Let the shell's
-     own settling material handle the expand side instead. */
-  const glowAnimation = toData ? spawnBarMorphGlow(lastBar, true, duration) : null;
-  if (glowAnimation) barFlipAnimations.push(glowAnimation);
-
-  if (toData) {
-    const ghostAnimation = spawnSummaryGhost(firstSummary, duration);
-    if (ghostAnimation) barFlipAnimations.push(ghostAnimation);
+  const transferAnimations = spawnBarContentTransfer({
+    startRects: toData
+      ? { summary: firstSummary, label: firstLabel }
+      : { summary: lastSummary, label: lastLabel },
+    endRects: toData
+      ? { summary: firstSummary, label: firstLabel }
+      : { summary: lastSummary, label: lastLabel },
+    targetButtonRect: toData ? lastButton : firstButton,
+    duration,
+    direction,
+    samples: transferSamples,
+    snapshot: transferSnapshot,
+  });
+  if (transferAnimations) {
+    barFlipAnimations.push(...transferAnimations);
   }
 
   let cleanupQueued = false;
@@ -2219,8 +2335,15 @@ function animateBarFlip(nextPanel) {
     cleanupQueued = true;
     window.requestAnimationFrame(() => {
       if (barFlipRunId !== flipRunId || !barFlipAnimations.includes(barAnimation)) return;
+      /* Switch the real labels on without inheriting their resting opacity
+         transitions. The transfer layer is already at the landing rect, so a
+         fade here would look like the text flashes back at its origin. */
+      bar.classList.add("is-bar-text-handoff");
+      barContentTransfer?.layer?.remove();
+      barContentTransfer = null;
       clearBarMorphState();
       barFlipAnimations = [];
+      window.requestAnimationFrame(() => bar.classList.remove("is-bar-text-handoff"));
     });
   };
   barAnimation.onfinish = cleanupFlip;
@@ -2376,6 +2499,7 @@ function handleMobilePanelSwitchKeydown(event) {
 
 function renderCurrentLedgerLabel() {
   elements.currentLedgerTitle.textContent = state.name;
+  elements.headerLedgerSwitcher?.setAttribute("aria-label", `切换账本，当前为${state.name}`);
   /* 收起态切换账本后，灯要跟着新标题的右缘走；标题宽度变了，
      展开态也要强制重算停靠终值（标脏，下次滚动进 zone 时落地）。 */
   dockCoordsDirty = true;
@@ -3952,7 +4076,7 @@ function renderFamilyChoiceButton(family, { dataName, extraClass = "", selected 
 }
 
 function getOperatorFamilyId() {
-  return normalizePayerId(localStorage.getItem(OPERATOR_FAMILY_STORAGE_KEY));
+  return normalizePayerId(localStorage.getItem(OPERATOR_FAMILY_STORAGE_KEY), getFamilyIds(state.families, { activeOnly: true }));
 }
 
 function getSelectedOperatorFamilyId(container) {
@@ -3961,7 +4085,7 @@ function getSelectedOperatorFamilyId(container) {
 
 function renderOperatorFamilyChoices(container, selectedFamilyId = getOperatorFamilyId()) {
   if (!container) return;
-  container.innerHTML = state.families
+  container.innerHTML = getActiveFamilies()
     .map((family) => renderFamilyChoiceButton(family, {
       dataName: "data-operator-family-id",
       extraClass: "operator-family-choice",
@@ -3972,7 +4096,7 @@ function renderOperatorFamilyChoices(container, selectedFamilyId = getOperatorFa
 }
 
 function selectOperatorFamilyChoice(container, familyId) {
-  const normalizedFamilyId = normalizePayerId(familyId);
+  const normalizedFamilyId = normalizePayerId(familyId, getFamilyIds(state.families, { activeOnly: true }));
   if (!container || !normalizedFamilyId) return;
   container.querySelectorAll("[data-operator-family-id]").forEach((button) => {
     const selected = button.dataset.operatorFamilyId === normalizedFamilyId;
@@ -3984,16 +4108,24 @@ function selectOperatorFamilyChoice(container, familyId) {
 function handleOperatorFamilyChoice(event) {
   const button = event.target.closest("[data-operator-family-id]");
   if (!button) return;
-  selectOperatorFamilyChoice(event.currentTarget, button.dataset.operatorFamilyId);
+  const familyId = button.dataset.operatorFamilyId;
+  const previousFamilyId = getOperatorFamilyId();
+  selectOperatorFamilyChoice(event.currentTarget, familyId);
   if (event.currentTarget === elements.welcomeIdentityFamilyList) {
-    localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, button.dataset.operatorFamilyId);
-    renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, button.dataset.operatorFamilyId);
+    localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
+    renderOperatorFamilyChoices(elements.settingsOperatorFamilyList, familyId);
     syncWelcomeControls();
+    return;
+  }
+  if (event.currentTarget === elements.settingsOperatorFamilyList) {
+    localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
+    renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList, familyId);
+    if (familyId !== previousFamilyId) showToast({ message: COPY.identity.saved(getFamilyName(familyId)) });
   }
 }
 
 function renderFamilyRoster() {
-  elements.familyRoster.innerHTML = state.families
+  elements.familyRoster.innerHTML = getEntryFamilies()
     .map((family) => {
       const selected = family.id === state.selectedPayerId;
       return renderFamilyChoiceButton(family, {
@@ -4551,7 +4683,7 @@ function syncSplitParticipantSummary() {
     setSplitParticipantSummaryText("选择参与分摊的家庭");
     return;
   }
-  if (activeSplitFamilyIds.length === state.families.length) {
+  if (activeSplitFamilyIds.length === getEntryFamilies().length) {
     setSplitParticipantSummaryText("全部家庭");
     return;
   }
@@ -4568,9 +4700,10 @@ function setSplitParticipantSummaryText(nextText) {
 
 function syncSplitFamilyChoices() {
   const container = elements.splitFamilyChoices;
+  const entryFamilies = getEntryFamilies();
   let buttons = [...container.querySelectorAll("[data-split-family]")];
-  if (buttons.length !== state.families.length || buttons.some((button, index) => button.dataset.splitFamily !== state.families[index].id)) {
-    container.innerHTML = state.families
+  if (buttons.length !== entryFamilies.length || buttons.some((button, index) => button.dataset.splitFamily !== entryFamilies[index].id)) {
+    container.innerHTML = entryFamilies
       .map((family) => renderFamilyChoiceButton(family, { dataName: "data-split-family", extraClass: "split-family-chip" }))
       .join("");
     buttons = [...container.querySelectorAll("[data-split-family]")];
@@ -4587,10 +4720,11 @@ function syncSplitFamilyChoices() {
 
 function syncSplitCustomAmounts() {
   const container = elements.splitCustomAmounts;
+  const entryFamilies = getEntryFamilies();
   let inputs = [...container.querySelectorAll("[data-split-amount]")];
-  if (inputs.length !== state.families.length || inputs.some((input, index) => input.dataset.splitAmount !== state.families[index].id)) {
+  if (inputs.length !== entryFamilies.length || inputs.some((input, index) => input.dataset.splitAmount !== entryFamilies[index].id)) {
     container.innerHTML = `
-      ${state.families
+      ${entryFamilies
         .map(
           (family) => `
           <div class="split-amount-row" style="${familyStyle(family.id)}" data-split-family-row="${escapeHtml(family.id)}">
@@ -4667,10 +4801,11 @@ function updateSplitScopePanelState() {
 
 function ensureActiveSplitState() {
   activeSplitMode = normalizeSplitMode(activeSplitMode);
-  const fallbackIds = getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id);
-  activeSplitFamilyIds = normalizeSplitFamilyIds(activeSplitFamilyIds, fallbackIds);
-  if (getSplitScopeFromMode(activeSplitMode) === "all" && activeSplitMode !== "custom") activeSplitFamilyIds = state.families.map((family) => family.id);
-  activeSplitAmounts = normalizeSplitAmounts(activeSplitAmounts);
+  const entryFamilyIds = getEntryFamilies().map((family) => family.id);
+  const fallbackIds = getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : entryFamilyIds;
+  activeSplitFamilyIds = normalizeSplitFamilyIds(activeSplitFamilyIds, fallbackIds, entryFamilyIds);
+  if (getSplitScopeFromMode(activeSplitMode) === "all" && activeSplitMode !== "custom") activeSplitFamilyIds = entryFamilyIds;
+  activeSplitAmounts = normalizeSplitAmounts(activeSplitAmounts, entryFamilyIds);
 }
 
 function formatActiveSplitSummary() {
@@ -4686,7 +4821,7 @@ function formatActiveSplitSummary() {
     return `${activeSplitFamilyIds.length}家${ruleLabel}`;
   }
 
-  return `${state.families.length}家${ruleLabel}`;
+  return `${getEntryFamilies().length}家${ruleLabel}`;
 }
 
 function formatExpenseSplitSummary(expense) {
@@ -4701,12 +4836,13 @@ function formatExpenseSplitSummary(expense) {
 
   const ruleLabel = getSplitRuleFromMode(splitMode) === "equal" ? "各家均分" : "按家庭人数";
   if (getSplitScopeFromMode(splitMode) === "selected") {
-    const ids = normalizeSplitFamilyIds(expense.splitFamilyIds, state.families.map((family) => family.id));
+    const ids = normalizeSplitFamilyIds(expense.splitFamilyIds, getFamilyIds(state.families, { activeOnly: true }), getFamilyIds(state.families));
     if (ids.length === 1) return `${ids.map(getFamilyName).join("、")} · 全额`;
     return `${ids.map(getFamilyName).join("、")} · ${ruleLabel === "各家均分" ? "均分" : "按人数"}`;
   }
 
-  return `${state.families.length} 家 · ${ruleLabel === "各家均分" ? "均分" : "按人数"}`;
+  const ids = normalizeSplitFamilyIds(expense.splitFamilyIds, getFamilyIds(state.families, { activeOnly: true }), getFamilyIds(state.families));
+  return `${ids.length} 家 · ${ruleLabel === "各家均分" ? "均分" : "按人数"}`;
 }
 
 function formatCustomSplitTotalLine() {
@@ -4785,8 +4921,52 @@ function updateAmountFieldForSplitMode() {
   syncCustomSplitTotalField();
 }
 
-function renderSettings({ summary = calculateSummary() } = {}) {
+function renderSettingsCategories() {
   const usedCategories = new Set(state.expenses.map((expense) => expense.category));
+  if (!state.categories.includes(selectedSettingsCategory)) selectedSettingsCategory = "";
+
+  if (elements.settingsCategoryManageButton) {
+    elements.settingsCategoryManageButton.textContent = settingsCategoryManageMode ? "完成" : "整理";
+    elements.settingsCategoryManageButton.setAttribute("aria-pressed", String(settingsCategoryManageMode));
+  }
+  if (elements.settingsCategoryHint) {
+    elements.settingsCategoryHint.textContent = settingsCategoryManageMode
+      ? selectedSettingsCategory ? `正在整理“${selectedSettingsCategory}”` : "点选一个类别进行整理"
+      : `${state.categories.length} 个类别 · 新增后可用于记账`;
+  }
+  elements.settingsCategoryChips.classList.toggle("is-managing", settingsCategoryManageMode);
+  elements.settingsCategoryChips.innerHTML = state.categories
+    .map((category, index) => {
+      const isDefault = defaultCategories.includes(category);
+      const isUsed = usedCategories.has(category);
+      const isSelected = settingsCategoryManageMode && category === selectedSettingsCategory;
+      const status = isUsed ? "使用中" : isDefault ? "预设" : "自定义";
+      const identity = `<span class="settings-category-identity">${categoryLabelHtml(category)}</span><small>${status}</small>`;
+      const main = settingsCategoryManageMode
+        ? `<button class="settings-category-main" type="button" data-select-settings-category="${escapeHtml(category)}" aria-expanded="${isSelected}">${identity}<span class="settings-category-row-cue" aria-hidden="true">${uiIconHtml("chevron-down")}</span></button>`
+        : `<div class="settings-category-main">${identity}</div>`;
+      const actions = isSelected
+        ? `
+          <div class="settings-category-actions" role="group" aria-label="整理 ${escapeHtml(category)}">
+            <button type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" ${index === 0 ? "disabled" : ""}>${uiIconHtml("chevron-up")}<span>上移</span></button>
+            <button type="button" data-move-category="${escapeHtml(category)}" data-direction="1" ${index === state.categories.length - 1 ? "disabled" : ""}>${uiIconHtml("chevron-down")}<span>下移</span></button>
+            <button class="is-danger" type="button" data-remove-category="${escapeHtml(category)}" ${isUsed ? `disabled aria-describedby="settings-category-delete-note-${index}"` : ""}>${uiIconHtml("close")}<span>删除</span></button>
+          </div>
+          ${isUsed ? `<small class="settings-category-delete-note" id="settings-category-delete-note-${index}">已有账单使用，暂不能删除</small>` : ""}
+        `
+        : "";
+
+      return `
+        <div class="chip category-chip settings-category-chip${isSelected ? " is-selected" : ""}${category === lastAddedCategory ? " is-entering" : ""}" data-settings-category="${escapeHtml(category)}" style="${categoryStyle(category)}">
+          ${main}
+          ${actions}
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderSettings({ summary = calculateSummary() } = {}) {
   const syncSummary = getSyncSummary();
   elements.currentLedgerNameInput.value = state.name;
   renderOperatorFamilyChoices(elements.settingsOperatorFamilyList);
@@ -4802,45 +4982,48 @@ function renderSettings({ summary = calculateSummary() } = {}) {
   elements.settlementCountBadge.textContent = summary.settlements.length ? `${summary.settlements.length} 笔转账` : "已两清";
   elements.settlementCountBadge.classList.toggle("is-settled", summary.settlements.length === 0);
 
+  const activeFamilyCount = getActiveFamilies().length;
+  const referencedFamilyIds = getReferencedFamilyIds();
+  const familyAddButton = elements.settingsFamilyForm?.querySelector('button[type="submit"]');
+  if (familyAddButton) familyAddButton.disabled = activeFamilyCount >= MAX_ACTIVE_FAMILIES;
+  if (elements.settingsNewFamilyInput) {
+    elements.settingsNewFamilyInput.disabled = activeFamilyCount >= MAX_ACTIVE_FAMILIES;
+    elements.settingsNewFamilyInput.placeholder = activeFamilyCount >= MAX_ACTIVE_FAMILIES ? `最多 ${MAX_ACTIVE_FAMILIES} 个启用家庭` : "新增家庭名称";
+  }
+
   elements.settingsFamilyList.innerHTML = state.families
     .map(
-      (family) => `
-        <div class="settings-family" style="${familyStyle(family.id)}">
-          <span>${escapeHtml(family.name)}<small>已付 ${formatMoney(summary.paidByFamily[family.id] || 0)} · 应承担 ${formatMoney(summary.shareByFamily[family.id] || 0)}</small></span>
-          <div class="member-stepper" aria-label="${escapeHtml(family.name)}人数">
-            <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="-1" aria-label="减少${escapeHtml(family.name)}人数">${uiIconHtml("minus")}</button>
-            <strong>${state.familyMembers[family.id] || 1} 人</strong>
-            <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="1" aria-label="增加${escapeHtml(family.name)}人数">${uiIconHtml("plus")}</button>
+      (family) => {
+        const isActive = family.active !== false;
+        const isReferenced = referencedFamilyIds.has(family.id);
+        const actionLabel = isActive ? (isReferenced ? "停用" : "删除") : "恢复";
+        const actionDisabled = isActive && activeFamilyCount <= MIN_ACTIVE_FAMILIES;
+        const status = isActive ? `${state.familyMembers[family.id] || 1} 人` : "已停用 · 保留历史账目";
+        return `
+        <div class="settings-family${isActive ? "" : " is-inactive"}" style="${familyStyle(family.id)}" data-settings-family="${escapeHtml(family.id)}">
+          <div class="settings-family-identity">
+            <span class="family-status-dot" aria-hidden="true"></span>
+            <label>
+              <span class="visually-hidden">家庭名称</span>
+              <input class="settings-family-name-input" type="text" maxlength="${MAX_FAMILY_NAME_LENGTH}" value="${escapeHtml(family.name)}" data-family-name-input="${escapeHtml(family.id)}" aria-label="${escapeHtml(family.name)}的名称" />
+            </label>
+            <small>${escapeHtml(status)} · 已付 ${formatMoney(summary.paidByFamily[family.id] || 0)} · 应承担 ${formatMoney(summary.shareByFamily[family.id] || 0)}</small>
+          </div>
+          <div class="settings-family-controls">
+            <div class="member-stepper" aria-label="${escapeHtml(family.name)}人数">
+              <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="-1" aria-label="减少${escapeHtml(family.name)}人数" ${isActive ? "" : "disabled"}>${uiIconHtml("minus")}</button>
+              <strong>${state.familyMembers[family.id] || 1} 人</strong>
+              <button type="button" data-member-step="${escapeHtml(family.id)}" data-step="1" aria-label="增加${escapeHtml(family.name)}人数" ${isActive ? "" : "disabled"}>${uiIconHtml("plus")}</button>
+            </div>
+            <button class="family-state-button${isActive && !isReferenced ? " is-danger" : ""}" type="button" data-family-state="${escapeHtml(family.id)}" ${actionDisabled ? `disabled title="至少保留 ${MIN_ACTIVE_FAMILIES} 个启用家庭"` : ""}>${actionLabel}</button>
           </div>
         </div>
-      `,
+      `;
+      },
     )
     .join("");
   renderPersonalizationSettings();
-
-  elements.settingsCategoryChips.innerHTML = state.categories
-    .map((category, index) => {
-      const isDefault = defaultCategories.includes(category);
-      const isUsed = usedCategories.has(category);
-      const status = isUsed ? "使用中" : isDefault ? "预设" : "可删除";
-      const removeButton = isUsed
-        ? ""
-        : `<button class="chip-icon-button chip-remove-button" type="button" data-remove-category="${escapeHtml(category)}" aria-label="删除 ${escapeHtml(category)}">${uiIconHtml("close")}</button>`;
-      const moveControls = `
-        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="-1" aria-label="上移 ${escapeHtml(category)}" ${index === 0 ? "disabled" : ""}>${uiIconHtml("chevron-up")}</button>
-        <button class="chip-icon-button" type="button" data-move-category="${escapeHtml(category)}" data-direction="1" aria-label="下移 ${escapeHtml(category)}" ${index === state.categories.length - 1 ? "disabled" : ""}>${uiIconHtml("chevron-down")}</button>
-      `;
-
-      return `
-        <span class="chip category-chip settings-category-chip${category === lastAddedCategory ? " is-entering" : ""}" style="${categoryStyle(category)}">
-          <span>${categoryLabelHtml(category)}</span>
-          <small>${status}</small>
-          ${moveControls}
-          ${removeButton}
-        </span>
-      `;
-    })
-    .join("");
+  renderSettingsCategories();
 
   elements.settingsDataSummary.innerHTML = `
     <div class="settings-data-item is-${escapeHtml(syncSummary.state)}">
@@ -4883,81 +5066,6 @@ function renderSettlementMethodSettings() {
 
 function renderPersonalizationSettings() {
   renderThemePresetList();
-  if (!elements.settingsFamilyColorList) return;
-  const detailsOpen = elements.settingsFamilyColorList.querySelector(".family-color-details")?.dataset.open === "true";
-  syncFamilyVisualRows();
-  const presetColors = getFamilyColorChoices();
-  const currentFamily = state.families.find((family) => family.id === activeFamilyColorFamilyId) || state.families[0];
-  if (!currentFamily) return;
-  activeFamilyColorFamilyId = currentFamily.id;
-  const currentVisual = getFamilyVisual(currentFamily.id);
-  const isCurrentCurated = presetColors.some((visual) => visual.color === currentVisual.color);
-  const customCount = state.families.filter((family) => !presetColors.some((visual) => visual.color === getFamilyVisual(family.id).color)).length;
-  const customStatus = customCount ? `${customCount} 个自定义` : "默认组合";
-  const familyTargets = state.families
-    .map((family) => {
-      const isSelected = family.id === currentFamily.id;
-      return `
-        <button class="family-color-target${isSelected ? " is-selected" : ""}" type="button" role="radio" data-family-color-target="${escapeHtml(family.id)}" aria-checked="${isSelected}" style="${familyStyle(family.id)}">
-          <span class="family-color-current" style="${familyVisualSwatchStyle(getFamilyVisual(family.id))}" aria-hidden="true"></span>
-          <span>${escapeHtml(family.name)}</span>
-        </button>
-      `;
-    })
-    .join("");
-  const colorChoices = presetColors
-    .map((visual, index) => {
-      const isSelected = currentVisual.color === visual.color;
-      return `
-        <button class="family-color-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-family-color="${escapeHtml(currentFamily.id)}" data-color-index="${index}" style="${familyVisualSwatchStyle(visual)}" aria-label="${escapeHtml(currentFamily.name)}：${escapeHtml(visual.label)}" aria-checked="${isSelected}">
-          <span class="family-color-choice-mark" aria-hidden="true">✓</span>
-        </button>
-      `;
-    })
-    .join("");
-
-  elements.settingsFamilyColorList.innerHTML = `
-    <div class="family-color-details${detailsOpen ? " is-open" : ""}" data-open="${detailsOpen}">
-      <button class="family-color-summary" type="button" aria-expanded="${detailsOpen}">
-        <span>高级：家庭身份色</span>
-        <small>${customStatus}</small>
-      </button>
-      <div class="family-color-detail-body" aria-hidden="${!detailsOpen}"${detailsOpen ? "" : " inert"}>
-        <div class="family-color-detail-inner">
-          <div class="family-color-targets" role="radiogroup" aria-label="选择要调整的家庭">
-            ${familyTargets}
-          </div>
-          <div class="family-color-editor" style="${familyStyle(currentFamily.id)}">
-            <div class="family-color-editor-heading">
-              <strong>调整${escapeHtml(currentFamily.name)}</strong>
-              <small>${isCurrentCurated ? "选择一套身份色" : "当前自定义"}</small>
-            </div>
-            <div class="family-color-options" role="radiogroup" aria-label="${escapeHtml(currentFamily.name)}身份色">
-              ${colorChoices}
-            </div>
-            ${isCurrentCurated ? "" : `<span class="family-color-custom-note">保留当前自定义色</span>`}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  bindFamilyColorDisclosure(elements.settingsFamilyColorList);
-}
-
-function bindFamilyColorDisclosure(root = document) {
-  const details = root.querySelector(".family-color-details");
-  const summary = details?.querySelector(".family-color-summary");
-  const body = details?.querySelector(".family-color-detail-body");
-  if (!details || !summary || !body || summary.dataset.familyColorDisclosureBound) return;
-  summary.dataset.familyColorDisclosureBound = "1";
-  summary.addEventListener("click", () => {
-    const opening = !details.classList.contains("is-open");
-    details.classList.toggle("is-open", opening);
-    details.dataset.open = String(opening);
-    summary.setAttribute("aria-expanded", String(opening));
-    body.setAttribute("aria-hidden", String(!opening));
-    body.toggleAttribute("inert", !opening);
-  });
 }
 
 /* 让原生 <details> 的「收起」也平滑过渡。
@@ -5052,20 +5160,6 @@ function bindAnimatedDetails(root = document) {
     });
 }
 
-function getFamilyColorChoices() {
-  const seen = new Set();
-  return familyColorChoices.map((choice) => ({ ...normalizeFamilyVisual(choice), label: choice.label })).filter((visual) => {
-    if (seen.has(visual.color)) return false;
-    seen.add(visual.color);
-    return true;
-  });
-}
-
-function familyVisualSwatchStyle(visual) {
-  const normalized = normalizeFamilyVisual(visual);
-  return `--swatch-color: ${normalized.color}; --swatch-gradient: ${normalized.gradient}; --swatch-text: ${normalized.text};`;
-}
-
 function renderCurrentLedgerSummary(summary) {
   const syncSummary = getSyncSummary();
   const status = state.cloudShareToken ? syncSummary.label : COPY.localLedger;
@@ -5091,7 +5185,7 @@ function renderLedgerManagerItem(ledger) {
   const canDelete = appState.ledgers.length > 1;
   const cloudLabel = ledger.cloudShareToken ? COPY.cloudLedger : COPY.localLedger;
   const updatedLabel = formatUpdatedAt(ledger.updatedAt || ledger.createdAt);
-  const familySummary = defaultFamilies
+  const familySummary = getActiveFamilies(ledger.families)
     .map((family) => `${family.name}${ledger.familyMembers?.[family.id] || 1}`)
     .join(" · ");
   const copyButton = ledger.cloudShareToken
@@ -5396,7 +5490,12 @@ function renderSummary({ animateFinancialChanges = false, summary = calculateSum
   renderTotalMetricGradient(summary);
   renderJourneyHero(summary);
 
-  elements.paidByFamily.innerHTML = state.families
+  const summaryFamilies = state.families.filter((family) => (
+    family.active !== false
+    || (summary.paidByFamily[family.id] || 0) > 0
+    || (summary.shareByFamily[family.id] || 0) > 0
+  ));
+  elements.paidByFamily.innerHTML = summaryFamilies
     .map(
       (family) => `
         <div class="row-item family-row${enterClass}" data-summary-family-id="${escapeHtml(family.id)}" style="${familyStyle(family.id)}">
@@ -5483,11 +5582,12 @@ function renderJourneyHero(summary) {
     }
   }
 
-  const totalPaid = state.families.reduce((sum, family) => sum + (summary.paidByFamily[family.id] || 0), 0);
-  elements.journeyFamilyTrack.innerHTML = state.families
+  const journeyFamilies = state.families.filter((family) => family.active !== false || (summary.paidByFamily[family.id] || 0) > 0);
+  const totalPaid = journeyFamilies.reduce((sum, family) => sum + (summary.paidByFamily[family.id] || 0), 0);
+  elements.journeyFamilyTrack.innerHTML = journeyFamilies
     .map((family) => {
       const paid = summary.paidByFamily[family.id] || 0;
-      const share = totalPaid > 0 ? paid / totalPaid : 1 / Math.max(1, state.families.length);
+      const share = totalPaid > 0 ? paid / totalPaid : 1 / Math.max(1, journeyFamilies.length);
       const displayedPercent = totalPaid > 0 ? Math.round(share * 100) : 0;
       return `
         <div class="journey-family-segment" data-journey-family-id="${escapeHtml(family.id)}"
@@ -6072,7 +6172,7 @@ function getExpenseMissingState() {
   const amount = activeSplitMode === "custom"
     ? centsToAmount(customSplitTargetCents === null ? getActiveCustomSplitTotalCents() : customSplitTargetCents)
     : parseAmountInput(elements.amountInput.value);
-  const hasPayer = state.families.some((family) => family.id === state.selectedPayerId);
+  const hasPayer = getEntryFamilies().some((family) => family.id === state.selectedPayerId);
   const hasCategory = Boolean(state.activeCategory || elements.categoryInput.value);
 
   if (!hasPayer) {
@@ -6153,7 +6253,7 @@ function getSplitDetailsForSubmit() {
     return {
       amount: centsToAmount(totalCents),
       splitMode: "custom",
-      splitFamilyIds: [],
+      splitFamilyIds: [...activeSplitFamilyIds],
       splitAmounts: getActiveCustomSplitAmounts(),
       error: !totalCents
         ? "请填写分摊金额。"
@@ -6168,7 +6268,7 @@ function getSplitDetailsForSubmit() {
       amount: parseAmountInput(elements.amountInput.value),
       splitMode: getSplitModeForState("selected", getSplitRuleFromMode(activeSplitMode)),
       splitFamilyIds: [...activeSplitFamilyIds],
-      splitAmounts: normalizeSplitAmounts(),
+      splitAmounts: normalizeSplitAmounts({}, getEntryFamilies().map((family) => family.id)),
       error: activeSplitFamilyIds.length ? "" : "请选择参与分摊的家庭。",
     };
   }
@@ -6176,8 +6276,8 @@ function getSplitDetailsForSubmit() {
   return {
     amount: parseAmountInput(elements.amountInput.value),
     splitMode: getSplitModeForState("all", getSplitRuleFromMode(activeSplitMode)),
-    splitFamilyIds: [],
-    splitAmounts: normalizeSplitAmounts(),
+    splitFamilyIds: getEntryFamilies().map((family) => family.id),
+    splitAmounts: normalizeSplitAmounts({}, getEntryFamilies().map((family) => family.id)),
     error: "",
   };
 }
@@ -6243,7 +6343,7 @@ function handleExpenseSubmit(event) {
     return;
   }
 
-  if (!state.families.some((family) => family.id === payerId)) {
+  if (!getEntryFamilies().some((family) => family.id === payerId)) {
     elements.payerError.textContent = "请选择付款家庭。";
     elements.familyRoster.querySelector(".family-tag")?.focus();
     return;
@@ -6400,34 +6500,6 @@ function handleSettingsThemeClick(event) {
   showToast({ message: `主题色已换成「${preset.name}」` });
 }
 
-function handleSettingsFamilyColorClick(event) {
-  const targetButton = event.target.closest("[data-family-color-target]");
-  if (targetButton) {
-    const familyId = normalizePayerId(targetButton.dataset.familyColorTarget);
-    if (!familyId || !state.families.some((family) => family.id === familyId)) return;
-    activeFamilyColorFamilyId = familyId;
-    renderPersonalizationSettings();
-    return;
-  }
-
-  const button = event.target.closest("[data-family-color]");
-  if (!button) return;
-
-  const familyId = normalizePayerId(button.dataset.familyColor);
-  const visual = getFamilyColorChoices()[Number(button.dataset.colorIndex)];
-  if (!familyId || !visual) return;
-
-  state.familyVisuals = {
-    ...normalizeFamilyVisuals(state.familyVisuals, state.families),
-    [familyId]: normalizeFamilyVisual(visual),
-  };
-  syncFamilyVisualRows();
-  render({ animateFinancialChanges: true });
-  activeFamilyColorFamilyId = familyId;
-  queueCloudSettingsSync();
-  showToast({ message: `已更新${getFamilyName(familyId)}身份色` });
-}
-
 function addCategoryFromInput(input) {
   const category = input.value.trim();
   if (!category) {
@@ -6440,6 +6512,9 @@ function addCategoryFromInput(input) {
     lastAddedCategory = category;
   }
   state.activeCategory = category;
+  if (input === elements.settingsNewCategoryInput && settingsCategoryManageMode) {
+    selectedSettingsCategory = category;
+  }
 
   input.value = "";
   render();
@@ -6512,7 +6587,7 @@ function handleSplitScopeClick(event) {
       markSplitModeDeactivating(previousMode);
       markSplitModeActivating(nextMode);
       activeSplitMode = nextMode;
-      if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
+      if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = getEntryFamilies().map((family) => family.id);
       splitFamilyChoicesOpen = activeSplitMode !== "custom";
     }
     smoothSplitScopeResize(renderSplitScope);
@@ -6560,7 +6635,7 @@ function handleSplitScopeClick(event) {
       }
     }
     if (!activeSplitFamilyIds.length) {
-      const fallbackFamilyId = state.families[0]?.id;
+      const fallbackFamilyId = getEntryFamilies()[0]?.id;
       if (fallbackFamilyId) activeSplitFamilyIds = [fallbackFamilyId];
     }
     renderSplitScope();
@@ -6808,7 +6883,7 @@ function handleSplitAmountKeydown(event) {
 
 function resetSplitScope() {
   activeSplitMode = "equal";
-  activeSplitFamilyIds = state.families.map((family) => family.id);
+  activeSplitFamilyIds = getActiveFamilies().map((family) => family.id);
   activeSplitAmounts = {};
   customSplitTargetCents = null;
   customSplitSuspendedAmounts = {};
@@ -6820,12 +6895,14 @@ function resetSplitScope() {
 
 function setSplitScopeFromExpense(expense) {
   activeSplitMode = normalizeSplitMode(expense.splitMode);
+  const entryFamilyIds = getEntryFamilies().map((family) => family.id);
   activeSplitFamilyIds = normalizeSplitFamilyIds(
     expense.splitFamilyIds,
-    getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id),
+    getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : entryFamilyIds,
+    entryFamilyIds,
   );
-  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
-  activeSplitAmounts = normalizeSplitAmounts(expense.splitAmounts);
+  if (getSplitScopeFromMode(activeSplitMode) === "all" && !expense.splitFamilyIds?.length) activeSplitFamilyIds = entryFamilyIds;
+  activeSplitAmounts = normalizeSplitAmounts(expense.splitAmounts, entryFamilyIds);
   customSplitTargetCents = activeSplitMode === "custom" ? amountToCents(expense.amount) : null;
   customSplitSuspendedAmounts = {};
   customSplitAmountDrafts = {};
@@ -6833,17 +6910,41 @@ function setSplitScopeFromExpense(expense) {
   splitFamilyChoicesOpen = getSplitScopeFromMode(activeSplitMode) === "selected";
 }
 
+function focusSettingsCategoryControl(category, selector = ".settings-category-main") {
+  window.requestAnimationFrame(() => {
+    const item = Array.from(elements.settingsCategoryChips.querySelectorAll("[data-settings-category]"))
+      .find((element) => element.dataset.settingsCategory === category);
+    item?.querySelector(selector)?.focus();
+  });
+}
+
+function handleSettingsCategoryManageToggle() {
+  settingsCategoryManageMode = !settingsCategoryManageMode;
+  selectedSettingsCategory = "";
+  renderSettingsCategories();
+}
+
 function handleSettingsCategoryClick(event) {
   const moveButton = event.target.closest("[data-move-category]");
   if (moveButton) {
-    moveCategory(moveButton.dataset.moveCategory, Number(moveButton.dataset.direction));
+    const direction = Number(moveButton.dataset.direction);
+    moveCategory(moveButton.dataset.moveCategory, direction);
+    focusSettingsCategoryControl(moveButton.dataset.moveCategory, `[data-direction="${direction}"]`);
     return;
   }
 
-  const button = event.target.closest("[data-remove-category]");
-  if (!button) return;
+  const removeButton = event.target.closest("[data-remove-category]");
+  if (removeButton) {
+    removeCategory(removeButton.dataset.removeCategory, removeButton.closest(".settings-category-chip"));
+    return;
+  }
 
-  removeCategory(button.dataset.removeCategory, button.closest(".settings-category-chip"));
+  const selectButton = event.target.closest("[data-select-settings-category]");
+  if (!selectButton || !settingsCategoryManageMode) return;
+  const category = selectButton.dataset.selectSettingsCategory;
+  selectedSettingsCategory = selectedSettingsCategory === category ? "" : category;
+  renderSettingsCategories();
+  if (selectedSettingsCategory) focusSettingsCategoryControl(selectedSettingsCategory);
 }
 
 function moveCategory(category, direction) {
@@ -6856,7 +6957,7 @@ function moveCategory(category, direction) {
   state.categories = nextCategories;
   render();
   queueCloudSettingsSync();
-  saveState();
+  flushPendingSave();
 }
 
 function removeCategory(category, chipEl) {
@@ -6866,10 +6967,12 @@ function removeCategory(category, chipEl) {
 
   const commit = () => {
     state.categories = state.categories.filter((item) => item !== category);
+    if (selectedSettingsCategory === category) selectedSettingsCategory = "";
     if (state.activeCategory === category) {
       state.activeCategory = "";
     }
     render();
+    window.requestAnimationFrame(() => elements.settingsCategoryManageButton?.focus());
     queueCloudSettingsSync();
     showToast({
       message: `已删除“${category}”`,
@@ -6878,7 +6981,9 @@ function removeCategory(category, chipEl) {
         state.categories.splice(Math.max(categoryIndex, 0), 0, category);
         state.categories = normalizeCategories(state.categories);
         state.activeCategory = category;
+        if (settingsCategoryManageMode) selectedSettingsCategory = category;
         render();
+        if (settingsCategoryManageMode) focusSettingsCategoryControl(category);
         queueCloudSettingsSync();
       },
     });
@@ -6907,6 +7012,190 @@ function handleFamilyMemberStep(event) {
   state.familyMembers[familyId] = count;
   render({ animateFinancialChanges: true });
   queueCloudSettingsSync();
+}
+
+function getReferencedFamilyIds(expenses = state.expenses) {
+  const familyIds = new Set();
+  (Array.isArray(expenses) ? expenses : []).forEach((expense) => {
+    [expense?.payerId, expense?.createdBy?.familyId, expense?.updatedBy?.familyId]
+      .filter(Boolean)
+      .forEach((familyId) => familyIds.add(familyId));
+    (Array.isArray(expense?.splitFamilyIds) ? expense.splitFamilyIds : [])
+      .filter(Boolean)
+      .forEach((familyId) => familyIds.add(familyId));
+    Object.entries(expense?.splitAmounts || {}).forEach(([familyId, amount]) => {
+      if (amountToCents(amount) > 0) familyIds.add(familyId);
+    });
+  });
+  return familyIds;
+}
+
+function isFamilyReferenced(familyId) {
+  return getReferencedFamilyIds().has(familyId);
+}
+
+function setSettingsFamilyError(message = "") {
+  if (elements.settingsFamilyError) elements.settingsFamilyError.textContent = message;
+}
+
+function validateFamilyName(name, currentFamilyId = "") {
+  const normalized = normalizeFamilyName(name, "");
+  if (!normalized) return { name: "", error: "请输入家庭名称。" };
+  const duplicate = state.families.some((family) => family.id !== currentFamilyId && family.name.toLocaleLowerCase() === normalized.toLocaleLowerCase());
+  if (duplicate) return { name: normalized, error: "家庭名称不能重复。" };
+  return { name: normalized, error: "" };
+}
+
+function reconcileFamilyRuntime() {
+  syncFamilyVisualRows();
+  state.familyMembers = normalizeFamilyMembers(state.familyMembers, state.families);
+  setFamilyIds(state.families);
+  const activeIds = getFamilyIds(state.families, { activeOnly: true });
+  if (!editingExpenseId && !activeIds.includes(state.selectedPayerId)) state.selectedPayerId = "";
+  if (!getFamilyIds(state.families).includes(state.ledgerFamilyFilter)) state.ledgerFamilyFilter = "";
+  if (!activeIds.includes(getOperatorFamilyId())) localStorage.removeItem(OPERATOR_FAMILY_STORAGE_KEY);
+  const entryFamilyIds = getEntryFamilies().map((family) => family.id);
+  activeSplitFamilyIds = normalizeSplitFamilyIds(activeSplitFamilyIds, entryFamilyIds, entryFamilyIds);
+  if (getSplitScopeFromMode(activeSplitMode) === "all" && activeSplitMode !== "custom") activeSplitFamilyIds = entryFamilyIds;
+}
+
+function commitFamilyChange({ message = "", undo = null } = {}) {
+  setSettingsFamilyError();
+  reconcileFamilyRuntime();
+  render({ animateFinancialChanges: true });
+  queueCloudSettingsSync();
+  if (message) showToast({ message, ...(undo ? { actionLabel: "撤销", onAction: undo } : {}) });
+}
+
+function handleSettingsFamilySubmit(event) {
+  event.preventDefault();
+  if (getActiveFamilies().length >= MAX_ACTIVE_FAMILIES) {
+    setSettingsFamilyError(`最多可启用 ${MAX_ACTIVE_FAMILIES} 个家庭。`);
+    return;
+  }
+  const { name, error } = validateFamilyName(elements.settingsNewFamilyInput?.value);
+  if (error) {
+    setSettingsFamilyError(error);
+    elements.settingsNewFamilyInput?.focus();
+    return;
+  }
+  const id = createId("family");
+  const visual = normalizeFamilyVisual(familyColorChoices[state.families.length % familyColorChoices.length]);
+  state.families.push({ id, name, active: true, visual });
+  state.familyVisuals = { ...state.familyVisuals, [id]: visual };
+  state.familyMembers = { ...state.familyMembers, [id]: 1 };
+  if (elements.settingsNewFamilyInput) elements.settingsNewFamilyInput.value = "";
+  commitFamilyChange({ message: `已添加“${name}”` });
+}
+
+function renameFamilyFromRow(familyId) {
+  const family = state.families.find((item) => item.id === familyId);
+  const input = elements.settingsFamilyList?.querySelector(`[data-family-name-input="${cssEscapeId(familyId)}"]`);
+  if (!family || !input) return;
+  const { name, error } = validateFamilyName(input.value, familyId);
+  if (error) {
+    setSettingsFamilyError(error);
+    input.focus();
+    input.select();
+    return;
+  }
+  if (name === family.name) {
+    setSettingsFamilyError();
+    return;
+  }
+  const previousName = family.name;
+  family.name = name;
+  commitFamilyChange({
+    message: `已改名为“${name}”`,
+    undo: () => {
+      const current = state.families.find((item) => item.id === familyId);
+      if (current) current.name = previousName;
+      commitFamilyChange();
+    },
+  });
+}
+
+function toggleFamilyState(familyId) {
+  const familyIndex = state.families.findIndex((family) => family.id === familyId);
+  if (familyIndex < 0) return;
+  const family = state.families[familyIndex];
+  if (family.active === false) {
+    if (getActiveFamilies().length >= MAX_ACTIVE_FAMILIES) {
+      setSettingsFamilyError(`最多可启用 ${MAX_ACTIVE_FAMILIES} 个家庭。`);
+      return;
+    }
+    family.active = true;
+    commitFamilyChange({
+      message: `已恢复“${family.name}”`,
+      undo: () => {
+        const current = state.families.find((item) => item.id === familyId);
+        if (current) current.active = false;
+        commitFamilyChange();
+      },
+    });
+    return;
+  }
+  if (getActiveFamilies().length <= MIN_ACTIVE_FAMILIES) {
+    setSettingsFamilyError(`至少保留 ${MIN_ACTIVE_FAMILIES} 个启用家庭。`);
+    return;
+  }
+  if (isFamilyReferenced(familyId)) {
+    family.active = false;
+    commitFamilyChange({
+      message: `已停用“${family.name}”，历史账目仍保留`,
+      undo: () => {
+        const current = state.families.find((item) => item.id === familyId);
+        if (current) current.active = true;
+        commitFamilyChange();
+      },
+    });
+    return;
+  }
+
+  const removed = {
+    family: { ...family },
+    visual: state.familyVisuals[familyId],
+    members: state.familyMembers[familyId] || 1,
+    index: familyIndex,
+  };
+  state.families.splice(familyIndex, 1);
+  delete state.familyVisuals[familyId];
+  delete state.familyMembers[familyId];
+  commitFamilyChange({
+    message: `已删除“${family.name}”`,
+    undo: () => {
+      state.families.splice(Math.min(removed.index, state.families.length), 0, removed.family);
+      state.familyVisuals[familyId] = removed.visual;
+      state.familyMembers[familyId] = removed.members;
+      commitFamilyChange();
+    },
+  });
+}
+
+function handleSettingsFamilyClick(event) {
+  const saveButton = event.target.closest("[data-save-family-name]");
+  if (saveButton) {
+    renameFamilyFromRow(saveButton.dataset.saveFamilyName);
+    return;
+  }
+  const stateButton = event.target.closest("[data-family-state]");
+  if (stateButton) {
+    toggleFamilyState(stateButton.dataset.familyState);
+    return;
+  }
+  handleFamilyMemberStep(event);
+}
+
+function handleSettingsFamilyKeydown(event) {
+  const input = event.target.closest("[data-family-name-input]");
+  if (!input || event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  renameFamilyFromRow(input.dataset.familyNameInput);
+}
+
+function handleSettingsFamilyChange(event) {
+  const input = event.target.closest("[data-family-name-input]");
+  if (input) renameFamilyFromRow(input.dataset.familyNameInput);
 }
 
 function handleLedgerClick(event) {
@@ -7273,6 +7562,7 @@ function switchLedger(ledgerId, { announce = true } = {}) {
   if (!ledger || ledger.id === state.id) return;
 
   state = ledger;
+  setFamilyIds(state.families);
   appState.activeLedgerId = ledger.id;
   cloudState.shareToken = state.cloudShareToken || "";
   localStorage.removeItem(CLOUD_STATE_KEY);
@@ -7298,12 +7588,16 @@ function switchLedger(ledgerId, { announce = true } = {}) {
 
 function renameCurrentLedger() {
   const nextName = normalizeLedgerName(elements.currentLedgerNameInput.value, state.name);
-  if (nextName === state.name) return;
+  if (nextName === state.name) {
+    elements.currentLedgerNameInput.value = state.name;
+    return false;
+  }
 
   state.name = nextName;
   render();
   queueCloudSettingsSync();
   showToast({ message: "账本名称已更新" });
+  return true;
 }
 
 function handleLedgerManagerClick(event) {
@@ -7316,6 +7610,9 @@ function handleLedgerManagerClick(event) {
   const switchButton = event.target.closest("[data-switch-ledger]");
   if (switchButton) {
     switchLedger(switchButton.dataset.switchLedger);
+    /* 选择账本就是这一层的完成动作：不让用户再关闭“账本管理”和“设置”两层。 */
+    ledgerManagementReturnToSettings = false;
+    closeLedgerManager();
     return;
   }
 
@@ -7470,6 +7767,7 @@ async function importLedgerFile(file) {
       : importJsonLedger(text);
     appState.ledgers.push(...importedLedgers);
     state = importedLedgers.at(-1);
+    setFamilyIds(state.families);
     appState.activeLedgerId = state.id;
     saveState();
     render({ animateFinancialChanges: true });
@@ -7496,8 +7794,11 @@ function formatSplitFamilyIdsForExport(expense) {
       .map((family) => family.name)
       .join(" / ");
   }
-  if (getSplitScopeFromMode(splitMode) === "all") return state.families.map((family) => family.name).join(" / ");
-  return normalizeSplitFamilyIds(expense.splitFamilyIds, state.families.map((family) => family.id)).map(getFamilyName).join(" / ");
+  return normalizeSplitFamilyIds(
+    expense.splitFamilyIds,
+    getFamilyIds(state.families, { activeOnly: true }),
+    getFamilyIds(state.families),
+  ).map(getFamilyName).join(" / ");
 }
 
 function formatSplitAmountsForExport(expense) {
@@ -7577,6 +7878,7 @@ function joinCloudLedger(shareToken) {
       const prev = appState.ledgers.find((item) => item.id === previousLedgerId);
       if (prev) {
         state = prev;
+        setFamilyIds(state.families);
         appState.activeLedgerId = prev.id;
         cloudState.shareToken = prev.cloudShareToken || "";
         updateLedgerUrl();
@@ -7609,6 +7911,7 @@ async function deleteLedger(ledgerId) {
   if (state.id === ledgerId) {
     const nextLedger = appState.ledgers[Math.min(ledgerIndex, appState.ledgers.length - 1)];
     state = nextLedger;
+    setFamilyIds(state.families);
     appState.activeLedgerId = nextLedger.id;
     cloudState.shareToken = state.cloudShareToken || "";
     localStorage.removeItem(CLOUD_STATE_KEY);
@@ -7800,9 +8103,10 @@ function openSettings(options = {}) {
   clearSettlementEntryReminder();
   clearSettlementReveal();
   if (settingsMode === "settings") {
-    const collapseSecondaryGroups = window.matchMedia("(max-width: 820px)").matches;
+    settingsCategoryManageMode = false;
+    selectedSettingsCategory = "";
     elements.settingsView.querySelectorAll(".settings-mobile-group").forEach((details) => {
-      details.open = !collapseSecondaryGroups;
+      details.open = false;
     });
   }
   openDismissiblePanel({
@@ -8021,19 +8325,6 @@ function handleOperatorModalSubmit(event) {
   showToast({ message: COPY.identity.remembered(getFamilyName(familyId)) });
 }
 
-function handleSettingsOperatorSubmit(event) {
-  event.preventDefault();
-  const familyId = getSelectedOperatorFamilyId(elements.settingsOperatorFamilyList);
-  if (!familyId) {
-    showToast({ message: COPY.identity.missing });
-    return;
-  }
-
-  localStorage.setItem(OPERATOR_FAMILY_STORAGE_KEY, familyId);
-  renderOperatorFamilyChoices(elements.welcomeIdentityFamilyList, familyId);
-  showToast({ message: COPY.identity.saved(getFamilyName(familyId)) });
-}
-
 /* ── 欢迎引导浮层 ──
    首次打开自动弹出（localStorage 标记），设置里的「使用指南」可随时重看。
    通过邀请链接进来的人首屏改为“你已加入共享账本”，不重复推销云账本。 */
@@ -8081,12 +8372,12 @@ function openWelcome({ invitedArrival = false } = {}) {
     applyShareSourceHero();
   } else {
     elements.welcomeHeroEyebrow.textContent = "欢迎使用";
-    elements.welcomeTitle.textContent = COPY.welcome.title;
+    elements.welcomeTitle.textContent = `${getActiveFamilies().length}个家庭，一本账`;
     elements.welcomeHeroCopy.textContent = COPY.welcome.intro;
     if (elements.welcomeSourceBadge) elements.welcomeSourceBadge.hidden = true;
   }
   const cloudActive = invitedArrival || isCloudLedgerActive();
-  elements.welcomeCloudTitle.textContent = cloudActive ? "三家实时同步" : COPY.welcome.cloudTitle;
+  elements.welcomeCloudTitle.textContent = cloudActive ? `${getActiveFamilies().length}家实时同步` : COPY.welcome.cloudTitle;
   elements.welcomeCloudCopy.textContent = cloudActive
     ? "账单实时同步，编辑保留家庭记录。"
     : COPY.welcome.cloudCopy;
@@ -9352,14 +9643,16 @@ function restoreEntryPreferenceState() {
 
   state.activeDate = normalizeDate(editReturnState.activeDate, todayIso());
   state.activeCategory = normalizeCategorySelection(editReturnState.activeCategory, state.categories);
-  state.selectedPayerId = normalizePayerId(editReturnState.selectedPayerId);
+  state.selectedPayerId = normalizePayerId(editReturnState.selectedPayerId, getFamilyIds(state.families, { activeOnly: true }));
   activeSplitMode = normalizeSplitMode(editReturnState.splitMode);
+  const entryFamilyIds = getEntryFamilies().map((family) => family.id);
   activeSplitFamilyIds = normalizeSplitFamilyIds(
     editReturnState.splitFamilyIds,
-    getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : state.families.map((family) => family.id),
+    getSplitScopeFromMode(activeSplitMode) === "selected" ? [] : entryFamilyIds,
+    entryFamilyIds,
   );
-  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = state.families.map((family) => family.id);
-  activeSplitAmounts = normalizeSplitAmounts(editReturnState.splitAmounts);
+  if (getSplitScopeFromMode(activeSplitMode) === "all") activeSplitFamilyIds = entryFamilyIds;
+  activeSplitAmounts = normalizeSplitAmounts(editReturnState.splitAmounts, entryFamilyIds);
   customSplitTargetCents = activeSplitMode === "custom" && Number.isFinite(editReturnState.customSplitTargetCents)
     ? Math.max(0, Math.round(editReturnState.customSplitTargetCents))
     : null;
@@ -9379,7 +9672,7 @@ function captureExpenseFormSnapshot() {
     date: normalizeDate(elements.dateInput.value, state.activeDate),
     note: elements.noteInput.value.trim(),
     splitMode: normalizeSplitMode(activeSplitMode),
-    splitFamilyIds: normalizeSplitFamilyIds(activeSplitFamilyIds, state.families.map((family) => family.id)),
+    splitFamilyIds: normalizeSplitFamilyIds(activeSplitFamilyIds, getEntryFamilies().map((family) => family.id), getFamilyIds(state.families)),
     splitAmounts: Object.fromEntries(state.families.map((family) => [family.id, amountToCents(splitAmounts[family.id])])),
     customSplitTargetCents,
   };
@@ -9613,8 +9906,11 @@ elements.splitCustomAmounts?.addEventListener("focusin", (event) => {
 });
 elements.ledgerNameForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  renameCurrentLedger();
+  elements.currentLedgerNameInput.blur();
 });
+elements.currentLedgerNameInput.addEventListener("change", renameCurrentLedger);
+elements.currentLedgerNameInput.addEventListener("blur", renameCurrentLedger);
+elements.headerLedgerSwitcher?.addEventListener("click", openLedgerManager);
 elements.openLedgerManagerButton.addEventListener("click", openLedgerManager);
 elements.closeLedgerManagerButton.addEventListener("click", closeLedgerManager);
 elements.ledgerManagementBackdrop.addEventListener("click", closeLedgerManager);
@@ -9622,8 +9918,9 @@ elements.ledgerCreateForm.addEventListener("submit", handleLedgerCreateSubmit);
 elements.ledgerJoinForm.addEventListener("submit", handleLedgerJoinSubmit);
 elements.ledgerManagerList.addEventListener("click", handleLedgerManagerClick);
 elements.settingsCategoryForm.addEventListener("submit", handleSettingsCategorySubmit);
+elements.settingsCategoryManageButton?.addEventListener("click", handleSettingsCategoryManageToggle);
 elements.settingsCategoryChips.addEventListener("click", handleSettingsCategoryClick);
-elements.settingsOperatorForm.addEventListener("submit", handleSettingsOperatorSubmit);
+elements.settingsFamilyForm.addEventListener("submit", handleSettingsFamilySubmit);
 elements.settingsOperatorFamilyList.addEventListener("click", handleOperatorFamilyChoice);
 elements.settingsMoneyDecimalsInput.addEventListener("change", handleMoneyDecimalsChange);
 elements.settingsNaturalEntryMarksHiddenInput?.addEventListener("change", handleNaturalEntryMarksHiddenChange);
@@ -9654,9 +9951,10 @@ elements.openWelcomeButton.addEventListener("click", () => {
 window.addEventListener("resize", () => {
   if (isWelcomeOpen()) setWelcomeSlide(welcomeSlideIndex, { instant: true });
 });
-elements.settingsFamilyList.addEventListener("click", handleFamilyMemberStep);
+elements.settingsFamilyList.addEventListener("click", handleSettingsFamilyClick);
+elements.settingsFamilyList.addEventListener("keydown", handleSettingsFamilyKeydown);
+elements.settingsFamilyList.addEventListener("change", handleSettingsFamilyChange);
 elements.settingsThemeList?.addEventListener("click", handleSettingsThemeClick);
-elements.settingsFamilyColorList.addEventListener("click", handleSettingsFamilyColorClick);
 elements.familyRoster.addEventListener("click", handleFamilySelection);
 elements.ledgerList.addEventListener("click", handleLedgerClick);
 elements.ledgerList.addEventListener("keydown", handleLedgerKeydown);

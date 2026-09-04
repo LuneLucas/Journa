@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { seedLocalState } = require('./support/test-helpers');
+const { seedLocalState, stubSupabase } = require('./support/test-helpers');
 
 const sampleState = {
   activeLedgerId: 'ledger-alignment-test',
@@ -45,9 +45,20 @@ const sampleState = {
 };
 
 async function openSeededLedger(page, state = sampleState) {
+  await stubSupabase(page);
   await seedLocalState(page, state, { entryMode: 'standard' });
-  await page.goto('/');
+  const activeLedger = state.ledgers?.find((ledger) => ledger.id === state.activeLedgerId);
+  const ledgerHash = activeLedger?.cloudShareToken
+    ? `#ledger=${encodeURIComponent(activeLedger.cloudShareToken)}`
+    : '';
+  await page.goto(`/${ledgerHash}`);
   await expect(page.locator('.ledger-item').first()).toBeVisible();
+  const operatorModal = page.locator('#operatorModalView');
+  if (await operatorModal.isVisible().catch(() => false)) {
+    await operatorModal.locator('[data-operator-family-id]').first().click();
+    await operatorModal.locator('button[type="submit"]').click();
+    await expect(operatorModal).toBeHidden();
+  }
   await page.waitForTimeout(500);
 }
 
@@ -91,6 +102,48 @@ const longNoteState = {
     }, sampleState.ledgers[0].expenses[1]],
   }],
 };
+
+function createDynamicFamilyState(familyCount) {
+  const familyNames = [
+    '一二三四五六七八九十甲乙',
+    '同行家庭二号',
+    '同行家庭三号',
+    '同行家庭四号',
+    '同行家庭五号',
+    '同行家庭六号',
+    '同行家庭七号',
+    '同行家庭八号',
+  ];
+  const families = Array.from({ length: familyCount }, (_, index) => ({
+    id: `dynamic-family-${index + 1}`,
+    name: familyNames[index],
+    active: true,
+  }));
+  const familyIds = families.map((family) => family.id);
+  return {
+    activeLedgerId: `ledger-${familyCount}-family-test`,
+    ledgers: [{
+      id: `ledger-${familyCount}-family-test`,
+      name: `${familyCount}家动态账本`,
+      families,
+      familyMembers: Object.fromEntries(familyIds.map((id, index) => [id, index + 1])),
+      categories: ['交通', '餐饮', '其他'],
+      cloudShareToken: 'ledger-card-sync-fixture',
+      selectedPayerId: familyIds[0],
+      expenses: [{
+        ...sampleState.ledgers[0].expenses[0],
+        id: `expense-${familyCount}-family`,
+        payerId: familyIds[0],
+        note: '动态家庭账单的完整长备注，用来验证极窄屏展开后详情自然换行且不会被操作区挤压。'.repeat(3),
+        splitMode: 'families',
+        splitFamilyIds: familyIds,
+        createdBy: { familyId: familyIds[0] },
+        updatedBy: { familyId: familyIds[familyIds.length - 1] },
+        syncState: 'pending',
+      }],
+    }],
+  };
+}
 
 async function openSeededRecentPeek(page) {
   await seedLocalState(page, recentPeekState, { entryMode: 'standard' });
@@ -364,6 +417,7 @@ test.describe('ledger card expansion', () => {
   test('expanded content keeps the family rail inside details and removes the lower-left gap', async ({ page }) => {
     for (const viewport of [
       { width: 320, height: 568 },
+      { width: 359, height: 740 },
       { width: 390, height: 844 },
       { width: 540, height: 326 },
       { width: 1280, height: 800 },
@@ -386,6 +440,7 @@ test.describe('ledger card expansion', () => {
           const details = item.querySelector('.ledger-expanded-details').getBoundingClientRect();
           const rail = item.querySelector('.ledger-expanded-rail').getBoundingClientRect();
           const actions = item.querySelector('.ledger-item-actions').getBoundingClientRect();
+          const contentStyle = getComputedStyle(item.querySelector('.ledger-expanded-content'));
           const buttons = [...item.querySelectorAll('.ledger-item-actions button')].map((button) => button.getBoundingClientRect());
           return {
             railInsetLeft: rail.left - cardRect.left,
@@ -398,7 +453,15 @@ test.describe('ledger card expansion', () => {
             actionsHeight: actions.height,
             actionsWidth: actions.width,
             buttonHeights: buttons.map((button) => button.height),
+            contentLeft: content.left,
+            contentRight: content.right,
+            contentInnerRight: content.right - parseFloat(contentStyle.paddingRight),
+            detailsTop: details.top,
+            detailsBottom: details.bottom,
+            detailsLeft: details.left,
             detailsRight: details.right,
+            actionsTop: actions.top,
+            actionsRight: actions.right,
             actionsLeft: actions.left,
           };
         });
@@ -406,14 +469,112 @@ test.describe('ledger card expansion', () => {
         expect(geometry.railInsetLeft, `viewport ${viewport.width}x${viewport.height}, card ${cardIndex}`).toBeGreaterThanOrEqual(14);
         expect(geometry.railTopGap).toBeGreaterThanOrEqual(-1);
         expect(geometry.railBottomGap).toBeGreaterThanOrEqual(-1);
-        expect(Math.abs(geometry.detailsCenterY - geometry.actionsCenterY)).toBeLessThanOrEqual(1.5);
-        expect(geometry.contentHeight - Math.max(geometry.detailsHeight, geometry.actionsHeight)).toBeLessThanOrEqual(30);
         expect(geometry.actionsWidth).toBeGreaterThanOrEqual(140);
         geometry.buttonHeights.forEach((height) => expect(height).toBeGreaterThanOrEqual(44));
-        expect(geometry.detailsRight).toBeLessThanOrEqual(geometry.actionsLeft - 8);
+        if (viewport.width <= 359) {
+          expect(geometry.detailsLeft).toBeGreaterThanOrEqual(geometry.contentLeft);
+          expect(geometry.detailsRight).toBeLessThanOrEqual(geometry.contentRight);
+          expect(geometry.actionsTop).toBeGreaterThanOrEqual(geometry.detailsBottom + 8);
+          expect(Math.abs(geometry.contentInnerRight - geometry.actionsRight)).toBeLessThanOrEqual(1);
+        } else {
+          expect(Math.abs(geometry.detailsCenterY - geometry.actionsCenterY)).toBeLessThanOrEqual(1.5);
+          expect(geometry.contentHeight - Math.max(geometry.detailsHeight, geometry.actionsHeight)).toBeLessThanOrEqual(30);
+          expect(geometry.detailsRight).toBeLessThanOrEqual(geometry.actionsLeft - 8);
+        }
 
         await card.locator('.ledger-summary-toggle').evaluate((element) => element.click());
         await expect(card.locator('.ledger-summary-toggle')).toHaveAttribute('aria-expanded', 'false');
+      }
+    }
+  });
+
+  test('dynamic-family details stay complete across narrow and retained two-column layouts', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.endsWith('desktop'), 'dynamic-family narrow geometry is covered by mobile projects');
+    for (const viewport of [{ width: 320, height: 568 }, { width: 359, height: 740 }, { width: 390, height: 844 }]) {
+      for (const familyCount of [2, 8]) {
+        await page.setViewportSize(viewport);
+        await openSeededLedger(page, createDynamicFamilyState(familyCount));
+        const card = page.locator('.ledger-item').first();
+        const summary = card.locator('.ledger-summary-toggle');
+        await expect(summary).toHaveAttribute('aria-label', new RegExp('一二三四五六七八九十甲乙.*展开详情'));
+        await summary.evaluate((element) => element.click());
+        await expect.poll(async () => card.evaluate((item) => (
+          item.classList.contains('is-expanded')
+          && item.style.height === ''
+          && !item.closest('.ledger-list').classList.contains('is-morphing-ledger-items')
+        )), { timeout: 2_000 }).toBe(true);
+
+        const geometry = await card.evaluate((item) => {
+          const content = item.querySelector('.ledger-expanded-content').getBoundingClientRect();
+          const details = item.querySelector('.ledger-expanded-details').getBoundingClientRect();
+          const actions = item.querySelector('.ledger-item-actions').getBoundingClientRect();
+          const contentStyle = getComputedStyle(item.querySelector('.ledger-expanded-content'));
+          const operator = item.querySelector('.ledger-operator');
+          const scope = item.querySelector('.ledger-scope');
+          const note = item.querySelector('.ledger-detail-note');
+          const rail = item.querySelector('.ledger-expanded-rail');
+          const buttons = [...item.querySelectorAll('.ledger-item-actions button')];
+          return {
+            bodyOverflow: document.documentElement.scrollWidth - window.innerWidth,
+            cardVerticalOverflow: item.scrollHeight - item.clientHeight,
+            contentVerticalOverflow: item.querySelector('.ledger-expanded-content').scrollHeight
+              - item.querySelector('.ledger-expanded-content').clientHeight,
+            contentTop: content.top,
+            contentBottom: content.bottom,
+            detailsTop: details.top,
+            detailsHeight: details.height,
+            detailsScrollHeight: item.querySelector('.ledger-expanded-details').scrollHeight,
+            detailsDisplay: getComputedStyle(item.querySelector('.ledger-expanded-details')).display,
+            contentGridRows: getComputedStyle(item.querySelector('.ledger-expanded-content')).gridTemplateRows,
+            detailsWidth: details.width,
+            availableWidth: content.width
+              - parseFloat(contentStyle.paddingLeft)
+              - parseFloat(contentStyle.paddingRight),
+            detailsBottom: details.bottom,
+            detailsRight: details.right,
+            actionsTop: actions.top,
+            actionsLeft: actions.left,
+            actionsRightGap: content.right - parseFloat(contentStyle.paddingRight) - actions.right,
+            actionsWidth: actions.width,
+            buttonWidths: buttons.map((button) => button.getBoundingClientRect().width),
+            buttonHeights: buttons.map((button) => button.getBoundingClientRect().height),
+            operatorFits: operator.scrollWidth <= operator.clientWidth + 1,
+            scopeFits: scope.scrollWidth <= scope.clientWidth + 1,
+            noteFits: note.scrollWidth <= note.clientWidth + 1,
+            noteText: note.textContent,
+            scopeText: scope.textContent,
+            syncText: item.querySelector('.ledger-sync-state')?.textContent || '',
+            familyColor: getComputedStyle(item).getPropertyValue('--family-color').trim(),
+            railHeight: rail.getBoundingClientRect().height,
+          };
+        });
+
+        expect(geometry.bodyOverflow).toBeLessThanOrEqual(0);
+        expect(geometry.cardVerticalOverflow).toBeLessThanOrEqual(1);
+        expect(
+          geometry.contentVerticalOverflow,
+          `viewport ${viewport.width}x${viewport.height}, families ${familyCount}: ${JSON.stringify(geometry)}`,
+        ).toBeLessThanOrEqual(1);
+        if (viewport.width <= 359) {
+          expect(geometry.detailsWidth).toBeGreaterThan(geometry.actionsWidth);
+          expect(geometry.detailsWidth).toBeGreaterThanOrEqual(geometry.availableWidth - 1);
+          expect(geometry.actionsTop).toBeGreaterThanOrEqual(geometry.detailsBottom + 8);
+          expect(Math.abs(geometry.actionsRightGap)).toBeLessThanOrEqual(1);
+        } else {
+          expect(geometry.actionsTop).toBeLessThan(geometry.detailsBottom);
+          expect(geometry.detailsRight).toBeLessThanOrEqual(geometry.actionsLeft - 8);
+        }
+        expect(geometry.actionsWidth).toBe(144);
+        geometry.buttonWidths.forEach((width) => expect(width).toBe(68));
+        geometry.buttonHeights.forEach((height) => expect(height).toBeGreaterThanOrEqual(44));
+        expect(geometry.operatorFits).toBe(true);
+        expect(geometry.scopeFits).toBe(true);
+        expect(geometry.noteFits).toBe(true);
+        expect(geometry.noteText).toContain('动态家庭账单的完整长备注');
+        expect(geometry.scopeText).toContain(familyCount === 8 ? '同行家庭八号' : '同行家庭二号');
+        expect(geometry.syncText).toBe('同步中');
+        expect(geometry.familyColor).not.toBe('');
+        expect(geometry.railHeight).toBeGreaterThan(0);
       }
     }
   });
@@ -522,6 +683,7 @@ test.describe('ledger card expansion', () => {
           materialHeight: material.getBoundingClientRect().height,
           summaryHeight: summary.getBoundingClientRect().height,
           materialPosition: materialStyle.position,
+          materialTransitionDuration: materialStyle.transitionDuration,
         };
       };
       const before = read();
@@ -548,6 +710,7 @@ test.describe('ledger card expansion', () => {
       expect(sample.materialBackdropFilter).not.toBe('none');
       expect(sample.materialBackgroundImage).toBe(samples.before.materialBackgroundImage);
       expect(sample.materialPosition).toBe('absolute');
+      expect(sample.materialTransitionDuration).toBe('0s');
       expect(Math.abs(sample.materialHeight - sample.cardHeight)).toBeLessThan(1);
       expect(sample.summaryHeight).toBeGreaterThanOrEqual(64);
     }

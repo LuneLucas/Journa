@@ -334,6 +334,48 @@ test.describe('mobile entry smoke flow', () => {
     expect(lens.lensTop).toBe('5px');
     expect(lens.lensBottom).toBe('4px');
     expect(Math.abs(lens.lensHeight - (lens.tokenHeight - 9))).toBeLessThanOrEqual(0.5);
+
+    const splitLensShadow = await page.locator('#naturalSplitToken').evaluate((token) => getComputedStyle(token, '::before').boxShadow);
+    expect(splitLensShadow).toContain('0.55px');
+  });
+
+  test('mobile panel indicator stretches before settling on both directions', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), '移动端分段切换器只在移动端启用');
+    await openAmountEditor(page, testInfo.project.name);
+    await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
+    await expect(page.locator('#naturalEntryStage')).toBeHidden();
+
+    await page.locator('#mobileDataTab').click();
+    await page.waitForTimeout(700);
+    const restingWidth = await page.locator('.mobile-panel-indicator').evaluate((indicator) => indicator.getBoundingClientRect().width);
+
+    const sampleIndicator = (selector) => page.evaluate((tabSelector) => new Promise((resolve) => {
+      const tab = document.querySelector(tabSelector);
+      const indicator = document.querySelector('.mobile-panel-indicator');
+      const started = performance.now();
+      const frames = [];
+      tab?.click();
+      const sample = (now) => {
+        frames.push({ t: now - started, width: indicator?.getBoundingClientRect().width || 0 });
+        if (now - started >= 520) {
+          resolve(frames);
+          return;
+        }
+        window.requestAnimationFrame(sample);
+      };
+      window.requestAnimationFrame(sample);
+    }), selector);
+
+    const forwardFrames = await sampleIndicator('#mobileEntryTab');
+    const forwardWidths = forwardFrames.map((frame) => frame.width);
+    expect(Math.max(...forwardWidths)).toBeGreaterThan(restingWidth * 1.06);
+    expect(Math.abs(forwardWidths.at(-1) - restingWidth)).toBeLessThanOrEqual(1.5);
+
+    await page.waitForTimeout(700);
+    const backwardFrames = await sampleIndicator('#mobileDataTab');
+    const backwardWidths = backwardFrames.map((frame) => frame.width);
+    expect(Math.max(...backwardWidths)).toBeGreaterThan(restingWidth * 1.06);
+    expect(Math.abs(backwardWidths.at(-1) - restingWidth)).toBeLessThanOrEqual(1.5);
   });
 
   test('every natural entry stage stays centered in the visual viewport', async ({ page }, testInfo) => {
@@ -375,6 +417,39 @@ test.describe('mobile entry smoke flow', () => {
         expect(Math.abs(geometry.width - expectedWidth)).toBeLessThanOrEqual(1);
         expect(Math.abs(geometry.leftInset - geometry.rightInset)).toBeLessThanOrEqual(1);
         expect(Math.abs(geometry.centerDelta)).toBeLessThanOrEqual(1);
+        if (editor.selector === '#naturalDateToken') {
+          const dateRadius = await page.locator('#dateInput').evaluate((input) => ({
+            actual: Number.parseFloat(getComputedStyle(input).borderTopLeftRadius),
+            expected: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--control-radius')),
+          }));
+          expect(dateRadius.actual).toBe(18);
+          expect(dateRadius.actual).toBe(dateRadius.expected);
+        }
+        if (editor.selector === '#naturalCategoryToken') {
+          const categoryGeometry = await page.locator('#naturalEntryStage').evaluate((element) => {
+            const row = element.querySelector('.category-control-row');
+            const addButton = element.querySelector('#categoryAddFab');
+            const icon = addButton?.querySelector('.category-add-fab-icon');
+            const shellRect = element.getBoundingClientRect();
+            const rowRect = row?.getBoundingClientRect();
+            const buttonStyle = addButton ? getComputedStyle(addButton) : null;
+            const iconRect = icon?.getBoundingClientRect();
+            return {
+              leftInset: rowRect ? rowRect.left - shellRect.left : 0,
+              rightInset: rowRect ? shellRect.right - rowRect.right : 0,
+              buttonSize: addButton ? addButton.getBoundingClientRect().width : 0,
+              buttonBorder: buttonStyle ? Number.parseFloat(buttonStyle.borderTopWidth) : 0,
+              buttonBackground: buttonStyle?.backgroundColor || 'transparent',
+              iconSize: iconRect?.width || 0,
+            };
+          });
+          expect(categoryGeometry.leftInset).toBeCloseTo(16, 0);
+          expect(categoryGeometry.rightInset).toBeCloseTo(16, 0);
+          expect(categoryGeometry.buttonSize).toBe(44);
+          expect(categoryGeometry.buttonBorder).toBe(1);
+          expect(categoryGeometry.buttonBackground).not.toBe('rgba(0, 0, 0, 0)');
+          expect(categoryGeometry.iconSize).toBe(20);
+        }
         await page.locator('#naturalEntryFocusBackdrop').evaluate((backdrop) => backdrop.click());
         await expect(stage).toBeHidden();
       }
@@ -740,7 +815,7 @@ test.describe('mobile entry smoke flow', () => {
     expect(material.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  test('bottom submit bar follows one anchored lift and landing rebound path', async ({ page }, testInfo) => {
+  test('bottom submit bar follows one anchored lift and terminal deceleration path', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), '底部 Bar 路径只在移动端启用');
 
     const sampleTransition = async (tabSelector, duration) => page.evaluate(({ tabSelector: selector, duration: sampleDuration }) => new Promise((resolve) => {
@@ -759,7 +834,14 @@ test.describe('mobile entry smoke flow', () => {
           width: rect.width,
           expandHaloCount: document.querySelectorAll('.bar-morph-glow').length,
           auraOpacity: getComputedStyle(bar, '::before').opacity,
+          motionDuration: getComputedStyle(bar).getPropertyValue('--bar-motion-duration').trim(),
           lensSheenDisplay: getComputedStyle(bar.querySelector('.mobile-submit-lens-sheen')).display,
+          transferCount: document.querySelectorAll('.bar-content-transfer > span').length,
+          transferOpacity: [...document.querySelectorAll('.bar-content-transfer > span')]
+            .reduce((total, node) => total + Number.parseFloat(getComputedStyle(node).opacity || '0'), 0),
+          plusOpacity: Number.parseFloat(getComputedStyle(bar.querySelector('.mobile-submit-button'), '::after').opacity || '0'),
+          realSummaryOpacity: Number.parseFloat(getComputedStyle(bar.querySelector('.mobile-submit-summary')).opacity || '0'),
+          realLabelOpacity: Number.parseFloat(getComputedStyle(bar.querySelector('.mobile-submit-button .button-label')).opacity || '0'),
         });
         if (now - started >= sampleDuration) {
           resolve(frames);
@@ -804,24 +886,37 @@ test.describe('mobile entry smoke flow', () => {
       expect(collapse.rightDrift).toBeLessThanOrEqual(1.1);
       expect(collapse.lift).toBeGreaterThanOrEqual(2.2);
       expect(collapse.lift).toBeLessThanOrEqual(3.8);
-      expect(collapse.overshoot).toBeGreaterThanOrEqual(1.2);
-      expect(collapse.overshoot).toBeLessThanOrEqual(3.8);
+      expect(collapse.overshoot).toBeLessThanOrEqual(0.8);
       expect(collapse.tailMovesBackwards).toBeFalsy();
       expect(collapse.finalBottomError).toBeLessThanOrEqual(1.1);
+      expect(collapseFrames[0].motionDuration).toBe('440ms');
+      expect(collapseFrames.every((frame) => frame.expandHaloCount === 0)).toBeTruthy();
+      expect(collapseFrames.every((frame) => Number(frame.auraOpacity) === 0)).toBeTruthy();
+      expect(collapseFrames.some((frame) => frame.transferCount === 2)).toBeTruthy();
+      expect(collapseFrames
+        .filter((frame) => frame.t <= 440 * 0.62)
+        .every((frame) => frame.transferOpacity > 0.25 || frame.plusOpacity >= 0.75)).toBeTruthy();
 
       const expandFrames = await sampleTransition('#mobileEntryTab', 660);
       const expand = summarize(expandFrames, 'expand');
       expect(expand.rightDrift).toBeLessThanOrEqual(1.1);
       expect(expand.lift).toBeGreaterThanOrEqual(2.2);
       expect(expand.lift).toBeLessThanOrEqual(3.8);
-      expect(expand.overshoot).toBeGreaterThanOrEqual(1.2);
-      expect(expand.overshoot).toBeLessThanOrEqual(3.8);
+      expect(expand.overshoot).toBeLessThanOrEqual(0.8);
       expect(expand.tailMovesBackwards).toBeFalsy();
       expect(expand.finalBottomError).toBeLessThanOrEqual(1.1);
+      expect(expandFrames[0].motionDuration).toBe('440ms');
       expect(expandFrames[0].expandHaloCount).toBe(0);
       expect(Number(expandFrames[0].auraOpacity)).toBe(0);
       expect(Number(expandFrames[expandFrames.length - 1].auraOpacity)).toBe(0);
       expect(expandFrames[0].lensSheenDisplay).toBe('none');
+      expect(expandFrames.some((frame) => frame.transferCount === 2)).toBeTruthy();
+      expect(expandFrames
+        .filter((frame) => frame.t <= 440 * 0.70)
+        .every((frame) => frame.transferOpacity > 0.25 || frame.plusOpacity >= 0.75)).toBeTruthy();
+      expect(expandFrames
+        .filter((frame) => frame.transferCount === 0)
+        .every((frame) => frame.realSummaryOpacity >= 0.9 && frame.realLabelOpacity >= 0.9)).toBeTruthy();
 
       await page.locator('#mobileDataTab').click();
       await page.waitForTimeout(120);
@@ -829,7 +924,7 @@ test.describe('mobile entry smoke flow', () => {
       await page.waitForTimeout(700);
       await expect(page.locator('#ledgerView')).toHaveAttribute('data-mobile-panel', 'entry');
       await expect(page.locator('#mobileSubmitBar')).not.toHaveClass(/is-flip-morphing/);
-      await expect(page.locator('.bar-summary-ghost')).toHaveCount(0);
+      await expect(page.locator('.bar-content-transfer')).toHaveCount(0);
       await expect(page.locator('.bar-family-tint-membrane')).toHaveCount(0);
     }
   });

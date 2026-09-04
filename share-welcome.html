@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f7f4ef" />
 <title>Journa · 共享旅行账本</title>
 <meta property="og:title" content="Journa · 共享旅行账本" />
-<meta property="og:description" content="三个家庭一起记账、分摊，自动生成平账建议。" />
+<meta property="og:description" content="多个家庭一起记账、分摊，自动生成平账建议。" />
 <!-- 直接复用主站真实样式，保证令牌 / 按钮 / 暗色 / 减少动效 100% 一致 -->
 <link rel="stylesheet" href="css/variables.css" />
 <link rel="stylesheet" href="css/animations.css" />
@@ -95,7 +95,7 @@
     .sw-enter-row .welcome-next-button { transition: opacity .2s ease; transform: none; }
   }
 
-  /* 认家选择（预览用静态 3 家；生产中由 app.js 注入 operator-family-choices） */
+  /* 认家选择（预览用静态 2 家；生产中由 app.js 注入 operator-family-choices） */
   .sw-family-choices {
     display: flex;
     flex-wrap: wrap;
@@ -203,7 +203,7 @@
             <span id="swSourceBadgeText">共享旅行账本</span>
           </span>
           <p class="eyebrow welcome-eyebrow" id="swHeroEyebrow">欢迎加入</p>
-          <h2 class="sw-hero-title" id="swHeroTitle">三个家庭，一本账</h2>
+          <h2 class="sw-hero-title" id="swHeroTitle">多个家庭，一本账</h2>
           <p class="welcome-copy" id="swHeroCopy">查看账单，也能随手记一笔。</p>
         </article>
 
@@ -212,8 +212,8 @@
           <div class="welcome-art welcome-split-art">
             <div class="welcome-split-modes" role="list" aria-label="三种分摊方式">
               <div class="welcome-split-mode is-default" role="listitem">
-                <span class="welcome-split-mark">3 家</span>
-                <span><strong>全部家庭</strong><small>三家按人数分</small></span>
+                <span class="welcome-split-mark">2 家</span>
+                <span><strong>全部家庭</strong><small>按家庭人数分</small></span>
               </div>
               <div class="welcome-split-mode" role="listitem">
                 <span class="welcome-split-mark">2 家</span>
@@ -233,9 +233,9 @@
         <article class="welcome-slide" data-slide="2">
           <div class="welcome-art" aria-hidden="true">
             <div class="welcome-mini-settle">
-              <span class="welcome-settle-party dot-b">祺家</span>
+              <span class="welcome-settle-party dot-b">家庭1</span>
               <span class="welcome-settle-arrow">→</span>
-              <span class="welcome-settle-party dot-c">旦家</span>
+              <span class="welcome-settle-party dot-c">家庭2</span>
               <strong class="welcome-settle-amount">¥86.50</strong>
             </div>
           </div>
@@ -253,16 +253,15 @@
               <div class="welcome-sync-dots"><span class="dot-a"></span><span class="dot-b"></span><span class="dot-c"></span></div>
             </div>
           </div>
-          <h3>记一笔，三家实时同步</h3>
+          <h3>记一笔，所有家庭实时同步</h3>
         </article>
 
         <!-- 屏 5 · 认家 + 终端 CTA -->
         <article class="welcome-slide welcome-identity-slide" data-slide="4">
           <div class="welcome-art welcome-identity-art">
             <div class="sw-family-choices" id="swFamilyChoices" role="radiogroup" aria-label="选择你的家庭">
-              <button class="sw-family-chip" type="button" style="--chip-color:#a9ceb5" data-family="祺家" aria-checked="false" role="radio">祺家</button>
-              <button class="sw-family-chip" type="button" style="--chip-color:#b9c9e6" data-family="旦家" aria-checked="false" role="radio">旦家</button>
-              <button class="sw-family-chip" type="button" style="--chip-color:#efc2bf" data-family="明家" aria-checked="false" role="radio">明家</button>
+              <button class="sw-family-chip" type="button" style="--chip-color:#a9ceb5" data-family="家庭1" aria-checked="false" role="radio">家庭1</button>
+              <button class="sw-family-chip" type="button" style="--chip-color:#b9c9e6" data-family="家庭2" aria-checked="false" role="radio">家庭2</button>
             </div>
           </div>
           <p class="eyebrow welcome-eyebrow">最后一步</p>

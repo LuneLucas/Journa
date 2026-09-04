@@ -177,19 +177,14 @@
 .ledger-item {
   --ledger-item-radius: var(--radius-md);
   position: relative;
-  display: grid;
-  overflow: visible;
-  grid-template-columns: minmax(0, 1fr) auto 0 0;
-  grid-template-rows: auto;
-  grid-template-areas: "main amount date actions";
-  gap: 8px 12px;
-  align-items: center;
-  min-height: 60px;
-  max-height: 94px;
+  display: block;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
   border: none;
   border-radius: var(--ledger-item-radius);
   background: var(--ledger-card-background);
-  padding: 8px 12px;
+  padding: 0;
   box-shadow:
     inset 0 0 0 1px var(--ring-family-subtle),
     var(--glass-edge),
@@ -226,6 +221,7 @@
   -webkit-backdrop-filter: var(--blur-ledger-card);
   backdrop-filter: var(--blur-ledger-card);
   pointer-events: none;
+  transition: none;
 }
 
 :root[data-safari-motion="true"] .ledger-item > .pointer-sink-sheen {
@@ -267,17 +263,8 @@
 }
 
 .ledger-item.is-expanded {
-  grid-template-columns: minmax(0, 1fr) auto 144px;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "main amount date"
-    "main actions date";
-  gap: 12px 14px;
-  min-height: 124px;
-  max-height: 280px;
   border-radius: var(--ledger-item-radius);
   background: var(--ledger-card-background);
-  padding: 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.42),
     var(--edge-shade),
@@ -294,6 +281,9 @@
 
 .ledger-item > * {
   min-height: 0;
+}
+
+.ledger-item > *:not(.ledger-item-material) {
   transition:
     transform var(--motion-structure) var(--ease-text-out),
     opacity var(--motion-text) var(--ease-text-out);
@@ -314,7 +304,7 @@
   text-align: left;
 }
 
-.ledger-list.is-morphing-ledger-items .ledger-item > * {
+.ledger-list.is-morphing-ledger-items .ledger-item > :not(.ledger-item-material) {
   transition:
     opacity var(--motion-text) var(--ease-text-out);
 }
@@ -537,27 +527,6 @@
    摘要按钮负责整张卡片的第一层信息；展开内容脱离摘要网格，避免收起时
    隐藏的操作栏生成隐式列，连带挤压其它账单。卡片高度由 app.js 单独做
    WAAPI，摘要文字和金额不再参与 FLIP。 */
-.ledger-item,
-.ledger-item.is-expanded {
-  display: block;
-  border-radius: var(--ledger-item-radius);
-  grid-template: none;
-  min-height: 0;
-  max-height: none;
-  overflow: hidden;
-  padding: 0;
-  transition:
-    border-color var(--motion-fast) var(--settle),
-    transform var(--motion-fast) var(--settle),
-    background-color var(--motion-fast) var(--settle),
-    box-shadow 160ms var(--ledger-morph-easing),
-    opacity var(--motion-fast) var(--settle);
-}
-
-.ledger-item > * {
-  min-height: 0;
-  transition: none;
-}
 
 .ledger-summary-toggle {
   display: grid;
@@ -705,11 +674,19 @@
 .ledger-expanded-details .ledger-scope,
 .ledger-expanded-details .ledger-sync-state {
   display: block;
-  max-height: none;
+  overflow: visible;
   margin-top: 4px;
   opacity: 1;
+  overflow-wrap: anywhere;
   transform: none;
   transition: none;
+  white-space: normal;
+}
+
+.ledger-item.is-expanded .ledger-expanded-details .ledger-operator,
+.ledger-item.is-expanded .ledger-expanded-details .ledger-scope,
+.ledger-item.is-expanded .ledger-expanded-details .ledger-sync-state {
+  max-height: none;
 }
 
 .ledger-expanded-details .ledger-detail-note {

@@ -52,16 +52,9 @@
         .map((preset) => {
           const isSelected = preset.id === activeThemeId;
           return `
-        <button class="theme-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-theme-id="${escapeHtml(preset.id)}" aria-checked="${isSelected}">
-          <span class="theme-choice-preview" aria-hidden="true">
-            <span class="theme-preview-glow"></span>
-            <span class="theme-preview-surface"></span>
-            <span class="theme-preview-accent"></span>
-          </span>
-          <span class="theme-choice-copy">
-            <strong>${escapeHtml(preset.name)}</strong>
-            <small>${escapeHtml(preset.description)}</small>
-          </span>
+        <button class="theme-choice${isSelected ? " is-selected" : ""}" type="button" role="radio" data-theme-id="${escapeHtml(preset.id)}" aria-label="${escapeHtml(preset.name)}，${escapeHtml(preset.description)}" aria-checked="${isSelected}">
+          <span class="theme-choice-dot" aria-hidden="true"></span>
+          <strong>${escapeHtml(preset.name)}</strong>
           <span class="theme-choice-check" aria-hidden="true">✓</span>
         </button>
       `;

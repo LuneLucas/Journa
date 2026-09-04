@@ -63,11 +63,16 @@
     display: none !important;
   }
 
+  .settings-mobile-group[open] .settings-subsection,
+  .settings-mobile-group[open] .settings-data-summary,
+  .settings-mobile-group[open] .settings-actions-section,
+  .settings-mobile-group[open] .settings-guide-link {
+    animation: none !important;
+  }
+
   .summary-lens-sheen,
   .mobile-submit-lens-sheen,
-  .settlement-entry.is-flow-arriving::after,
-  .settlement-entry.is-flow-reminding::before,
-  .settlement-entry.is-flow-reminding::after {
+  .settlement-entry.is-flow-reminding::before {
     display: none !important;
   }
 
@@ -197,7 +202,7 @@
     --ease-card-settle: cubic-bezier(0.42, 0, 0.20, 1);
     --mobile-panel-out-motion: 80ms;
     --mobile-panel-in-motion: 360ms;
-    --mobile-panel-indicator-motion: 420ms;
+    --mobile-panel-indicator-motion: 440ms;
     --natural-stage-curve: cubic-bezier(0.45, 0, 0.18, 1);
     --natural-stage-open-curve: cubic-bezier(0.45, 0, 0.18, 1);
     --natural-stage-open-duration: 560ms;
@@ -218,7 +223,7 @@
   :root[data-safari-motion="true"] .mobile-panel-switch.is-indicator-forward .mobile-panel-indicator,
   :root[data-safari-motion="true"] .mobile-panel-switch.is-indicator-backward .mobile-panel-indicator {
     animation-duration: var(--mobile-panel-indicator-motion) !important;
-    animation-timing-function: var(--ease-control-out) !important;
+    animation-timing-function: cubic-bezier(0.46, 0, 0.08, 1) !important;
   }
 
   :root[data-safari-motion="true"] .mobile-submit-bar.is-flip-morphing,
@@ -226,7 +231,6 @@
     will-change: transform;
   }
 
-  :root[data-safari-motion="true"] .bar-morph-glow,
   :root[data-safari-motion="true"] .bar-family-tint-membrane {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
@@ -238,8 +242,8 @@
   }
 
   :root[data-safari-motion="true"] .app-view.is-mobile-panel-switching-in :is(.entry-panel, .ledger-section, .insights-panel) {
-    animation-duration: var(--mobile-panel-in-motion) !important;
-    animation-timing-function: var(--ease-card-settle) !important;
+    animation-duration: calc(var(--mobile-panel-in-motion) - var(--mobile-panel-cascade-delay, 0ms)) !important;
+    animation-timing-function: cubic-bezier(0.46, 0, 0.08, 1) !important;
   }
 
   :root[data-safari-motion="true"] .app-view:not(.is-mobile-panel-switching-out):not(.is-mobile-panel-switching-in) :is(.entry-panel, .ledger-section, .insights-panel),

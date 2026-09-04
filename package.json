@@ -6,7 +6,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:core": "node scripts/test-core-calculations.mjs",
     "test:a11y": "playwright test tests/a11y.spec.js",
-    "check": "node --check app.js && node --check sw.js && node scripts/check-contrast.mjs && node scripts/sync-version.mjs --check && node scripts/test-core-calculations.mjs",
+    "check:syntax": "node scripts/check-js-syntax.mjs",
+    "check:config": "node scripts/check-project-config.mjs",
+    "check": "node scripts/check-js-syntax.mjs && node scripts/check-project-config.mjs && node scripts/check-contrast.mjs && node scripts/sync-version.mjs --check && node scripts/test-core-calculations.mjs",
     "check:version": "node scripts/sync-version.mjs --check",
     "audit:safari": "node scripts/safari-audit-v2.cjs"
   },

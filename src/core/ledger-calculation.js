@@ -16,7 +16,9 @@
   }) {
     function getTotalMembers() {
       const state = getState();
-      return state.families.reduce((sum, family) => sum + (state.familyMembers[family.id] || 1), 0);
+      return state.families
+        .filter((family) => family.active !== false)
+        .reduce((sum, family) => sum + (state.familyMembers[family.id] || 1), 0);
     }
 
     function calculateEqualFamilySharesForIds(totalCents, familyIds) {
@@ -93,9 +95,9 @@
       }
 
       const allFamilyIds = state.families.map((family) => family.id);
-      const splitFamilyIds = getSplitScopeFromMode(splitMode) === "selected"
-        ? normalizeSplitFamilyIds(expense.splitFamilyIds, allFamilyIds)
-        : allFamilyIds;
+      const activeFamilyIds = state.families.filter((family) => family.active !== false).map((family) => family.id);
+      // 新版会为所有分摊模式保存参与家庭快照。旧账没有快照时才回退到当前启用家庭。
+      const splitFamilyIds = normalizeSplitFamilyIds(expense.splitFamilyIds, activeFamilyIds, allFamilyIds);
       if (getSplitRuleFromMode(splitMode) === "equal") return calculateEqualFamilySharesForIds(totalCents, splitFamilyIds);
       return calculateFamilySharesForIds(totalCents, splitFamilyIds);
     }

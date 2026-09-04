@@ -361,22 +361,6 @@
   }
 }
 
-@keyframes settlement-entry-lens-sweep {
-  0% {
-    opacity: 0;
-    transform: rotate(45deg) translateX(-160%);
-  }
-
-  18% {
-    opacity: 0.62;
-  }
-
-  100% {
-    opacity: 0;
-    transform: rotate(45deg) translateX(520%);
-  }
-}
-
 @keyframes ledger-item-catch {
   0%,
   100% {

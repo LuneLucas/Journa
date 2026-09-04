@@ -3,9 +3,9 @@ create extension if not exists pgcrypto;
 create table if not exists public.travel_ledgers (
   id uuid primary key default gen_random_uuid(),
   share_token text not null unique default encode(gen_random_bytes(18), 'hex'),
-  name text not null default '三家庭旅游账本',
-  families jsonb not null default '[{"id":"family-a","name":"乐家"},{"id":"family-b","name":"祺家"},{"id":"family-c","name":"旦家"}]'::jsonb,
-  family_members jsonb not null default '{"family-a":1,"family-b":1,"family-c":1}'::jsonb,
+  name text not null default '家庭旅行账本',
+  families jsonb not null default '[{"id":"family-a","name":"家庭1"},{"id":"family-b","name":"家庭2"}]'::jsonb,
+  family_members jsonb not null default '{"family-a":1,"family-b":1}'::jsonb,
   categories text[] not null default array['交通','住宿','餐饮','门票','购物','其他'],
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

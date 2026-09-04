@@ -36,10 +36,11 @@
 }
 
 .toast span {
-  overflow: hidden;
+  min-width: 0;
   font-weight: var(--fw-bold);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .toast-action {

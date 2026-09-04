@@ -62,11 +62,11 @@
     --ink: #f2f4f3;
     --muted: #b2b7b4;
     --muted-soft: #858b88;
-    --ledger-primary-text: color-mix(in srgb, var(--family-text, var(--ink)) 38%, white);
-    --ledger-secondary-text: var(--muted);
+    --ledger-primary-text: rgba(244, 247, 245, 0.94);
+    --ledger-secondary-text: rgba(210, 216, 212, 0.66);
     --ledger-card-background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
-      color-mix(in srgb, var(--family-color) 4%, rgba(20, 21, 23, 0.76));
+      linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018) 56%),
+      color-mix(in srgb, var(--family-color) 4%, rgba(16, 19, 18, 0.92));
     --line: var(--border-divider);
     --line-dark: var(--border-surface);
 
@@ -158,6 +158,34 @@
     background: color-mix(in srgb, var(--brand-primary) 12%, rgba(255, 255, 255, 0.07));
   }
 
+  .settings-category-chip {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+      color-mix(in srgb, var(--category-gradient) 5%, var(--surface-soft));
+  }
+
+  .settings-category-main,
+  .settings-category-actions button {
+    color: color-mix(in srgb, var(--category-text) 42%, white);
+  }
+
+  .settings-category-main > small,
+  .settings-category-row-cue {
+    color: color-mix(in srgb, var(--category-text) 24%, var(--muted));
+  }
+
+  .settings-category-actions {
+    border-top-color: color-mix(in srgb, var(--category-gradient) 14%, var(--dark-hairline));
+  }
+
+  .settings-category-actions button {
+    background: color-mix(in srgb, var(--category-gradient) 8%, rgba(255, 255, 255, 0.055));
+  }
+
+  .settings-category-actions button:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--category-gradient) 13%, rgba(255, 255, 255, 0.08));
+  }
+
   .family-color-details {
     border-color: var(--dark-hairline);
     background: rgba(255, 255, 255, 0.04);
@@ -214,6 +242,7 @@
   .split-amount-row,
   .split-amount-row input,
   .settings-family span,
+  .settings-family-name-input,
   .member-stepper,
   .member-stepper button,
   .member-stepper strong,
@@ -862,29 +891,31 @@
   }
 
   .ledger-item {
-    border-color: color-mix(in srgb, var(--family-color) 24%, var(--dark-hairline));
+    border-color: color-mix(in srgb, var(--family-color) 18%, var(--dark-hairline));
     background: var(--ledger-card-background);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 10px 28px rgba(0, 0, 0, 0.20);
+      inset 0 1px 0 rgba(255, 255, 255, 0.075),
+      inset 3px 0 0 -2px color-mix(in srgb, var(--family-color) 46%, transparent),
+      0 12px 30px rgba(0, 0, 0, 0.24);
   }
 
   .ledger-item:hover {
     transform: var(--hover-lift-card);
     background: var(--ledger-card-background);
     box-shadow:
-      inset 0 0 0 1px var(--ring-family-subtle),
+      inset 0 0 0 1px color-mix(in srgb, var(--family-color) 22%, transparent),
+      inset 3px 0 0 -2px color-mix(in srgb, var(--family-color) 58%, transparent),
       var(--glass-edge),
-      var(--hover-lift-card-shadow),
-      0 0 28px -14px color-mix(in oklch, var(--theme-color) 36%, transparent);
+      0 14px 34px rgba(0, 0, 0, 0.30);
   }
 
   .ledger-item.is-expanded {
-    border-color: color-mix(in srgb, var(--family-color) 34%, var(--dark-hairline));
+    border-color: color-mix(in srgb, var(--family-color) 28%, var(--dark-hairline));
     background: var(--ledger-card-background);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.07),
-      0 16px 42px rgba(0, 0, 0, 0.26);
+      inset 0 1px 0 rgba(255, 255, 255, 0.085),
+      inset 3px 0 0 -2px color-mix(in srgb, var(--family-color) 62%, transparent),
+      0 18px 46px rgba(0, 0, 0, 0.34);
   }
 
   .ledger-item::before {
@@ -892,10 +923,18 @@
     opacity: 0.92;
   }
 
-  .ledger-family,
-  .ledger-edit-button {
-    color: var(--ledger-primary-text);
+  .ledger-family {
+    color: color-mix(in srgb, var(--family-text) 42%, rgba(244, 247, 245, 0.94));
     transition: color var(--motion-text) var(--ease-text-out);
+  }
+
+  .ledger-edit-button {
+    color: rgba(244, 247, 245, 0.88);
+    transition: color var(--motion-text) var(--ease-text-out);
+  }
+
+  .ledger-primary-text {
+    color: var(--ledger-primary-text);
   }
 
   .ledger-amount {

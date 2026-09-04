@@ -1,7 +1,7 @@
 {
   "name": "Journa · 共享旅行账本",
   "short_name": "Journa",
-  "description": "三个家庭一起旅行，记账、分摊，自动生成平账建议。",
+  "description": "多个家庭一起旅行，记账、分摊，自动生成平账建议。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

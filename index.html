@@ -38,25 +38,25 @@
     <link rel="apple-touch-startup-image" href="./icons/splash-1320x2868-light.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: light)" />
     <link rel="apple-touch-startup-image" href="./icons/splash-1320x2868-dark.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (prefers-color-scheme: dark)" />
     <meta property="og:title" content="Journa · 共享旅行账本" />
-    <meta property="og:description" content="三个家庭一起旅行的共享账本：记账、分摊，自动生成平账建议。" />
+    <meta property="og:description" content="多人家庭一起旅行的共享账本：记账、分摊，自动生成平账建议。" />
     <meta property="og:type" content="website" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23f7f9f8'/%3E%3Ccircle cx='24' cy='26' r='13' fill='%23a9ceb5'/%3E%3Ccircle cx='40' cy='25' r='13' fill='%23b9c9e6'/%3E%3Ccircle cx='32' cy='40' r='13' fill='%23efc2bf'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 手动缓存戳：GitHub Pages 上线后如果样式没刷新，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <link rel="stylesheet" href="./css/variables.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/base.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/layout.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/components/forms.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/components/lists.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/components/modals.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/components/toast.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/animations.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/misc.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/responsive.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/dark.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/visual-depth.css?v=journa-safari-ledger-material-layer-v1-20260823">
-    <link rel="stylesheet" href="./css/a11y.css?v=journa-safari-ledger-material-layer-v1-20260823">
+    <link rel="stylesheet" href="./css/variables.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/base.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/layout.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/components/buttons.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/components/forms.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/components/lists.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/components/modals.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/components/toast.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/animations.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/misc.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/responsive.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/dark.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/visual-depth.css?v=journa-runtime-quality-v1-20260904">
+    <link rel="stylesheet" href="./css/a11y.css?v=journa-runtime-quality-v1-20260904">
     <script>
       // WebKit 不向网页开放 SF Symbols 字体；按平台切换项目内置的
       // SF 风格 SVG 与统一 Lucide 回退，避免私有字符乱码。
@@ -80,7 +80,12 @@
       <header class="app-header">
         <div>
           <p class="eyebrow">当前账本</p>
-          <h1 id="currentLedgerTitle">旅行账本</h1>
+          <h1>
+            <button class="ledger-switch-trigger" id="headerLedgerSwitcher" type="button" aria-label="切换账本，当前为旅行账本" aria-haspopup="dialog" aria-controls="ledgerManagementView">
+              <span id="currentLedgerTitle">旅行账本</span>
+              <span class="ui-icon-host" data-ui-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+          </h1>
         </div>
         <div class="header-actions">
           <button class="sync-status" id="syncStatus" type="button" aria-label="同步云账本"><span class="sync-status-shell" aria-hidden="true"></span><span class="sync-status-label" id="syncStatusLabel">本地账本</span></button>
@@ -166,7 +171,7 @@
                 <p class="natural-entry-line">
                   <span class="natural-entry-phrase natural-entry-phrase-split">
                     <span>由</span>
-                    <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" data-value-state="value" aria-expanded="false"><span class="natural-entry-token-label">三家承担</span></button>
+                    <button class="natural-entry-token natural-entry-split" id="naturalSplitToken" type="button" data-entry-target="split" data-value-state="value" aria-expanded="false"><span class="natural-entry-token-label">全部家庭承担</span></button>
                   </span>
                 </p>
               </div>
@@ -206,7 +211,7 @@
                   </div>
                   <div id="categoryForm" class="category-form inline-category-form category-add-control" role="group" aria-label="新增类别">
                     <button class="category-add-fab" id="categoryAddFab" type="button" aria-label="新增类别" aria-expanded="false" aria-controls="categoryForm">
-                      <span class="category-add-fab-icon" aria-hidden="true"></span>
+                      <span class="category-add-fab-icon ui-icon-host" data-ui-icon="plus" aria-hidden="true"></span>
                     </button>
                     <input id="newCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" tabindex="-1" />
                     <button class="category-add-confirm" id="categoryAddConfirm" type="button" aria-label="确认新增类别" aria-disabled="true" disabled>
@@ -358,48 +363,23 @@
                 </button>
               </div>
               <form id="ledgerNameForm" class="ledger-name-form">
-                <input id="currentLedgerNameInput" type="text" maxlength="24" placeholder="账本名称" />
-                <button class="secondary-button" id="saveLedgerNameButton" type="submit">保存名称</button>
+                <input id="currentLedgerNameInput" type="text" maxlength="24" enterkeyhint="done" placeholder="账本名称" aria-label="账本名称，离开输入框后自动保存" />
               </form>
               <div id="currentLedgerSummary" class="current-ledger-summary"></div>
             </section>
 
             <section class="settings-panel settings-preferences-panel">
-              <h3>个人设置</h3>
-              <p class="settings-note">记账会显示家庭署名。</p>
-              <form id="settingsOperatorForm" class="settings-operator-form">
+              <h3>常用设置</h3>
+              <p class="settings-note">选择你的家庭，常用偏好会立即生效。</p>
+              <div id="settingsOperatorForm" class="settings-operator-form">
                 <div id="settingsOperatorFamilyList" class="operator-family-choices" role="radiogroup" aria-label="选择你的家庭"></div>
-                <button class="secondary-button" id="saveOperatorButton" type="submit">保存选择</button>
-              </form>
-              <label class="settings-preference-row" for="settingsMoneyDecimalsInput">
+              </div>
+              <div class="settings-compact-choice">
                 <span>
-                  <strong>始终显示两位小数</strong>
-                  <small>关闭后，有角分时才显示。</small>
+                  <strong>页面主题</strong>
+                  <small>仅在本机生效</small>
                 </span>
-                <input id="settingsMoneyDecimalsInput" type="checkbox" role="switch" />
-              </label>
-              <label class="settings-preference-row" for="settingsNaturalEntryMarksHiddenInput">
-                <span>
-                  <strong>显示手写标记</strong>
-                  <small>圈选与双下划线</small>
-                </span>
-                <input id="settingsNaturalEntryMarksHiddenInput" type="checkbox" role="switch" />
-              </label>
-              <div class="settings-entry-mode settlement-method-settings">
-                <span>
-                  <strong>平账方式</strong>
-                  <small>选择转账建议的简化程度</small>
-                </span>
-                <div class="settings-entry-mode-list" id="settingsSettlementMethodList" role="radiogroup" aria-label="选择平账方式">
-                  <button class="settings-entry-mode-choice" type="button" role="radio" data-settlement-method-choice="simple" aria-checked="true">
-                    <strong>最简方案</strong>
-                    <small>合并收支，三家最多两笔</small>
-                  </button>
-                  <button class="settings-entry-mode-choice" type="button" role="radio" data-settlement-method-choice="pairwise" aria-checked="false">
-                    <strong>当前方案</strong>
-                    <small>按家庭之间逐笔对冲</small>
-                  </button>
-                </div>
+                <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="页面主题"></div>
               </div>
               <div class="settings-entry-mode">
                 <span>
@@ -416,47 +396,84 @@
                   </button>
                 </div>
               </div>
+              <label class="settings-preference-row" for="settingsMoneyDecimalsInput">
+                <span>
+                  <strong>始终显示两位小数</strong>
+                  <small>关闭后，有角分时才显示。</small>
+                </span>
+                <input id="settingsMoneyDecimalsInput" type="checkbox" role="switch" />
+              </label>
+              <label class="settings-preference-row" for="settingsNaturalEntryMarksHiddenInput">
+                <span>
+                  <strong>显示手写标记</strong>
+                  <small>圈选与双下划线</small>
+                </span>
+                <input id="settingsNaturalEntryMarksHiddenInput" type="checkbox" role="switch" />
+              </label>
             </section>
 
-            <details class="settings-panel personalization-panel settings-mobile-group" open>
-              <summary><span>个性化</span><small>主题与家庭颜色</small></summary>
+            <details class="settings-panel settings-mobile-group settings-rules-panel" name="settings-secondary">
+              <summary><span>账本规则</span><small>家庭、类别与平账</small></summary>
               <div class="settings-mobile-group-body">
-                <p class="settings-note">仅在本机生效。</p>
-                <div id="settingsThemeList" class="settings-theme-list" role="radiogroup" aria-label="页面氛围主题"></div>
-                <div id="settingsFamilyColorList" class="settings-family-color-list" aria-label="高级家庭身份色调整"></div>
-              </div>
-            </details>
-
-            <details class="settings-panel settings-mobile-group" open>
-              <summary><span>家庭与规则</span><small>人数、分摊与货币</small></summary>
-              <div class="settings-mobile-group-body">
-                <div id="settingsFamilyList" class="settings-family-list"></div>
-                <div class="settings-rule-list">
-                  <div class="settings-rule">
-                    <span>分摊方式</span>
-                    <strong>按家庭人数</strong>
+                <section class="settings-subsection" aria-labelledby="settingsFamilyHeading">
+                  <div class="settings-subsection-heading">
+                    <strong id="settingsFamilyHeading">家庭与人数</strong>
+                    <small>名称修改后自动保存</small>
                   </div>
-                  <div class="settings-rule">
-                    <span>货币</span>
-                    <strong>人民币 ¥</strong>
+                  <form id="settingsFamilyForm" class="category-form settings-family-form">
+                    <input id="settingsNewFamilyInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增家庭名称" aria-label="新增家庭名称" />
+                    <button class="secondary-button" type="submit">添加</button>
+                  </form>
+                  <p class="settings-inline-error" id="settingsFamilyError" role="alert"></p>
+                  <div id="settingsFamilyList" class="settings-family-list"></div>
+                </section>
+
+                <section class="settings-subsection" aria-labelledby="settingsCategoryHeading">
+                  <div class="settings-subsection-heading">
+                    <span class="settings-subsection-heading-copy">
+                      <strong id="settingsCategoryHeading">消费类别</strong>
+                      <small id="settingsCategoryHint" aria-live="polite">新增后可用于记账</small>
+                    </span>
+                    <button class="settings-manage-toggle" id="settingsCategoryManageButton" type="button" aria-controls="settingsCategoryChips" aria-pressed="false">整理</button>
                   </div>
-                </div>
+                  <form id="settingsCategoryForm" class="category-form settings-category-form">
+                    <input id="settingsNewCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" />
+                    <button class="secondary-button" type="submit">添加</button>
+                  </form>
+                  <div id="settingsCategoryChips" class="category-chips settings-category-chips"></div>
+                </section>
+
+                <section class="settings-subsection settings-settlement-method" aria-labelledby="settingsSettlementHeading">
+                  <div class="settings-subsection-heading">
+                    <strong id="settingsSettlementHeading">平账方式</strong>
+                    <small>选择转账建议的简化程度</small>
+                  </div>
+                  <div class="settings-entry-mode-list" id="settingsSettlementMethodList" role="radiogroup" aria-label="选择平账方式">
+                    <button class="settings-entry-mode-choice" type="button" role="radio" data-settlement-method-choice="simple" aria-checked="true">
+                      <strong>最简方案</strong>
+                      <small>合并收支，减少转账笔数</small>
+                    </button>
+                    <button class="settings-entry-mode-choice" type="button" role="radio" data-settlement-method-choice="pairwise" aria-checked="false">
+                      <strong>当前方案</strong>
+                      <small>按家庭之间逐笔对冲</small>
+                    </button>
+                  </div>
+                  <div class="settings-rule-list">
+                    <div class="settings-rule">
+                      <span>默认分摊</span>
+                      <strong>按家庭人数</strong>
+                    </div>
+                    <div class="settings-rule">
+                      <span>货币</span>
+                      <strong>人民币 ¥</strong>
+                    </div>
+                  </div>
+                </section>
               </div>
             </details>
 
-            <details class="settings-panel settings-mobile-group" open>
-              <summary><span>类别管理</span><small>新增、排序与删除</small></summary>
-              <div class="settings-mobile-group-body">
-                <form id="settingsCategoryForm" class="category-form settings-category-form">
-                  <input id="settingsNewCategoryInput" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="新增类别" />
-                  <button class="secondary-button" type="submit">添加</button>
-                </form>
-                <div id="settingsCategoryChips" class="category-chips settings-category-chips"></div>
-              </div>
-            </details>
-
-            <details class="settings-panel settings-mobile-group settings-data-panel" open>
-              <summary><span>同步与数据</span><small>状态、导入与导出</small></summary>
+            <details class="settings-panel settings-mobile-group settings-data-panel" name="settings-secondary">
+              <summary><span>同步与数据</span><small>备份、导入与帮助</small></summary>
               <div class="settings-mobile-group-body">
                 <div id="settingsDataSummary" class="settings-data-summary"></div>
                 <section class="settings-actions-section" aria-labelledby="settingsActionsTitle">
@@ -493,16 +510,13 @@
                     </div>
                   </div>
                 </section>
+                <button class="secondary-button settings-guide-link" id="openWelcomeButton" type="button">
+                  <span class="ui-icon-host" data-ui-icon="help" aria-hidden="true"></span>
+                  <span>使用指南</span>
+                  <small>重新查看</small>
+                </button>
               </div>
             </details>
-
-            <section class="settings-panel settings-guide-panel">
-              <button class="secondary-button settings-guide-link" id="openWelcomeButton" type="button">
-                <span class="ui-icon-host" data-ui-icon="help" aria-hidden="true"></span>
-                <span>使用指南</span>
-                <small>重新查看</small>
-              </button>
-            </section>
           </div>
         </aside>
       </section>
@@ -599,15 +613,15 @@
                 <span class="welcome-source-badge-text" id="welcomeSourceBadgeText"></span>
               </div>
               <p class="eyebrow welcome-eyebrow" id="welcomeHeroEyebrow">欢迎使用</p>
-              <h2 id="welcomeTitle">三个家庭，一本账</h2>
+              <h2 id="welcomeTitle">多个家庭，一本账</h2>
               <p class="welcome-copy" id="welcomeHeroCopy">默认按人数分，也可逐笔调整。</p>
             </article>
             <article class="welcome-slide">
               <div class="welcome-art welcome-split-art">
                 <div class="welcome-split-modes" role="list" aria-label="三种分摊方式">
                   <div class="welcome-split-mode is-default" role="listitem">
-                    <span class="welcome-split-mark">3 家</span>
-                    <span><strong>全部家庭</strong><small>三家按人数分</small></span>
+                    <span class="welcome-split-mark">2 家</span>
+                    <span><strong>全部家庭</strong><small>按家庭人数分</small></span>
                   </div>
                   <div class="welcome-split-mode" role="listitem">
                     <span class="welcome-split-mark">2 家</span>
@@ -625,9 +639,9 @@
             <article class="welcome-slide welcome-identity-slide">
               <div class="welcome-art welcome-combined-art" aria-hidden="true">
                 <div class="welcome-mini-settle">
-                  <span class="welcome-settle-party dot-b">祺家</span>
+                  <span class="welcome-settle-party dot-b">家庭1</span>
                   <span class="welcome-settle-arrow">→</span>
-                  <span class="welcome-settle-party dot-c">旦家</span>
+                  <span class="welcome-settle-party dot-c">家庭2</span>
                   <strong class="welcome-settle-amount">¥86.50</strong>
                 </div>
                 <div class="welcome-cloud-art">
@@ -640,7 +654,7 @@
               </div>
               <p class="eyebrow welcome-eyebrow">最后一步</p>
               <h3 id="welcomeCloudTitle">平账、同步，一起记</h3>
-              <p class="welcome-copy" id="welcomeCloudCopy">创建云账本后，三家实时同步。</p>
+              <p class="welcome-copy" id="welcomeCloudCopy">创建云账本后，所有家庭实时同步。</p>
               <div class="welcome-identity-inline">
                 <strong>你属于哪个家庭？</strong>
                 <div id="welcomeIdentityFamilyList" class="operator-family-choices welcome-family-choices" role="radiogroup" aria-label="选择你的家庭"></div>
@@ -662,19 +676,19 @@
     </main>
 
     <!-- 手动缓存戳：发布后改了 JS 但浏览器仍用旧文件时，同步更新这里和 sw.js 的 APP_VERSION。 -->
-    <script src="./src/core/money.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/core/split.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/core/ledger-calculation.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/core/motion.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/cloud/supabase-sdk.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/natural-entry.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/ledger-view.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/ledger-interactions.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/settings-preferences.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/welcome-sources.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/welcome.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./src/modules/mobile-viewport.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
-    <script src="./app.js?v=journa-safari-ledger-material-layer-v1-20260823"></script>
+    <script src="./src/core/money.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/core/split.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/core/ledger-calculation.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/core/motion.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/cloud/supabase-sdk.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/natural-entry.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/ledger-view.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/ledger-interactions.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/settings-preferences.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/welcome-sources.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/welcome.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./src/modules/mobile-viewport.js?v=journa-runtime-quality-v1-20260904"></script>
+    <script src="./app.js?v=journa-runtime-quality-v1-20260904"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

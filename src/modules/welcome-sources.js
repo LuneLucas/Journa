@@ -26,7 +26,7 @@
       badge: "共享旅行账本",
       icon: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>',
       eyebrow: "欢迎加入",
-      title: "三个家庭，一本账",
+      title: "多个家庭，一本账",
       copy: "查看账单，也能随手记一笔。",
     },
     qr: {

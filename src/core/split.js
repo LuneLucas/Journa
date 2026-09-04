@@ -3,10 +3,25 @@
    dependency. */
 (function exposeJournaSplit(global) {
   function createSplitCore({ splitModeOptions = [], defaultFamilies = [] }) {
-    const familyIds = defaultFamilies.map((family) => family.id);
+    let familyIds = defaultFamilies.map((family) => family.id);
 
-    function normalizePayerId(payerId) {
-      return familyIds.includes(payerId) ? payerId : "";
+    function normalizeFamilyIdList(familiesOrIds = []) {
+      const source = Array.isArray(familiesOrIds) ? familiesOrIds : [];
+      return [...new Set(source
+        .map((item) => typeof item === "string" ? item : item?.id)
+        .map((id) => String(id || "").trim())
+        .filter(Boolean))];
+    }
+
+    function setFamilyIds(familiesOrIds = []) {
+      const nextIds = normalizeFamilyIdList(familiesOrIds);
+      familyIds = nextIds.length ? nextIds : defaultFamilies.map((family) => family.id);
+      return [...familyIds];
+    }
+
+    function normalizePayerId(payerId, validFamilyIds = familyIds) {
+      const normalized = String(payerId || "").trim();
+      return normalizeFamilyIdList(validFamilyIds).includes(normalized) ? normalized : "";
     }
 
     function normalizeSplitMode(mode) {
@@ -31,25 +46,31 @@
       return rule === "equal" ? "equal" : "all";
     }
 
-    function normalizeSplitFamilyIds(familyIdsToNormalize = [], fallbackIds = []) {
+    function normalizeSplitFamilyIds(familyIdsToNormalize = [], fallbackIds = [], validFamilyIds = familyIds) {
+      const validIdSet = new Set(normalizeFamilyIdList(validFamilyIds));
       const ids = Array.isArray(familyIdsToNormalize) ? familyIdsToNormalize : [];
-      const validIds = [...new Set(ids.map(normalizePayerId).filter(Boolean))];
-      const fallback = [...new Set(fallbackIds.map(normalizePayerId).filter(Boolean))];
+      const normalizeId = (id) => {
+        const normalized = String(id || "").trim();
+        return validIdSet.has(normalized) ? normalized : "";
+      };
+      const validIds = [...new Set(ids.map(normalizeId).filter(Boolean))];
+      const fallback = [...new Set(fallbackIds.map(normalizeId).filter(Boolean))];
       return validIds.length ? validIds : fallback;
     }
 
-    function normalizeSplitAmounts(amounts = {}) {
+    function normalizeSplitAmounts(amounts = {}, validFamilyIds = familyIds) {
       const source = amounts && typeof amounts === "object" ? amounts : {};
       return Object.fromEntries(
-        defaultFamilies.map((family) => {
-          const amount = Number(source[family.id]);
+        normalizeFamilyIdList(validFamilyIds).map((familyId) => {
+          const amount = Number(source[familyId]);
           const normalized = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0;
-          return [family.id, normalized];
+          return [familyId, normalized];
         }),
       );
     }
 
     return {
+      setFamilyIds,
       normalizePayerId,
       normalizeSplitMode,
       getSplitScopeFromMode,
